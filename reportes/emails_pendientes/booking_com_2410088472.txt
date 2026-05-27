@@ -1,0 +1,43 @@
+================================================================================
+YVE.01 — EMAIL GENERADO AUTOMATICAMENTE
+Fecha generacion : 17/05/2026
+Tipo de problema : CERTIFICADO DI
+================================================================================
+PARA     : finance@booking.com
+DE       : finanzas@hotelartsbarcelona.com  [COMPLETAR]
+ASUNTO   : Factura 2410088472 — Solicitud certificado de residencia fiscal / doble imposicion
+================================================================================
+DATOS DE REFERENCIA:
+  Factura       : 2410088472
+  Periodo       : 01/10/2024 — 31/10/2024
+  OTA           : Booking.com
+  Hotel         : Hotel Arts Barcelona
+  Discrepancia  : N/A
+================================================================================
+
+CUERPO DEL EMAIL:
+--------------------------------------------------------------------------------
+Estimado Departamento de Facturacion de Booking.com,
+
+Nos ponemos en contacto con ustedes en relacion con la factura numero 2410088472, emitida el 03/11/2024 y correspondiente al periodo del 1 al 31 de octubre de 2024.
+
+La factura ha sido recibida y los importes de comision reflejados son conformes al acuerdo contractual suscrito entre Hotel Arts Barcelona y Booking.com. No obstante, a efectos contables y tributarios, necesitamos completar la documentacion asociada a dicha factura.
+
+Dado que Booking.com B.V. tiene su domicilio fiscal en los Paises Bajos, la operacion queda sujeta al Convenio para Evitar la Doble Imposicion entre el Reino de Espana y el Reino de los Paises Bajos. Para poder proceder a la contabilizacion correcta de la factura y acreditar la exencion de retencion ante la Agencia Tributaria espanola, les solicitamos que nos remitan el certificado de residencia fiscal (tax residency certificate o WHT certificate) correspondiente al ejercicio fiscal 2024.
+
+Agradeceriamos que nos hicieran llegar dicho certificado en un plazo no superior a 15 dias habiles desde la recepcion del presente correo.
+
+Para cualquier consulta o aclaracion, no duden en ponerse en contacto con nosotros a traves de los datos que figuran en la firma.
+
+Reciban un cordial saludo,
+
+[NOMBRE_CONTACTO]
+Departamento Financiero
+Hotel Arts Barcelona
+Tel.: [TELEFONO]
+--------------------------------------------------------------------------------
+[REVISION REQUERIDA ANTES DE ENVIAR]
+- Completar nombre y telefono del contacto en la firma
+- Verificar correo del remitente
+- Adjuntar copia de la factura original si corresponde
+================================================================================

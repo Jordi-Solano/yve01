@@ -1,0 +1,43 @@
+================================================================================
+YVE.01 — EMAIL GENERADO AUTOMATICAMENTE
+Fecha generacion : 17/05/2026
+Tipo de problema : CERTIFICADO DI
+================================================================================
+PARA     : hotelbilling@expedia.com
+DE       : finanzas@hotelmajesticbarcelona.com  [COMPLETAR]
+ASUNTO   : Factura EXP-INV-2024-110034 — Solicitud certificado de residencia fiscal / doble imposicion
+================================================================================
+DATOS DE REFERENCIA:
+  Factura       : EXP-INV-2024-110034
+  Periodo       : 01/10/2024 — 31/10/2024
+  OTA           : Expedia
+  Hotel         : Hotel Majestic Barcelona
+  Discrepancia  : N/A
+================================================================================
+
+CUERPO DEL EMAIL:
+--------------------------------------------------------------------------------
+Estimado Departamento de Facturacion de Expedia,
+
+Me dirijo a ustedes en relacion con la factura de comisiones numero EXP-INV-2024-110034, emitida el 05/11/2024 y correspondiente al periodo comprendido entre el 1 y el 31 de octubre de 2024.
+
+Tras la recepcion y revision de la factura, hemos verificado que los importes de comision aplicados son conformes al porcentaje acordado del 18% sobre las ventas brutas del periodo, por lo que la factura se considera correcta en cuanto a su contenido economico.
+
+Sin embargo, a efectos de la correcta contabilizacion de dicho gasto en nuestros libros y de acuerdo con las obligaciones fiscales vigentes en Espana, es necesario que disponemos del certificado de residencia fiscal de Expedia, Inc. (tambien conocido como tax residency certificate, certificate of residence o WHT certificate) para el ejercicio fiscal 2024. Este documento es imprescindible para acreditar ante la Agencia Tributaria espanola la aplicacion del Convenio de Doble Imposicion suscrito entre Espana y los Estados Unidos de America.
+
+Rogamos nos hagan llegar dicha documentacion en un plazo maximo de 15 dias habiles a contar desde la fecha del presente correo.
+
+Quedamos a su disposicion para cualquier consulta adicional.
+
+Un cordial saludo,
+
+[NOMBRE_CONTACTO]
+Departamento Financiero
+Hotel Majestic Barcelona
+Tel.: [TELEFONO]
+--------------------------------------------------------------------------------
+[REVISION REQUERIDA ANTES DE ENVIAR]
+- Completar nombre y telefono del contacto en la firma
+- Verificar correo del remitente
+- Adjuntar copia de la factura original si corresponde
+================================================================================

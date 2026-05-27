@@ -1,0 +1,45 @@
+================================================================================
+YVE.01 — EMAIL GENERADO AUTOMATICAMENTE
+Fecha generacion : 17/05/2026
+Tipo de problema : DISCREPANCIA + CERTIFICADO DI
+================================================================================
+PARA     : finance@booking.com
+DE       : finanzas@granhotelhavanabarceclona.com  [COMPLETAR]
+ASUNTO   : Factura 2411099234 — Discrepancia en porcentaje de comision y solicitud certificado de doble imposicion
+================================================================================
+DATOS DE REFERENCIA:
+  Factura       : 2411099234
+  Periodo       : 01/10/2024 — 31/10/2024
+  OTA           : Booking.com
+  Hotel         : Gran Hotel Havana Barcelona
+  Discrepancia  : 249.00 EUR
+================================================================================
+
+CUERPO DEL EMAIL:
+--------------------------------------------------------------------------------
+Estimado Departamento de Facturacion de Booking.com,
+
+Me dirijo a ustedes en relacion con la factura numero 2411099234, emitida el 04/11/2024 y correspondiente al periodo comprendido entre el 1 y el 31 de octubre de 2024, con el fin de comunicarles dos incidencias que requieren su atencion.
+
+En primer lugar, hemos detectado una discrepancia en el porcentaje de comision aplicado. Segun el acuerdo contractual vigente entre Gran Hotel Havana Barcelona y Booking.com, el porcentaje de comision pactado es del 15%. Sin embargo, la factura referenciada refleja un porcentaje del 18%, lo que supone una diferencia de 3 puntos porcentuales sobre unas ventas brutas de 8.300,00 EUR. El importe facturado en exceso asciende a 249,00 EUR.
+
+Entendemos que esta discrepancia puede deberse a un error administrativo en la generacion de la factura, por lo que les rogamos procedan a emitir una nota de credito o una factura rectificativa por el importe indicado a la mayor brevedad posible.
+
+En segundo lugar, dado que Booking.com B.V. es una entidad con domicilio fiscal en los Paises Bajos, resulta de aplicacion el Convenio para Evitar la Doble Imposicion suscrito entre Espana y los Paises Bajos. A fin de contabilizar correctamente la presente factura y acreditar la exencion correspondiente ante la Agencia Tributaria espanola, les solicitamos que nos remitan el certificado de residencia fiscal (tax residency certificate / WHT certificate) correspondiente al ejercicio 2024.
+
+Les rogamos que atiendan ambas solicitudes en un plazo maximo de 15 dias habiles a partir de la recepcion del presente mensaje.
+
+Quedamos a su disposicion para cualquier aclaracion que pudiera precisarse.
+
+Atentamente,
+
+[NOMBRE_CONTACTO]
+Departamento Financiero
+Gran Hotel Havana Barcelona
+Tel.: [TELEFONO]
+--------------------------------------------------------------------------------
+[REVISION REQUERIDA ANTES DE ENVIAR]
+- Completar nombre y telefono del contacto en la firma
+- Verificar correo del remitente
+- Adjuntar copia de la factura original si corresponde
+================================================================================
