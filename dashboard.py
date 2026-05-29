@@ -210,6 +210,8 @@ def api_procesar():
 # ── Pipeline AP ────────────────────────────────────────────────────────────
 _pipeline_ap_running = False
 _pipeline_ap_lock    = threading.Lock()
+_pipeline_oracle_running = False
+_pipeline_oracle_lock    = threading.Lock()
 FACTURAS_AP_DIR      = os.path.join(BASE_DIR, "facturas-procesadas")
 APROBACIONES_AP_DIR  = os.path.join(BASE_DIR, "aprobaciones")
 
@@ -366,6 +368,46 @@ def api_procesar_ap():
             yield "data: PIPELINE_COMPLETO\n\n" if ok_total else "data: PIPELINE_CON_ERRORES\n\n"
         finally:
             _pipeline_ap_running = False
+
+    return Response(
+        stream_with_context(generar()),
+        mimetype="text/event-stream",
+        headers={"Cache-Control": "no-cache", "X-Accel-Buffering": "no"},
+    )
+
+
+@app.route("/api/procesar_oracle")
+def api_procesar_oracle():
+    global _pipeline_oracle_running
+    script = os.path.join(BASE_DIR, "oracle_pipeline.py")
+
+    def generar():
+        global _pipeline_oracle_running
+        with _pipeline_oracle_lock:
+            if _pipeline_oracle_running:
+                yield "data: Ya hay un proceso Oracle en ejecucion — espera\n\n"
+                return
+            _pipeline_oracle_running = True
+        try:
+            yield "data: INICIO\n\n"
+            if not os.path.exists(script):
+                yield "data: ERROR: oracle_pipeline.py no encontrado\n\n"
+                yield "data: PIPELINE_CON_ERRORES\n\n"
+                return
+            res = subprocess.run(
+                [sys.executable, script],
+                capture_output=True, text=True, timeout=300, cwd=BASE_DIR
+            )
+            for linea in (res.stdout + res.stderr).splitlines():
+                linea = linea.strip()
+                if linea:
+                    yield "data: " + linea + "\n\n"
+            if res.returncode == 0:
+                yield "data: PIPELINE_COMPLETO\n\n"
+            else:
+                yield "data: PIPELINE_CON_ERRORES\n\n"
+        finally:
+            _pipeline_oracle_running = False
 
     return Response(
         stream_with_context(generar()),
@@ -1058,6 +1100,74 @@ function procesarAP() {
     btn.disabled = false;
     spin.style.display = 'none';
     lbl.textContent = '⚙️ Procesar Facturas AP';
+    btnCl.disabled = false;
+  };
+}
+
+
+// ══════════════════════════════════════════════════════════════
+// MÓDULO ORACLE — JavaScript
+// ══════════════════════════════════════════════════════════════
+
+function procesarOracle() {
+  const btn   = document.getElementById('btnOracle');
+  const log   = document.getElementById('log');
+  const spin  = document.getElementById('spinner');
+  const lbl   = document.getElementById('btnLabel');
+  const icon  = document.getElementById('modalIcon');
+  const title = document.getElementById('modalTitle');
+  const btnCl = document.getElementById('btnClose');
+
+  btn.disabled = true;
+  spin.style.display = 'block';
+  lbl.textContent = 'Contabilizando...';
+  log.innerHTML = '';
+  btnCl.disabled = true;
+  icon.textContent = '🔮';
+  title.textContent = 'Oracle Pipeline — Contabilizando...';
+  document.getElementById('overlay').classList.add('on');
+
+  const src = new EventSource('/api/procesar_oracle');
+
+  src.onmessage = ev => {
+    const txt = ev.data;
+    const p = document.createElement('p');
+    if      (txt === 'PIPELINE_COMPLETO')    p.className = 'l-ok';
+    else if (txt === 'PIPELINE_CON_ERRORES') p.className = 'l-err';
+    else if (txt.startsWith('[') && txt.includes('] ✅')) p.className = 'l-ok';
+    else if (txt.startsWith('[') && txt.includes('] ❌')) p.className = 'l-err';
+    else if (txt.startsWith('[') && txt.includes('] ⚠'))  p.className = 'l-err';
+    else if (txt.includes('SIMULACION') || txt.includes('simulaci')) p.className = 'l-info';
+    else if (txt.startsWith('──') || txt.startsWith('==')) p.className = 'l-dim';
+    else if (txt.includes('✓') || txt.includes('✅') || txt.startsWith('OK ')) p.className = 'l-ok';
+    else if (txt.includes('✗') || txt.includes('❌') || txt.startsWith('ERROR')) p.className = 'l-err';
+    else p.className = 'l-dim';
+    p.textContent = txt;
+    log.appendChild(p);
+    log.scrollTop = log.scrollHeight;
+
+    if (txt === 'PIPELINE_COMPLETO' || txt === 'PIPELINE_CON_ERRORES') {
+      src.close();
+      const ok = txt === 'PIPELINE_COMPLETO';
+      icon.textContent  = ok ? '✅' : '⚠️';
+      title.textContent = ok ? 'Oracle: contabilización completada' : 'Oracle: pipeline con errores';
+      btn.disabled = false;
+      spin.style.display = 'none';
+      lbl.textContent = '🔮 Contabilizar en Oracle';
+      btnCl.disabled = false;
+      setTimeout(loadAP, 800);
+    }
+  };
+
+  src.onerror = () => {
+    src.close();
+    const p = document.createElement('p');
+    p.className = 'l-err';
+    p.textContent = 'ERROR: conexión con servidor perdida';
+    log.appendChild(p);
+    btn.disabled = false;
+    spin.style.display = 'none';
+    lbl.textContent = '🔮 Contabilizar en Oracle';
     btnCl.disabled = false;
   };
 }
