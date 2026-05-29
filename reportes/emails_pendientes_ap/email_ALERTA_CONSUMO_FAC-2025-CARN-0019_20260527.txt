@@ -1,0 +1,42 @@
+PARA: 
+TIPO: ALERTA_CONSUMO
+FACTURA: FAC-2025-CARN-0019
+PROVEEDOR: Carnes Premium SL
+GENERADO: 2026-05-27 18:55:09
+────────────────────────────────────────────────────────────
+
+Asunto: Alerta de consumo — Factura FAC-2025-CARN-0019 — Solicitud de aclaración
+
+Estimados señores de Carnes Premium SL,
+
+El sistema de control interno de Hilton Barcelona ha detectado una discrepancia significativa entre el importe de su factura FAC-2025-CARN-0019 y los datos de consumo registrados en nuestro sistema de punto de venta (POS) para el período de May 2026:
+
+  • Importe facturado:            2,390.00 EUR
+  • Coste registrado en POS:      172,600.49 EUR
+  • Diferencia porcentual:        7121.8%
+
+Esta discrepancia supera el umbral del 15% establecido en nuestros procedimientos de control de inventario y mermas.
+
+Las posibles causas que estamos analizando incluyen:
+  a) Diferencias en el inventario físico no registradas en el sistema
+  b) Mermas, roturas o caducidades no documentadas
+  c) Posibles errores de registro en el POS
+  d) Diferencias en las unidades de medida o conversión de precios
+
+Les rogamos que nos remitan a la mayor brevedad:
+  1. Albarán o documentación de entrega del período correspondiente
+  2. Cualquier nota de crédito o ajuste pendiente de emitir
+  3. Detalle del desglose de productos si la factura es agregada
+
+En caso de que la discrepancia corresponda a un error en nuestra parte, procederemos a corregir los registros internos.
+
+Pueden contactarnos en finanzas@hiltonbarcelona.com para cualquier aclaración.
+
+Gracias por su colaboración.
+
+Atentamente,
+
+Departamento de Finanzas
+Hilton Barcelona
+finanzas@hiltonbarcelona.com
+Fecha: 27/05/2026

@@ -104,32 +104,64 @@ def extraer_con_regex(texto):
     datos = {k: None for k in ["numero_factura","fecha","nombre_proveedor","NIF_proveedor",
                                 "descripcion_concepto","base_imponible","porcentaje_iva",
                                 "cuota_iva","total_factura"]}
+
+    # ── Bloque estructurado DATOS FACTURA SISTEMA (formato Yve.01 PDFs) ──
+    if "DATOS FACTURA SISTEMA:" in texto or "NUMERO_FACTURA=" in texto:
+        def _campo(clave):
+            m = re.search(rf"^{clave}=(.+)$", texto, re.MULTILINE)
+            return m.group(1).strip() if m else None
+        datos["numero_factura"]    = _campo("NUMERO_FACTURA")
+        datos["fecha"]             = _campo("FECHA")
+        datos["nombre_proveedor"]  = _campo("PROVEEDOR")
+        datos["NIF_proveedor"]     = _campo("NIF")
+        datos["descripcion_concepto"] = _campo("CONCEPTO")
+        v = _campo("BASE_IMPONIBLE"); datos["base_imponible"]  = _num(v) if v else None
+        v = _campo("IVA_PORCENTAJE"); datos["porcentaje_iva"]  = float(v) if v else None
+        v = _campo("CUOTA_IVA");      datos["cuota_iva"]       = _num(v) if v else None
+        v = _campo("TOTAL");          datos["total_factura"]   = _num(v) if v else None
+        return datos
+
+    # ── Regex genérico (facturas externas) ────────────────────────────────
     # Número de factura
-    m = re.search(r"(?:factura|invoice|n[uú]m\.?|number)[:\s#]*([A-Z0-9][\w\-\/]{2,25})", texto, re.I)
+    m = re.search(r"(?:Numero|n[uú]m\.?|number|factura\s+n[oº]?)[:\s#]*([A-Z0-9][\w\-\/]{2,25})", texto, re.I)
     if m: datos["numero_factura"] = m.group(1).strip()
 
     # Fecha
-    m = re.search(r"(?:fecha|date)[:\s]*(\d{1,2}[\/\-\.]\d{1,2}[\/\-\.]\d{2,4})", texto, re.I)
+    m = re.search(r"(?:fecha\s+emision|fecha|date)[:\s]*(\d{1,2}[\/\-\.]\d{1,2}[\/\-\.]\d{2,4})", texto, re.I)
     if m: datos["fecha"] = m.group(1).strip()
 
-    # NIF / CIF
-    m = re.search(r"\b([A-Z]\d{8}|\d{8}[A-Z])\b", texto)
-    if m: datos["NIF_proveedor"] = m.group(1)
+    # NIF proveedor — buscar etiqueta "NIF proveedor:" (no el del cliente)
+    m = re.search(r"NIF\s+proveedor[:\s]+([A-Z0-9\-]{8,12})", texto, re.I)
+    if m:
+        datos["NIF_proveedor"] = m.group(1).strip()
+    else:
+        m = re.search(r"\b([A-Z]\-?\d{7,8}|\d{8}[A-Z])\b", texto)
+        if m: datos["NIF_proveedor"] = m.group(1)
+
+    # Proveedor — primera línea que no sea vacía ni "FACTURA"
+    for linea in texto.splitlines():
+        linea = linea.strip()
+        if linea and linea.upper() not in ("FACTURA", "FACTURADO A:") and len(linea) > 4:
+            datos["nombre_proveedor"] = linea
+            break
+
+    # Concepto
+    m = re.search(r"DESCRIPCION DEL SERVICIO\s*\n(.+)", texto, re.I)
+    if m: datos["descripcion_concepto"] = m.group(1).strip()
 
     # IVA porcentaje
-    m = re.search(r"(?:IVA|VAT)[^\n%]{0,20}?(\d{1,2})\s*%", texto, re.I)
+    m = re.search(r"(?:IVA|VAT|Cuota\s+IVA)\s+(\d{1,2})\s*(?:por\s*ciento|%)", texto, re.I)
     if m: datos["porcentaje_iva"] = float(m.group(1))
 
-    # Importes — buscar patrones EUR/€ seguidos de número
-    _EUR = r"(?:EUR|€)\s*"
-    _AMT = r"([0-9]{1,3}(?:[.,][0-9]{3})*[.,][0-9]{2}|[0-9]+[.,][0-9]{2})"
     # Base imponible
-    m = re.search(r"(?:base\s+imponible|subtotal|base)[:\s]+" + _EUR + _AMT, texto, re.I)
+    m = re.search(r"Base\s+imponible\s+EUR[:\s]*([0-9]+[.,][0-9]{2})", texto, re.I)
     if m: datos["base_imponible"] = _num(m.group(1))
+
     # Total
-    m = re.search(r"(?:total\s+(?:factura|a\s+pagar|invoice)|importe\s+total)[:\s]+" + _EUR + _AMT, texto, re.I)
+    m = re.search(r"TOTAL\s+FACTURA\s+EUR[:\s]*([0-9]+[.,][0-9]{2})", texto, re.I)
     if m: datos["total_factura"] = _num(m.group(1))
-    # Cuota IVA
+
+    # Cuota IVA calculada si no se encontró
     if datos["base_imponible"] and datos["porcentaje_iva"] and not datos["cuota_iva"]:
         datos["cuota_iva"] = round(datos["base_imponible"] * datos["porcentaje_iva"] / 100, 2)
 
@@ -196,50 +228,54 @@ def procesar_factura_ap(pdf_path, proveedores):
 
 def guardar_excel(registros, ruta):
     df = pd.DataFrame(registros)
-    cols = ["archivo","numero_factura","fecha","nombre_proveedor","NIF_proveedor",
-            "descripcion_concepto","base_imponible","porcentaje_iva","cuota_iva",
-            "total_factura","tipo_proveedor","cuenta_contable","error"]
-    cols = [c for c in cols if c in df.columns]
-    df = df[cols]
-    with pd.ExcelWriter(ruta, engine="openpyxl") as writer:
-        df.to_excel(writer, index=False, sheet_name="Facturas_AP")
-        ws = writer.sheets["Facturas_AP"]
-        for col in ws.columns:
-            ws.column_dimensions[col[0].column_letter].width = min(
-                max(len(str(c.value or "")) for c in col)+4, 40)
-    print(f"\n✅ Excel guardado: {ruta}")
+    os.makedirs(os.path.dirname(ruta), exist_ok=True)
+    df.to_excel(ruta, index=False)
+    return df
+
 
 def main():
-    print("="*60)
+    print("=" * 60)
     print("  Yve.01 — Lector de Facturas AP")
-    print("="*60)
-    proveedores = cargar_proveedores()
-    print(f"  Proveedores en tabla: {len(proveedores)}")
+    print("=" * 60)
 
-    pdfs = sorted(f for f in glob.glob(os.path.join(ENTRADA_DIR,"*.pdf")))
-    if not pdfs:
-        print(f"\n⚠️  No hay PDFs en {ENTRADA_DIR}")
-        return
+    # Cargar proveedores de referencia
+    proveedores = {}
+    if os.path.exists(PROV_FILE):
+        df_prov = pd.read_excel(PROV_FILE)
+        for _, row in df_prov.iterrows():
+            nombre = str(row.get("nombre_proveedor","")).strip().lower()
+            proveedores[nombre] = {
+                "tipo": str(row.get("tipo","OTRAS")).strip().upper(),
+                "cuenta_contable": str(row.get("cuenta_contable","629")).strip(),
+                "email_contacto": str(row.get("email_contacto","")).strip(),
+            }
+        print(f"  Proveedores en tabla: {len(proveedores)}")
 
-    print(f"  PDFs encontrados: {len(pdfs)}\n")
+    # Buscar PDFs
+    pdfs = sorted(glob.glob(os.path.join(ENTRADA_DIR, "*.pdf")))
+    print(f"  PDFs encontrados: {len(pdfs)}")
+
     registros = []
-    omitidas = 0
-    for pdf in pdfs:
-        res = procesar_factura_ap(pdf, proveedores)
-        if res is None:
-            omitidas += 1
-        else:
-            registros.append(res)
-        print()
+    skipped   = 0
+    for pdf_path in pdfs:
+        reg = procesar_factura_ap(pdf_path, proveedores)
+        if reg is None:
+            skipped += 1
+        elif not reg.get("error"):
+            registros.append(reg)
 
     if not registros:
-        print("No hay facturas AP para procesar (todas eran OTAs o errores).")
+        print("\n  No se procesaron facturas AP.")
         return
 
-    guardar_excel(registros, SALIDA_EXCEL)
+    # Guardar Excel
+    ruta_excel = os.path.join(SALIDA_DIR, f"facturas_ap_{FECHA_HOY}.xlsx")
+    guardar_excel(registros, ruta_excel)
+    print(f"\n\u2705 Excel guardado: {ruta_excel}")
     print(f"\n  Total AP procesadas: {len(registros)}")
-    print(f"  Omitidas (OTA):      {omitidas}")
-    print("="*60)
+    print(f"  Omitidas (OTA):      {skipped}")
+    print("=" * 60)
+
 
 if __name__ == "__main__":
     main()

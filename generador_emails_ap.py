@@ -59,7 +59,10 @@ def template_discrepancia_po(factura: dict) -> str:
     num_factura   = factura.get("numero_factura", "N/D")
     total_factura = factura.get("total_factura", 0)
     importe_po    = factura.get("importe_po", 0)
-    diferencia    = abs(float(total_factura) - float(importe_po)) if importe_po else 0
+    def _sf2(v):
+        try: return float(str(v).replace("NO_ENCONTRADO","").replace("%","").strip() or 0)
+        except: return 0.0
+    diferencia    = abs(_sf2(total_factura) - _sf2(importe_po)) if importe_po else 0
     fecha_hoy     = datetime.now().strftime("%d/%m/%Y")
 
     return f"""Asunto: Discrepancia en factura {num_factura} — Solicitud de factura rectificativa
@@ -159,7 +162,7 @@ período de {mes_actual}:
 
   • Importe facturado:            {float(total_factura):,.2f} EUR
   • Coste registrado en POS:      {float(coste_pos):,.2f} EUR
-  • Diferencia porcentual:        {float(diferencia_pct):.1f}%
+  • Diferencia porcentual:        {float(str(diferencia_pct).replace("%","").strip() or 0):.1f}%
 
 Esta discrepancia supera el umbral del 15% establecido en nuestros \
 procedimientos de control de inventario y mermas.
@@ -197,12 +200,18 @@ Fecha: {fecha_hoy}
 
 def generar_con_claude(tipo_email: str, factura: dict) -> str:
     """Genera un email profesional usando Claude API."""
+    def _sf(v, default=0.0):
+        try:
+            x = str(v).replace("NO_ENCONTRADO","").replace("nan","").strip()
+            return float(x) if x else default
+        except Exception:
+            return default
     contextos = {
         "DISCREPANCIA_PO": (
             f"La factura nº {factura.get('numero_factura')} de {factura.get('nombre_proveedor')} "
             f"tiene un importe de {factura.get('total_factura')} EUR pero la Orden de Compra "
             f"aprobada es de {factura.get('importe_po', 'desconocido')} EUR. "
-            f"Diferencia: {abs(float(factura.get('total_factura',0)) - float(factura.get('importe_po',0))):,.2f} EUR."
+            f"Diferencia: {abs(_sf(factura.get('total_factura') or 0) - _sf(factura.get('importe_po') or 0)):,.2f} EUR."
         ),
         "SIN_PO": (
             f"La factura nº {factura.get('numero_factura')} de {factura.get('nombre_proveedor')} "
@@ -213,7 +222,7 @@ def generar_con_claude(tipo_email: str, factura: dict) -> str:
             f"La factura nº {factura.get('numero_factura')} de {factura.get('nombre_proveedor')} "
             f"es de {factura.get('total_factura')} EUR pero el coste registrado en POS es "
             f"{factura.get('coste_pos_mes', 'desconocido')} EUR "
-            f"(diferencia del {factura.get('diferencia_pos_pct', 0):.1f}%)."
+            f"(diferencia del {_sf(factura.get('diferencia_pos_pct', 0)):.1f}%)."
         ),
     }
 
@@ -287,7 +296,7 @@ def cargar_matching_otras() -> pd.DataFrame:
     if not archivos:
         return pd.DataFrame()
     try:
-        df = pd.read_excel(archivos[0], sheet_name="Detalle")
+        df = pd.read_excel(archivos[0], sheet_name="Detalle_OTRAS")
         df.columns = [str(c).strip().lower().replace(" ", "_") for c in df.columns]
         return df
     except Exception:
@@ -301,7 +310,7 @@ def cargar_matching_fb() -> pd.DataFrame:
     if not archivos:
         return pd.DataFrame()
     try:
-        df = pd.read_excel(archivos[0], sheet_name="Detalle")
+        df = pd.read_excel(archivos[0], sheet_name="Detalle_FB")
         df.columns = [str(c).strip().lower().replace(" ", "_") for c in df.columns]
         return df
     except Exception:
@@ -317,27 +326,37 @@ def determinar_email_a_enviar(row_factura: pd.Series,
                                df_fb: pd.DataFrame) -> tuple:
     """
     Determina el tipo de email a enviar basado en el estado de matching.
+    Primero busca estado_matching en la propia fila (facturas_contabilizadas),
+    luego en los reportes de matching por separado.
     Retorna: (tipo_email, datos_extra) o (None, None) si no requiere email.
     """
     num_factura = str(row_factura.get("numero_factura", "")).strip()
     tipo_prov   = str(row_factura.get("tipo_proveedor", "")).strip().upper()
 
-    # Buscar en matching correspondiente
-    df_match = df_fb if tipo_prov == "FB" else df_otras
-
-    estado = None
     datos_extra = {}
+    estado = None
 
-    if not df_match.empty and "numero_factura" in df_match.columns:
-        mask = df_match["numero_factura"].astype(str).str.strip() == num_factura
-        if mask.any():
-            match_row = df_match[mask].iloc[0]
-            estado = str(match_row.get("estado", "")).strip().upper()
-            datos_extra["importe_po"] = match_row.get("importe_po", 0)
-            datos_extra["coste_pos_mes"] = match_row.get("coste_pos_mes", 0)
-            datos_extra["diferencia_pos_pct"] = match_row.get("diferencia_pos_pct", 0)
+    # Siempre buscar en los reportes de matching (tienen importe_po, coste_pos_periodo)
+    df_match = df_fb if tipo_prov == "FB" else df_otras
+    if not df_match.empty:
+        for col in ("numero_factura", "archivo"):
+            if col in df_match.columns:
+                mask = df_match[col].astype(str).str.strip().str.replace(".pdf","",regex=False) == num_factura.replace(".pdf","")
+                if mask.any():
+                    match_row = df_match[mask].iloc[0]
+                    estado = str(match_row.get("estado_matching", match_row.get("estado",""))).strip().upper()
+                    datos_extra["importe_po"]         = match_row.get("importe_po", 0)
+                    datos_extra["coste_pos_mes"]      = match_row.get("coste_pos_periodo", 0)
+                    datos_extra["diferencia_pos_pct"] = match_row.get("diferencia_pos_pct", 0)
+                    break
 
-    # Detectar tipo de email
+    # Si no se encontró en matching, usar columna estado_matching de la fila principal
+    if not estado:
+        est_directo = str(row_factura.get("estado_matching", "")).strip().upper()
+        if est_directo and est_directo not in ("", "NAN", "NONE", "NO_ENCONTRADO"):
+            estado = est_directo
+
+    # 3. Determinar tipo de email
     if estado in ("DISCREPANCIA_PO", "DISCREPANCIA"):
         return "DISCREPANCIA_PO", datos_extra
     elif estado == "SIN_PO":

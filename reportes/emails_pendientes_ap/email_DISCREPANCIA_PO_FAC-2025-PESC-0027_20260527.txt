@@ -1,0 +1,33 @@
+PARA: 
+TIPO: DISCREPANCIA_PO
+FACTURA: FAC-2025-PESC-0027
+PROVEEDOR: Pescados Barcelona SL
+GENERADO: 2026-05-27 18:55:12
+────────────────────────────────────────────────────────────
+
+Asunto: Discrepancia en factura FAC-2025-PESC-0027 — Solicitud de factura rectificativa
+
+Estimados señores de Pescados Barcelona SL,
+
+Nos ponemos en contacto con ustedes en relación con la factura número FAC-2025-PESC-0027 recibida con fecha 27/05/2026.
+
+Durante el proceso de verificación contable de Hilton Barcelona, hemos detectado una discrepancia entre el importe facturado y el importe de la Orden de Compra aprobada correspondiente:
+
+  • Importe facturado:            2,200.00 EUR
+  • Importe Orden de Compra:      1,920.00 EUR
+  • Diferencia detectada:         280.00 EUR
+
+Conforme a nuestro procedimiento interno de control de pagos, no es posible tramitar el abono de facturas que no se ajusten al importe previamente aprobado.
+
+Por este motivo, les solicitamos amablemente que emitan una factura rectificativa por el importe correspondiente a la Orden de Compra aprobada, o bien que nos remitan la documentación justificativa que ampare la diferencia indicada.
+
+En caso de cualquier duda, pueden contactarnos en finanzas@hiltonbarcelona.com.
+
+Agradecemos su comprensión y colaboración.
+
+Atentamente,
+
+Departamento de Finanzas
+Hilton Barcelona
+finanzas@hiltonbarcelona.com
+Fecha: 27/05/2026

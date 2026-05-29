@@ -1,0 +1,32 @@
+PARA: 
+TIPO: SIN_PO
+FACTURA: FAC-2025-GASN-0031
+PROVEEDOR: Gas Natural Fenosa SA
+GENERADO: 2026-05-27 18:55:11
+────────────────────────────────────────────────────────────
+
+Asunto: Factura FAC-2025-GASN-0031 recibida sin Orden de Compra aprobada
+
+Estimados señores de Gas Natural Fenosa SA,
+
+Hemos recibido su factura número FAC-2025-GASN-0031 por importe de 4,200.00 EUR, correspondiente a: Suministro gas natural julio 2025 Referencia contrato CN-BCN.
+
+Sin embargo, en nuestros registros no consta ninguna Orden de Compra aprobada que cubra este suministro o servicio.
+
+La política de pagos de Hilton Barcelona exige que toda factura esté respaldada por una Orden de Compra emitida y autorizada previamente por el departamento correspondiente. Sin este documento, no es posible proceder al pago.
+
+Les solicitamos que contacten con nuestro departamento de Compras para regularizar la situación:
+
+  - Si el servicio fue prestado bajo autorización verbal, necesitamos que nos faciliten el nombre del responsable que les autorizó para solicitar la OC de forma retroactiva.
+  - Si existe un contrato marco, por favor remítannos el número de referencia.
+
+En caso de cualquier duda, pueden contactarnos en finanzas@hiltonbarcelona.com.
+
+Quedamos a su disposición para resolver esta situación a la mayor brevedad posible.
+
+Atentamente,
+
+Departamento de Finanzas
+Hilton Barcelona
+finanzas@hiltonbarcelona.com
+Fecha: 27/05/2026
