@@ -1,0 +1,34 @@
+[
+  {
+    "username": "admin",
+    "password_hash": "scrypt:32768:8:1$qLcAxBH95JoKUZma$25ae8c6ce41dc389f6bdac7de881d864bfdefd4eaca590a0db5cf7a87300b7848fb71e39e1553512ec2e8a3131b3d212e05d1d2b5ae6a40ba6bd434ee3a0f0c4",
+    "nombre": "Administrador",
+    "email": "admin@hotel.com",
+    "rol": "admin",
+    "activo": true
+  },
+  {
+    "username": "fc_user",
+    "password_hash": "scrypt:32768:8:1$tM4DstIyVX6LR68O$4945b4c2fc58e8c6b5ebb5a16472ef9af87ca14f95abcaa0bc1e1707410dc6f1e06573ff175adf76598c59b423563f294b81d11da3cd7b675e481037bf3256f9",
+    "nombre": "Financial Controller",
+    "email": "fc@hotel.com",
+    "rol": "financial_controller",
+    "activo": true
+  },
+  {
+    "username": "auditor",
+    "password_hash": "scrypt:32768:8:1$OlZzjzJ3swRv40cN$831943c9f9c8173e7a5552d134230e4f5338d429f9892fa503bdcf8c347e8ab77db51fe53400d10bfc4ac65bafebcc02959ec9eb310184a1acaef50801f8d7cd",
+    "nombre": "Income Auditor",
+    "email": "auditor@hotel.com",
+    "rol": "income_auditor",
+    "activo": true
+  },
+  {
+    "username": "fbmanager",
+    "password_hash": "scrypt:32768:8:1$8Id806jwlC2Ogg2S$df88bad5a4ba3c800fb47cd370057ce6cc2557a3a5485d0a160ac76abc0e199fd3fdd36ad00452caed4f531924165dc43ff55c9cc0e603fc9be2020e0c62eb65",
+    "nombre": "F&B Manager",
+    "email": "fb@hotel.com",
+    "rol": "fb_manager",
+    "activo": true
+  }
+]

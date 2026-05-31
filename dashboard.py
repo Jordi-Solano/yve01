@@ -7,7 +7,8 @@ Abre en: http://localhost:5001
 import os, glob, json, subprocess, sys, threading
 from datetime import date
 import pandas as pd
-from flask import Flask, Response, jsonify, request, stream_with_context
+from flask import Flask, Response, jsonify, request, stream_with_context, redirect
+from flask_login import login_required, current_user
 
 # Ruta base del proyecto — robusta ante ejecución desde cualquier directorio
 def _get_base_dir():
@@ -31,6 +32,17 @@ APROBACIONES_DIR = os.path.join(BASE_DIR, "aprobaciones")
 NF = "NO_ENCONTRADO"
 
 app = Flask(__name__)
+app.secret_key = "yve01-secret-key-change-in-production"
+
+# Auth — importar y configurar
+sys.path.insert(0, BASE_DIR)
+try:
+    from auth import init_login, inicializar_usuarios
+    init_login(app)
+    inicializar_usuarios()
+except ImportError:
+    pass  # auth.py no disponible, funciona sin login
+
 _pipeline_running = False
 _pipeline_lock    = threading.Lock()
 
@@ -796,12 +808,33 @@ def _hotel_name():
             pass
     return ""
 
+@app.route("/login_page")
+def login_page():
+    return redirect("http://localhost:5005")
+
+@app.route("/logout")
+def logout():
+    try:
+        from flask_login import logout_user
+        logout_user()
+    except Exception:
+        pass
+    return redirect("http://localhost:5005")
+
 @app.route("/")
+@login_required
 def index():
     name = _hotel_name()
     tag = name if name else "AR Dashboard"
     configured = "true" if name else "false"
-    return HTML.replace("__HOTEL_TAG__", tag).replace("__CONFIGURED__", configured)
+    # User info for header
+    user_name = current_user.nombre if current_user.is_authenticated else ""
+    user_rol  = current_user.rol if current_user.is_authenticated else ""
+    out = HTML.replace("__HOTEL_TAG__", tag).replace("__CONFIGURED__", configured)
+    admin_display = "inline" if user_rol in ("admin", "financial_controller") else "none"
+    out = out.replace("__USER_NAME__", user_name).replace("__USER_ROL__", user_rol)
+    out = out.replace("__ADMIN_DISPLAY__", admin_display)
+    return out
 
 # ── HTML ───────────────────────────────────────────────────────────────────
 
@@ -1051,12 +1084,15 @@ tr:hover td{background:rgba(255,255,255,.025)}
   <div class="nav-mid"></div>
   <div class="nav-right">
     <span class="pill" id="date-pill">—</span>
-    <a href="http://localhost:5003" class="btn-ref" title="Configuración del hotel" style="text-decoration:none">⚙️</a>
+    <span class="pill" style="color:var(--acc2)">👤 __USER_NAME__</span>
+    <a href="http://localhost:5003" class="btn-ref" title="Configuración" style="text-decoration:none">⚙️</a>
+    <a href="http://localhost:5006" class="btn-ref" title="Admin" style="text-decoration:none;display:__ADMIN_DISPLAY__">👥</a>
     <button class="btn-ref" onclick="loadAll()" title="Actualizar datos">↻ Actualizar</button>
     <button class="btn-run" id="btn-run" onclick="runPipeline()">
       <div class="spin" id="spin"></div>
       <span id="run-lbl">⚡ Procesar Facturas</span>
     </button>
+    <a href="/logout" class="btn-ref" title="Cerrar sesión" style="text-decoration:none">Salir</a>
   </div>
 </nav>
 
@@ -2011,6 +2047,34 @@ async function enviarNotificaciones() {
     setTimeout(function() { btn.textContent = '🔔 Enviar notificaciones pendientes'; btn.disabled = false; }, 3000);
   }
 }
+
+// ── Role-based visibility ──
+(function() {
+  var rol = '__USER_ROL__';
+  // financial_controller y admin ven todo
+  if (rol === 'financial_controller' || rol === 'admin') return;
+  var tabs = document.querySelectorAll('.tab');
+  var VISIBLE = {
+    'income_auditor': ['drr'],
+    'fb_manager': ['ap'],
+    'jefe_otras': ['ap'],
+  };
+  var allowed = VISIBLE[rol] || [];
+  tabs.forEach(function(t) {
+    var onclick = t.getAttribute('onclick') || '';
+    var match = onclick.match(/switchTab\('(\w+)'/);
+    if (match) {
+      var tabId = match[1];
+      if (allowed.length && allowed.indexOf(tabId) === -1) {
+        t.style.display = 'none';
+      }
+    }
+  });
+  // Activate first visible tab
+  if (allowed.length) {
+    switchTab(allowed[0], document.querySelector('.tab[onclick*="' + allowed[0] + '"]'));
+  }
+})();
 
 // Cargar datos AP e iniciar
 loadAP();
