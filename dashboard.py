@@ -9,7 +9,22 @@ from datetime import date
 import pandas as pd
 from flask import Flask, Response, jsonify, request, stream_with_context
 
-BASE_DIR         = os.path.dirname(os.path.abspath(__file__))
+# Ruta base del proyecto — robusta ante ejecución desde cualquier directorio
+def _get_base_dir():
+    """Devuelve la carpeta que contiene dashboard.py, funcione desde donde funcione."""
+    # __file__ siempre apunta al script real
+    _f = os.path.abspath(__file__)
+    _d = os.path.dirname(_f)
+    # Sanity check: la carpeta debe contener lector_ota.py
+    if os.path.isfile(os.path.join(_d, "lector_ota.py")):
+        return _d
+    # Fallback: directorio de trabajo actual
+    cwd = os.getcwd()
+    if os.path.isfile(os.path.join(cwd, "lector_ota.py")):
+        return cwd
+    return _d
+
+BASE_DIR         = _get_base_dir()
 REPORTES_DIR     = os.path.join(BASE_DIR, "reportes")
 PROCESADAS_DIR   = os.path.join(BASE_DIR, "facturas-procesadas")
 APROBACIONES_DIR = os.path.join(BASE_DIR, "aprobaciones")
@@ -22,10 +37,22 @@ _pipeline_lock    = threading.Lock()
 # ── Helpers ────────────────────────────────────────────────────────────────
 
 def cargar_ultimo_excel(patron, directorio):
-    archivos = sorted(glob.glob(os.path.join(directorio, patron)), reverse=True)
-    if not archivos:
+    """Devuelve el Excel más reciente que coincida con el patrón, ordenado por fecha de modificación."""
+    hits = glob.glob(os.path.join(directorio, patron))
+    if not hits:
         return None, None
-    return pd.read_excel(archivos[0]), archivos[0]
+    # Ordenar por fecha de modificación real (más reciente primero)
+    hits.sort(key=lambda p: os.path.getmtime(p), reverse=True)
+    try:
+        return pd.read_excel(hits[0]), hits[0]
+    except Exception as e:
+        print(f"  ⚠  Error leyendo {hits[0]}: {e}")
+        for ruta in hits[1:]:
+            try:
+                return pd.read_excel(ruta), ruta
+            except Exception:
+                continue
+        return None, None
 
 def safe_float(val):
     try:
@@ -42,10 +69,24 @@ def safe_float(val):
         return 0.0
 
 def cargar_datos():
+    """
+    Carga los datos AR del archivo más reciente disponible.
+    Prioridad:
+      1. reportes/doble_imposicion_*.xlsx   (salida de detector_doble_imposicion.py)
+      2. reportes/verificacion_*.xlsx        (salida de verificador_comisiones.py)
+      3. facturas-procesadas/facturas_procesadas_*.xlsx  (salida de lector_ota.py)
+    En todos los casos usa el archivo más reciente por fecha de modificación.
+    """
+    print(f"[cargar_datos] BASE_DIR={BASE_DIR}")
+    print(f"[cargar_datos] REPORTES_DIR={REPORTES_DIR} (existe: {os.path.isdir(REPORTES_DIR)})")
+    print(f"[cargar_datos] PROCESADAS_DIR={PROCESADAS_DIR} (existe: {os.path.isdir(PROCESADAS_DIR)})")
     df, ruta = cargar_ultimo_excel("doble_imposicion_*.xlsx", REPORTES_DIR)
     if df is None:
         df, ruta = cargar_ultimo_excel("verificacion_*.xlsx", REPORTES_DIR)
     if df is None:
+        df, ruta = cargar_ultimo_excel("facturas_procesadas_*.xlsx", PROCESADAS_DIR)
+    if df is None:
+        print("[cargar_datos] ADVERTENCIA: no se encontró ningún Excel AR")
         return pd.DataFrame(), {}
 
     apro_path = os.path.join(APROBACIONES_DIR, "aprobaciones.xlsx")
@@ -136,6 +177,42 @@ def df_a_lista(df):
     return rows
 
 # ── Rutas API ──────────────────────────────────────────────────────────────
+
+@app.route("/api/debug")
+def api_debug():
+    """Endpoint de diagnóstico — muestra rutas y archivos disponibles."""
+    import datetime
+    info = {
+        "BASE_DIR":       BASE_DIR,
+        "BASE_DIR_exists": os.path.isdir(BASE_DIR),
+        "REPORTES_DIR":   REPORTES_DIR,
+        "PROCESADAS_DIR": PROCESADAS_DIR,
+        "archivos_reportes": [],
+        "archivos_procesadas": [],
+        "cwd": os.getcwd(),
+        "python_file": __file__,
+    }
+    for d, key in [(REPORTES_DIR, "archivos_reportes"), (PROCESADAS_DIR, "archivos_procesadas")]:
+        if os.path.isdir(d):
+            for f in sorted(os.listdir(d)):
+                if f.endswith(".xlsx"):
+                    ruta = os.path.join(d, f)
+                    mtime = os.path.getmtime(ruta)
+                    info[key].append({
+                        "nombre": f,
+                        "bytes": os.path.getsize(ruta),
+                        "modificado": datetime.datetime.fromtimestamp(mtime).strftime("%Y-%m-%d %H:%M:%S"),
+                    })
+    # Try actually loading
+    df, ruta_cargada = cargar_ultimo_excel("doble_imposicion_*.xlsx", REPORTES_DIR)
+    if df is None:
+        df, ruta_cargada = cargar_ultimo_excel("verificacion_*.xlsx", REPORTES_DIR)
+    if df is None:
+        df, ruta_cargada = cargar_ultimo_excel("facturas_procesadas_*.xlsx", PROCESADAS_DIR)
+    info["archivo_cargado"] = os.path.basename(ruta_cargada) if ruta_cargada else None
+    info["filas_cargadas"] = len(df) if df is not None else 0
+    info["columnas"] = list(df.columns) if df is not None else []
+    return jsonify(info)
 
 @app.route("/api/stats")
 def api_stats():
@@ -533,9 +610,152 @@ INSTRUCCIONES:
     except Exception as e:
         return jsonify({"reply": f"⚠️ Error al llamar a Claude: {str(e)[:120]}"}), 200
 
+_pipeline_oracle_running = False
+_pipeline_oracle_lock    = threading.Lock()
+
+# ── DRR (Daily Revenue Report) ────────────────────────────────────────
+
+FACTURAS_ENTRADA_DIR = os.path.join(BASE_DIR, "facturas-entrada")
+DRR_UPLOAD_DIR       = os.path.join(BASE_DIR, "facturas-entrada")
+
+def _cargar_drr_procesado():
+    """Carga el último drr_procesado_*.xlsx de reportes/."""
+    hits = glob.glob(os.path.join(REPORTES_DIR, "drr_procesado_*.xlsx"))
+    if not hits:
+        return None
+    hits.sort(key=lambda p: os.path.getmtime(p), reverse=True)
+    return hits[0]
+
+def _leer_drr_stats(ruta):
+    """Lee el Excel procesado del DRR y devuelve stats para el frontend."""
+    try:
+        # Hoja Resumen — métricas KPI
+        df_res = pd.read_excel(ruta, sheet_name="Resumen", header=None)
+        metricas = {}
+        KEYS = ["Total Revenue", "Occupancy %", "ADR", "Revenue PAR", "GOP", "GOP %",
+                "Rooms Revenue", "F&B Revenue Total", "Rooms Occupied", "Spend PAR"]
+        for _, row in df_res.iterrows():
+            name = str(row.iloc[0]).strip() if pd.notna(row.iloc[0]) else ""
+            if name in KEYS:
+                metricas[name] = {
+                    "today": str(row.iloc[1]) if pd.notna(row.iloc[1]) else "N/D",
+                    "mtd": str(row.iloc[2]) if pd.notna(row.iloc[2]) else "N/D",
+                    "forecast": str(row.iloc[3]) if pd.notna(row.iloc[3]) else "N/D",
+                }
+
+        # Hoja Alertas — días y su estado
+        dias = []
+        try:
+            df_al = pd.read_excel(ruta, sheet_name="Alertas", header=None)
+            for _, row in df_al.iterrows():
+                dia_val = row.iloc[0]
+                if isinstance(dia_val, (int, float)) and 1 <= dia_val <= 31:
+                    estado_txt = str(row.iloc[5]) if pd.notna(row.iloc[5]) else ""
+                    oob = "OUT" in estado_txt.upper()
+                    diff = 0.0
+                    try:
+                        diff = float(row.iloc[4]) if pd.notna(row.iloc[4]) else 0.0
+                    except Exception:
+                        pass
+                    dias.append({
+                        "dia": int(dia_val),
+                        "fecha": str(row.iloc[1]) if pd.notna(row.iloc[1]) else "",
+                        "oob": oob,
+                        "diff": round(diff, 2),
+                    })
+        except Exception:
+            pass
+
+        # Top 3 alertas
+        alertas = []
+        oob_dias = [d for d in dias if d["oob"]]
+        for d in oob_dias[:3]:
+            alertas.append(f"Día {d['dia']}: Out of Balance — diferencia {d['diff']:,.2f} EUR")
+        # Si hay menos de 3 alertas OOB, añadir métricas relevantes
+        if len(alertas) < 3:
+            gop_mtd = metricas.get("GOP %", {}).get("mtd", "")
+            if gop_mtd and gop_mtd != "N/D":
+                alertas.append(f"GOP % MTD: {gop_mtd}")
+        if len(alertas) < 3:
+            occ = metricas.get("Occupancy %", {}).get("forecast", "")
+            if occ and occ != "N/D":
+                alertas.append(f"Occupancy % Forecast: {occ}")
+
+        return {
+            "metricas": metricas,
+            "dias": dias,
+            "alertas": alertas[:3],
+            "archivo": os.path.basename(ruta),
+            "total_dias": len(dias),
+            "dias_oob": len(oob_dias),
+        }
+    except Exception as e:
+        return {"error": str(e)}
+
+
+@app.route("/api/stats_drr")
+def api_stats_drr():
+    ruta = _cargar_drr_procesado()
+    if not ruta:
+        return jsonify(None)
+    return jsonify(_leer_drr_stats(ruta))
+
+
+@app.route("/api/upload_drr", methods=["POST"])
+def api_upload_drr():
+    """Recibe un .xlsm, lo guarda y ejecuta lector_drr.py."""
+    if "file" not in request.files:
+        return jsonify({"ok": False, "error": "No file"}), 400
+    f = request.files["file"]
+    if not f.filename.endswith(".xlsm"):
+        return jsonify({"ok": False, "error": "Solo archivos .xlsm"}), 400
+
+    os.makedirs(DRR_UPLOAD_DIR, exist_ok=True)
+    save_path = os.path.join(DRR_UPLOAD_DIR, f.filename)
+    f.save(save_path)
+
+    # Ejecutar lector_drr.py
+    script = os.path.join(BASE_DIR, "lector_drr.py")
+    if not os.path.exists(script):
+        return jsonify({"ok": False, "error": "lector_drr.py no encontrado"}), 500
+    try:
+        res = subprocess.run(
+            [sys.executable, script, save_path],
+            capture_output=True, text=True, timeout=120, cwd=BASE_DIR
+        )
+        if res.returncode != 0:
+            return jsonify({"ok": False, "error": res.stderr[-300:] if res.stderr else "Error desconocido"}), 500
+    except subprocess.TimeoutExpired:
+        return jsonify({"ok": False, "error": "Timeout procesando DRR"}), 500
+
+    # Leer el resultado
+    ruta = _cargar_drr_procesado()
+    if not ruta:
+        return jsonify({"ok": False, "error": "No se generó el reporte"}), 500
+
+    stats = _leer_drr_stats(ruta)
+    return jsonify({"ok": True, "stats": stats})
+
+
+# ── Chat AI — Yve Copilot ──────────────────────────────────────────────
+
+def _hotel_name():
+    cfg_path = os.path.join(BASE_DIR, "datos-referencia", "hotel_config.json")
+    if os.path.exists(cfg_path):
+        try:
+            with open(cfg_path, "r", encoding="utf-8") as f:
+                cfg = json.load(f)
+            return cfg.get("hotel", {}).get("nombre", "")
+        except Exception:
+            pass
+    return ""
+
 @app.route("/")
 def index():
-    return HTML
+    name = _hotel_name()
+    tag = name if name else "AR Dashboard"
+    configured = "true" if name else "false"
+    return HTML.replace("__HOTEL_TAG__", tag).replace("__CONFIGURED__", configured)
 
 # ── HTML ───────────────────────────────────────────────────────────────────
 
@@ -545,7 +765,7 @@ HTML = """<!DOCTYPE html>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width,initial-scale=1">
 <title>Yve.01 — Dashboard</title>
-<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
+<script async src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
 <style>
 :root{
   --bg:#0f172a;--s1:#1e293b;--s2:#334155;--s3:#475569;
@@ -749,6 +969,29 @@ tr:hover td{background:rgba(255,255,255,.025)}
 #chat-send:hover{transform:scale(1.08)}
 #chat-send:disabled{opacity:.4;cursor:not-allowed;transform:none}
 
+/* ── DRR Panel ─────────────────────────────────────────── */
+.drr-metrics{display:grid;grid-template-columns:repeat(3,1fr);gap:12px;margin-bottom:22px}
+@media(max-width:900px){.drr-metrics{grid-template-columns:repeat(2,1fr)}}
+@media(max-width:500px){.drr-metrics{grid-template-columns:1fr}}
+.drr-mc{background:var(--s1);border:1px solid var(--s2);border-radius:14px;padding:18px 16px}
+.drr-mc .mc-name{font-size:10px;color:var(--mut);text-transform:uppercase;letter-spacing:.6px;margin-bottom:12px}
+.drr-mc .mc-row{display:flex;justify-content:space-between;font-size:.8rem;padding:3px 0}
+.drr-mc .mc-row .mc-k{color:var(--dim)}.drr-mc .mc-row .mc-v{color:var(--tx);font-weight:700}
+.drr-upload{display:flex;align-items:center;gap:14px;margin-bottom:22px;flex-wrap:wrap}
+.drr-upload label{margin:0;padding:10px 18px;background:linear-gradient(135deg,var(--acc),#1d4ed8);color:#fff;border-radius:9px;font-size:13px;font-weight:700;cursor:pointer;transition:.15s;white-space:nowrap}
+.drr-upload label:hover{box-shadow:0 0 20px rgba(59,130,246,.4)}
+.drr-upload .drr-status{font-size:.8rem;color:var(--dim)}
+.drr-days{display:grid;grid-template-columns:repeat(auto-fill,minmax(80px,1fr));gap:6px;margin-bottom:22px}
+.drr-day{text-align:center;padding:10px 4px;border-radius:10px;font-size:.75rem;font-weight:700;border:1px solid var(--s2)}
+.drr-day.ok{background:rgba(34,197,94,.08);color:var(--grn);border-color:rgba(34,197,94,.2)}
+.drr-day.oob{background:rgba(239,68,68,.1);color:var(--red);border-color:rgba(239,68,68,.25)}
+.drr-day.empty{background:var(--s1);color:var(--dim);border-color:var(--s2)}
+.drr-day .day-n{font-size:1.1rem;margin-bottom:2px}
+.drr-alerts .da-item{display:flex;align-items:flex-start;gap:10px;padding:10px 0;border-bottom:1px solid var(--s2)}
+.drr-alerts .da-item:last-child{border-bottom:none}
+.drr-alerts .da-dot{width:8px;height:8px;border-radius:50%;flex-shrink:0;margin-top:5px;background:var(--ora)}
+.drr-alerts .da-txt{font-size:.85rem;color:var(--tx)}
+
 </style>
 </head>
 <body>
@@ -757,11 +1000,12 @@ tr:hover td{background:rgba(255,255,255,.025)}
   <div class="logo">
     <div class="logo-dot"></div>
     <span class="logo-name">Yve.01</span>
-    <span class="logo-tag">AR Dashboard</span>
+    <span class="logo-tag">__HOTEL_TAG__</span>
   </div>
   <div class="nav-mid"></div>
   <div class="nav-right">
     <span class="pill" id="date-pill">—</span>
+    <a href="http://localhost:5003" class="btn-ref" title="Configuración del hotel" style="text-decoration:none">⚙️</a>
     <button class="btn-ref" onclick="loadAll()" title="Actualizar datos">↻ Actualizar</button>
     <button class="btn-run" id="btn-run" onclick="runPipeline()">
       <div class="spin" id="spin"></div>
@@ -784,6 +1028,14 @@ tr:hover td{background:rgba(255,255,255,.025)}
     <span id="status-txt">Cargando datos...</span>
   </div>
 
+  <!-- TABS -->
+  <div class="tabs">
+    <button class="tab active" onclick="switchTab('ar',this)">📥 AR — OTAs</button>
+    <button class="tab" onclick="switchTab('ap',this)">📦 AP — Proveedores</button>
+    <button class="tab" onclick="switchTab('drr',this)">📊 DRR</button>
+  </div>
+
+  <div id="panel-ar" class="panel active">
   <!-- STATS -->
   <div class="stats">
     <div class="sc hl c-blu">
@@ -862,6 +1114,60 @@ tr:hover td{background:rgba(255,255,255,.025)}
     </div>
   </div>
 
+  </div><!-- /panel-ar -->
+
+  <!-- PANEL AP -->
+  <div id="panel-ap" class="panel">
+    <div class="stats" id="stats-ap-grid">
+      <div class="sc hl c-blu"><div class="sc-lbl">Total Facturas AP</div><div class="sc-val" id="ap-total">—</div><div class="sc-sub">proveedores</div></div>
+      <div class="sc"><div class="sc-lbl">Importe Total</div><div class="sc-val" id="ap-importe" style="font-size:18px;letter-spacing:-.5px">—</div><div class="sc-sub">EUR</div></div>
+      <div class="sc c-grn"><div class="sc-lbl">Matches OK</div><div class="sc-val" id="ap-matches">—</div><div class="sc-sub">F&B + OTRAS</div></div>
+      <div class="sc c-red"><div class="sc-lbl">Discrepancias</div><div class="sc-val" id="ap-disc">—</div><div class="sc-sub">vs PO</div></div>
+      <div class="sc c-ora"><div class="sc-lbl">Sin PO</div><div class="sc-val" id="ap-sinpo">—</div><div class="sc-sub">sin orden compra</div></div>
+      <div class="sc c-pur"><div class="sc-lbl">Aprobadas</div><div class="sc-val" id="ap-aprobadas">—</div><div class="sc-sub">firmadas</div></div>
+    </div>
+    <div class="card" style="margin-bottom:22px">
+      <div class="card-title">Facturas AP</div>
+      <div class="tbl-wrap">
+        <table>
+          <thead><tr><th>Factura</th><th>Proveedor</th><th>Tipo</th><th>Total</th><th>Cuenta</th><th>Matching</th><th>Aprobación</th></tr></thead>
+          <tbody id="ap-tbody"><tr><td colspan="7" class="empty"><p>Sin datos AP.</p></td></tr></tbody>
+        </table>
+      </div>
+      <span id="ap-count" style="font-size:.75rem;color:var(--dim);margin-top:8px;display:block"></span>
+    </div>
+  </div><!-- /panel-ap -->
+
+  <!-- PANEL DRR -->
+  <div id="panel-drr" class="panel">
+
+    <div class="drr-upload">
+      <label for="drr-file-input">📂 Subir DRR (.xlsm)</label>
+      <input type="file" id="drr-file-input" accept=".xlsm" style="display:none" onchange="uploadDRR(this)">
+      <span class="drr-status" id="drr-status">Sin archivo cargado</span>
+    </div>
+
+    <!-- KPI Metrics -->
+    <div class="drr-metrics" id="drr-metrics">
+      <div class="empty"><div class="ei">📊</div><p>Sube un archivo DRR para ver las métricas.</p></div>
+    </div>
+
+    <!-- Days grid -->
+    <div class="card" style="margin-bottom:22px">
+      <div class="card-title">Trial Balance — Estado Diario</div>
+      <div class="drr-days" id="drr-days"></div>
+    </div>
+
+    <!-- Alerts -->
+    <div class="card">
+      <div class="card-title">Alertas DRR</div>
+      <div class="drr-alerts" id="drr-alerts">
+        <div class="empty"><p>Sin alertas.</p></div>
+      </div>
+    </div>
+
+  </div><!-- /panel-drr -->
+
 </div><!-- /main -->
 
 <!-- MODAL PIPELINE -->
@@ -875,6 +1181,38 @@ tr:hover td{background:rgba(255,255,255,.025)}
     <div class="modal-f">
       <button class="btn-cl" id="btn-cl" onclick="closeModal()" disabled>Cerrar</button>
     </div>
+  </div>
+</div>
+
+<!-- Chat AI — Yve Copilot -->
+<button id="chat-fab" onclick="toggleChat()">
+  <span style="font-size:1.3rem">💬</span>
+  <span>Pregunta a Yve</span>
+  <div class="fab-dot"></div>
+</button>
+
+<div id="chat-panel">
+  <div id="chat-header">
+    <div class="chat-title">
+      <span>🤖</span>
+      <div>
+        <h3>Yve — Copiloto Financiero</h3>
+        <p>Acceso en tiempo real a los datos del hotel</p>
+      </div>
+    </div>
+    <button id="chat-close" onclick="toggleChat()">✕</button>
+  </div>
+  <div id="chat-msgs"></div>
+  <div id="chat-suggestions">
+    <button class="sug" onclick="askSug(this)">¿Cuánto llevamos facturado?</button>
+    <button class="sug" onclick="askSug(this)">¿Qué facturas tienen discrepancias?</button>
+    <button class="sug" onclick="askSug(this)">¿Qué proveedor tiene más errores?</button>
+    <button class="sug" onclick="askSug(this)">¿Cuánto podemos reclamar a Booking?</button>
+  </div>
+  <div id="chat-input-row">
+    <textarea id="chat-input" rows="1" placeholder="Pregunta sobre el estado financiero del hotel…"
+      onkeydown="chatKeydown(event)" oninput="autoResize(this)"></textarea>
+    <button id="chat-send" onclick="sendChat()">➤</button>
   </div>
 </div>
 
@@ -922,19 +1260,11 @@ function bApro(a) {
 async function loadAll() {
   document.getElementById('status-txt').textContent = 'Actualizando...';
   try {
-    const [sr, fr] = await Promise.all([fetch('/api/stats'), fetch('/api/facturas')]);
+    // 1. Cargar y renderizar stats primero (independiente de facturas)
+    const sr = await fetch('/api/stats');
     const stats = await sr.json();
-    const facturas = await fr.json();
-
     renderStats(stats);
-    renderChart(stats.chart);
-    renderTable(facturas);
-    renderActivity(facturas);
-
-    const hoy = new Date();
-    document.getElementById('date-pill').textContent =
-      hoy.toLocaleDateString('es-ES', {day:'2-digit', month:'short', year:'numeric'}) + ' · ' +
-      hoy.toLocaleTimeString('es-ES', {hour:'2-digit', minute:'2-digit'});
+    try { renderChart(stats.chart); } catch(ec) { console.warn('Chart no disponible:', ec); }
 
     // Alert bar
     const alertBar = document.getElementById('alert-bar');
@@ -950,15 +1280,31 @@ async function loadAll() {
       alertBar.classList.remove('on');
     }
 
+    // 2. Cargar facturas (aislado para que un error aquí no afecte las cards)
+    let facturas = [];
+    try {
+      const fr = await fetch('/api/facturas');
+      if (fr.ok) facturas = await fr.json();
+    } catch(e2) { console.warn('Error cargando facturas:', e2); }
+
+    renderTable(facturas);
+    renderActivity(facturas);
+
+    const hoy = new Date();
+    document.getElementById('date-pill').textContent =
+      hoy.toLocaleDateString('es-ES', {day:'2-digit', month:'short', year:'numeric'}) + ' · ' +
+      hoy.toLocaleTimeString('es-ES', {hour:'2-digit', minute:'2-digit'});
+
     document.getElementById('status-txt').textContent =
-      'Actualizado · ' + facturas.length + ' factura' + (facturas.length !== 1 ? 's' : '') + ' cargada' + (facturas.length !== 1 ? 's' : '');
+      'Actualizado · ' + (stats.total || 0) + ' factura' + (stats.total !== 1 ? 's' : '') + ' cargada' + (stats.total !== 1 ? 's' : '');
   } catch(e) {
-    console.error(e);
+    console.error('Error en loadAll:', e);
     document.getElementById('status-txt').textContent = 'Error al cargar datos';
   }
 }
 
 function renderStats(s) {
+  console.log('[renderStats] datos recibidos:', JSON.stringify(s));
   document.getElementById('s-tot').textContent  = s.total ?? '—';
   document.getElementById('s-imp').textContent  = s.importe_total ? eur(s.importe_total) : '—';
   document.getElementById('s-ok').textContent   = s.correctas ?? '—';
@@ -970,7 +1316,8 @@ function renderStats(s) {
 }
 
 function renderChart(ch) {
-  if (!ch || !ch.labels.length) return;
+  if (!ch || !ch.labels || !ch.labels.length) return;
+  if (typeof Chart === 'undefined') { console.warn('Chart.js aún no cargado'); return; }
   const ctx = document.getElementById('ota-chart').getContext('2d');
   const palette = ['#3b82f6','#8b5cf6','#06b6d4','#10b981','#f59e0b','#ef4444','#ec4899'];
   const cols = ch.labels.map((_, i) => palette[i % palette.length]);
@@ -1373,7 +1720,7 @@ function toggleChat() {
   fab.style.display = chatOpen ? 'none' : 'flex';
   if (chatOpen && !chatGreeted) {
     chatGreeted = true;
-    addMsg('bot', '¡Hola! Soy Yve, tu copiloto financiero 👋\nTengo acceso en tiempo real a todos los datos del hotel. ¿En qué puedo ayudarte?');
+    addMsg('bot', '¡Hola! Soy Yve, tu copiloto financiero 👋\\nTengo acceso en tiempo real a todos los datos del hotel. ¿En qué puedo ayudarte?');
   }
   if (chatOpen) setTimeout(() => document.getElementById('chat-input').focus(), 300);
 }
@@ -1445,9 +1792,104 @@ function autoResize(el) {
   el.style.height = Math.min(el.scrollHeight, 120) + 'px';
 }
 
-// Cargar datos AP al iniciar
+// ══════════════════════════════════════════════════════════════
+// MÓDULO DRR — JavaScript
+// ══════════════════════════════════════════════════════════════
+
+async function uploadDRR(input) {
+  const file = input.files[0];
+  if (!file) return;
+  const status = document.getElementById('drr-status');
+  status.textContent = 'Procesando ' + file.name + '...';
+
+  const form = new FormData();
+  form.append('file', file);
+
+  try {
+    const resp = await fetch('/api/upload_drr', { method: 'POST', body: form });
+    const data = await resp.json();
+    if (data.ok) {
+      status.textContent = '✓ ' + file.name + ' procesado';
+      renderDRR(data.stats);
+    } else {
+      status.textContent = '✗ Error: ' + (data.error || 'desconocido');
+    }
+  } catch(e) {
+    status.textContent = '✗ Error de conexión';
+  }
+  input.value = '';
+}
+
+function renderDRR(s) {
+  if (!s || s.error) {
+    document.getElementById('drr-metrics').innerHTML = '<div class="empty"><p>Error: ' + (s ? s.error : 'sin datos') + '</p></div>';
+    return;
+  }
+
+  // KPI cards
+  const SHOW = [
+    {key:'Total Revenue', label:'Total Revenue', color:'var(--acc2)'},
+    {key:'Occupancy %', label:'Occupancy %', color:'var(--grn)'},
+    {key:'ADR', label:'ADR', color:'var(--tx)'},
+    {key:'Revenue PAR', label:'RevPAR', color:'var(--tx)'},
+    {key:'GOP', label:'GOP', color:'var(--ora)'},
+    {key:'GOP %', label:'GOP %', color:'var(--pur)'},
+  ];
+  const metricsEl = document.getElementById('drr-metrics');
+  metricsEl.innerHTML = SHOW.map(m => {
+    const d = s.metricas[m.key] || {};
+    return '<div class="drr-mc">'
+      + '<div class="mc-name">' + m.label + '</div>'
+      + '<div class="mc-row"><span class="mc-k">Today</span><span class="mc-v" style="color:' + m.color + '">' + (d.today || 'N/D') + '</span></div>'
+      + '<div class="mc-row"><span class="mc-k">MTD</span><span class="mc-v">' + (d.mtd || 'N/D') + '</span></div>'
+      + '<div class="mc-row"><span class="mc-k">Forecast</span><span class="mc-v">' + (d.forecast || 'N/D') + '</span></div>'
+      + '</div>';
+  }).join('');
+
+  // Days grid
+  const daysEl = document.getElementById('drr-days');
+  const diasMap = {};
+  (s.dias || []).forEach(d => { diasMap[d.dia] = d; });
+  let daysHtml = '';
+  for (let i = 1; i <= 31; i++) {
+    const d = diasMap[i];
+    if (d) {
+      const cls = d.oob ? 'oob' : 'ok';
+      const label = d.oob ? '⚠ OOB' : '✓ OK';
+      daysHtml += '<div class="drr-day ' + cls + '"><div class="day-n">' + i + '</div>' + label + '</div>';
+    } else {
+      daysHtml += '<div class="drr-day empty"><div class="day-n">' + i + '</div>—</div>';
+    }
+  }
+  daysEl.innerHTML = daysHtml;
+
+  // Alerts
+  const alertsEl = document.getElementById('drr-alerts');
+  if (s.alertas && s.alertas.length) {
+    alertsEl.innerHTML = s.alertas.map(a =>
+      '<div class="da-item"><div class="da-dot"></div><div class="da-txt">' + a + '</div></div>'
+    ).join('');
+  } else {
+    alertsEl.innerHTML = '<div class="empty"><p>Sin alertas — todo en balance.</p></div>';
+  }
+
+  // Update status bar
+  document.getElementById('drr-status').textContent =
+    s.archivo + ' · ' + s.total_dias + ' días · ' + s.dias_oob + ' OOB';
+}
+
+async function loadDRR() {
+  try {
+    const r = await fetch('/api/stats_drr');
+    const data = await r.json();
+    if (data) renderDRR(data);
+  } catch(e) {}
+}
+
+// Cargar datos AP e iniciar
 loadAP();
 setInterval(loadAP, 60000);
+loadDRR();
 
 </script>
 </body>
@@ -1467,3 +1909,4 @@ if __name__ == '__main__':
     print("  Ctrl+C para detener")
     print("=" * 60)
     app.run(host='0.0.0.0', port=5001, debug=False)
+
