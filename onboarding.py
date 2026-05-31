@@ -185,7 +185,7 @@ input.err,select.err{border-color:var(--red)}
 // ── State ──
 const STEPS = ['Hotel','OTAs','Proveedores','Usuarios','Resumen'];
 let step = 0;
-let D = {hotel:{},otas:[],proveedores:[],usuarios:{}};
+let D = {hotel:{},otas:[],proveedores:[],usuarios:{},alertas:{}};
 
 // ── Progress bar ──
 function renderBar() {
@@ -247,6 +247,14 @@ function save() {
       fb_nombre: v('u-fb-n'), fb_email: v('u-fb-e'),
       otras_nombre: v('u-ot-n'), otras_email: v('u-ot-e')
     };
+    function chk(id) { const el = document.getElementById(id); return el ? el.checked : true; }
+    D.alertas = {
+      email: v('al-email'),
+      ar_discrepancia: chk('al-ar-disc'),
+      ar_falta_di: chk('al-ar-di'),
+      drr_oob: chk('al-drr-oob'),
+      ap_discrepancia: chk('al-ap-disc'),
+    };
   }
 }
 
@@ -283,6 +291,7 @@ function render() {
     setV('u-ia-n', D.usuarios.ia_nombre); setV('u-ia-e', D.usuarios.ia_email);
     setV('u-fb-n', D.usuarios.fb_nombre); setV('u-fb-e', D.usuarios.fb_email);
     setV('u-ot-n', D.usuarios.otras_nombre); setV('u-ot-e', D.usuarios.otras_email);
+    if (D.alertas && D.alertas.email) setV('al-email', D.alertas.email);
   }
 }
 
@@ -369,12 +378,29 @@ function addProv() {
 
 // ── Step 4: Usuarios ──
 function stepUsers() {
+  const al = D.alertas || {};
   return '<h2>Usuarios y Roles</h2><p class="sub">Personas clave del equipo financiero del hotel</p>'
     + userBlock('Financial Controller','u-fc')
     + userBlock('Income Auditor','u-ia')
     + userBlock('F&B Manager','u-fb')
     + userBlock('Jefe de OTRAS','u-ot')
+    + '<div style="margin-top:24px;padding:18px;background:var(--bg);border:1px solid var(--s2);border-radius:10px">'
+    + '<div style="font-size:.85rem;font-weight:700;color:var(--ora);margin-bottom:12px">🔔 Configuración de Alertas</div>'
+    + '<label>Email para notificaciones</label>'
+    + '<input id="al-email" type="email" placeholder="controller@hotel.com" value="' + (al.email||'') + '">'
+    + '<div style="margin-top:14px;display:grid;gap:10px">'
+    + alertToggle('al-ar-disc', 'Discrepancias AR (comisiones OTA)', al.ar_discrepancia !== false)
+    + alertToggle('al-ar-di', 'Falta certificado DI', al.ar_falta_di !== false)
+    + alertToggle('al-drr-oob', 'DRR: días Out of Balance', al.drr_oob !== false)
+    + alertToggle('al-ap-disc', 'Discrepancias AP (proveedores)', al.ap_discrepancia !== false)
+    + '</div></div>'
     + btnRow(true, true);
+}
+
+function alertToggle(id, label, checked) {
+  return '<label style="display:flex;align-items:center;gap:10px;cursor:pointer;margin:0;text-transform:none;letter-spacing:0;font-size:.85rem;color:var(--tx)">'
+    + '<input type="checkbox" id="' + id + '"' + (checked ? ' checked' : '') + ' style="width:18px;height:18px;accent-color:var(--acc)">'
+    + label + '</label>';
 }
 
 function userBlock(role, prefix) {

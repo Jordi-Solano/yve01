@@ -274,6 +274,16 @@ def api_procesar():
                     yield "data: ERROR: " + str(exc) + "\n\n"
                     ok_total = False
             yield "data: PIPELINE_COMPLETO\n\n" if ok_total else "data: PIPELINE_CON_ERRORES\n\n"
+            # Enviar notificaciones automáticas
+            if ok_total:
+                try:
+                    sys.path.insert(0, BASE_DIR)
+                    from notificaciones import enviar_pendientes
+                    alertas = enviar_pendientes()
+                    if alertas:
+                        yield "data: >> Notificaciones: " + str(len(alertas)) + " alerta(s) procesada(s)\n\n"
+                except Exception as e_notif:
+                    yield "data: >> Notificaciones: error — " + str(e_notif)[:80] + "\n\n"
         finally:
             _pipeline_running = False
 
@@ -443,6 +453,15 @@ def api_procesar_ap():
                     yield "data: ERROR: " + str(exc) + "\n\n"
                     ok_total = False
             yield "data: PIPELINE_COMPLETO\n\n" if ok_total else "data: PIPELINE_CON_ERRORES\n\n"
+            if ok_total:
+                try:
+                    sys.path.insert(0, BASE_DIR)
+                    from notificaciones import enviar_pendientes
+                    alertas = enviar_pendientes()
+                    if alertas:
+                        yield "data: >> Notificaciones: " + str(len(alertas)) + " alerta(s) procesada(s)\n\n"
+                except Exception as e_notif:
+                    yield "data: >> Notificaciones: error — " + str(e_notif)[:80] + "\n\n"
         finally:
             _pipeline_ap_running = False
 
@@ -735,6 +754,33 @@ def api_upload_drr():
 
     stats = _leer_drr_stats(ruta)
     return jsonify({"ok": True, "stats": stats})
+
+
+# ── Notificaciones ────────────────────────────────────────────────────
+
+@app.route("/api/notificaciones")
+def api_notificaciones():
+    """Devuelve historial de notificaciones."""
+    hist_path = os.path.join(BASE_DIR, "datos-referencia", "notificaciones_historial.json")
+    if os.path.exists(hist_path):
+        try:
+            with open(hist_path, "r", encoding="utf-8") as f:
+                return jsonify(json.load(f))
+        except Exception:
+            pass
+    return jsonify([])
+
+
+@app.route("/api/enviar_notificaciones", methods=["POST"])
+def api_enviar_notificaciones():
+    """Escanea alertas y envía pendientes."""
+    try:
+        sys.path.insert(0, BASE_DIR)
+        from notificaciones import enviar_pendientes
+        alertas = enviar_pendientes()
+        return jsonify({"ok": True, "enviadas": len(alertas)})
+    except Exception as e:
+        return jsonify({"ok": False, "error": str(e)[:200]}), 500
 
 
 # ── Chat AI — Yve Copilot ──────────────────────────────────────────────
@@ -1033,6 +1079,7 @@ tr:hover td{background:rgba(255,255,255,.025)}
     <button class="tab active" onclick="switchTab('ar',this)">📥 AR — OTAs</button>
     <button class="tab" onclick="switchTab('ap',this)">📦 AP — Proveedores</button>
     <button class="tab" onclick="switchTab('drr',this)">📊 DRR</button>
+    <button class="tab" onclick="switchTab('notif',this)">🔔 Notificaciones</button>
   </div>
 
   <div id="panel-ar" class="panel active">
@@ -1167,6 +1214,27 @@ tr:hover td{background:rgba(255,255,255,.025)}
     </div>
 
   </div><!-- /panel-drr -->
+
+  <!-- PANEL NOTIFICACIONES -->
+  <div id="panel-notif" class="panel">
+    <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:20px;flex-wrap:wrap;gap:12px">
+      <div>
+        <span style="font-size:1.1rem;font-weight:700">Historial de Notificaciones</span>
+        <span id="notif-count" style="font-size:.8rem;color:var(--dim);margin-left:8px"></span>
+      </div>
+      <button class="btn-run" id="btn-send-notif" onclick="enviarNotificaciones()" style="font-size:12px;padding:8px 16px">
+        🔔 Enviar notificaciones pendientes
+      </button>
+    </div>
+    <div class="card">
+      <div class="tbl-wrap">
+        <table>
+          <thead><tr><th>Fecha</th><th>Tipo</th><th>Asunto</th><th>Destinatario</th><th>Estado</th></tr></thead>
+          <tbody id="notif-tbody"><tr><td colspan="5" class="empty"><p>Sin notificaciones.</p></td></tr></tbody>
+        </table>
+      </div>
+    </div>
+  </div><!-- /panel-notif -->
 
 </div><!-- /main -->
 
@@ -1886,10 +1954,69 @@ async function loadDRR() {
   } catch(e) {}
 }
 
+// ══════════════════════════════════════════════════════════════
+// NOTIFICACIONES — JavaScript
+// ══════════════════════════════════════════════════════════════
+
+async function loadNotif() {
+  try {
+    const r = await fetch('/api/notificaciones');
+    const data = await r.json();
+    const tbody = document.getElementById('notif-tbody');
+    const count = document.getElementById('notif-count');
+    if (!data || !data.length) {
+      tbody.innerHTML = '<tr><td colspan="5" class="empty"><p>Sin notificaciones.</p></td></tr>';
+      count.textContent = '';
+      return;
+    }
+    count.textContent = data.length + ' registros';
+    // Mostrar en orden inverso (más reciente primero)
+    const rows = data.slice().reverse();
+    tbody.innerHTML = rows.map(function(n) {
+      const TIPOS = {ar_discrepancia:'AR Disc.',ar_falta_di:'AR DI',drr_oob:'DRR OOB',ap_discrepancia:'AP Disc.',general:'General'};
+      const tipo = TIPOS[n.tipo] || n.tipo || '—';
+      const est = n.estado === 'enviado'
+        ? '<span class="badge b-ok">✓ Enviado</span>'
+        : '<span class="badge b-disc">✗ Error</span>';
+      return '<tr>'
+        + '<td class="td-dim">' + (n.fecha || '—') + '</td>'
+        + '<td>' + tipo + '</td>'
+        + '<td class="td-b">' + (n.asunto || '—').substring(0,50) + '</td>'
+        + '<td class="td-dim">' + (n.destinatario || '—') + '</td>'
+        + '<td>' + est + '</td>'
+        + '</tr>';
+    }).join('');
+  } catch(e) {
+    console.warn('Error cargando notificaciones:', e);
+  }
+}
+
+async function enviarNotificaciones() {
+  const btn = document.getElementById('btn-send-notif');
+  btn.disabled = true;
+  btn.textContent = 'Enviando...';
+  try {
+    const r = await fetch('/api/enviar_notificaciones', {method:'POST'});
+    const data = await r.json();
+    if (data.ok) {
+      btn.textContent = '✓ ' + data.enviadas + ' alerta(s) procesadas';
+      setTimeout(function() { btn.textContent = '🔔 Enviar notificaciones pendientes'; btn.disabled = false; }, 3000);
+      loadNotif();
+    } else {
+      btn.textContent = '✗ Error: ' + (data.error || '');
+      setTimeout(function() { btn.textContent = '🔔 Enviar notificaciones pendientes'; btn.disabled = false; }, 3000);
+    }
+  } catch(e) {
+    btn.textContent = '✗ Error de conexión';
+    setTimeout(function() { btn.textContent = '🔔 Enviar notificaciones pendientes'; btn.disabled = false; }, 3000);
+  }
+}
+
 // Cargar datos AP e iniciar
 loadAP();
 setInterval(loadAP, 60000);
 loadDRR();
+loadNotif();
 
 </script>
 </body>
