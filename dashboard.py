@@ -770,6 +770,43 @@ def api_upload_drr():
 
 # ── Notificaciones ────────────────────────────────────────────────────
 
+@app.route("/api/stats_banco")
+def api_stats_banco():
+    """Resumen de conciliacion bancaria para el dashboard."""
+    ruta = None
+    hits = glob.glob(os.path.join(REPORTES_DIR, "conciliacion_*.xlsx"))
+    if hits:
+        hits.sort(key=lambda p: os.path.getmtime(p), reverse=True)
+        ruta = hits[0]
+    if not ruta:
+        return jsonify(None)
+    try:
+        df = pd.read_excel(ruta)
+        total = len(df)
+        conc = int((df["estado"] == "CONCILIADO").sum()) if "estado" in df.columns else 0
+        pend = int((df["estado"] == "PENDIENTE").sum()) if "estado" in df.columns else 0
+        diff = int((df["estado"] == "DIFERENCIA").sum()) if "estado" in df.columns else 0
+        imp_pend = float(df.loc[df.get("estado", pd.Series()) == "PENDIENTE", "importe"].apply(safe_float).sum()) if "estado" in df.columns else 0
+        # Alertas: pendientes con mas de 7 dias
+        alertas = []
+        if "estado" in df.columns and "fecha" in df.columns:
+            from datetime import datetime
+            hoy = datetime.now()
+            for _, r in df[df["estado"] == "PENDIENTE"].iterrows():
+                try:
+                    f = pd.to_datetime(r["fecha"])
+                    dias = (hoy - f).days
+                    if dias > 7:
+                        alertas.append({"concepto": str(r.get("concepto", ""))[:50], "importe": safe_float(r.get("importe", 0)), "dias": dias})
+                except Exception:
+                    pass
+        return jsonify({"total": total, "conciliados": conc, "pendientes": pend,
+                        "diferencias": diff, "importe_pendiente": round(imp_pend, 2),
+                        "alertas": alertas[:10]})
+    except Exception as e:
+        return jsonify({"error": str(e)}), 500
+
+
 @app.route("/api/notificaciones")
 def api_notificaciones():
     """Devuelve historial de notificaciones."""
@@ -1115,6 +1152,7 @@ tr:hover td{background:rgba(255,255,255,.025)}
     <button class="tab active" onclick="switchTab('ar',this)">📥 AR — OTAs</button>
     <button class="tab" onclick="switchTab('ap',this)">📦 AP — Proveedores</button>
     <button class="tab" onclick="switchTab('drr',this)">📊 DRR</button>
+    <button class="tab" onclick="switchTab('banco',this)">🏦 Banco</button>
     <button class="tab" onclick="switchTab('notif',this)">🔔 Notificaciones</button>
   </div>
 
@@ -1250,6 +1288,23 @@ tr:hover td{background:rgba(255,255,255,.025)}
     </div>
 
   </div><!-- /panel-drr -->
+
+  <!-- PANEL BANCO -->
+  <div id="panel-banco" class="panel">
+    <div class="stats" id="banco-stats">
+      <div class="sc hl c-blu"><div class="sc-lbl">Movimientos</div><div class="sc-val" id="bk-total">—</div><div class="sc-sub">del extracto</div></div>
+      <div class="sc c-grn"><div class="sc-lbl">Conciliados</div><div class="sc-val" id="bk-conc">—</div><div class="sc-sub">con factura</div></div>
+      <div class="sc c-ora"><div class="sc-lbl">Pendientes</div><div class="sc-val" id="bk-pend">—</div><div class="sc-sub" id="bk-imp-pend">—</div></div>
+      <div class="sc c-red"><div class="sc-lbl">Diferencias</div><div class="sc-val" id="bk-diff">—</div><div class="sc-sub">importe no cuadra</div></div>
+    </div>
+    <div class="card">
+      <div class="card-title">Alertas Bancarias</div>
+      <div id="bk-alertas"><div class="empty"><p>Cargando...</p></div></div>
+    </div>
+    <div style="margin-top:16px">
+      <a href="http://localhost:5007" class="btn-run" style="text-decoration:none;display:inline-flex;font-size:13px;padding:10px 20px">🏦 Ver conciliacion completa</a>
+    </div>
+  </div><!-- /panel-banco -->
 
   <!-- PANEL NOTIFICACIONES -->
   <div id="panel-notif" class="panel">
@@ -2076,11 +2131,40 @@ async function enviarNotificaciones() {
   }
 })();
 
+// ══════════════════════════════════════════════════════════════
+// BANCO — JavaScript
+// ══════════════════════════════════════════════════════════════
+
+async function loadBanco() {
+  try {
+    var r = await fetch('/api/stats_banco');
+    var d = await r.json();
+    if (!d) return;
+    document.getElementById('bk-total').textContent = d.total || '—';
+    document.getElementById('bk-conc').textContent = d.conciliados || '0';
+    document.getElementById('bk-pend').textContent = d.pendientes || '0';
+    document.getElementById('bk-diff').textContent = d.diferencias || '0';
+    document.getElementById('bk-imp-pend').textContent = d.importe_pendiente ? eur(d.importe_pendiente) + ' pend.' : '—';
+
+    var el = document.getElementById('bk-alertas');
+    if (d.alertas && d.alertas.length) {
+      el.innerHTML = d.alertas.map(function(a) {
+        return '<div class="act-item"><div class="adot r"></div><div class="atxt"><b>' + a.dias + ' dias</b> sin conciliar: ' + a.concepto + ' — ' + eur(a.importe) + '</div></div>';
+      }).join('');
+    } else {
+      el.innerHTML = '<div class="empty"><p>Sin alertas bancarias pendientes.</p></div>';
+    }
+  } catch(e) {
+    console.warn('Error banco:', e);
+  }
+}
+
 // Cargar datos AP e iniciar
 loadAP();
 setInterval(loadAP, 60000);
 loadDRR();
 loadNotif();
+loadBanco();
 
 </script>
 </body>
