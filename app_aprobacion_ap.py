@@ -7,7 +7,8 @@ Ejecutar: python app_aprobacion_ap.py
 import os, glob, json
 from datetime import date, datetime
 import pandas as pd
-from flask import Flask, jsonify, request, Response
+from flask import Blueprint, jsonify, request, Response
+from flask_login import login_required
 
 BASE_DIR         = os.path.dirname(os.path.abspath(__file__))
 PROCESADAS_DIR   = os.path.join(BASE_DIR, "facturas-procesadas")
@@ -17,7 +18,14 @@ os.makedirs(APROBACIONES_DIR, exist_ok=True)
 APRO_FILE = os.path.join(APROBACIONES_DIR, "aprobaciones_ap.xlsx")
 NF        = "NO_ENCONTRADO"
 
-app = Flask(__name__)
+bp = Blueprint("aprob_ap", __name__, url_prefix="/aprobaciones-ap")
+
+@bp.before_request
+@login_required
+def _require_login():
+    """Protege todas las rutas del blueprint: exige sesión iniciada."""
+    pass
+
 
 # ── Datos ─────────────────────────────────────────────────────────────────
 
@@ -73,7 +81,7 @@ def facturas_a_lista(df):
         })
     return filas
 
-@app.route("/api/facturas")
+@bp.route("/api/facturas")
 def api_facturas():
     df   = cargar_facturas_ap()
     dept = request.args.get("departamento","").strip().lower()
@@ -83,7 +91,7 @@ def api_facturas():
                 or dept == "todos"]
     return jsonify(rows)
 
-@app.route("/api/stats")
+@bp.route("/api/stats")
 def api_stats():
     df   = cargar_facturas_ap()
     rows = facturas_a_lista(df)
@@ -101,7 +109,7 @@ def api_stats():
         "pendientes":    sum(1 for r in rows if not r.get("accion","")),
     })
 
-@app.route("/api/accion", methods=["POST"])
+@bp.route("/api/accion", methods=["POST"])
 def api_accion():
     data = request.get_json(force=True)
     num_fac     = data.get("numero_factura","")
@@ -133,7 +141,7 @@ def api_accion():
         df_ex.to_excel(w, index=False, sheet_name="Aprobaciones_AP")
     return jsonify({"ok": True})
 
-@app.route("/")
+@bp.route("/")
 def index():
     return HTML
 
@@ -142,13 +150,18 @@ HTML = """<!DOCTYPE html>
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width,initial-scale=1">
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Ccircle cx='16' cy='16' r='9' fill='%233b82f6'/%3E%3C/svg%3E">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="/static/yve.css">
 <title>Yve.01 — AP Aprobaciones</title>
 <style>
 :root{--bg:#0f172a;--s1:#1e293b;--s2:#334155;--s3:#475569;
   --acc:#3b82f6;--acc2:#60a5fa;--tx:#f1f5f9;--mut:#94a3b8;--dim:#64748b;
   --grn:#22c55e;--red:#ef4444;--ora:#f97316;--yel:#eab308;--pur:#8b5cf6}
 *{box-sizing:border-box;margin:0;padding:0}
-body{background:var(--bg);color:var(--tx);font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;min-height:100vh}
+body{background:var(--bg);color:var(--tx);font-family:'Inter',-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;min-height:100vh}
 .nav{background:var(--s1);border-bottom:1px solid var(--s2);padding:0 18px;height:56px;display:flex;align-items:center;gap:12px;position:sticky;top:0;z-index:100}
 .logo{font-size:17px;font-weight:800;color:var(--acc2)}.logo em{color:var(--mut);font-style:normal;font-size:11px;margin-left:6px}
 .pill{font-size:11px;color:var(--mut);background:var(--s2);padding:3px 10px;border-radius:20px}
@@ -278,7 +291,7 @@ function alertClass(m) {
 async function loadData() {
   const dept = document.getElementById('dept-filter').value;
   const url  = '/api/facturas' + (dept ? '?departamento='+encodeURIComponent(dept) : '');
-  const [fr, sr] = await Promise.all([fetch(url), fetch('/api/stats')]);
+  const [fr, sr] = await Promise.all([fetch(url), fetch('/aprobaciones-ap/api/stats')]);
   const rows = await fr.json();
   const stats= await sr.json();
 
@@ -333,7 +346,7 @@ async function accion(i, tipo, numFac) {
   const c    = document.getElementById('c-'+i).value.trim();
   const dept = document.getElementById('dept-'+i)?.value;
   if(!c || !dept) return;
-  const res = await fetch('/api/accion',{method:'POST',headers:{'Content-Type':'application/json'},
+  const res = await fetch('/aprobaciones-ap/api/accion',{method:'POST',headers:{'Content-Type':'application/json'},
     body: JSON.stringify({numero_factura:numFac,accion:tipo,comentario:c,departamento:dept})});
   const d = await res.json();
   if(d.ok) {
@@ -370,17 +383,3 @@ loadData();
 </body>
 </html>"""
 
-if __name__ == '__main__':
-    import socket
-    try:
-        ip = socket.gethostbyname(socket.gethostname())
-    except Exception:
-        ip = "127.0.0.1"
-    print("="*60)
-    print("  Yve.01 — Aprobaciones AP (Módulo AP)")
-    print("="*60)
-    print("  Escritorio:  http://localhost:5002")
-    print(f"  Movil:       http://{ip}:5002")
-    print("  Ctrl+C para detener")
-    print("="*60)
-    app.run(host='0.0.0.0', port=5002, debug=False)

@@ -164,7 +164,7 @@ def init_login(app):
     """Configura Flask-Login en la app Flask."""
     app.secret_key = app.secret_key or os.urandom(24).hex()
     lm = LoginManager()
-    lm.login_view = "login_page"
+    lm.login_view = "auth.login_page"
     lm.init_app(app)
 
     @lm.user_loader

@@ -1,0 +1,63 @@
+/* ============================================================
+   Yve.01 — Sistema de diseño compartido
+   Cargado por todas las páginas vía <link rel="stylesheet" href="/static/yve.css">
+   Solo contiene mejoras ADITIVAS y tokens por defecto: no rompe el layout
+   de cada página, lo eleva. Tokens de color = superset canónico.
+   ============================================================ */
+
+:root{
+  /* Superficie / fondo */
+  --bg:#0f172a; --s1:#1e293b; --s2:#334155; --s3:#475569;
+  /* Acento */
+  --acc:#3b82f6; --acc2:#60a5fa; --acc3:#93c5fd;
+  /* Texto */
+  --tx:#f1f5f9; --mut:#94a3b8; --dim:#64748b;
+  /* Estados */
+  --grn:#22c55e; --red:#ef4444; --ora:#f97316; --yel:#eab308; --pur:#8b5cf6;
+  /* Tipografía */
+  --font:'Inter','Inter var',-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif;
+  --mono:'JetBrains Mono','Cascadia Code','Fira Code',ui-monospace,monospace;
+  /* Radios / sombras */
+  --r-sm:8px; --r-md:12px; --r-lg:16px; --r-xl:20px;
+  --shadow-soft:0 1px 2px rgba(0,0,0,.20), 0 8px 24px rgba(0,0,0,.22);
+  --shadow-lift:0 12px 40px rgba(0,0,0,.40);
+}
+
+/* Render de fuente nítido en todas las plataformas */
+html{
+  -webkit-font-smoothing:antialiased;
+  -moz-osx-font-smoothing:grayscale;
+  text-rendering:optimizeLegibility;
+  -webkit-text-size-adjust:100%;
+  font-feature-settings:'cv02','cv03','cv04','ss01';
+}
+
+/* Tipografía Inter como base (las páginas pueden refinar tamaños) */
+body{ font-family:var(--font); }
+
+/* Números tabulares en métricas/tablas: columnas que no bailan */
+.sc-val,.kpi-val,td,th,.metric,.eur,.num{ font-variant-numeric:tabular-nums; }
+
+/* Selección de texto con el acento de marca */
+::selection{ background:rgba(59,130,246,.32); color:#fff; }
+
+/* Scrollbars finas y oscuras, coherentes con el tema */
+*{ scrollbar-width:thin; scrollbar-color:var(--s3) transparent; }
+*::-webkit-scrollbar{ width:10px; height:10px; }
+*::-webkit-scrollbar-track{ background:transparent; }
+*::-webkit-scrollbar-thumb{
+  background:var(--s2); border-radius:999px;
+  border:2px solid transparent; background-clip:content-box;
+}
+*::-webkit-scrollbar-thumb:hover{ background:var(--s3); background-clip:content-box; }
+
+/* Foco visible accesible (solo teclado), sin afectar clicks de ratón */
+:focus-visible{ outline:2px solid var(--acc2); outline-offset:2px; border-radius:4px; }
+
+/* Transiciones suaves por defecto en controles interactivos */
+button,a,input,select,textarea{ transition:background .15s, border-color .15s, color .15s, box-shadow .15s, transform .15s; }
+
+/* Respeta usuarios que prefieren menos movimiento */
+@media (prefers-reduced-motion: reduce){
+  *,*::before,*::after{ animation-duration:.001ms !important; transition-duration:.001ms !important; }
+}

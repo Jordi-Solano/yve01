@@ -32,16 +32,23 @@ APROBACIONES_DIR = os.path.join(BASE_DIR, "aprobaciones")
 NF = "NO_ENCONTRADO"
 
 app = Flask(__name__)
-app.secret_key = "yve01-secret-key-change-in-production"
+app.secret_key = os.environ.get("SECRET_KEY") or "yve01-dev-secret-CHANGE-IN-PROD"
 
-# Auth — importar y configurar
+# Auth + módulos: la app es UN solo proceso que sirve todo el producto en un puerto
 sys.path.insert(0, BASE_DIR)
-try:
-    from auth import init_login, inicializar_usuarios
-    init_login(app)
-    inicializar_usuarios()
-except ImportError:
-    pass  # auth.py no disponible, funciona sin login
+from auth import init_login, inicializar_usuarios
+init_login(app)
+inicializar_usuarios()
+
+# Registrar cada módulo como blueprint (login, configuración, admin, aprobaciones, conciliación)
+from login import bp as auth_bp
+from onboarding import bp as config_bp
+from panel_admin import bp as admin_bp
+from app_aprobacion import bp as aprob_ar_bp
+from app_aprobacion_ap import bp as aprob_ap_bp
+from app_conciliacion import bp as concil_bp
+for _bp in (auth_bp, config_bp, admin_bp, aprob_ar_bp, aprob_ap_bp, concil_bp):
+    app.register_blueprint(_bp)
 
 _pipeline_running = False
 _pipeline_lock    = threading.Lock()
@@ -845,19 +852,6 @@ def _hotel_name():
             pass
     return ""
 
-@app.route("/login_page")
-def login_page():
-    return redirect("http://localhost:5005")
-
-@app.route("/logout")
-def logout():
-    try:
-        from flask_login import logout_user
-        logout_user()
-    except Exception:
-        pass
-    return redirect("http://localhost:5005")
-
 @app.route("/")
 @login_required
 def index():
@@ -880,6 +874,11 @@ HTML = """<!DOCTYPE html>
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width,initial-scale=1">
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Ccircle cx='16' cy='16' r='9' fill='%233b82f6'/%3E%3C/svg%3E">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="/static/yve.css">
 <title>Yve.01 — Dashboard</title>
 <script async src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
 <style>
@@ -890,12 +889,12 @@ HTML = """<!DOCTYPE html>
   --grn:#22c55e;--red:#ef4444;--ora:#f97316;--yel:#eab308;--pur:#8b5cf6;
 }
 *{box-sizing:border-box;margin:0;padding:0}
-body{background:var(--bg);color:var(--tx);font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif;min-height:100vh;line-height:1.5}
+body{background:var(--bg);color:var(--tx);font-family:'Inter',-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif;min-height:100vh;line-height:1.5}
 
 /* ── NAV ── */
 .nav{background:var(--s1);border-bottom:1px solid var(--s2);padding:0 24px;height:60px;display:flex;align-items:center;gap:16px;position:sticky;top:0;z-index:200}
 .logo{display:flex;align-items:baseline;gap:10px;flex-shrink:0}
-.logo-name{font-size:20px;font-weight:800;color:var(--acc2);letter-spacing:-0.5px}
+.logo-name{font-size:20px;font-weight:800;color:#fff;letter-spacing:-0.5px}
 .logo-tag{font-size:11px;color:var(--mut);font-weight:400;white-space:nowrap}
 .logo-dot{width:8px;height:8px;border-radius:50%;background:var(--acc);flex-shrink:0;box-shadow:0 0 8px var(--acc)}
 .nav-mid{flex:1}
@@ -1115,15 +1114,15 @@ tr:hover td{background:rgba(255,255,255,.025)}
 <nav class="nav">
   <div class="logo">
     <div class="logo-dot"></div>
-    <span class="logo-name">Yve.01</span>
+    <span class="logo-name">Yve<span style="color:var(--acc2)">.01</span></span>
     <span class="logo-tag">__HOTEL_TAG__</span>
   </div>
   <div class="nav-mid"></div>
   <div class="nav-right">
     <span class="pill" id="date-pill">—</span>
     <span class="pill" style="color:var(--acc2)">👤 __USER_NAME__</span>
-    <a href="http://localhost:5003" class="btn-ref" title="Configuración" style="text-decoration:none">⚙️</a>
-    <a href="http://localhost:5006" class="btn-ref" title="Admin" style="text-decoration:none;display:__ADMIN_DISPLAY__">👥</a>
+    <a href="/configuracion/" class="btn-ref" title="Configuración" style="text-decoration:none">⚙️</a>
+    <a href="/admin/" class="btn-ref" title="Admin" style="text-decoration:none;display:__ADMIN_DISPLAY__">👥</a>
     <button class="btn-ref" onclick="loadAll()" title="Actualizar datos">↻ Actualizar</button>
     <button class="btn-run" id="btn-run" onclick="runPipeline()">
       <div class="spin" id="spin"></div>
@@ -1157,6 +1156,7 @@ tr:hover td{background:rgba(255,255,255,.025)}
   </div>
 
   <div id="panel-ar" class="panel active">
+  <div style="display:flex;justify-content:flex-end;margin-bottom:14px"><a href="/aprobaciones-ar/" class="btn-ref" style="text-decoration:none" title="Abrir panel de aprobaciones AR">📲 Aprobar facturas AR</a></div>
   <!-- STATS -->
   <div class="stats">
     <div class="sc hl c-blu">
@@ -1239,6 +1239,7 @@ tr:hover td{background:rgba(255,255,255,.025)}
 
   <!-- PANEL AP -->
   <div id="panel-ap" class="panel">
+  <div style="display:flex;justify-content:flex-end;margin-bottom:14px"><a href="/aprobaciones-ap/" class="btn-ref" style="text-decoration:none" title="Abrir panel de aprobaciones AP">📲 Aprobar facturas AP</a></div>
     <div class="stats" id="stats-ap-grid">
       <div class="sc hl c-blu"><div class="sc-lbl">Total Facturas AP</div><div class="sc-val" id="ap-total">—</div><div class="sc-sub">proveedores</div></div>
       <div class="sc"><div class="sc-lbl">Importe Total</div><div class="sc-val" id="ap-importe" style="font-size:18px;letter-spacing:-.5px">—</div><div class="sc-sub">EUR</div></div>
@@ -1302,7 +1303,7 @@ tr:hover td{background:rgba(255,255,255,.025)}
       <div id="bk-alertas"><div class="empty"><p>Cargando...</p></div></div>
     </div>
     <div style="margin-top:16px">
-      <a href="http://localhost:5007" class="btn-run" style="text-decoration:none;display:inline-flex;font-size:13px;padding:10px 20px">🏦 Ver conciliacion completa</a>
+      <a href="/conciliacion/" class="btn-run" style="text-decoration:none;display:inline-flex;font-size:13px;padding:10px 20px">🏦 Ver conciliación completa</a>
     </div>
   </div><!-- /panel-banco -->
 
@@ -2183,5 +2184,6 @@ if __name__ == '__main__':
     print(f"  Movil:       http://{ip}:5001")
     print("  Ctrl+C para detener")
     print("=" * 60)
-    app.run(host='0.0.0.0', port=5001, debug=False)
+    port = int(os.environ.get('PORT', 5001))
+    app.run(host='0.0.0.0', port=port, debug=False)
 

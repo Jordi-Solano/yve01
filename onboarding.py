@@ -6,18 +6,26 @@ Abre en: http://localhost:5003
 """
 
 import os, json
-from flask import Flask, jsonify, request
+from flask import Blueprint, jsonify, request
+from flask_login import login_required
 import pandas as pd
 
 BASE_DIR       = os.path.dirname(os.path.abspath(__file__))
 REFERENCIA_DIR = os.path.join(BASE_DIR, "datos-referencia")
 CONFIG_PATH    = os.path.join(REFERENCIA_DIR, "hotel_config.json")
 
-app = Flask(__name__)
+bp = Blueprint("config", __name__, url_prefix="/configuracion")
+
+@bp.before_request
+@login_required
+def _require_login():
+    """Protege todas las rutas del blueprint: exige sesión iniciada."""
+    pass
+
 
 # ── API ───────────────────────────────────────────────────────────────────
 
-@app.route("/api/config", methods=["GET"])
+@bp.route("/api/config", methods=["GET"])
 def get_config():
     if os.path.exists(CONFIG_PATH):
         with open(CONFIG_PATH, "r", encoding="utf-8") as f:
@@ -25,7 +33,7 @@ def get_config():
     return jsonify(None)
 
 
-@app.route("/api/save", methods=["POST"])
+@bp.route("/api/save", methods=["POST"])
 def save_config():
     data = request.get_json(force=True)
     if not data:
@@ -68,7 +76,7 @@ def save_config():
     return jsonify({"ok": True})
 
 
-@app.route("/")
+@bp.route("/")
 def index():
     return HTML
 
@@ -80,6 +88,11 @@ HTML = r"""<!DOCTYPE html>
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width,initial-scale=1">
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Ccircle cx='16' cy='16' r='9' fill='%233b82f6'/%3E%3C/svg%3E">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="/static/yve.css">
 <title>Yve.01 — Configuración del Hotel</title>
 <style>
 :root{
@@ -89,7 +102,7 @@ HTML = r"""<!DOCTYPE html>
   --grn:#22c55e;--red:#ef4444;--ora:#f97316;
 }
 *{box-sizing:border-box;margin:0;padding:0}
-body{background:var(--bg);color:var(--tx);font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif;min-height:100vh;line-height:1.5}
+body{background:var(--bg);color:var(--tx);font-family:'Inter',-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif;min-height:100vh;line-height:1.5}
 
 /* Nav */
 .nav{background:var(--s1);border-bottom:1px solid var(--s2);padding:0 24px;height:60px;display:flex;align-items:center;gap:16px}
@@ -172,7 +185,7 @@ input.err,select.err{border-color:var(--red)}
     <span class="logo-tag">Configuración</span>
   </div>
   <div style="flex:1"></div>
-  <a href="http://localhost:5001" style="background:var(--acc);color:#fff;text-decoration:none;padding:6px 12px;border-radius:8px;font-size:12px;font-weight:600;transition:.15s;white-space:nowrap" onmouseover="this.style.background='var(--acc2)'" onmouseout="this.style.background='var(--acc)'">← Dashboard</a>
+  <a href="/" style="background:var(--acc);color:#fff;text-decoration:none;padding:6px 12px;border-radius:8px;font-size:12px;font-weight:600;transition:.15s;white-space:nowrap" onmouseover="this.style.background='var(--acc2)'" onmouseout="this.style.background='var(--acc)'">← Dashboard</a>
 </nav>
 
 <div class="progress-wrap">
@@ -458,7 +471,7 @@ async function confirm() {
   btn.disabled = true;
   btn.textContent = 'Guardando...';
   try {
-    const resp = await fetch('/api/save', {
+    const resp = await fetch('/configuracion/api/save', {
       method: 'POST',
       headers: {'Content-Type':'application/json'},
       body: JSON.stringify(D)
@@ -471,7 +484,7 @@ async function confirm() {
         + '<h2>¡' + D.hotel.nombre + ' configurado!</h2>'
         + '<p>Yve.01 está listo para procesar facturas.<br>'
         + 'Se han guardado ' + D.otas.length + ' OTAs y ' + D.proveedores.length + ' proveedores.</p>'
-        + '<a class="btn-dash" href="http://localhost:5001">Ir al Dashboard →</a>'
+        + '<a class="btn-dash" href="/">Ir al Dashboard →</a>'
         + '</div>';
       document.querySelector('.progress-wrap').style.display = 'none';
     } else {
@@ -498,7 +511,7 @@ function btnRow(showPrev, showNext) {
 // Load existing config if any
 (async () => {
   try {
-    const r = await fetch('/api/config');
+    const r = await fetch('/configuracion/api/config');
     const cfg = await r.json();
     if (cfg && cfg.hotel) {
       D = cfg;
@@ -511,16 +524,3 @@ function btnRow(showPrev, showNext) {
 </body>
 </html>"""
 
-if __name__ == '__main__':
-    import socket
-    try:
-        ip = socket.gethostbyname(socket.gethostname())
-    except Exception:
-        ip = "127.0.0.1"
-    print("=" * 60)
-    print("  Yve.01 — Onboarding")
-    print("=" * 60)
-    print("  Escritorio:  http://localhost:5003")
-    print(f"  Movil:       http://{ip}:5003")
-    print("=" * 60)
-    app.run(host='0.0.0.0', port=5003, debug=False)

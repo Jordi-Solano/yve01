@@ -3,7 +3,11 @@ services:
     name: yve01-dashboard
     env: python
     buildCommand: pip install -r requirements.txt
-    startCommand: python dashboard.py
+    # 1 worker + threads keeps los locks de pipeline (_pipeline_running) efectivos
+    # y permite concurrencia para SSE (chat, procesar) + API a la vez.
+    startCommand: gunicorn dashboard:app --bind 0.0.0.0:$PORT --workers 1 --threads 8 --timeout 120
     envVars:
       - key: ANTHROPIC_API_KEY
         sync: false
+      - key: SECRET_KEY
+        generateValue: true

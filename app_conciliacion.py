@@ -5,7 +5,8 @@ Dashboard de conciliacion bancaria. Puerto 5007.
 
 import os, sys, glob, json
 from pathlib import Path
-from flask import Flask, jsonify, request, Response, stream_with_context
+from flask import Blueprint, jsonify, request, Response, stream_with_context
+from flask_login import login_required
 import pandas as pd
 import subprocess
 
@@ -13,7 +14,14 @@ BASE_DIR     = Path(__file__).parent
 REPORTES_DIR = BASE_DIR / "reportes"
 REFERENCIA_DIR = BASE_DIR / "datos-referencia"
 
-app = Flask(__name__)
+bp = Blueprint("concil", __name__, url_prefix="/conciliacion")
+
+@bp.before_request
+@login_required
+def _require_login():
+    """Protege todas las rutas del blueprint: exige sesión iniciada."""
+    pass
+
 
 
 def _ultimo(patron, d):
@@ -33,7 +41,7 @@ def _sf(v):
         return 0.0
 
 
-@app.route("/api/stats")
+@bp.route("/api/stats")
 def api_stats():
     ruta = _ultimo("conciliacion_*.xlsx", REPORTES_DIR)
     if not ruta:
@@ -75,7 +83,7 @@ def api_stats():
         return jsonify({"error": str(e)}), 500
 
 
-@app.route("/api/conciliar", methods=["POST"])
+@bp.route("/api/conciliar", methods=["POST"])
 def api_conciliar():
     script = str(BASE_DIR / "conciliacion_bancaria.py")
     try:
@@ -89,7 +97,7 @@ def api_conciliar():
         return jsonify({"ok": False, "error": str(e)}), 500
 
 
-@app.route("/api/upload", methods=["POST"])
+@bp.route("/api/upload", methods=["POST"])
 def api_upload():
     if "file" not in request.files:
         return jsonify({"ok": False, "error": "No file"}), 400
@@ -106,7 +114,7 @@ def api_upload():
     return jsonify({"ok": True})
 
 
-@app.route("/api/asignar_manual", methods=["POST"])
+@bp.route("/api/asignar_manual", methods=["POST"])
 def api_asignar():
     """Asigna manualmente un movimiento a una factura."""
     data = request.get_json(force=True) or {}
@@ -128,7 +136,7 @@ def api_asignar():
     return jsonify({"ok": False}), 400
 
 
-@app.route("/")
+@bp.route("/")
 def index():
     return HTML
 
@@ -138,11 +146,16 @@ HTML = r"""<!DOCTYPE html>
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width,initial-scale=1">
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Ccircle cx='16' cy='16' r='9' fill='%233b82f6'/%3E%3C/svg%3E">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="/static/yve.css">
 <title>Yve.01 — Conciliacion Bancaria</title>
 <style>
 :root{--bg:#0f172a;--s1:#1e293b;--s2:#334155;--s3:#475569;--acc:#3b82f6;--acc2:#60a5fa;--acc3:#93c5fd;--tx:#f1f5f9;--mut:#94a3b8;--dim:#64748b;--grn:#22c55e;--red:#ef4444;--ora:#f97316;--pur:#8b5cf6}
 *{box-sizing:border-box;margin:0;padding:0}
-body{background:var(--bg);color:var(--tx);font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif;min-height:100vh;line-height:1.5}
+body{background:var(--bg);color:var(--tx);font-family:'Inter',-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif;min-height:100vh;line-height:1.5}
 .nav{background:var(--s1);border-bottom:1px solid var(--s2);padding:0 24px;height:60px;display:flex;align-items:center;gap:16px}
 .logo-dot{width:8px;height:8px;border-radius:50%;background:var(--acc);box-shadow:0 0 8px var(--acc);display:inline-block;margin-right:8px}
 .logo-name{font-size:20px;font-weight:800;color:var(--acc2)}
@@ -184,7 +197,7 @@ tr:hover td{background:rgba(255,255,255,.02)}
   <span class="logo-dot"></span><span class="logo-name">Yve.01</span>
   <span class="logo-tag">Conciliacion Bancaria</span>
   <div class="nav-r">
-    <a href="http://localhost:5001">← Dashboard</a>
+    <a href="/">← Dashboard</a>
   </div>
 </nav>
 
@@ -229,7 +242,7 @@ function badge(estado) {
 
 async function loadData() {
   try {
-    var r = await fetch('/api/stats');
+    var r = await fetch('/conciliacion/api/stats');
     var d = await r.json();
     if (!d || d.error) { document.getElementById('status-msg').textContent = d ? d.error : 'Sin datos'; return; }
 
@@ -272,7 +285,7 @@ async function runConciliacion() {
   btn.disabled = true; btn.textContent = 'Procesando...';
   msg.textContent = '';
   try {
-    var r = await fetch('/api/conciliar', {method:'POST'});
+    var r = await fetch('/conciliacion/api/conciliar', {method:'POST'});
     var d = await r.json();
     if (d.ok) {
       msg.textContent = 'Conciliacion completada';
@@ -292,7 +305,7 @@ async function uploadFile(input) {
   var form = new FormData();
   form.append('file', file);
   try {
-    var r = await fetch('/api/upload', {method:'POST', body:form});
+    var r = await fetch('/conciliacion/api/upload', {method:'POST', body:form});
     var d = await r.json();
     msg.textContent = d.ok ? 'Extracto subido. Ejecuta la conciliacion.' : ('Error: ' + d.error);
   } catch(e) { msg.textContent = 'Error subiendo archivo'; }
@@ -303,7 +316,7 @@ async function asignarManual(idx) {
   var factura = prompt('Numero de factura para asignar a este movimiento:');
   if (!factura) return;
   try {
-    var r = await fetch('/api/asignar_manual', {
+    var r = await fetch('/conciliacion/api/asignar_manual', {
       method:'POST', headers:{'Content-Type':'application/json'},
       body:JSON.stringify({idx:idx, factura:factura})
     });
@@ -317,16 +330,3 @@ loadData();
 </body>
 </html>"""
 
-if __name__ == "__main__":
-    import socket
-    try:
-        ip = socket.gethostbyname(socket.gethostname())
-    except Exception:
-        ip = "127.0.0.1"
-    print("=" * 60)
-    print("  Yve.01 — Conciliacion Bancaria")
-    print("=" * 60)
-    print("  http://localhost:5007")
-    print(f"  http://{ip}:5007")
-    print("=" * 60)
-    app.run(host='0.0.0.0', port=5007, debug=False)

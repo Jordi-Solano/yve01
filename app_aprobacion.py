@@ -14,7 +14,8 @@ import os, glob, json
 from datetime import datetime
 from pathlib import Path
 import pandas as pd
-from flask import Flask, request, redirect, url_for, jsonify
+from flask import Blueprint, request, redirect, url_for, jsonify
+from flask_login import login_required
 
 # ── Config ─────────────────────────────────────────────────────────────────
 BASE_DIR       = Path(__file__).parent
@@ -25,8 +26,14 @@ APROB_DIR.mkdir(exist_ok=True)
 
 NF = "NO_ENCONTRADO"
 
-app = Flask(__name__)
-app.secret_key = "yve01-aprobaciones-2024"
+bp = Blueprint("aprob_ar", __name__, url_prefix="/aprobaciones-ar")
+
+@bp.before_request
+@login_required
+def _require_login():
+    """Protege todas las rutas del blueprint: exige sesión iniciada."""
+    pass
+
 
 
 # ── Carga de datos ──────────────────────────────────────────────────────────
@@ -96,6 +103,11 @@ HTML_BASE = """<!DOCTYPE html>
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1">
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Ccircle cx='16' cy='16' r='9' fill='%233b82f6'/%3E%3C/svg%3E">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="/static/yve.css">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <title>Yve.01 — Aprobaciones</title>
 <style>
@@ -110,7 +122,7 @@ HTML_BASE = """<!DOCTYPE html>
     --radio: 14px;
   }
   * { box-sizing: border-box; margin: 0; padding: 0; -webkit-tap-highlight-color: transparent; }
-  body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+  body { font-family:'Inter',-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;
          background: var(--bg); color: #1e293b; min-height: 100vh; }
 
   /* Header */
@@ -239,7 +251,7 @@ let facturas = [];
 let aprobaciones = [];
 
 async function init() {
-  const [fRes, aRes] = await Promise.all([fetch('/api/facturas'), fetch('/api/aprobaciones')]);
+  const [fRes, aRes] = await Promise.all([fetch('/aprobaciones-ar/api/facturas'), fetch('/aprobaciones-ar/api/aprobaciones')]);
   facturas = await fRes.json();
   aprobaciones = await aRes.json();
   renderFacturas();
@@ -386,7 +398,7 @@ async function accion(i, tipo) {
   if (sp) sp.style.display = 'block';
 
   try {
-    const res = await fetch('/api/accion', {
+    const res = await fetch('/aprobaciones-ar/api/accion', {
       method: 'POST',
       headers: {'Content-Type': 'application/json'},
       body: JSON.stringify({ indice: i, accion: tipo, comentario })
@@ -428,12 +440,12 @@ init();
 
 # ── API routes ──────────────────────────────────────────────────────────────
 
-@app.route("/")
+@bp.route("/")
 def index():
     return HTML_BASE
 
 
-@app.route("/api/facturas")
+@bp.route("/api/facturas")
 def api_facturas():
     df = cargar_facturas()
     if df.empty:
@@ -441,7 +453,7 @@ def api_facturas():
     return jsonify(df.to_dict(orient="records"))
 
 
-@app.route("/api/aprobaciones")
+@bp.route("/api/aprobaciones")
 def api_aprobaciones():
     df = cargar_aprobaciones()
     if df.empty:
@@ -449,7 +461,7 @@ def api_aprobaciones():
     return jsonify(df.to_dict(orient="records"))
 
 
-@app.route("/api/accion", methods=["POST"])
+@bp.route("/api/accion", methods=["POST"])
 def api_accion():
     data = request.get_json()
     indice    = int(data.get("indice", 0))
@@ -490,22 +502,3 @@ def api_accion():
 
 # ── Arranque ────────────────────────────────────────────────────────────────
 
-if __name__ == "__main__":
-    import socket
-
-    # Obtener IP local para acceso desde movil en la misma red WiFi
-    try:
-        ip_local = socket.gethostbyname(socket.gethostname())
-    except Exception:
-        ip_local = "localhost"
-
-    print("=" * 55)
-    print("  Yve.01 — Dashboard de Aprobaciones AR")
-    print("=" * 55)
-    print(f"  Abre en tu navegador:  http://localhost:5000")
-    print(f"  Movil (misma WiFi):    http://{ip_local}:5000")
-    print()
-    print("  Ctrl+C para detener el servidor")
-    print("=" * 55)
-
-    app.run(host="0.0.0.0", port=5000, debug=False)
