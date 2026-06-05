@@ -1393,7 +1393,7 @@ tr:hover td{background:rgba(255,255,255,.025)}
     <!-- Rankings y Alertas -->
     <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(400px,1fr));gap:16px">
       <div style="background:#1c1f2e;border:1px solid #2e3248;border-radius:12px;padding:20px">
-        <h3 style="font-size:14px;margin-bottom:16px;color:#8892a4">🏆 Top Performers (RevPAR)</h3>
+        <h3 style="font-size:14px;margin-bottom:16px;color:#8892a4">🏆 Top Performers (Revenue MTD)</h3>
         <div id="mh-rankings"></div>
       </div>
       <div style="background:#1c1f2e;border:1px solid #2e3248;border-radius:12px;padding:20px">
@@ -2366,7 +2366,7 @@ async function loadMultiHotel() {
     // Cargar rankings
     const rankingsRes = await fetch('/api/multi_hotel/rankings' + (grupo ? '?grupo=' + encodeURIComponent(grupo) : ''));
     const rankings = await rankingsRes.json();
-    renderMHRankings(rankings.top_revpar);
+    renderMHRankings(rankings.top_revenue);
     
     // Cargar alertas
     const alertasRes = await fetch('/api/multi_hotel/alertas' + (grupo ? '?grupo=' + encodeURIComponent(grupo) : ''));
@@ -2430,14 +2430,14 @@ function renderMHTable(hoteles) {
   tbody.innerHTML = hoteles.map(h => {
     const statusColor = {ok: '#1db954', warning: '#ff9800', critical: '#e05252'}[h.status];
     const statusIcon = {ok: '●', warning: '▲', critical: '■'}[h.status];
-    return '<tr style="border-bottom:1px solid #2e3248">' +
+    return '<tr onclick="openHotelDetail(\'' + h.id + '\')" style="border-bottom:1px solid #2e3248;cursor:pointer;transition:background 0.2s" onmouseover="this.style.background=\'rgba(26,115,232,0.08)\'" onmouseout="this.style.background=\'transparent\'">' +
       '<td style="padding:10px;font-weight:600">' + h.nombre + ' <span style="color:#8892a4;font-size:11px">' + h.tier + '</span></td>' +
       '<td style="padding:10px;color:#8892a4">' + h.ciudad + ', ' + h.pais + '</td>' +
       '<td style="padding:10px;text-align:right">' + h.habitaciones + '</td>' +
       '<td style="padding:10px;text-align:right">' + h.ocupacion_pct + '%</td>' +
       '<td style="padding:10px;text-align:right">€' + h.adr.toFixed(0) + '</td>' +
       '<td style="padding:10px;text-align:right;font-weight:600">€' + h.revpar.toFixed(0) + '</td>' +
-      '<td style="padding:10px;text-align:right;font-weight:600;color:#1db954">€' + (h.revenue_mtd/1000).toFixed(0) + 'K</td>' +
+      '<td style="padding:10px;text-align:right;font-weight:600;color:#1db954">€' + (h.revenue_mtd/1000000).toFixed(2) + 'M</td>' +
       '<td style="padding:10px;text-align:right">' + h.gop_pct + '%</td>' +
       '<td style="padding:10px;text-align:right">' + h.facturas_pendientes + '</td>' +
       '<td style="padding:10px;text-align:center;color:' + statusColor + ';font-size:18px">' + statusIcon + '</td>' +
@@ -2445,18 +2445,119 @@ function renderMHTable(hoteles) {
   }).join('');
 }
 
+// Modal de detalle de hotel
+async function openHotelDetail(hotelId) {
+  try {
+    const res = await fetch('/api/multi_hotel/hotel/' + hotelId);
+    const h = await res.json();
+    
+    if (h.error) { alert('Hotel no encontrado'); return; }
+    
+    const statusColor = {ok: '#1db954', warning: '#ff9800', critical: '#e05252'}[h.status];
+    const statusLabel = {ok: 'OK', warning: 'WARNING', critical: 'CRÍTICO'}[h.status];
+    
+    const modal = document.createElement('div');
+    modal.id = 'hotel-modal';
+    modal.style.cssText = 'position:fixed;inset:0;background:rgba(0,0,0,0.8);z-index:9999;display:flex;align-items:center;justify-content:center;padding:20px;overflow-y:auto';
+    modal.onclick = function(e) { if (e.target === modal) closeHotelModal(); };
+    
+    let alertasHtml = '';
+    if (h.alertas && h.alertas.length > 0) {
+      alertasHtml = h.alertas.map(a => '<div style="padding:8px 12px;background:rgba(224,82,82,0.1);border-left:3px solid ' + statusColor + ';margin-bottom:6px;border-radius:4px;font-size:13px">⚠️ ' + a + '</div>').join('');
+    } else {
+      alertasHtml = '<div style="color:#1db954;padding:8px">✅ Sin alertas activas</div>';
+    }
+    
+    modal.innerHTML = 
+      '<div style="background:#0f1117;border:1px solid #2e3248;border-radius:16px;max-width:1000px;width:100%;max-height:90vh;overflow-y:auto;padding:32px;position:relative">' +
+        '<button onclick="closeHotelModal()" style="position:absolute;top:16px;right:16px;background:transparent;color:#8892a4;border:none;font-size:24px;cursor:pointer;width:32px;height:32px">✕</button>' +
+        '<div style="display:flex;align-items:center;gap:16px;margin-bottom:8px">' +
+          '<h2 style="margin:0;font-size:24px">' + h.nombre + '</h2>' +
+          '<span style="background:' + statusColor + ';color:white;padding:4px 12px;border-radius:6px;font-size:11px;font-weight:700">' + statusLabel + '</span>' +
+        '</div>' +
+        '<div style="color:#8892a4;margin-bottom:24px">' + h.tier + ' • ' + h.ciudad + ', ' + h.pais + ' • ' + h.grupo + '</div>' +
+        
+        '<h3 style="font-size:14px;color:#8892a4;margin:24px 0 12px 0">📊 KPIs Operativos</h3>' +
+        '<div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(140px,1fr));gap:12px;margin-bottom:24px">' +
+          '<div style="background:#1c1f2e;border:1px solid #2e3248;border-radius:10px;padding:14px">' +
+            '<div style="font-size:11px;color:#8892a4">Habitaciones</div>' +
+            '<div style="font-size:22px;font-weight:700">' + h.habitaciones + '</div>' +
+          '</div>' +
+          '<div style="background:#1c1f2e;border:1px solid #2e3248;border-radius:10px;padding:14px">' +
+            '<div style="font-size:11px;color:#8892a4">Ocupación</div>' +
+            '<div style="font-size:22px;font-weight:700;color:#1a73e8">' + h.ocupacion_pct + '%</div>' +
+          '</div>' +
+          '<div style="background:#1c1f2e;border:1px solid #2e3248;border-radius:10px;padding:14px">' +
+            '<div style="font-size:11px;color:#8892a4">ADR</div>' +
+            '<div style="font-size:22px;font-weight:700">€' + h.adr.toFixed(0) + '</div>' +
+          '</div>' +
+          '<div style="background:#1c1f2e;border:1px solid #2e3248;border-radius:10px;padding:14px">' +
+            '<div style="font-size:11px;color:#8892a4">RevPAR</div>' +
+            '<div style="font-size:22px;font-weight:700">€' + h.revpar.toFixed(0) + '</div>' +
+          '</div>' +
+        '</div>' +
+        
+        '<h3 style="font-size:14px;color:#8892a4;margin:24px 0 12px 0">💰 Performance Financiero</h3>' +
+        '<div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(160px,1fr));gap:12px;margin-bottom:24px">' +
+          '<div style="background:linear-gradient(135deg,#0d2818,#1a4a2e);border:1px solid #1db954;border-radius:10px;padding:16px">' +
+            '<div style="font-size:11px;color:#8892a4">Revenue MTD</div>' +
+            '<div style="font-size:26px;font-weight:700;color:#1db954">€' + (h.revenue_mtd/1000000).toFixed(2) + 'M' + '</div>' +
+          '</div>' +
+          '<div style="background:#1c1f2e;border:1px solid #2e3248;border-radius:10px;padding:16px">' +
+            '<div style="font-size:11px;color:#8892a4">GOP%</div>' +
+            '<div style="font-size:26px;font-weight:700;color:' + (h.gop_pct >= 40 ? '#1db954' : h.gop_pct >= 35 ? '#ff9800' : '#e05252') + '">' + h.gop_pct + '%</div>' +
+          '</div>' +
+          '<div style="background:#1c1f2e;border:1px solid #2e3248;border-radius:10px;padding:16px">' +
+            '<div style="font-size:11px;color:#8892a4">F&B Cost %</div>' +
+            '<div style="font-size:26px;font-weight:700;color:' + (h.fb_pct <= 18 ? '#1db954' : h.fb_pct <= 20 ? '#ff9800' : '#e05252') + '">' + h.fb_pct + '%</div>' +
+          '</div>' +
+        '</div>' +
+        
+        '<h3 style="font-size:14px;color:#8892a4;margin:24px 0 12px 0">📥 AR Dashboard — Facturas Pendientes</h3>' +
+        '<div style="background:#1c1f2e;border:1px solid #2e3248;border-radius:10px;padding:20px;margin-bottom:24px">' +
+          '<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:16px">' +
+            '<div>' +
+              '<div style="font-size:11px;color:#8892a4">Total pendiente de cobro</div>' +
+              '<div style="font-size:32px;font-weight:700;color:#ff9800">€' + h.facturas_importe.toLocaleString('es-ES') + '</div>' +
+              '<div style="font-size:13px;color:#8892a4;margin-top:4px">' + h.facturas_pendientes + ' facturas activas</div>' +
+            '</div>' +
+            '<button onclick="alert(\'Próximamente: drill-down a facturas individuales del hotel\')" style="background:#1a73e8;color:white;border:none;padding:10px 20px;border-radius:8px;cursor:pointer;font-weight:600">Ver Facturas →</button>' +
+          '</div>' +
+          '<div style="display:grid;grid-template-columns:repeat(3,1fr);gap:12px;margin-top:16px;padding-top:16px;border-top:1px solid #2e3248">' +
+            '<div><div style="font-size:11px;color:#8892a4">OTAs (Booking, Expedia)</div><div style="font-size:18px;font-weight:600;color:#1a73e8">' + Math.floor(h.facturas_pendientes * 0.4) + ' facts</div></div>' +
+            '<div><div style="font-size:11px;color:#8892a4">Grupos Corporativos</div><div style="font-size:18px;font-weight:600;color:#1a73e8">' + Math.floor(h.facturas_pendientes * 0.35) + ' facts</div></div>' +
+            '<div><div style="font-size:11px;color:#8892a4">Clientes Directos</div><div style="font-size:18px;font-weight:600;color:#1a73e8">' + Math.floor(h.facturas_pendientes * 0.25) + ' facts</div></div>' +
+          '</div>' +
+        '</div>' +
+        
+        '<h3 style="font-size:14px;color:#8892a4;margin:24px 0 12px 0">⚠️ Alertas' + (h.alertas && h.alertas.length > 0 ? ' (' + h.alertas.length + ')' : '') + '</h3>' +
+        '<div>' + alertasHtml + '</div>' +
+      '</div>';
+    
+    document.body.appendChild(modal);
+  } catch(e) {
+    console.error('Error abriendo detalle:', e);
+    alert('Error cargando hotel: ' + e.message);
+  }
+}
+
+function closeHotelModal() {
+  const modal = document.getElementById('hotel-modal');
+  if (modal) modal.remove();
+}
+
 function renderMHRankings(top) {
   const cont = document.getElementById('mh-rankings');
   if (!cont) return;
   
   cont.innerHTML = top.map((h, i) => 
-    '<div style="display:flex;justify-content:space-between;align-items:center;padding:10px 0;border-bottom:1px solid #2e3248">' +
+    '<div onclick="openHotelDetail(\'' + h.id + '\')" style="display:flex;justify-content:space-between;align-items:center;padding:10px 0;border-bottom:1px solid #2e3248;cursor:pointer;transition:background 0.2s" onmouseover="this.style.background=\'rgba(26,115,232,0.08)\'" onmouseout="this.style.background=\'transparent\'">' +
       '<div style="display:flex;align-items:center;gap:12px">' +
         '<span style="font-size:18px;font-weight:700;color:' + (i === 0 ? '#FFD700' : i === 1 ? '#C0C0C0' : i === 2 ? '#CD7F32' : '#8892a4') + '">' + (i+1) + '</span>' +
         '<div><div style="font-weight:600;font-size:13px">' + h.nombre + '</div>' +
-        '<div style="font-size:11px;color:#8892a4">' + h.ciudad + '</div></div>' +
+        '<div style="font-size:11px;color:#8892a4">' + h.ciudad + ', ' + h.pais + '</div></div>' +
       '</div>' +
-      '<div style="font-weight:700;color:#1db954">€' + h.revpar.toFixed(0) + '</div>' +
+      '<div style="font-weight:700;color:#1db954;font-size:15px">€' + (h.revenue_mtd/1000000).toFixed(2) + 'M</div>' +
     '</div>'
   ).join('');
 }
