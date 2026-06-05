@@ -1430,7 +1430,10 @@ async function loadAll() {
   document.getElementById('status-txt').textContent = 'Actualizando...';
   try {
     // 1. Cargar y renderizar stats primero (independiente de facturas)
-    const sr = await fetch('/api/stats');
+    const ctrl = new AbortController();
+  const tmo = setTimeout(() => ctrl.abort(), 6000);
+  const sr = await fetch('/api/stats', {signal: ctrl.signal});
+  clearTimeout(tmo);
     const stats = await sr.json();
     renderStats(stats);
     try { renderChart(stats.chart); } catch(ec) { console.warn('Chart no disponible:', ec); }
@@ -2240,6 +2243,14 @@ async function loadBanco() {
 }
 
 // Cargar datos AP e iniciar
+// Init — wrapped with timeout to prevent hang if server is slow
+Promise.race([
+  loadAll(),
+  new Promise((_,r) => setTimeout(() => r(new Error('timeout')), 8000))
+]).catch(e => {
+  document.getElementById('status-txt').textContent = 'Error al conectar — reintentando...';
+  setTimeout(loadAll, 3000);
+});
 loadAP();
 setInterval(loadAP, 60000);
 loadDRR();
