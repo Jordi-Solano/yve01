@@ -6,7 +6,6 @@ import os
 import sys
 import subprocess
 from flask import Blueprint, Response
-from flask_cors import cross_origin
 from datetime import datetime
 import threading
 
@@ -16,7 +15,6 @@ _lock = threading.Lock()
 _ar_real_running = False
 
 @ar_real_bp.route('/api/procesar_ar_real', methods=['GET'])
-@cross_origin()
 def api_procesar_ar_real():
     """
     Procesa archivos de grupos corporativos del Hilton
@@ -67,7 +65,6 @@ def api_procesar_ar_real():
     )
 
 @ar_real_bp.route('/api/ar_real_status', methods=['GET'])
-@cross_origin()
 def api_ar_real_status():
     """
     Retorna el estado de los últimos reportes procesados
