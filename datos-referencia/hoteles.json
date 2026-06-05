@@ -1,0 +1,49 @@
+[
+  {
+    "id": "CAL01",
+    "nombre": "Hotel Calipolis Sitges",
+    "ciudad": "Sitges",
+    "categoria": "4 estrellas",
+    "habitaciones": 170,
+    "activo": true,
+    "contacto": "jaume.soler@calipolis.es",
+    "modulos": [
+      "AR",
+      "AP",
+      "DRR",
+      "FB",
+      "Banco"
+    ]
+  },
+  {
+    "id": "CAL02",
+    "nombre": "Hotel Calipolis Mar",
+    "ciudad": "Sitges",
+    "categoria": "4 estrellas",
+    "habitaciones": 95,
+    "activo": true,
+    "contacto": "marta.vidal@calipolis.es",
+    "modulos": [
+      "AR",
+      "AP",
+      "DRR",
+      "Banco"
+    ]
+  },
+  {
+    "id": "CAL03",
+    "nombre": "Calipolis Boutique",
+    "ciudad": "Sitges",
+    "categoria": "5 estrellas",
+    "habitaciones": 42,
+    "activo": true,
+    "contacto": "pau.ros@calipolis.es",
+    "modulos": [
+      "AR",
+      "AP",
+      "DRR",
+      "FB",
+      "Banco"
+    ]
+  }
+]
