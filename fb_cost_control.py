@@ -16,7 +16,10 @@ from openpyxl.utils import get_column_letter
 BASE_DIR = Path(__file__).parent
 DATOS = BASE_DIR / "datos-referencia"
 REPORTES = BASE_DIR / "reportes"
-REPORTES.mkdir(exist_ok=True)
+try:
+    REPORTES.mkdir(exist_ok=True)
+except (PermissionError, OSError):
+    pass  # Render filesystem is read-only, use /tmp instead
 
 # ─── CARGA DE DATOS ────────────────────────────────────────────────────────────
 
