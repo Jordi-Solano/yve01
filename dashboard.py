@@ -1337,6 +1337,20 @@ tr:hover td{background:rgba(255,255,255,.025)}
     <div id="fb-tab-content"><div class="empty"><p>Cargando F&amp;B...</p></div></div>
   </div><!-- /panel-fb -->
 
+  <!-- PANEL AR REAL -->
+  <div id="panel-ar_real" class="panel">
+    <h2 style="font-size:18px;font-weight:700;margin-bottom:20px">🏢 AR Real — Grupos Corporativos</h2>
+    <div style="background:#1c1f2e;border:1px solid #2e3248;border-radius:12px;padding:20px;margin-bottom:20px">
+      <h3 style="font-size:14px;margin-bottom:12px;color:#8892a4">Procesar Facturas Hilton (AbbVie)</h3>
+      <button onclick="procesarARReal()" id="btn-ar-real" style="background:#1a73e8;color:white;border:none;padding:10px 20px;border-radius:8px;cursor:pointer;font-weight:600">▶️ Procesar Archivos</button>
+      <div id="ar-real-log" style="background:#0f1117;border:1px solid #2e3248;border-radius:8px;padding:12px;margin-top:16px;max-height:300px;overflow-y:auto;font-family:monospace;font-size:12px;color:#cdd6f4;min-height:60px"></div>
+    </div>
+    <div style="background:#1c1f2e;border:1px solid #2e3248;border-radius:12px;padding:20px">
+      <h3 style="font-size:14px;margin-bottom:12px;color:#8892a4">Último Reporte Generado</h3>
+      <div id="ar-real-status">Sin reportes generados aún</div>
+    </div>
+  </div><!-- /panel-ar_real -->
+
 </div><!-- /main -->
 
 <!-- MODAL PIPELINE -->
@@ -1670,8 +1684,10 @@ function switchTab(tab, el) {
   document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
   document.querySelectorAll('.panel').forEach(p => p.classList.remove('active'));
   el.classList.add('active');
-  document.getElementById('panel-' + tab).classList.add('active');
+  var panel = document.getElementById('panel-' + tab);
+  if (panel) panel.classList.add('active');
   if (tab === 'fb') loadFBTab();
+  if (tab === 'ar_real') cargarStatusARReal();
 }
 async function loadFBTab() {
   var cont = document.getElementById('fb-tab-content');
@@ -2240,10 +2256,11 @@ function procesarARReal() {
 }
 
 function cargarStatusARReal() {
+    const statusDiv = document.getElementById('ar-real-status');
+    if (!statusDiv) return;
     fetch('/api/ar_real_status')
         .then(r => r.json())
         .then(data => {
-            const statusDiv = document.getElementById('ar-real-status');
             if (data.reportes && data.reportes.length > 0) {
                 const rep = data.reportes[0];
                 let html = '<div style="background:#e8f5e9;border-left:4px solid #4caf50;padding:15px;margin:10px 0;">';
@@ -2259,10 +2276,7 @@ function cargarStatusARReal() {
         .catch(err => console.error('Error cargar status:', err));
 }
 
-// Cargar status al abrir la pestaña AR Real
-document.addEventListener('DOMContentLoaded', function() {
-    setTimeout(cargarStatusARReal, 500);
-});
+
 
 </script>
 </body>
