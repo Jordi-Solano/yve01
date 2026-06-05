@@ -33,7 +33,7 @@ def api_procesar_ar_real():
             # Ejecutar el módulo de procesamiento
             result = subprocess.run(
                 [sys.executable, "ar_grupos_reales.py"],
-                cwd="/home/claude",
+                cwd=os.path.dirname(os.path.abspath(__file__)),
                 capture_output=True,
                 text=True,
                 timeout=60
@@ -70,11 +70,11 @@ def api_ar_real_status():
     Retorna el estado de los últimos reportes procesados
     """
     reportes = []
-    reportes_dir = "/home/claude/reportes"
+    reportes_dir = os.path.join(os.path.dirname(os.path.abspath(__file__)), "reportes")
     
     if os.path.exists(reportes_dir):
         for f in sorted(os.listdir(reportes_dir)):
-            if f.startswith("ar_real_abbvie") and f.endswith(".xlsx"):
+            if f.startswith("ar_real_") and f.endswith(".xlsx"):
                 filepath = os.path.join(reportes_dir, f)
                 size = os.path.getsize(filepath)
                 mtime = os.path.getmtime(filepath)

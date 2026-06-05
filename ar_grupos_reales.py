@@ -11,8 +11,8 @@ import json
 import os
 
 # Paths
-UPLOADS_PATH = "/mnt/user-data/uploads"
-OUTPUT_PATH = "/home/claude/reportes"
+UPLOADS_PATH = os.path.join(os.path.dirname(os.path.abspath(__file__)), "ar_real_data")
+OUTPUT_PATH = os.path.join(os.path.dirname(os.path.abspath(__file__)), "reportes")
 os.makedirs(OUTPUT_PATH, exist_ok=True)
 
 print("[AR REAL] Procesando facturas de grupos corporativos...\n")
@@ -21,7 +21,7 @@ print("[AR REAL] Procesando facturas de grupos corporativos...\n")
 # PASO 1: Leer Rooming List
 # ============================================================================
 print("1. Leyendo rooming list...")
-rooming_file = f"{UPLOADS_PATH}/rooming.xlsx"
+rooming_file = f"{UPLOADS_PATH}/rooming_demo.xlsx"
 wb_rooming = openpyxl.load_workbook(rooming_file, read_only=True, data_only=True)
 ws_rooming = wb_rooming["Rooming Template"]
 
@@ -54,7 +54,7 @@ print(f"     Portugal prepay: {portugal_count}\n")
 # PASO 2: Procesar Factura Poland (xlsm)
 # ============================================================================
 print("2. Procesando factura Poland...")
-poland_file = f"{UPLOADS_PATH}/251527287_1_Abbvie_Poland_.xlsm"
+poland_file = f"{UPLOADS_PATH}/invoice_subgroup_demo.xlsm"
 wb_poland = openpyxl.load_workbook(poland_file, read_only=True, data_only=True)
 ws_poland = wb_poland.active
 
