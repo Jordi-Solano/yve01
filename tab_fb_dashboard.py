@@ -179,8 +179,7 @@ async function cargarResultados() {
   }
 }
 
-// Auto-cargar si hay resultados previos
-cargarResultados();
+// Resultados se cargan solo cuando el usuario abre el tab F&B
 </script>
 """
 
@@ -224,7 +223,12 @@ def api_ejecutar():
 
 @fb_bp.route("/api/resultados")
 def api_resultados():
-    """Lee el último reporte generado y devuelve los datos para el dashboard."""
+    """Lee los datos F&B — sólo si los archivos de referencia existen."""    # Verificar que existen los archivos necesarios antes de intentar leer
+    required = [DATOS / "recetas.xlsx", DATOS / "ventas_fb_diarias.xlsx",
+                DATOS / "inventario.xlsx", DATOS / "mermas.xlsx"]
+    missing = [str(f.name) for f in required if not f.exists()]
+    if missing:
+        return jsonify({"ok": False, "error": f"Archivos no encontrados: {', '.join(missing)}"})
     try:
         import sys
         sys.path.insert(0, str(BASE_DIR))
@@ -241,7 +245,7 @@ def api_resultados():
         resumen = calcular_food_cost_real(teorico_df, mermas_df)
         categorias = analizar_por_categoria(teorico_df, mermas_df)
         ranking = ranking_platos(recetas)
-        inventario_data = []  # simplificado para el tab
+        inventario_data = []
         alertas = generar_alertas(resumen, categorias, inventario_data)
         return jsonify({"ok": True, "resumen": resumen, "categorias": categorias, "ranking": ranking, "alertas": alertas})
     except Exception as e:
