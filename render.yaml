@@ -10,4 +10,4 @@ services:
       - key: ANTHROPIC_API_KEY
         sync: false
       - key: SECRET_KEY
-        value: yve01-prod-secret-2026-stable-key-do-not-regenerate
+        value: yve01-prod-sk-20260605-stable-key
