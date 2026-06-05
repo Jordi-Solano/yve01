@@ -1746,9 +1746,9 @@ async function ejecutarFBPipeline() {
       var c = document.getElementById('fb-tab-content');
       if (c) { delete c.dataset.loaded; loadFBTab(); }
     } else if (ev.data.startsWith('ERROR:')) {
-      log.innerHTML += '<span style="color:#e05252">' + ev.data + '</span>\n';
+      log.innerHTML += '<span style="color:#e05252">' + ev.data + '</span><br>';
       es.close(); btn.disabled = false; btn.textContent = '\u25b6 Ejecutar An\u00e1lisis';
-    } else { log.innerHTML += ev.data + '\n'; log.scrollTop = log.scrollHeight; }
+    } else { log.innerHTML += ev.data + '<br>'; log.scrollTop = log.scrollHeight; }
   };
 }
 
