@@ -1431,6 +1431,9 @@ async function loadAll() {
   try {
     // 1. Cargar y renderizar stats primero (independiente de facturas)
     const sr = await fetch('/api/stats');
+    // If server redirects to login (session expired), reload to show login page
+    if (sr.url && sr.url.includes('/login')) { window.location.href = '/login'; return; }
+    if (!sr.ok && sr.status === 401) { window.location.href = '/login'; return; }
     const stats = await sr.json();
     renderStats(stats);
     try { renderChart(stats.chart); } catch(ec) { console.warn('Chart no disponible:', ec); }
@@ -1468,7 +1471,12 @@ async function loadAll() {
       'Actualizado · ' + (stats.total || 0) + ' factura' + (stats.total !== 1 ? 's' : '') + ' cargada' + (stats.total !== 1 ? 's' : '');
   } catch(e) {
     console.error('Error en loadAll:', e);
-    document.getElementById('status-txt').textContent = 'Error al cargar datos';
+    const st = document.getElementById('status-txt');
+    if (st) st.textContent = 'Sin conexión con el servidor — recarga la página';
+    // If it's a redirect to login (Flask returns HTML instead of JSON), reload
+    if (e instanceof SyntaxError) {
+      setTimeout(() => window.location.reload(), 1500);
+    }
   }
 }
 
