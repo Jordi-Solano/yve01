@@ -48,7 +48,8 @@ from app_aprobacion import bp as aprob_ar_bp
 from app_aprobacion_ap import bp as aprob_ap_bp
 from app_conciliacion import bp as concil_bp
 from tab_fb_dashboard import fb_bp
-for _bp in (auth_bp, config_bp, admin_bp, aprob_ar_bp, aprob_ap_bp, concil_bp, fb_bp):
+from tab_ar_grupo import ar_bp
+for _bp in (auth_bp, config_bp, admin_bp, aprob_ar_bp, aprob_ap_bp, concil_bp, fb_bp, ar_bp):
     app.register_blueprint(_bp)
 
 _pipeline_running = False
@@ -1155,6 +1156,7 @@ tr:hover td{background:rgba(255,255,255,.025)}
     <button class="tab" onclick="switchTab('banco',this)">🏦 Banco</button>
     <button class="tab" onclick="switchTab('notif',this)">🔔 Notificaciones</button>
     <button class="tab" onclick="switchTab('fb',this)" id="tab-fb">🍽️ F&amp;B Cost</button>
+    <button class="tab" onclick="switchTab('ar',this)" id="tab-ar">📋 AR Real</button>
   </div>
 
   <div id="panel-ar" class="panel active">
@@ -1334,6 +1336,7 @@ tr:hover td{background:rgba(255,255,255,.025)}
   <div id="panel-fb" class="panel">
     <div id="fb-tab-content"><div class="empty"><p>Cargando F&amp;B...</p></div></div>
   </div><!-- /panel-fb -->
+  <div id="panel-ar" class="panel"><div id="ar-tab-content"><div class="empty"><p>Cargando AR...</p></div></div></div><!-- /panel-ar -->
 
 </div><!-- /main -->
 
@@ -1670,6 +1673,7 @@ function switchTab(tab, el) {
   el.classList.add('active');
   document.getElementById('panel-' + tab).classList.add('active');
   if (tab === 'fb') loadFBTab();
+  if (tab === 'ar') loadARTab();
 }
 async function loadFBTab() {
   var cont = document.getElementById('fb-tab-content');
@@ -1690,6 +1694,31 @@ async function loadFBTab() {
     cont.innerHTML = html;
   } catch(e) { cont.innerHTML = '<div class="empty"><p>Error F&B: ' + e.message + '</p></div>'; }
 }
+async function loadARTab() {
+  var cont = document.getElementById('ar-tab-content');
+  if (!cont || cont.dataset.loaded) return;
+  cont.dataset.loaded = '1';
+  try {
+    var res = await fetch('/ar/api/resultados');
+    var data = await res.json();
+    if (!data.ok) { cont.innerHTML = '<div style="padding:20px"><h3>AR Real — Grupos Corporativos</h3><p style="color:#8892a4">Sin datos. Pulsa Ejecutar AR para procesar.</p><button onclick="runARPipeline()" style="margin-top:12px;background:#1a73e8;color:white;border:none;padding:8px 16px;border-radius:8px;cursor:pointer">Ejecutar AR</button></div>'; return; }
+    var r = data.resumen;
+    var html = '<div style="padding:20px"><h3>AR Real — ' + r.grupo + '</h3><table style="width:100%;border-collapse:collapse;margin-top:16px"><tr style="border-bottom:1px solid #2e3248"><td style="padding:8px;color:#8892a4">Master ID</td><td style="padding:8px;font-weight:600">' + r.master_id + '</td></tr><tr style="border-bottom:1px solid #2e3248"><td style="padding:8px;color:#8892a4">Rooms Contracted</td><td style="padding:8px;font-weight:600">' + r.contracted_rooms + '</td></tr><tr style="border-bottom:1px solid #2e3248"><td style="padding:8px;color:#8892a4">Contracted Revenue</td><td style="padding:8px;font-weight:600">€' + r.contracted_revenue.toFixed(2) + '</td></tr><tr style="border-bottom:1px solid #2e3248"><td style="padding:8px;color:#8892a4">Variance</td><td style="padding:8px;font-weight:600;color:' + (Math.abs(r.variance) > 100 ? '#e05252' : '#1db954') + '">€' + r.variance.toFixed(2) + '</td></tr><tr><td style="padding:8px;color:#8892a4">Status</td><td style="padding:8px;font-size:12px;color:#8892a4">' + r.status + '</td></tr></table><button onclick="runARPipeline()" style="margin-top:16px;background:#1a73e8;color:white;border:none;padding:8px 16px;border-radius:8px;cursor:pointer">Ejecutar AR</button></div>';
+    cont.innerHTML = html;
+  } catch(e) { cont.innerHTML = '<div style="padding:20px"><p style="color:#e05252">Error AR: ' + e.message + '</p></div>'; }
+}
+async function runARPipeline() {
+  var cont = document.getElementById('ar-tab-content');
+  if (!cont) return;
+  cont.innerHTML = '<div style="padding:20px;font-family:monospace;font-size:12px;color:#8892a4">Ejecutando pipeline AR...<br><br>';
+  var es = new EventSource('/ar/api/ejecutar');
+  es.onmessage = function(ev) {
+    if (ev.data === 'AR_COMPLETO') { es.close(); delete cont.dataset.loaded; loadARTab(); }
+    else if (ev.data.startsWith('ERROR:')) { es.close(); cont.innerHTML = '<div style="padding:20px"><p style="color:#e05252">' + ev.data + '</p></div>'; }
+    else { cont.innerHTML += ev.data + '<br>'; cont.scrollTop = cont.scrollHeight; }
+  };
+}
+
 function runFB() {
   var es = new EventSource('/fb/api/ejecutar');
   document.getElementById('fb-tab-content').innerHTML = '<div class="empty"><p>Ejecutando...</p></div>';
@@ -2146,7 +2175,7 @@ async function enviarNotificaciones() {
   var tabs = document.querySelectorAll('.tab');
   var VISIBLE = {
     'income_auditor': ['drr'],
-    'fb_manager': ['ap', 'fb'],
+    'fb_manager': ['ap', 'fb', 'ar'],
     'jefe_otras': ['ap'],
   };
   var allowed = VISIBLE[rol] || [];
