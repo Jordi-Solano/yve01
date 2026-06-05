@@ -1341,7 +1341,7 @@ tr:hover td{background:rgba(255,255,255,.025)}
   <div id="panel-ar_real" class="panel">
     <h2 style="font-size:18px;font-weight:700;margin-bottom:20px">🏢 AR Real — Grupos Corporativos</h2>
     <div style="background:#1c1f2e;border:1px solid #2e3248;border-radius:12px;padding:20px;margin-bottom:20px">
-      <h3 style="font-size:14px;margin-bottom:12px;color:#8892a4">Procesar Facturas Hilton (AbbVie)</h3>
+      <h3 style="font-size:14px;margin-bottom:12px;color:#8892a4">Procesar Facturas de Grupos Corporativos</h3>
       <button onclick="procesarARReal()" id="btn-ar-real" style="background:#1a73e8;color:white;border:none;padding:10px 20px;border-radius:8px;cursor:pointer;font-weight:600">▶️ Procesar Archivos</button>
       <div id="ar-real-log" style="background:#0f1117;border:1px solid #2e3248;border-radius:8px;padding:12px;margin-top:16px;max-height:300px;overflow-y:auto;font-family:monospace;font-size:12px;color:#cdd6f4;min-height:60px"></div>
     </div>
