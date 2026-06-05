@@ -1,5 +1,5 @@
 """
-AR Real Module — Procesa facturas de grupos corporativos (Hilton AbbVie)
+AR Real Module — Procesa facturas de grupos corporativos (Property Corporate Client)
 Estructura real: Rooming list + facturas por subgrupo + BEOs
 """
 import openpyxl
@@ -40,28 +40,28 @@ for row in ws_rooming.iter_rows(min_row=4, values_only=True):
             "checkin": checkin,
             "checkout": checkout,
             "nights": 1,  # Base estimate
-            "group": "Portugal" if (comments and "Portugal" in str(comments)) else "Master Account"
+            "group": "Subgroup B" if (comments and "Subgroup B" in str(comments)) else "Master Account"
         })
 
 master_count = sum(1 for a in attendees if a['group']=='Master Account')
-portugal_count = sum(1 for a in attendees if a['group']=='Portugal')
+portugal_count = sum(1 for a in attendees if a['group']=='Subgroup B')
 
 print(f"   ✓ {len(attendees)} asistentes")
 print(f"     Master Account: {master_count}")
-print(f"     Portugal prepay: {portugal_count}\n")
+print(f"     Subgroup B prepay: {portugal_count}\n")
 
 # ============================================================================
-# PASO 2: Procesar Factura Poland (xlsm)
+# PASO 2: Procesar Factura Subgroup A (xlsm)
 # ============================================================================
-print("2. Procesando factura Poland...")
+print("2. Procesando factura Subgroup A...")
 poland_file = f"{UPLOADS_PATH}/invoice_subgroup_demo.xlsm"
 wb_poland = openpyxl.load_workbook(poland_file, read_only=True, data_only=True)
 ws_poland = wb_poland.active
 
 # Extraer invoice data
-invoice_no = "125-01443330"
+invoice_no = "INV-001"
 invoice_date = datetime(2025, 7, 30)
-group_name = "GRUPA EVENT SP ZOO"
+group_name = "Corporate Subgroup"
 
 # Procesar líneas
 deposit = 0
@@ -96,7 +96,7 @@ print(f"     Balance: €{balance_poland:,.2f} (saldo a favor)\n")
 # ============================================================================
 print("3. Generando reporte...\n")
 
-output_file = f"{OUTPUT_PATH}/ar_real_abbvie_{datetime.now().strftime('%Y%m%d_%H%M%S')}.xlsx"
+output_file = f"{OUTPUT_PATH}/ar_real_grupo_{datetime.now().strftime('%Y%m%d_%H%M%S')}.xlsx"
 wb = openpyxl.Workbook()
 wb.remove(wb.active)
 
@@ -117,10 +117,10 @@ border = Border(
 ws1 = wb.create_sheet("Overview", 0)
 row = 1
 
-ws1[f"A{row}"] = "AR REAL — AbbVie Ovarian Cancer Symposium"
+ws1[f"A{row}"] = "AR REAL — Corporate Group Event"
 ws1[f"A{row}"].font = title_font
 row += 1
-ws1[f"A{row}"] = "Hilton Barcelona | 03-06 July 2025"
+ws1[f"A{row}"] = "Property | 03-06 July 2025"
 ws1[f"A{row}"].font = Font(italic=True)
 row += 2
 
@@ -143,7 +143,7 @@ ws1[f"B{row}"] = master_count
 ws1[f"C{row}"] = "personas"
 row += 1
 
-ws1[f"A{row}"] = "  - Portugal Group"
+ws1[f"A{row}"] = "  - Subgroup B Group"
 ws1[f"B{row}"] = portugal_count
 ws1[f"C{row}"] = "personas"
 row += 2
@@ -152,17 +152,17 @@ ws1[f"A{row}"] = "Invoices Processed"
 ws1[f"A{row}"].font = subheader_font
 row += 1
 
-ws1[f"A{row}"] = "Poland (GRUPA EVENT)"
+ws1[f"A{row}"] = "Subgroup A (GRUPA EVENT)"
 ws1[f"B{row}"] = f"€{total_consumed:,.2f}"
 ws1[f"C{row}"] = "consumed"
 row += 1
 
-ws1[f"A{row}"] = "Deposit Poland"
+ws1[f"A{row}"] = "Deposit Subgroup A"
 ws1[f"B{row}"] = f"€{deposit:,.2f}"
 ws1[f"C{row}"] = "received"
 row += 1
 
-ws1[f"A{row}"] = "Balance Poland"
+ws1[f"A{row}"] = "Balance Subgroup A"
 ws1[f"B{row}"] = f"€{balance_poland:,.2f}"
 ws1[f"C{row}"] = "credit"
 ws1[f"B{row}"].font = Font(bold=True, color="008000" if balance_poland > 0 else "FF0000")
@@ -228,8 +228,8 @@ for col_idx, col_name in enumerate(headers_inv, 1):
 
 row = 2
 
-# Poland lines
-ws3.cell(row=row, column=1).value = "Poland"
+# Subgroup A lines
+ws3.cell(row=row, column=1).value = "Subgroup A"
 ws3.cell(row=row, column=2).value = invoice_no
 ws3.cell(row=row, column=3).value = invoice_date.strftime("%Y-%m-%d")
 ws3.cell(row=row, column=4).value = "DEPOSIT RECEIPT"
@@ -242,7 +242,7 @@ for col in range(1, 9):
 row += 1
 
 for desc, data in consumed.items():
-    ws3.cell(row=row, column=1).value = "Poland"
+    ws3.cell(row=row, column=1).value = "Subgroup A"
     ws3.cell(row=row, column=2).value = invoice_no
     ws3.cell(row=row, column=3).value = invoice_date.strftime("%Y-%m-%d")
     ws3.cell(row=row, column=4).value = desc
@@ -274,15 +274,15 @@ for col in ["A", "B"]:
 row += 1
 
 # Líneas
-ws4[f"A{row}"] = "Poland - Deposit Received"
+ws4[f"A{row}"] = "Subgroup A - Deposit Received"
 ws4[f"B{row}"] = deposit
 row += 1
 
-ws4[f"A{row}"] = "Poland - Services Consumed"
+ws4[f"A{row}"] = "Subgroup A - Services Consumed"
 ws4[f"B{row}"] = total_consumed
 row += 1
 
-ws4[f"A{row}"] = "Poland - Balance (Credit)"
+ws4[f"A{row}"] = "Subgroup A - Balance (Credit)"
 ws4[f"B{row}"] = balance_poland
 ws4[f"A{row}"].font = subheader_font
 ws4[f"B{row}"].font = Font(bold=True, color="008000")
@@ -296,7 +296,7 @@ ws4[f"A{row}"] = "  - Expected rooms revenue (62 x €210)"
 ws4[f"B{row}"] = 62 * 210
 row += 1
 
-ws4[f"A{row}"] = "  - Portugal sub-group (5 x €210)"
+ws4[f"A{row}"] = "  - Subgroup B sub-group (5 x €210)"
 ws4[f"B{row}"] = 5 * 210
 row += 2
 
@@ -318,22 +318,22 @@ print(f"  Path: {output_file}\n")
 print("="*70)
 print("RESUMEN AR REAL")
 print("="*70)
-print(f"Evento: AbbVie Ovarian Cancer Symposium")
-print(f"Hotel: Hilton Barcelona, Av. Diagonal 589-591")
+print(f"Evento: Corporate Group Event")
+print(f"Hotel: Property")
 print(f"Fechas: 03-06 Julio 2025")
 print()
 print(f"Rooming Analysis:")
 print(f"  Total: {len(attendees)} attendees")
-print(f"    Master Account: {master_count} (bill to AbbVie)")
-print(f"    Portugal: {portugal_count} (pre-paid)")
+print(f"    Master Account: {master_count} (bill to Corporate Client)")
+print(f"    Subgroup B: {portugal_count} (pre-paid)")
 print()
-print(f"Poland Invoice (125-01443330):")
+print(f"Subgroup A Invoice (INV-001):")
 print(f"  Deposit received: €{deposit:,.2f}")
 print(f"  Services consumed: €{total_consumed:,.2f}")
 print(f"  → Balance: €{balance_poland:,.2f} CREDIT")
 print()
 print(f"Next steps:")
-print(f"  [ ] Process Portugal PDF invoices")
+print(f"  [ ] Process Subgroup B PDF invoices")
 print(f"  [ ] Extract BEO (banquet) charges")
 print(f"  [ ] Reconcile Master Account final balance")
 print(f"  [ ] Create AR summary for accounting")
