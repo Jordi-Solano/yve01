@@ -1726,17 +1726,19 @@ async function loadAP() {
       fetch('/api/facturas_ap').then(r=>r.json()),
     ]);
 
-    document.getElementById('ap-total').textContent    = stats.total ?? '—';
-    document.getElementById('ap-importe').textContent  = fmtEurAP(stats.importe);
-    document.getElementById('ap-matches').textContent  = stats.matches ?? '—';
-    document.getElementById('ap-disc').textContent     = stats.discrepancias ?? '—';
-    document.getElementById('ap-sinpo').textContent    = stats.sin_po ?? '—';
-    document.getElementById('ap-alertas').textContent  = stats.alertas_consumo ?? '—';
-    document.getElementById('ap-manual').textContent   = stats.manual ?? '—';
-    document.getElementById('ap-aprobadas').textContent= stats.aprobadas ?? '—';
+    // Safe element access
+    const el = (id) => document.getElementById(id);
+    if (el('ap-total')) el('ap-total').textContent = stats.total ?? '—';
+    if (el('ap-importe')) el('ap-importe').textContent = fmtEurAP(stats.importe);
+    if (el('ap-matches')) el('ap-matches').textContent = stats.matches ?? '—';
+    if (el('ap-disc')) el('ap-disc').textContent = stats.discrepancias ?? '—';
+    if (el('ap-sinpo')) el('ap-sinpo').textContent = stats.sin_po ?? '—';
+    if (el('ap-alertas')) el('ap-alertas').textContent = stats.alertas_consumo ?? '—';
+    if (el('ap-manual')) el('ap-manual').textContent = stats.manual ?? '—';
+    if (el('ap-aprobadas')) el('ap-aprobadas').textContent = stats.aprobadas ?? '—';
 
-    const tbody = document.getElementById('ap-tbody');
-    tbody.innerHTML = '';
+    const tbody = el('ap-tbody');
+    if (tbody) tbody.innerHTML = '';
     document.getElementById('ap-count').textContent = facts.length + ' facturas';
 
     facts.forEach(f => {
