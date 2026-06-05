@@ -856,7 +856,8 @@ def _hotel_name():
 @app.route("/")
 def index():
     from flask_login import current_user
-    if not current_user.is_authenticated:
+    # Manual auth check — no decorator
+    if not current_user or not current_user.is_authenticated:
         return redirect(url_for('auth.login_page'))
     name = _hotel_name()
     tag = name if name else "AR Dashboard"
