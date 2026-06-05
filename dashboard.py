@@ -37,7 +37,7 @@ app.secret_key = os.environ.get("SECRET_KEY") or "yve01-dev-secret-CHANGE-IN-PRO
 # Auth + módulos: la app es UN solo proceso que sirve todo el producto en un puerto
 sys.path.insert(0, BASE_DIR)
 from auth import init_login, inicializar_usuarios
-# init_login(app)  # TEMP: disabled for testing
+init_login(app)
 inicializar_usuarios()
 
 # Registrar cada módulo como blueprint (login, configuración, admin, aprobaciones, conciliación)
@@ -854,6 +854,7 @@ def _hotel_name():
     return ""
 
 @app.route("/")
+@login_required
 def index():
     name = _hotel_name()
     tag = name if name else "AR Dashboard"
