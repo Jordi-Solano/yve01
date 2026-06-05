@@ -1330,11 +1330,9 @@ tr:hover td{background:rgba(255,255,255,.025)}
     </div>
   </div><!-- /panel-notif -->
 
-  <!-- PANEL F&B COST CONTROL -->
+  <!-- PANEL F&B -->
   <div id="panel-fb" class="panel">
-    <div id="fb-tab-content">
-      <div class="empty"><div class="ei">⏳</div><p>Cargando módulo F&amp;B...</p></div>
-    </div>
+    <div id="fb-tab-content"><div class="empty"><p>Cargando F&amp;B...</p></div></div>
   </div><!-- /panel-fb -->
 
 </div><!-- /main -->
@@ -1431,9 +1429,6 @@ async function loadAll() {
   try {
     // 1. Cargar y renderizar stats primero (independiente de facturas)
     const sr = await fetch('/api/stats');
-    // If server redirects to login (session expired), reload to show login page
-    if (sr.url && sr.url.includes('/login')) { window.location.href = '/login'; return; }
-    if (!sr.ok && sr.status === 401) { window.location.href = '/login'; return; }
     const stats = await sr.json();
     renderStats(stats);
     try { renderChart(stats.chart); } catch(ec) { console.warn('Chart no disponible:', ec); }
@@ -1471,12 +1466,7 @@ async function loadAll() {
       'Actualizado · ' + (stats.total || 0) + ' factura' + (stats.total !== 1 ? 's' : '') + ' cargada' + (stats.total !== 1 ? 's' : '');
   } catch(e) {
     console.error('Error en loadAll:', e);
-    const st = document.getElementById('status-txt');
-    if (st) st.textContent = 'Sin conexión con el servidor — recarga la página';
-    // If it's a redirect to login (Flask returns HTML instead of JSON), reload
-    if (e instanceof SyntaxError) {
-      setTimeout(() => window.location.reload(), 1500);
-    }
+    document.getElementById('status-txt').textContent = 'Error al cargar datos';
   }
 }
 
@@ -1681,74 +1671,30 @@ function switchTab(tab, el) {
   document.getElementById('panel-' + tab).classList.add('active');
   if (tab === 'fb') loadFBTab();
 }
-
 async function loadFBTab() {
-  const cont = document.getElementById('fb-tab-content');
+  var cont = document.getElementById('fb-tab-content');
   if (!cont || cont.dataset.loaded) return;
   cont.dataset.loaded = '1';
   try {
-    const r = await fetch('/fb/api/resultados');
-    const data = await r.json();
-    const r2 = data.ok ? data.resumen : null;
-    const btnHtml = '<button onclick="ejecutarFBPipeline()" id="btnFBPipe" style="background:#1a73e8;color:white;border:none;padding:10px 22px;border-radius:8px;font-weight:600;font-size:14px;cursor:pointer">\u25b6 Ejecutar An\u00e1lisis</button>';
-    const headerHtml = '<div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:24px"><div><h2 style="font-size:18px;font-weight:700">F&amp;B Cost Control</h2><p style="color:#8892a4;font-size:13px;margin-top:4px">Coste real vs te\u00f3rico \u00b7 Inventario \u00b7 Mermas</p></div>' + btnHtml + '</div><div id="fbLog2" style="display:none;background:#0a0c14;border:1px solid #2e3248;border-radius:8px;padding:16px;margin-bottom:20px;font-family:monospace;font-size:12px;color:#8892a4;max-height:150px;overflow-y:auto"></div>';
-    if (!data.ok) {
-      cont.innerHTML = headerHtml + '<div class="empty"><p>Pulsa Ejecutar An\u00e1lisis para generar los datos F&amp;B.</p></div>';
-      return;
-    }
-    var kpiHtml = '<div style="display:grid;grid-template-columns:repeat(4,1fr);gap:16px;margin-bottom:24px">'
-      + '<div style="background:#1c1f2e;border:1px solid #2e3248;border-radius:12px;padding:20px"><div style="font-size:12px;color:#8892a4;margin-bottom:6px">Total Ventas F&amp;B</div><div style="font-size:24px;font-weight:700;color:#1a73e8">' + r2.total_ventas.toLocaleString('es-ES',{minimumFractionDigits:2}) + ' \u20ac</div></div>'
-      + '<div style="background:#1c1f2e;border:1px solid #2e3248;border-radius:12px;padding:20px"><div style="font-size:12px;color:#8892a4;margin-bottom:6px">Food Cost Te\u00f3rico</div><div style="font-size:24px;font-weight:700;color:#1db954">' + r2.fc_teorico_pct + '%</div></div>'
-      + '<div style="background:#1c1f2e;border:1px solid #2e3248;border-radius:12px;padding:20px"><div style="font-size:12px;color:#8892a4;margin-bottom:6px">Food Cost Real</div><div style="font-size:24px;font-weight:700;color:' + (r2.alerta ? '#e05252' : '#ff9800') + '">' + r2.fc_real_pct + '%</div></div>'
-      + '<div style="background:#1c1f2e;border:1px solid #2e3248;border-radius:12px;padding:20px"><div style="font-size:12px;color:#8892a4;margin-bottom:6px">Mermas</div><div style="font-size:24px;font-weight:700;color:#e05252">' + r2.coste_mermas.toLocaleString('es-ES',{minimumFractionDigits:2}) + ' \u20ac</div></div>'
-      + '</div>';
-    var catRows = data.categorias.map(function(c) {
-      return '<tr style="border-top:1px solid #2e3248">'
-        + '<td style="padding:10px 14px;font-size:13px">' + c.categoria + '</td>'
-        + '<td style="padding:10px 14px;text-align:right;font-size:13px">' + c.total_ventas.toLocaleString('es-ES') + ' \u20ac</td>'
-        + '<td style="padding:10px 14px;text-align:right;font-size:13px;font-weight:600;color:' + (c.alerta ? '#e05252' : '#1db954') + '">' + c.fc_real_pct + '%</td>'
-        + '<td style="padding:10px 14px;text-align:center;font-size:12px;color:' + (c.alerta ? '#e05252' : '#1db954') + '">' + (c.alerta ? '\u26a0 ALERTA' : '\u2713 OK') + '</td>'
-        + '</tr>';
-    }).join('');
-    var rankRows = data.ranking.map(function(p, i) {
-      return '<tr style="border-top:1px solid #2e3248">'
-        + '<td style="padding:8px 14px;font-size:13px">' + (i+1) + '. ' + p.nombre + '</td>'
-        + '<td style="padding:8px 14px;text-align:right;font-size:13px;font-weight:600;color:' + (p.fc_pct <= 28 ? '#1db954' : p.fc_pct <= 35 ? '#ff9800' : '#e05252') + '">' + p.fc_pct + '%</td>'
-        + '<td style="padding:8px 14px;text-align:right;font-size:13px">' + p.margen_bruto.toFixed(2) + ' \u20ac</td>'
-        + '</tr>';
-    }).join('');
-    var tablesHtml = '<div style="display:grid;grid-template-columns:1.2fr 0.8fr;gap:20px;margin-bottom:24px">'
-      + '<div style="background:#1c1f2e;border:1px solid #2e3248;border-radius:12px;overflow:hidden"><div style="padding:16px 20px;border-bottom:1px solid #2e3248;font-size:13px;font-weight:600">Food Cost por Categor\u00eda</div><table style="width:100%;border-collapse:collapse"><thead><tr style="background:#252840"><th style="padding:8px 14px;text-align:left;font-size:11px;color:#8892a4">Categor\u00eda</th><th style="padding:8px 14px;text-align:right;font-size:11px;color:#8892a4">Ventas</th><th style="padding:8px 14px;text-align:right;font-size:11px;color:#8892a4">FC Real</th><th style="padding:8px 14px;text-align:center;font-size:11px;color:#8892a4">Estado</th></tr></thead><tbody>' + catRows + '</tbody></table></div>'
-      + '<div style="background:#1c1f2e;border:1px solid #2e3248;border-radius:12px;overflow:hidden"><div style="padding:16px 20px;border-bottom:1px solid #2e3248;font-size:13px;font-weight:600">Ranking Platos</div><table style="width:100%;border-collapse:collapse"><thead><tr style="background:#252840"><th style="padding:8px 14px;text-align:left;font-size:11px;color:#8892a4">Plato</th><th style="padding:8px 14px;text-align:right;font-size:11px;color:#8892a4">FC%</th><th style="padding:8px 14px;text-align:right;font-size:11px;color:#8892a4">Margen</th></tr></thead><tbody>' + rankRows + '</tbody></table></div>'
-      + '</div>';
-    var alertRows = data.alertas.length
-      ? data.alertas.map(function(a) {
-          return '<div style="display:flex;gap:12px;align-items:center;margin-bottom:10px"><span style="font-size:11px;font-weight:700;padding:3px 10px;border-radius:8px;background:' + (a.nivel === 'CRITICO' ? 'rgba(224,82,82,0.2)' : 'rgba(255,152,0,0.2)') + ';color:' + (a.nivel === 'CRITICO' ? '#e05252' : '#ff9800') + '">' + a.nivel + '</span><span style="font-size:13px">' + a.mensaje + '</span></div>';
-        }).join('')
-      : '<span style="color:#1db954">\u2713 Sin alertas detectadas</span>';
-    var alertasHtml = '<div style="background:#1c1f2e;border:1px solid #2e3248;border-radius:12px;overflow:hidden"><div style="padding:16px 20px;border-bottom:1px solid #2e3248;font-size:13px;font-weight:600">Alertas F&amp;B</div><div style="padding:16px 20px">' + alertRows + '</div></div>';
-    cont.innerHTML = headerHtml + kpiHtml + tablesHtml + alertasHtml;
-  } catch(e) {
-    cont.innerHTML = '<div class="empty"><p>Error cargando F&amp;B: ' + e + '</p></div>';
-  }
+    var res = await fetch('/fb/api/resultados');
+    var data = await res.json();
+    if (!data.ok) { cont.innerHTML = '<div class="empty"><p>Pulsa Ejecutar para generar datos F&B.</p><button onclick="runFB()" style="margin-top:12px;background:#1a73e8;color:white;border:none;padding:8px 18px;border-radius:8px;cursor:pointer">Ejecutar</button></div>'; return; }
+    var r2 = data.resumen;
+    var html = '<h2 style="font-size:18px;font-weight:700;margin-bottom:20px">F&B Cost Control</h2>';
+    html += '<div style="display:grid;grid-template-columns:repeat(4,1fr);gap:16px;margin-bottom:24px">';
+    html += '<div style="background:#1c1f2e;border:1px solid #2e3248;border-radius:12px;padding:20px"><div style="font-size:12px;color:#8892a4">Ventas F&B</div><div style="font-size:22px;font-weight:700;color:#1a73e8">' + r2.total_ventas.toLocaleString('es-ES') + ' €</div></div>';
+    html += '<div style="background:#1c1f2e;border:1px solid #2e3248;border-radius:12px;padding:20px"><div style="font-size:12px;color:#8892a4">FC Teórico</div><div style="font-size:22px;font-weight:700;color:#1db954">' + r2.fc_teorico_pct + '%</div></div>';
+    html += '<div style="background:#1c1f2e;border:1px solid #2e3248;border-radius:12px;padding:20px"><div style="font-size:12px;color:#8892a4">FC Real</div><div style="font-size:22px;font-weight:700;color:' + (r2.alerta ? '#e05252' : '#ff9800') + '">' + r2.fc_real_pct + '%</div></div>';
+    html += '<div style="background:#1c1f2e;border:1px solid #2e3248;border-radius:12px;padding:20px"><div style="font-size:12px;color:#8892a4">Mermas</div><div style="font-size:22px;font-weight:700;color:#e05252">' + r2.coste_mermas.toLocaleString('es-ES') + ' €</div></div>';
+    html += '</div>';
+    cont.innerHTML = html;
+  } catch(e) { cont.innerHTML = '<div class="empty"><p>Error F&B: ' + e.message + '</p></div>'; }
 }
-
-async function ejecutarFBPipeline() {
-  const btn = document.getElementById('btnFBPipe');
-  const log = document.getElementById('fbLog2');
-  if (!btn || !log) return;
-  btn.disabled = true; btn.textContent = '\u23f3 Analizando...';
-  log.style.display = 'block'; log.innerHTML = '';
-  const es = new EventSource('/fb/api/ejecutar');
+function runFB() {
+  var es = new EventSource('/fb/api/ejecutar');
+  document.getElementById('fb-tab-content').innerHTML = '<div class="empty"><p>Ejecutando...</p></div>';
   es.onmessage = function(ev) {
-    if (ev.data === 'FB_COMPLETO') {
-      es.close(); btn.disabled = false; btn.textContent = '\u25b6 Ejecutar An\u00e1lisis';
-      var c = document.getElementById('fb-tab-content');
-      if (c) { delete c.dataset.loaded; loadFBTab(); }
-    } else if (ev.data.startsWith('ERROR:')) {
-      log.innerHTML += '<span style="color:#e05252">' + ev.data + '</span><br>';
-      es.close(); btn.disabled = false; btn.textContent = '\u25b6 Ejecutar An\u00e1lisis';
-    } else { log.innerHTML += ev.data + '<br>'; log.scrollTop = log.scrollHeight; }
+    if (ev.data === 'FB_COMPLETO') { es.close(); var c = document.getElementById('fb-tab-content'); if(c){delete c.dataset.loaded; loadFBTab();} }
   };
 }
 
@@ -2249,8 +2195,6 @@ async function loadBanco() {
 }
 
 // Cargar datos AP e iniciar
-// Init
-loadAll();
 loadAP();
 setInterval(loadAP, 60000);
 loadDRR();
