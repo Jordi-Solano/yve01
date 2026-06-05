@@ -48,7 +48,8 @@ from app_aprobacion import bp as aprob_ar_bp
 from app_aprobacion_ap import bp as aprob_ap_bp
 from app_conciliacion import bp as concil_bp
 from tab_fb_dashboard import fb_bp
-for _bp in (auth_bp, config_bp, admin_bp, aprob_ar_bp, aprob_ap_bp, concil_bp, fb_bp):
+from tab_ar_real import ar_real_bp
+for _bp in (auth_bp, config_bp, admin_bp, aprob_ar_bp, aprob_ap_bp, concil_bp, fb_bp, ar_real_bp):
     app.register_blueprint(_bp)
 
 _pipeline_running = False
@@ -1155,6 +1156,7 @@ tr:hover td{background:rgba(255,255,255,.025)}
     <button class="tab" onclick="switchTab('banco',this)">🏦 Banco</button>
     <button class="tab" onclick="switchTab('notif',this)">🔔 Notificaciones</button>
     <button class="tab" onclick="switchTab('fb',this)" id="tab-fb">🍽️ F&amp;B Cost</button>
+    <button class="tab" onclick="switchTab('ar_real',this)" id="tab-ar-real">🏢 AR Real</button>
   </div>
 
   <div id="panel-ar" class="panel active">
@@ -2202,6 +2204,65 @@ setInterval(loadAP, 60000);
 loadDRR();
 loadNotif();
 loadBanco();
+
+
+
+// ═════════════════════════════════════════════════════════════════════
+// AR REAL — Procesar grupos corporativos
+// ═════════════════════════════════════════════════════════════════════
+function procesarARReal() {
+    const logDiv = document.getElementById('ar-real-log');
+    logDiv.innerHTML = '<div style="color:#666;">Conectando...</div>';
+    
+    const eventSource = new EventSource('/api/procesar_ar_real');
+    
+    eventSource.onmessage = function(event) {
+        const logLine = document.createElement('div');
+        logLine.textContent = event.data;
+        logLine.style.padding = '2px 0';
+        logDiv.appendChild(logLine);
+        logDiv.scrollTop = logDiv.scrollHeight;
+        
+        if (event.data === 'AR_REAL_COMPLETO') {
+            eventSource.close();
+            setTimeout(cargarStatusARReal, 1000);
+        }
+    };
+    
+    eventSource.onerror = function(err) {
+        console.error('Error AR Real:', err);
+        const logLine = document.createElement('div');
+        logLine.textContent = 'ERROR: Conexión perdida';
+        logLine.style.color = 'red';
+        logDiv.appendChild(logLine);
+        eventSource.close();
+    };
+}
+
+function cargarStatusARReal() {
+    fetch('/api/ar_real_status')
+        .then(r => r.json())
+        .then(data => {
+            const statusDiv = document.getElementById('ar-real-status');
+            if (data.reportes && data.reportes.length > 0) {
+                const rep = data.reportes[0];
+                let html = '<div style="background:#e8f5e9;border-left:4px solid #4caf50;padding:15px;margin:10px 0;">';
+                html += '<p><strong>Último reporte:</strong> ' + rep.filename + '</p>';
+                html += '<p><strong>Tamaño:</strong> ' + rep.size_kb + ' KB</p>';
+                html += '<p><strong>Actualizado:</strong> ' + new Date(rep.timestamp).toLocaleString() + '</p>';
+                html += '</div>';
+                statusDiv.innerHTML = html;
+            } else {
+                statusDiv.innerHTML = '<p style="color:#999;">Sin reportes generados aún</p>';
+            }
+        })
+        .catch(err => console.error('Error cargar status:', err));
+}
+
+// Cargar status al abrir la pestaña AR Real
+document.addEventListener('DOMContentLoaded', function() {
+    setTimeout(cargarStatusARReal, 500);
+});
 
 </script>
 </body>
