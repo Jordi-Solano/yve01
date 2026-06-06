@@ -1145,6 +1145,19 @@ tr:hover td{background:rgba(255,255,255,.025)}
 .drr-alerts .da-dot{width:8px;height:8px;border-radius:50%;flex-shrink:0;margin-top:5px;background:var(--ora)}
 .drr-alerts .da-txt{font-size:.85rem;color:var(--tx)}
 
+/* ── Dropdown menus (navbar) — sustituye estilos inline hardcodeados ── */
+.dropdown{display:inline-block;position:relative}
+.menu{display:none;position:absolute;top:46px;right:0;background:var(--s1);border:1px solid var(--s2);border-radius:11px;padding:7px;z-index:1000;min-width:218px;box-shadow:0 12px 40px rgba(0,0,0,.45)}
+.menu.open{display:block;animation:menuIn .14s ease}
+@keyframes menuIn{from{opacity:0;transform:translateY(-6px)}to{opacity:1;transform:none}}
+.menu-head{padding:7px 12px 5px;color:var(--dim);font-size:9.5px;font-weight:700;text-transform:uppercase;letter-spacing:.6px}
+.menu-item{display:flex;align-items:center;gap:9px;width:100%;text-align:left;padding:9px 12px;color:var(--tx);text-decoration:none;border:none;background:transparent;cursor:pointer;border-radius:7px;font-size:12.5px;font-family:inherit;transition:background .12s;white-space:nowrap}
+.menu-item:hover{background:var(--s2)}
+.menu-sep{border-top:1px solid var(--s2);margin:6px 5px}
+.rol-sub{padding-left:8px;border-left:2px solid var(--s2);margin:2px 0 2px 12px}
+.rol-sub .menu-item{font-size:12px;color:var(--mut);padding:7px 11px}
+.rol-sub .menu-item:hover{color:var(--tx)}
+
 </style>
 </head>
 <body>
@@ -1159,39 +1172,50 @@ tr:hover td{background:rgba(255,255,255,.025)}
   <div class="nav-right">
     <span class="pill" id="date-pill">—</span>
     <span class="pill" style="color:var(--acc2)">👤 __USER_NAME__</span>
-    <button class="btn-ref" id="btn-demo" onclick="toggleDemoMode()" title="Activar Demo Mode para inversores" style="color:#9333ea;border-color:#9333ea">🎭 Demo</button>
-    <a href="/configuracion/" class="btn-ref" title="Configuración" style="text-decoration:none">⚙️</a>
-    <a href="/admin/" class="btn-ref" title="Admin" style="text-decoration:none;display:__ADMIN_DISPLAY__">👥</a>
-    <div style="display:inline-block;position:relative">
-      <button class="btn-ref" onclick="document.getElementById('reportes-menu').style.display=document.getElementById('reportes-menu').style.display==='block'?'none':'block'" title="Descargar reportes PDF" style="color:#1db954;border-color:#1db954">📄 Reportes</button>
-      <div id="reportes-menu" style="display:none;position:absolute;top:42px;right:0;background:#1c1f2e;border:1px solid #2e3248;border-radius:8px;padding:8px;z-index:1000;min-width:200px;box-shadow:0 4px 12px rgba(0,0,0,0.5)">
-        <div style="padding:6px 12px;color:#8892a4;font-size:10px;font-weight:600">REPORTES PDF</div>
-        <a href="/api/reportes/diario" style="display:block;padding:8px 12px;color:#fff;text-decoration:none;border-radius:6px;font-size:12px" onmouseover="this.style.background='#2e3248'" onmouseout="this.style.background='transparent'">📄 Diario</a>
-        <a href="/api/reportes/semanal" style="display:block;padding:8px 12px;color:#fff;text-decoration:none;border-radius:6px;font-size:12px" onmouseover="this.style.background='#2e3248'" onmouseout="this.style.background='transparent'">📊 Semanal</a>
-        <a href="/api/reportes/mensual" style="display:block;padding:8px 12px;color:#fff;text-decoration:none;border-radius:6px;font-size:12px" onmouseover="this.style.background='#2e3248'" onmouseout="this.style.background='transparent'">📈 Mensual</a>
-        <div style="border-top:1px solid #2e3248;margin:6px 0"></div>
-        <div style="padding:6px 12px;color:#8892a4;font-size:10px;font-weight:600">REPORTES EJECUTIVOS</div>
-        <a href="/api/reportes/ejecutivo.pdf" style="display:block;padding:8px 12px;color:#fff;text-decoration:none;border-radius:6px;font-size:12px" onmouseover="this.style.background='#2e3248'" onmouseout="this.style.background='transparent'">🎯 Ejecutivo PDF</a>
-        <a href="/api/reportes/consolidado.xlsx" style="display:block;padding:8px 12px;color:#fff;text-decoration:none;border-radius:6px;font-size:12px" onmouseover="this.style.background='#2e3248'" onmouseout="this.style.background='transparent'">📊 Consolidado Excel</a>
+
+    <div class="dropdown">
+      <button class="btn-ref" onclick="toggleMenu('reportes-menu')" title="Descargar reportes">📄 Reportes</button>
+      <div id="reportes-menu" class="menu">
+        <div class="menu-head">Reportes PDF</div>
+        <a href="/api/reportes/diario" class="menu-item">📄 Diario</a>
+        <a href="/api/reportes/semanal" class="menu-item">📊 Semanal</a>
+        <a href="/api/reportes/mensual" class="menu-item">📈 Mensual</a>
+        <div class="menu-sep"></div>
+        <div class="menu-head">Ejecutivos</div>
+        <a href="/api/reportes/ejecutivo.pdf" class="menu-item">🎯 Ejecutivo PDF</a>
+        <a href="/api/reportes/consolidado.xlsx" class="menu-item">📊 Consolidado Excel</a>
       </div>
     </div>
+
     <button class="btn-ref" onclick="loadAll()" title="Actualizar datos">↻ Actualizar</button>
+
     <button class="btn-run" id="btn-run" onclick="runPipeline()">
       <div class="spin" id="spin"></div>
-      <div style="display:inline-block;position:relative;margin-right:8px">
-      <button class="btn-ref" id="rol-btn" title="Cambiar rol" style="color:#ff9800;border-color:#ff9800">👤 Admin</button>
-      <div id="rol-menu" style="display:none;position:absolute;top:42px;right:0;background:#1c1f2e;border:1px solid #2e3248;border-radius:8px;padding:8px;z-index:1000;min-width:220px">
-        <div style="padding:8px 12px;color:#8892a4;font-size:11px;font-weight:600">CAMBIAR ROL</div>
-        <button onclick="cambiarRol('admin')" style="display:block;width:100%;text-align:left;padding:8px 12px;color:#fff;border:none;background:transparent;cursor:pointer;border-radius:4px;font-size:12px" onmouseover="this.style.background='#2e3248'" onmouseout="this.style.background='transparent'">🔑 Administrador</button>
-        <button onclick="cambiarRol('financial_controller')" style="display:block;width:100%;text-align:left;padding:8px 12px;color:#fff;border:none;background:transparent;cursor:pointer;border-radius:4px;font-size:12px" onmouseover="this.style.background='#2e3248'" onmouseout="this.style.background='transparent'">💰 Controller Financiero</button>
-        <button onclick="cambiarRol('income_auditor')" style="display:block;width:100%;text-align:left;padding:8px 12px;color:#fff;border:none;background:transparent;cursor:pointer;border-radius:4px;font-size:12px" onmouseover="this.style.background='#2e3248'" onmouseout="this.style.background='transparent'">📊 Income Auditor</button>
-        <button onclick="cambiarRol('fb_manager')" style="display:block;width:100%;text-align:left;padding:8px 12px;color:#fff;border:none;background:transparent;cursor:pointer;border-radius:4px;font-size:12px" onmouseover="this.style.background='#2e3248'" onmouseout="this.style.background='transparent'">🍽️ Jefe F&B</button>
-        <button onclick="cambiarRol('jefe_otras')" style="display:block;width:100%;text-align:left;padding:8px 12px;color:#fff;border:none;background:transparent;cursor:pointer;border-radius:4px;font-size:12px" onmouseover="this.style.background='#2e3248'" onmouseout="this.style.background='transparent'">🛠️ Jefe Servicios</button>
+      <span id="run-lbl">⚡ Procesar Facturas</span>
+    </button>
+
+    <div class="dropdown">
+      <button class="btn-ref" onclick="toggleMenu('main-menu')" title="Más opciones" style="font-size:17px;line-height:1;padding:5px 12px">⋯</button>
+      <div id="main-menu" class="menu">
+        <div class="menu-head">Presentación</div>
+        <button class="menu-item" id="btn-demo" onclick="toggleDemoMode()">🎭 Demo Mode</button>
+        <div class="menu-sep"></div>
+        <div class="menu-head">Cambiar rol</div>
+        <button class="menu-item" id="rol-btn">👤 Admin</button>
+        <div id="rol-menu" class="rol-sub" style="display:none">
+          <button class="menu-item" onclick="cambiarRol('admin')">🔑 Administrador</button>
+          <button class="menu-item" onclick="cambiarRol('financial_controller')">💰 Controller Financiero</button>
+          <button class="menu-item" onclick="cambiarRol('income_auditor')">📊 Income Auditor</button>
+          <button class="menu-item" onclick="cambiarRol('fb_manager')">🍽️ Jefe F&B</button>
+          <button class="menu-item" onclick="cambiarRol('jefe_otras')">🛠️ Jefe Servicios</button>
+        </div>
+        <div class="menu-sep"></div>
+        <a href="/configuracion/" class="menu-item">⚙️ Configuración</a>
+        <a href="/admin/" class="menu-item" style="display:__ADMIN_DISPLAY__">👥 Administración</a>
+        <div class="menu-sep"></div>
+        <a href="/logout" class="menu-item" style="color:#f87171">↩ Cerrar sesión</a>
       </div>
     </div>
-    <span id="run-lbl">⚡ Procesar Facturas</span>
-    </button>
-    <a href="/logout" class="btn-ref" title="Cerrar sesión" style="text-decoration:none">Salir</a>
   </div>
 </nav>
 
@@ -1924,6 +1948,20 @@ const rolLabels = {
   'fb_manager': '🍽️ F&B',
   'jefe_otras': '🛠️ Servicios'
 };
+
+function toggleMenu(id) {
+  const m = document.getElementById(id);
+  const wasOpen = m.classList.contains('open');
+  document.querySelectorAll('.menu.open').forEach(el => el.classList.remove('open'));
+  if (!wasOpen) m.classList.add('open');
+}
+
+// Cerrar menús al hacer click fuera
+document.addEventListener('click', (e) => {
+  if (!e.target.closest('.dropdown')) {
+    document.querySelectorAll('.menu.open').forEach(el => el.classList.remove('open'));
+  }
+});
 
 function toggleRolMenu() {
   const menu = document.getElementById('rol-menu');
