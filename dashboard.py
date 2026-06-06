@@ -2916,6 +2916,31 @@ def rol_actual():
     })
 
 
+
+@app.route('/api/notificaciones/chequear', methods=['POST'])
+def chequear_notificaciones():
+    """Escanea alertas y envía pendientes"""
+    try:
+        escanear_alertas()
+        enviados = enviar_pendientes(solo_check=False)
+        return jsonify({
+            "status": "ok",
+            "mensaje": f"{enviados} notificaciones procesadas"
+        })
+    except Exception as e:
+        return jsonify({"error": str(e)}), 500
+
+@app.route('/api/notificaciones/historial')
+def historial_notificaciones():
+    """Retorna historial de notificaciones"""
+    try:
+        with open('datos-referencia/notificaciones_historial.json', 'r') as f:
+            historial = json.load(f)
+        return jsonify(historial[-50:])  # Últimas 50
+    except:
+        return jsonify([])
+
+
 if __name__ == '__main__':
     import socket
     try:
