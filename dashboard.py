@@ -311,7 +311,6 @@ def api_procesar():
                 try:
                     sys.path.insert(0, BASE_DIR)
                     from exportador_final import generar_reporte_ejecutivo, generar_excel_consolidado
-from notificaciones import enviar_pendientes
                     alertas = enviar_pendientes()
                     if alertas:
                         yield "data: >> Notificaciones: " + str(len(alertas)) + " alerta(s) procesada(s)\n\n"
@@ -490,7 +489,6 @@ def api_procesar_ap():
                 try:
                     sys.path.insert(0, BASE_DIR)
                     from exportador_final import generar_reporte_ejecutivo, generar_excel_consolidado
-from notificaciones import enviar_pendientes
                     alertas = enviar_pendientes()
                     if alertas:
                         yield "data: >> Notificaciones: " + str(len(alertas)) + " alerta(s) procesada(s)\n\n"
@@ -848,7 +846,6 @@ def api_enviar_notificaciones():
     try:
         sys.path.insert(0, BASE_DIR)
         from exportador_final import generar_reporte_ejecutivo, generar_excel_consolidado
-from notificaciones import enviar_pendientes
         alertas = enviar_pendientes()
         return jsonify({"ok": True, "enviadas": len(alertas)})
     except Exception as e:
