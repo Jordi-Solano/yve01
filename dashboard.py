@@ -1545,16 +1545,60 @@ SMTP_PASSWORD=your_app_password
 
   <!-- PANEL AR REAL -->
   <div id="panel-ar_real" class="panel">
-    <h2 style="font-size:18px;font-weight:700;margin-bottom:20px">🏢 AR Real — Grupos Corporativos</h2>
-    <div style="background:#1c1f2e;border:1px solid #2e3248;border-radius:12px;padding:20px;margin-bottom:20px">
-      <h3 style="font-size:14px;margin-bottom:12px;color:#8892a4">Procesar Facturas de Grupos Corporativos</h3>
-      <button onclick="procesarARReal()" id="btn-ar-real" style="background:#1a73e8;color:white;border:none;padding:10px 20px;border-radius:8px;cursor:pointer;font-weight:600">▶️ Procesar Archivos</button>
-      <div id="ar-real-log" style="background:#0f1117;border:1px solid #2e3248;border-radius:8px;padding:12px;margin-top:16px;max-height:300px;overflow-y:auto;font-family:monospace;font-size:12px;color:#cdd6f4;min-height:60px"></div>
+    <!-- Header -->
+    <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:22px;flex-wrap:wrap;gap:12px">
+      <div>
+        <h2 style="font-size:18px;font-weight:700;margin:0">🏢 AR Real — Grupos Corporativos</h2>
+        <div style="font-size:12px;color:var(--mut);margin-top:4px">Clientes de crédito · Facturas corporativas · BEOs y grupos</div>
+      </div>
+      <button class="btn-run" onclick="procesarARReal()" id="btn-ar-real" style="font-size:13px">
+        <div class="spin" id="spin-ar"></div>
+        <span id="lbl-ar">▶ Procesar Archivos</span>
+      </button>
     </div>
-    <div style="background:#1c1f2e;border:1px solid #2e3248;border-radius:12px;padding:20px">
-      <h3 style="font-size:14px;margin-bottom:12px;color:#8892a4">Último Reporte Generado</h3>
-      <div id="ar-real-status">Sin reportes generados aún</div>
+
+    <!-- KPI row -->
+    <div id="ar-real-kpis" class="stats" style="grid-template-columns:repeat(4,1fr);margin-bottom:22px">
+      <div class="sc hl c-ora"><div class="sc-lbl">Pend. Facturar</div><div class="sc-val" id="arp-pend">—</div><div class="sc-sub">en reservas</div></div>
+      <div class="sc c-yel"><div class="sc-lbl">Facturado</div><div class="sc-val" id="arp-fact">—</div><div class="sc-sub">pendiente cobro</div></div>
+      <div class="sc c-grn"><div class="sc-lbl">Cobrado</div><div class="sc-val" id="arp-cobr">—</div><div class="sc-sub">este período</div></div>
+      <div class="sc c-red"><div class="sc-lbl">Saldo Total</div><div class="sc-val" id="arp-saldo">—</div><div class="sc-sub" id="arp-nclientes">— clientes</div></div>
     </div>
+
+    <!-- Main grid: clients + reservations -->
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:16px;margin-bottom:20px">
+      <!-- Clients table -->
+      <div class="card">
+        <div class="card-title">Clientes de Crédito</div>
+        <div class="tbl-wrap" style="min-width:0">
+          <table style="min-width:0;width:100%">
+            <thead><tr>
+              <th>Cliente</th><th style="text-align:right">Saldo</th><th style="text-align:center">Días</th><th style="text-align:center">Estado</th>
+            </tr></thead>
+            <tbody id="ar-clients-tbody"></tbody>
+          </table>
+        </div>
+      </div>
+      <!-- Reservations table -->
+      <div class="card">
+        <div class="card-title">Reservas Corporativas</div>
+        <div class="tbl-wrap" style="min-width:0">
+          <table style="min-width:0;width:100%">
+            <thead><tr>
+              <th>Reserva</th><th>Entrada</th><th style="text-align:right">Total</th><th style="text-align:center">Estado</th>
+            </tr></thead>
+            <tbody id="ar-reservas-tbody"></tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+
+    <!-- Process log (collapsed by default) -->
+    <div class="card" id="ar-log-card" style="display:none">
+      <div class="card-title">Log de Procesamiento</div>
+      <div id="ar-real-log" style="background:#060c1a;border:1px solid var(--s2);border-radius:10px;padding:14px;max-height:220px;overflow-y:auto;font-family:'JetBrains Mono',monospace;font-size:11px;line-height:1.8;color:var(--tx)"></div>
+    </div>
+    <div id="ar-real-status" style="display:none"></div>
   </div><!-- /panel-ar_real -->
 
   <!-- PANEL MULTI-HOTEL -->
@@ -2305,7 +2349,7 @@ function switchTab(tab, el) {
   var panel = document.getElementById('panel-' + tab);
   if (panel) panel.classList.add('active');
   if (tab === 'fb') loadFBTab();
-  if (tab === 'ar_real') cargarStatusARReal();
+  if (tab === 'ar_real') cargarARRealData();
   if (tab === 'drr') loadDRR();
   if (tab === 'banco') loadBanco();
   if (tab === 'calipolis') loadCalipolis();
@@ -2853,56 +2897,91 @@ loadBanco();
 // AR REAL — Procesar grupos corporativos
 // ═════════════════════════════════════════════════════════════════════
 function procesarARReal() {
-    const logDiv = document.getElementById('ar-real-log');
-    logDiv.innerHTML = '<div style="color:#666;">Conectando...</div>';
-    
-    const eventSource = new EventSource('/api/procesar_ar_real');
-    
-    eventSource.onmessage = function(event) {
-        const logLine = document.createElement('div');
-        logLine.textContent = event.data;
-        logLine.style.padding = '2px 0';
-        logDiv.appendChild(logLine);
-        logDiv.scrollTop = logDiv.scrollHeight;
-        
-        if (event.data === 'AR_REAL_COMPLETO') {
-            eventSource.close();
-            setTimeout(cargarStatusARReal, 1000);
-        }
-    };
-    
-    eventSource.onerror = function(err) {
-        console.error('Error AR Real:', err);
-        const logLine = document.createElement('div');
-        logLine.textContent = 'ERROR: Conexión perdida';
-        logLine.style.color = 'red';
-        logDiv.appendChild(logLine);
-        eventSource.close();
-    };
+  const logCard = document.getElementById('ar-log-card');
+  const logDiv  = document.getElementById('ar-real-log');
+  const btn     = document.getElementById('btn-ar-real');
+  const spin    = document.getElementById('spin-ar');
+  const lbl     = document.getElementById('lbl-ar');
+  if (logCard) logCard.style.display = 'block';
+  if (logDiv)  logDiv.innerHTML = '';
+  if (spin) spin.style.display = 'inline-block';
+  if (lbl)  lbl.textContent = 'Procesando...';
+  if (btn)  btn.disabled = true;
+
+  const es = new EventSource('/api/procesar_ar_real');
+  es.onmessage = function(e) {
+    const d = document.createElement('div');
+    d.style.padding = '1px 0';
+    d.style.color = e.data.startsWith('ERROR') ? 'var(--red)' :
+                    e.data.startsWith('  ✓') ? 'var(--grn)' : 'var(--tx)';
+    d.textContent = e.data;
+    if (logDiv) { logDiv.appendChild(d); logDiv.scrollTop = logDiv.scrollHeight; }
+    if (e.data === 'AR_REAL_COMPLETO') {
+      es.close();
+      if (spin) spin.style.display = 'none';
+      if (lbl)  lbl.textContent = '▶ Procesar Archivos';
+      if (btn)  btn.disabled = false;
+      setTimeout(cargarARRealData, 800);
+    }
+  };
+  es.onerror = function() {
+    es.close();
+    if (spin) spin.style.display = 'none';
+    if (lbl)  lbl.textContent = '▶ Procesar Archivos';
+    if (btn)  btn.disabled = false;
+  };
 }
 
-function cargarStatusARReal() {
-    const statusDiv = document.getElementById('ar-real-status');
-    if (!statusDiv) return;
-    fetch('/api/ar_real_status')
-        .then(r => r.json())
-        .then(data => {
-            if (data.reportes && data.reportes.length > 0) {
-                const rep = data.reportes[0];
-                let html = '<div style="background:#e8f5e9;border-left:4px solid #4caf50;padding:15px;margin:10px 0;">';
-                html += '<p><strong>Último reporte:</strong> ' + rep.filename + '</p>';
-                html += '<p><strong>Tamaño:</strong> ' + rep.size_kb + ' KB</p>';
-                html += '<p><strong>Actualizado:</strong> ' + new Date(rep.timestamp).toLocaleString() + '</p>';
-                html += '</div>';
-                statusDiv.innerHTML = html;
-            } else {
-                statusDiv.innerHTML = '<p style="color:#999;">Sin reportes generados aún</p>';
-            }
-        })
-        .catch(err => console.error('Error cargar status:', err));
+async function cargarStatusARReal() { await cargarARRealData(); }
+
+async function cargarARRealData() {
+  try {
+    const r = await fetch('/api/ar_real_data');
+    const d = await r.json();
+    if (d.error) return;
+    const k = d.kpis;
+    const fmt = v => '€' + Math.round(v).toLocaleString('es-ES');
+
+    // KPIs
+    document.getElementById('arp-pend').textContent  = fmt(k.pendiente_facturar);
+    document.getElementById('arp-fact').textContent  = fmt(k.facturado);
+    document.getElementById('arp-cobr').textContent  = fmt(k.cobrado);
+    document.getElementById('arp-saldo').textContent = fmt(k.saldo_total);
+    document.getElementById('arp-nclientes').textContent = k.num_clientes + ' clientes activos';
+
+    // Clients table
+    const ctbody = document.getElementById('ar-clients-tbody');
+    if (ctbody) {
+      ctbody.innerHTML = d.clientes.map(c => {
+        const sc = c.status === 'critical' ? 'var(--red)' : c.status === 'warning' ? 'var(--ora)' : 'var(--grn)';
+        const dot = '<span style="display:inline-block;width:7px;height:7px;border-radius:50%;background:' + sc + '"></span>';
+        const pct = c.limite_credito > 0 ? Math.round(c.saldo_pendiente/c.limite_credito*100) : 0;
+        return '<tr>' +
+          '<td style="max-width:160px;overflow:hidden;text-overflow:ellipsis" title="' + c.nombre + '">' + c.nombre.split(' ').slice(0,3).join(' ') + '</td>' +
+          '<td style="text-align:right;font-weight:700;color:' + (c.saldo_pendiente>0?'var(--ora)':'var(--grn)') + '">€' + c.saldo_pendiente.toLocaleString('es-ES') + '</td>' +
+          '<td style="text-align:center;color:var(--mut)">' + c.dias_pago + 'd</td>' +
+          '<td style="text-align:center">' + dot + '</td>' +
+          '</tr>';
+      }).join('');
+    }
+
+    // Reservations table
+    const rtbody = document.getElementById('ar-reservas-tbody');
+    if (rtbody) {
+      rtbody.innerHTML = d.reservas.map(r => {
+        const badge = r.estado === 'PENDIENTE_FACTURA' ? '<span class="badge b-unk">Pend.</span>' :
+                      r.estado === 'FACTURADO'         ? '<span class="badge b-cok">Fact.</span>' :
+                                                          '<span class="badge b-ok">Cobr.</span>';
+        return '<tr>' +
+          '<td style="font-weight:600">' + r.numero + '</td>' +
+          '<td style="color:var(--mut);font-size:11px">' + r.fecha_entrada + '</td>' +
+          '<td style="text-align:right;font-weight:700">€' + r.total.toLocaleString('es-ES') + '</td>' +
+          '<td style="text-align:center">' + badge + '</td>' +
+          '</tr>';
+      }).join('');
+    }
+  } catch(e) { console.warn('AR Real data:', e); }
 }
-
-
 
 
 
