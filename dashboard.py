@@ -1346,17 +1346,29 @@ tr:hover td{background:rgba(255,255,255,.025)}
 
   <!-- PANEL F&B -->
   <div id="panel-integraciones" class="panel" style="display:none">
-  <h2 style="font-size:18px;font-weight:700;margin-bottom:20px">⚙️ Integraciones Externas</h2>
-  <div id="integraciones-status" style="display:grid;grid-template-columns:repeat(auto-fit,minmax(250px,1fr));gap:16px;margin-bottom:24px"></div>
-  <div style="background:#1c1f2e;border:1px solid #2e3248;border-radius:12px;padding:20px">
-    <h3 style="margin:0 0 12px 0;font-size:14px;color:#8892a4">Configuración requerida (.env)</h3>
-    <div style="font-size:12px;color:#666;font-family:monospace;line-height:1.6">
-      SLACK_WEBHOOK_URL=https://hooks.slack.com/...<br>
-      TWILIO_ACCOUNT_SID=AC...<br>
-      TWILIO_AUTH_TOKEN=...<br>
-      TWILIO_WHATSAPP_NUMBER=+1234567890
+    <h2 style="font-size:18px;font-weight:700;margin-bottom:20px">⚙️ Integraciones Externas</h2>
+    <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(280px,1fr));gap:16px;margin-bottom:24px">
+      <div style="background:#1c1f2e;border:2px solid #e05252;border-radius:12px;padding:16px">
+        <div style="font-size:24px;margin-bottom:8px">💬</div>
+        <div style="font-weight:600;margin-bottom:4px">Slack</div>
+        <div style="font-size:12px;color:#e05252;margin-bottom:12px">No configurado</div>
+        <input type="text" placeholder="Webhook URL" style="width:100%;padding:8px;background:#0f1117;border:1px solid #2e3248;border-radius:6px;color:#fff;font-size:12px;margin-bottom:8px">
+        <button onclick="guardarSlack()" style="width:100%;background:#3b82f6;border:none;color:#fff;padding:8px;border-radius:6px;cursor:pointer;font-weight:600;font-size:12px">Guardar</button>
+      </div>
+      <div style="background:#1c1f2e;border:2px solid #e05252;border-radius:12px;padding:16px">
+        <div style="font-size:24px;margin-bottom:8px">📱</div>
+        <div style="font-weight:600;margin-bottom:4px">WhatsApp (Twilio)</div>
+        <div style="font-size:12px;color:#e05252;margin-bottom:12px">No configurado</div>
+        <input type="text" placeholder="Account SID" style="width:100%;padding:8px;background:#0f1117;border:1px solid #2e3248;border-radius:6px;color:#fff;font-size:12px;margin-bottom:8px">
+        <button onclick="guardarWhatsApp()" style="width:100%;background:#3b82f6;border:none;color:#fff;padding:8px;border-radius:6px;cursor:pointer;font-weight:600;font-size:12px">Guardar</button>
+      </div>
+      <div style="background:#1c1f2e;border:2px solid #1db954;border-radius:12px;padding:16px">
+        <div style="font-size:24px;margin-bottom:8px">📧</div>
+        <div style="font-weight:600;margin-bottom:4px">Email</div>
+        <div style="font-size:12px;color:#1db954;margin-bottom:8px">✓ Configurado</div>
+        <div style="font-size:11px;color:#8892a4">SMTP configurado en .env</div>
+      </div>
     </div>
-  </div>
   </div><!-- /panel-integraciones -->
 
   <div id="panel-fb" class="panel">
