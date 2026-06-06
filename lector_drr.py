@@ -125,6 +125,39 @@ def leer_daily_master(wb):
             break
     metricas["__fecha_informe__"] = fecha_informe
 
+    # ── GOP fallback: si Today/MTD son None pero Forecast está disponible ──────
+    # Las celdas GOP Today/MTD en DAILY_MASTER a veces son fórmulas con
+    # referencias cruzadas que openpyxl no puede evaluar (data_only=True).
+    # Estimamos a partir del GOP% implícito en Forecast vs Total Revenue Forecast.
+    _gop = metricas.get("GOP", {})
+    _gop_pct = metricas.get("GOP %", {})
+    _rev = metricas.get("Total Revenue", {})
+
+    if _gop.get("today") is None or _gop.get("mtd") is None:
+        # Intentar obtener GOP% del forecast
+        pct_f = _sf(_gop_pct.get("forecast")) if _gop_pct.get("forecast") is not None else None
+        if pct_f is not None and abs(pct_f) <= 1:
+            pct_decimal = pct_f
+        elif pct_f is not None:
+            pct_decimal = pct_f / 100
+        else:
+            # Calcular de GOP Forecast / Total Revenue Forecast
+            gop_f = _sf(_gop.get("forecast"))
+            rev_f = _sf(_rev.get("forecast"))
+            pct_decimal = (gop_f / rev_f) if gop_f and rev_f and rev_f != 0 else None
+
+        if pct_decimal is not None:
+            rev_today = _sf(_rev.get("today"))
+            rev_mtd   = _sf(_rev.get("mtd"))
+            if _gop.get("today") is None and rev_today:
+                metricas["GOP"]["today"] = rev_today * pct_decimal
+            if _gop.get("mtd") is None and rev_mtd:
+                metricas["GOP"]["mtd"] = rev_mtd * pct_decimal
+            if _gop_pct.get("today") is None:
+                metricas.setdefault("GOP %", {})["today"] = pct_decimal
+            if _gop_pct.get("mtd") is None:
+                metricas.setdefault("GOP %", {})["mtd"] = pct_decimal
+
     return metricas
 
 
