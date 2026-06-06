@@ -1134,6 +1134,14 @@ tr:hover td{background:rgba(255,255,255,.025)}
     <span class="pill" style="color:var(--acc2)">👤 __USER_NAME__</span>
     <a href="/configuracion/" class="btn-ref" title="Configuración" style="text-decoration:none">⚙️</a>
     <a href="/admin/" class="btn-ref" title="Admin" style="text-decoration:none;display:__ADMIN_DISPLAY__">👥</a>
+    <div style="display:inline-block;position:relative">
+      <button class="btn-ref" onclick="document.getElementById('reportes-menu').style.display=document.getElementById('reportes-menu').style.display==='block'?'none':'block'" title="Descargar reportes PDF" style="color:#1db954;border-color:#1db954">📄 Reportes</button>
+      <div id="reportes-menu" style="display:none;position:absolute;top:42px;right:0;background:#1c1f2e;border:1px solid #2e3248;border-radius:8px;padding:8px;z-index:1000;min-width:180px;box-shadow:0 4px 12px rgba(0,0,0,0.5)">
+        <a href="/api/reportes/diario" style="display:block;padding:10px 12px;color:#fff;text-decoration:none;border-radius:6px;font-size:13px" onmouseover="this.style.background='#2e3248'" onmouseout="this.style.background='transparent'">📄 Reporte Diario</a>
+        <a href="/api/reportes/semanal" style="display:block;padding:10px 12px;color:#fff;text-decoration:none;border-radius:6px;font-size:13px" onmouseover="this.style.background='#2e3248'" onmouseout="this.style.background='transparent'">📊 Reporte Semanal</a>
+        <a href="/api/reportes/mensual" style="display:block;padding:10px 12px;color:#fff;text-decoration:none;border-radius:6px;font-size:13px" onmouseover="this.style.background='#2e3248'" onmouseout="this.style.background='transparent'">📈 Reporte Mensual</a>
+      </div>
+    </div>
     <button class="btn-ref" onclick="loadAll()" title="Actualizar datos">↻ Actualizar</button>
     <button class="btn-run" id="btn-run" onclick="runPipeline()">
       <div class="spin" id="spin"></div>
