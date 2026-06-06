@@ -1756,6 +1756,7 @@ function switchTab(tab, el) {
   if (panel) panel.classList.add('active');
   if (tab === 'fb') loadFBTab();
   if (tab === 'ar_real') cargarStatusARReal();
+  if (tab === 'calipolis') loadCalipolis();
   if (tab === 'multi_hotel') loadMultiHotel();
 }
 async function loadFBTab() {
