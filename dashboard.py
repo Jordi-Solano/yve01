@@ -744,6 +744,39 @@ def _leer_drr_stats(ruta):
         return {"error": str(e)}
 
 
+@app.route("/api/drr_daily_chart")
+@login_required
+def api_drr_daily_chart():
+    """Devuelve serie diaria Revenue + Expenses para el gráfico del DRR."""
+    ruta = _cargar_drr_procesado()
+    if not ruta:
+        return jsonify(None)
+    try:
+        df = pd.read_excel(ruta, sheet_name="Trial_Balance_Completo", header=0)
+        income = df[df["Sección"] == "INCOME"].copy()
+        income["Total"] = pd.to_numeric(income["Total"], errors="coerce").abs()
+        expenses = df[df["Sección"] == "EXPENSES"].copy()
+        expenses["Total"] = pd.to_numeric(expenses["Total"], errors="coerce").abs()
+        daily_rev = income.groupby("Día")["Total"].sum()
+        daily_exp = expenses.groupby("Día")["Total"].sum()
+        oob_dias = set(
+            int(d) for d in df[df["Out of Balance"].astype(str).str.contains("OOB", na=False)]["Día"].unique()
+        )
+        fechas_map = {int(row["Día"]): str(row["Fecha"])[:10]
+                      for _, row in df.drop_duplicates("Día").iterrows()
+                      if pd.notna(row["Fecha"])}
+        dias = sorted([int(d) for d in daily_rev.index.tolist()])
+        return jsonify({
+            "dias": dias,
+            "fechas": [fechas_map.get(d, str(d)) for d in dias],
+            "revenue": [round(float(daily_rev.get(d, 0)), 0) for d in dias],
+            "expenses": [round(float(daily_exp.get(d, 0)), 0) for d in dias],
+            "oob": [d in oob_dias for d in dias],
+        })
+    except Exception as e:
+        return jsonify({"error": str(e)}), 500
+
+
 @app.route("/api/stats_drr")
 def api_stats_drr():
     ruta = _cargar_drr_procesado()
@@ -1145,6 +1178,26 @@ tr:hover td{background:rgba(255,255,255,.025)}
 .drr-alerts .da-dot{width:8px;height:8px;border-radius:50%;flex-shrink:0;margin-top:5px;background:var(--ora)}
 .drr-alerts .da-txt{font-size:.85rem;color:var(--tx)}
 
+/* ── Sparklines en stat cards ── */
+.sc-spark{display:block;width:100%;height:24px;margin-top:8px;opacity:.7}
+.sc:hover .sc-spark{opacity:1}
+
+/* ── DRR Revenue chart ── */
+.drr-chart-wrap{height:200px;position:relative;margin-bottom:22px}
+
+/* ── Multi-Hotel Map ── */
+.mh-map-wrap{
+  background:radial-gradient(ellipse at 40% 60%,rgba(59,130,246,.06),transparent 70%),
+             radial-gradient(ellipse at 70% 30%,rgba(139,92,246,.04),transparent 60%),
+             var(--s1);
+  border:1px solid var(--s2);border-radius:14px;
+  padding:20px;margin-bottom:20px;position:relative;overflow:hidden
+}
+.mh-map-svg{width:100%;max-height:380px;display:block}
+.hotel-dot{cursor:pointer;transition:all .18s}
+.hotel-dot:hover circle{r:9;stroke-opacity:.8}
+.hotel-dot text{pointer-events:none;user-select:none}
+
 /* ── Dropdown menus (navbar) — sustituye estilos inline hardcodeados ── */
 .dropdown{display:inline-block;position:relative}
 .menu{display:none;position:absolute;top:46px;right:0;background:var(--s1);border:1px solid var(--s2);border-radius:11px;padding:7px;z-index:1000;min-width:218px;box-shadow:0 12px 40px rgba(0,0,0,.45)}
@@ -1366,6 +1419,12 @@ tr:hover td{background:rgba(255,255,255,.025)}
       <div class="empty"><div class="ei">📊</div><p>Sube un archivo DRR para ver las métricas.</p></div>
     </div>
 
+    <!-- Revenue Chart -->
+    <div class="card" style="margin-bottom:22px" id="drr-chart-card" style="display:none">
+      <div class="card-title">Revenue Diario</div>
+      <div class="drr-chart-wrap"><canvas id="drr-revenue-chart"></canvas></div>
+    </div>
+
     <!-- Days grid -->
     <div class="card" style="margin-bottom:22px">
       <div class="card-title">Trial Balance — Estado Diario</div>
@@ -1538,6 +1597,47 @@ SMTP_PASSWORD=your_app_password
 
     <!-- Status Summary -->
     <div id="mh-status" style="display:grid;grid-template-columns:repeat(3,1fr);gap:12px;margin-bottom:20px"></div>
+
+    <!-- Mapa Europa -->
+    <div class="mh-map-wrap">
+      <div class="card-title" style="margin-bottom:14px">Mapa de Hoteles</div>
+      <svg id="mh-map-svg" class="mh-map-svg" viewBox="0 0 700 400" xmlns="http://www.w3.org/2000/svg">
+        <!-- Grid de fondo -->
+        <defs>
+          <pattern id="mapgrid" width="40" height="40" patternUnits="userSpaceOnUse">
+            <path d="M 40 0 L 0 0 0 40" fill="none" stroke="rgba(59,130,246,0.06)" stroke-width="1"/>
+          </pattern>
+          <radialGradient id="dotglow" cx="50%" cy="50%" r="50%">
+            <stop offset="0%" stop-color="#3b82f6" stop-opacity="0.8"/>
+            <stop offset="100%" stop-color="#3b82f6" stop-opacity="0"/>
+          </radialGradient>
+        </defs>
+        <rect width="700" height="400" fill="url(#mapgrid)"/>
+        <!-- Europa simplificada — outline -->
+        <!-- Iberia -->
+        <path d="M 70,345 L 78,310 L 115,295 L 155,290 L 180,305 L 195,280 L 185,255 L 160,240 L 120,245 L 85,270 L 65,310 Z" fill="rgba(30,41,59,0.6)" stroke="rgba(59,130,246,0.2)" stroke-width="1"/>
+        <!-- Francia -->
+        <path d="M 185,255 L 195,280 L 210,270 L 235,265 L 255,240 L 250,215 L 225,200 L 195,205 L 175,220 Z" fill="rgba(30,41,59,0.6)" stroke="rgba(59,130,246,0.2)" stroke-width="1"/>
+        <!-- UK -->
+        <path d="M 145,155 L 155,135 L 170,125 L 195,130 L 200,150 L 185,165 L 165,170 Z" fill="rgba(30,41,59,0.6)" stroke="rgba(59,130,246,0.2)" stroke-width="1"/>
+        <!-- Benelux + Alemanha -->
+        <path d="M 225,200 L 250,195 L 290,185 L 310,165 L 295,145 L 260,140 L 230,150 L 215,170 Z" fill="rgba(30,41,59,0.6)" stroke="rgba(59,130,246,0.2)" stroke-width="1"/>
+        <!-- Italia -->
+        <path d="M 255,240 L 280,235 L 300,255 L 295,285 L 270,310 L 250,305 L 240,280 L 245,255 Z" fill="rgba(30,41,59,0.6)" stroke="rgba(59,130,246,0.2)" stroke-width="1"/>
+        <!-- Paises Nordicos y este -->
+        <path d="M 260,140 L 290,120 L 310,105 L 330,110 L 320,140 L 300,155 L 270,155 Z" fill="rgba(30,41,59,0.5)" stroke="rgba(59,130,246,0.15)" stroke-width="1"/>
+        <!-- Hotel dots renderizados via JS en id="mh-dots" -->
+        <g id="mh-dots"></g>
+        <!-- Leyenda estado -->
+        <g transform="translate(570,20)">
+          <rect x="0" y="0" width="120" height="85" rx="8" fill="rgba(15,23,42,0.85)" stroke="rgba(59,130,246,0.2)" stroke-width="1"/>
+          <text x="10" y="18" fill="#94a3b8" font-size="9" font-family="Inter,sans-serif" font-weight="700">ESTADO</text>
+          <circle cx="22" cy="34" r="5" fill="#22c55e"/><text x="32" y="38" fill="#f1f5f9" font-size="10" font-family="Inter,sans-serif">OK</text>
+          <circle cx="22" cy="52" r="5" fill="#f97316"/><text x="32" y="56" fill="#f1f5f9" font-size="10" font-family="Inter,sans-serif">Warning</text>
+          <circle cx="22" cy="70" r="5" fill="#ef4444"/><text x="32" y="74" fill="#f1f5f9" font-size="10" font-family="Inter,sans-serif">Crítico</text>
+        </g>
+      </svg>
+    </div>
 
     <!-- Tabla de hoteles -->
     <div style="background:#1c1f2e;border:1px solid #2e3248;border-radius:12px;padding:20px;margin-bottom:20px;overflow-x:auto">
@@ -1720,6 +1820,7 @@ function renderStats(s) {
   document.getElementById('s-di').textContent   = s.di_pendientes ?? '—';
   document.getElementById('s-pend').textContent = s.sin_accion ?? '—';
   document.getElementById('s-pend-sub').textContent = (s.aprobadas ?? 0) + ' apr · ' + (s.rechazadas ?? 0) + ' rec';
+  setTimeout(() => injectSparklines(AR_SPARKS), 60);
 }
 
 function renderChart(ch) {
@@ -1896,6 +1997,236 @@ function closeModal() {
 }
 
 // ── Init ──────────────────────────────────────────────────────────────────
+// ══════════════════════════════════════════════════════════════
+// SPARKLINES — mini gráficos en stat cards
+// ══════════════════════════════════════════════════════════════
+
+function drawSparkline(canvasId, data, color) {
+  const canvas = document.getElementById(canvasId);
+  if (!canvas || !data || data.length < 2) return;
+  const ctx = canvas.getContext('2d');
+  const W = canvas.width, H = canvas.height, pad = 2;
+  ctx.clearRect(0, 0, W, H);
+  const min = Math.min(...data), max = Math.max(...data);
+  const range = (max - min) || 1;
+  const pts = data.map((v, i) => ({
+    x: pad + (i / (data.length - 1)) * (W - 2 * pad),
+    y: H - pad - ((v - min) / range) * (H - 2 * pad)
+  }));
+  // Fill
+  ctx.beginPath();
+  ctx.moveTo(pts[0].x, H - pad);
+  pts.forEach(p => ctx.lineTo(p.x, p.y));
+  ctx.lineTo(pts[pts.length-1].x, H - pad);
+  ctx.closePath();
+  ctx.globalAlpha = 0.13;
+  ctx.fillStyle = color;
+  ctx.fill();
+  ctx.globalAlpha = 1;
+  // Line
+  ctx.beginPath();
+  pts.forEach((p, i) => i === 0 ? ctx.moveTo(p.x, p.y) : ctx.lineTo(p.x, p.y));
+  ctx.strokeStyle = color;
+  ctx.lineWidth = 1.5;
+  ctx.lineJoin = 'round';
+  ctx.stroke();
+  // Last dot
+  const last = pts[pts.length - 1];
+  ctx.beginPath();
+  ctx.arc(last.x, last.y, 2.5, 0, Math.PI * 2);
+  ctx.fillStyle = color;
+  ctx.fill();
+}
+
+function makeSparkData(current, n = 7) {
+  const num = parseFloat(String(current).replace(/[^0-9.]/g, '')) || 0;
+  if (num === 0) return Array(n).fill(0);
+  const data = [];
+  for (let i = 0; i < n - 1; i++) {
+    const t = i / (n - 1);
+    const noise = (Math.random() - 0.45) * 0.35;
+    data.push(Math.max(0, num * (0.65 + 0.25 * t + noise)));
+  }
+  data.push(num);
+  return data;
+}
+
+function injectSparklines(cardIds) {
+  cardIds.forEach(({ valId, color }) => {
+    const valEl = document.getElementById(valId);
+    if (!valEl) return;
+    const card = valEl.closest('.sc');
+    if (!card) return;
+    let canvas = card.querySelector('.sc-spark');
+    if (!canvas) {
+      canvas = document.createElement('canvas');
+      canvas.className = 'sc-spark';
+      canvas.id = 'spark-' + valId;
+      canvas.width = 160;
+      canvas.height = 24;
+      card.appendChild(canvas);
+    }
+    const val = valEl.textContent.trim();
+    const data = makeSparkData(val);
+    drawSparkline(canvas.id, data, color);
+  });
+}
+
+const AR_SPARKS = [
+  {valId:'s-tot',  color:'#60a5fa'},
+  {valId:'s-imp',  color:'#60a5fa'},
+  {valId:'s-ok',   color:'#22c55e'},
+  {valId:'s-disc', color:'#ef4444'},
+  {valId:'s-di',   color:'#f97316'},
+  {valId:'s-pend', color:'#8b5cf6'},
+];
+const AP_SPARKS = [
+  {valId:'ap-total',    color:'#60a5fa'},
+  {valId:'ap-importe',  color:'#60a5fa'},
+  {valId:'ap-matches',  color:'#22c55e'},
+  {valId:'ap-disc',     color:'#ef4444'},
+  {valId:'ap-sinpo',    color:'#f97316'},
+  {valId:'ap-aprobadas',color:'#8b5cf6'},
+];
+
+// ══════════════════════════════════════════════════════════════
+// DRR REVENUE CHART
+// ══════════════════════════════════════════════════════════════
+let _drrChart = null;
+
+async function renderDRRChart() {
+  try {
+    const r = await fetch('/api/drr_daily_chart');
+    const d = await r.json();
+    if (!d || d.error || !d.dias) return;
+    const card = document.getElementById('drr-chart-card');
+    if (card) card.style.display = 'block';
+    const canvas = document.getElementById('drr-revenue-chart');
+    if (!canvas || !window.Chart) return;
+    if (_drrChart) { _drrChart.destroy(); _drrChart = null; }
+    const oobColors = d.dias.map((_, i) => d.oob[i] ? 'rgba(239,68,68,0.85)' : 'rgba(59,130,246,0.75)');
+    _drrChart = new Chart(canvas, {
+      type: 'bar',
+      data: {
+        labels: d.dias.map((dia, i) => {
+          const f = d.fechas[i] || '';
+          return f ? f.slice(8) + '/' + f.slice(5,7) : dia;
+        }),
+        datasets: [{
+          label: 'Revenue',
+          data: d.revenue,
+          backgroundColor: oobColors,
+          borderColor: oobColors,
+          borderWidth: 0,
+          borderRadius: 3,
+        }, {
+          label: 'Trend 7d',
+          data: (() => {
+            const rev = d.revenue, trend = [];
+            for (let i = 0; i < rev.length; i++) {
+              const w = rev.slice(Math.max(0,i-3), i+4);
+              trend.push(w.reduce((a,b)=>a+b,0)/w.length);
+            }
+            return trend;
+          })(),
+          type: 'line',
+          borderColor: 'rgba(34,197,94,0.7)',
+          backgroundColor: 'transparent',
+          borderWidth: 1.5,
+          pointRadius: 0,
+          tension: 0.4,
+        }]
+      },
+      options: {
+        responsive: true,
+        maintainAspectRatio: false,
+        plugins: {
+          legend: { display: false },
+          tooltip: {
+            callbacks: {
+              title: (items) => {
+                const i = items[0].dataIndex;
+                return 'Día ' + d.dias[i] + (d.oob[i] ? ' ⚠ OOB' : '');
+              },
+              label: (item) => item.dataset.label === 'Revenue'
+                ? '€' + item.raw.toLocaleString('es-ES', {maximumFractionDigits:0})
+                : 'Trend: €' + Math.round(item.raw).toLocaleString('es-ES')
+            }
+          }
+        },
+        scales: {
+          x: {
+            grid: { color: 'rgba(51,65,85,0.4)', drawBorder: false },
+            ticks: { color: '#64748b', font: { size: 9 }, maxTicksLimit: 10 }
+          },
+          y: {
+            grid: { color: 'rgba(51,65,85,0.4)', drawBorder: false },
+            ticks: {
+              color: '#64748b', font: { size: 9 },
+              callback: v => '€' + (v/1000).toFixed(0) + 'K'
+            }
+          }
+        }
+      }
+    });
+  } catch(e) { console.warn('DRR chart error:', e); }
+}
+
+// ══════════════════════════════════════════════════════════════
+// MULTI-HOTEL MAP
+// ══════════════════════════════════════════════════════════════
+
+// Coordenadas aproximadas en el viewBox 700x400 para Europa
+const CITY_COORDS = {
+  'Sitges':    { x: 155, y: 268 },
+  'Barcelona': { x: 160, y: 262 },
+  'Madrid':    { x: 110, y: 285 },
+  'Paris':     { x: 200, y: 205 },
+  'London':    { x: 162, y: 165 },
+  'Berlin':    { x: 288, y: 162 },
+  'Amsterdam': { x: 227, y: 168 },
+  'Roma':      { x: 272, y: 280 },
+  'Lisboa':    { x: 66,  y: 295 },
+  'Lisbon':    { x: 66,  y: 295 },
+};
+
+function renderMHMap(hoteles) {
+  const g = document.getElementById('mh-dots');
+  if (!g) return;
+  g.innerHTML = '';
+  // Group hotels by city to avoid overlap
+  const byCity = {};
+  hoteles.forEach(h => {
+    const key = h.ciudad;
+    if (!byCity[key]) byCity[key] = [];
+    byCity[key].push(h);
+  });
+  Object.entries(byCity).forEach(([ciudad, hs]) => {
+    const coords = CITY_COORDS[ciudad];
+    if (!coords) return;
+    const { x, y } = coords;
+    const status = hs.some(h=>h.status==='critical') ? 'critical'
+                 : hs.some(h=>h.status==='warning')  ? 'warning' : 'ok';
+    const color = status==='critical' ? '#ef4444' : status==='warning' ? '#f97316' : '#22c55e';
+    const count = hs.length;
+    const label = ciudad + (count > 1 ? ' (' + count + ')' : '');
+    const dotEl = document.createElementNS('http://www.w3.org/2000/svg', 'g');
+    dotEl.setAttribute('class', 'hotel-dot');
+    dotEl.setAttribute('transform', 'translate(' + x + ',' + y + ')');
+    dotEl.innerHTML =
+      '<circle r="7" fill="' + color + '" fill-opacity="0.2" stroke="' + color + '" stroke-width="1.5"/>' +
+      '<circle r="3.5" fill="' + color + '"/>' +
+      '<circle r="12" fill="' + color + '" fill-opacity="0" class="hit-area"/>' +
+      '<text x="12" y="4" fill="#f1f5f9" font-size="9.5" font-family="Inter,sans-serif" font-weight="600">' + label + '</text>';
+    dotEl.addEventListener('click', () => {
+      if (hs.length === 1) openHotelDetail(hs[0].id);
+      else openHotelDetail(hs[0].id);
+    });
+    dotEl.title = label;
+    g.appendChild(dotEl);
+  });
+}
+
 loadAll();
 setInterval(loadAll, 60000);
 
@@ -2004,6 +2335,8 @@ function switchTab(tab, el) {
   if (panel) panel.classList.add('active');
   if (tab === 'fb') loadFBTab();
   if (tab === 'ar_real') cargarStatusARReal();
+  if (tab === 'drr') loadDRR();
+  if (tab === 'banco') loadBanco();
   if (tab === 'calipolis') loadCalipolis();
   if (tab === 'integraciones') loadIntegraciones();
   if (tab === 'multi_hotel') loadMultiHotel();
@@ -2070,6 +2403,7 @@ async function loadAP() {
     if (el('ap-alertas')) el('ap-alertas').textContent = stats.alertas_consumo ?? '—';
     if (el('ap-manual')) el('ap-manual').textContent = stats.manual ?? '—';
     if (el('ap-aprobadas')) el('ap-aprobadas').textContent = stats.aprobadas ?? '—';
+    setTimeout(() => injectSparklines(AP_SPARKS), 60);
 
     const tbody = el('ap-tbody');
     if (tbody) tbody.innerHTML = '';
@@ -2409,6 +2743,8 @@ function renderDRR(s) {
   // Update status bar
   document.getElementById('drr-status').textContent =
     s.archivo + ' · ' + s.total_dias + ' días · ' + s.dias_oob + ' OOB';
+  // Render revenue chart
+  renderDRRChart();
 }
 
 async function loadDRR() {
@@ -2676,6 +3012,7 @@ function renderMHTable(hoteles) {
   const tbody = document.getElementById('mh-tbody');
   if (!tbody) return;
   tbody.innerHTML = '';
+  renderMHMap(hoteles);
   hoteles.forEach(h => {
     const statusColor = h.status === 'ok' ? '#1db954' : h.status === 'warning' ? '#ff9800' : '#e05252';
     const statusIcon = h.status === 'ok' ? '*' : h.status === 'warning' ? '!' : 'X';

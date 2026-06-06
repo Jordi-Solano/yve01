@@ -53,12 +53,31 @@ HTML = r"""<!DOCTYPE html>
 body{background:var(--bg);color:var(--tx);font-family:'Inter',-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif;
   min-height:100vh;display:flex;align-items:center;justify-content:center;padding:24px;position:relative;overflow:hidden}
 body::before{content:"";position:fixed;inset:0;z-index:0;pointer-events:none;
-  background:radial-gradient(1100px 560px at 82% -12%, rgba(59,130,246,.18), transparent 60%),
-            radial-gradient(820px 460px at -10% 112%, rgba(139,92,246,.12), transparent 55%)}
+  background:
+    radial-gradient(1000px 500px at var(--bx1,82%) var(--by1,-12%), rgba(59,130,246,.18), transparent 60%),
+    radial-gradient(700px 400px at var(--bx2,-10%) var(--by2,112%), rgba(139,92,246,.12), transparent 55%);
+  animation:bgFloat 12s ease-in-out infinite alternate}
+@keyframes bgFloat{
+  0%{--bx1:82%;--by1:-12%;--bx2:-10%;--by2:112%}
+  50%{--bx1:88%;--by1:5%;--bx2:5%;--by2:105%}
+  100%{--bx1:75%;--by1:-8%;--bx2:-5%;--by2:118%}
+}
+/* CSS custom props not animatable in all browsers — use transform instead */
+body::after{content:"";position:fixed;width:600px;height:600px;
+  border-radius:50%;
+  background:radial-gradient(circle,rgba(59,130,246,.08),transparent 70%);
+  top:-100px;right:-100px;z-index:0;pointer-events:none;
+  animation:blobA 15s ease-in-out infinite alternate}
+@keyframes blobA{
+  0%{transform:translate(0,0) scale(1)}
+  50%{transform:translate(-40px,60px) scale(1.1)}
+  100%{transform:translate(30px,-30px) scale(0.95)}
+}
 .wrap{position:relative;z-index:1;width:100%;max-width:410px}
-.login-card{background:linear-gradient(180deg,rgba(30,41,59,.92),rgba(15,23,42,.92));
+.login-card{background:linear-gradient(160deg,rgba(30,41,59,.94),rgba(15,23,42,.96));
   border:1px solid var(--s2);border-radius:20px;padding:38px 34px;
-  box-shadow:0 24px 70px rgba(0,0,0,.5);backdrop-filter:blur(8px);animation:rise .35s cubic-bezier(.2,.7,.2,1)}
+  box-shadow:0 24px 70px rgba(0,0,0,.55),0 0 0 1px rgba(59,130,246,.07) inset;
+  backdrop-filter:blur(12px);animation:rise .4s cubic-bezier(.2,.8,.2,1)}
 @keyframes rise{from{opacity:0;transform:translateY(14px)}to{opacity:1;transform:none}}
 .brand{display:flex;align-items:center;gap:10px;margin-bottom:6px}
 .brand-dot{width:11px;height:11px;border-radius:50%;background:var(--acc);box-shadow:0 0 14px var(--acc)}
@@ -75,7 +94,8 @@ input:focus{border-color:var(--acc);box-shadow:0 0 0 3px rgba(59,130,246,.18)}
 .btn-login{width:100%;margin-top:24px;padding:14px;background:linear-gradient(135deg,var(--acc),#1d4ed8);
   color:#fff;border:none;border-radius:11px;font-size:15px;font-weight:700;cursor:pointer;font-family:inherit;
   box-shadow:0 8px 24px rgba(59,130,246,.32)}
-.btn-login:hover{box-shadow:0 12px 32px rgba(59,130,246,.5);transform:translateY(-1px)}
+.btn-login:hover{box-shadow:0 12px 32px rgba(59,130,246,.5),0 0 0 1px rgba(59,130,246,.3);transform:translateY(-1px)}
+.btn-login:focus-visible{outline:2px solid var(--acc2);outline-offset:3px}
 .btn-login:active{transform:translateY(0)}
 .btn-login:disabled{opacity:.6;cursor:not-allowed;transform:none}
 .error{display:none;margin-top:14px;padding:11px 14px;background:rgba(239,68,68,.1);
@@ -86,7 +106,7 @@ input:focus{border-color:var(--acc);box-shadow:0 0 0 3px rgba(59,130,246,.18)}
 .chips{display:grid;grid-template-columns:1fr 1fr;gap:8px}
 .chip{background:rgba(51,65,85,.45);border:1px solid var(--s2);border-radius:10px;padding:9px 11px;
   cursor:pointer;text-align:left;font-family:inherit;transition:.15s}
-.chip:hover{border-color:var(--acc);background:rgba(59,130,246,.12)}
+.chip:hover{border-color:var(--acc);background:rgba(59,130,246,.1);box-shadow:0 0 12px rgba(59,130,246,.15)}
 .chip-role{font-size:12px;font-weight:700;color:var(--acc2);display:block}
 .chip-user{font-size:10.5px;color:var(--mut);margin-top:1px}
 .foot{display:flex;align-items:center;justify-content:center;gap:7px;margin-top:22px;font-size:11.5px;color:var(--dim)}
