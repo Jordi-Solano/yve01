@@ -50,7 +50,8 @@ from app_conciliacion import bp as concil_bp
 from tab_fb_dashboard import fb_bp
 from tab_ar_real import ar_real_bp
 from tab_multi_hotel import multi_hotel_bp
-for _bp in (auth_bp, config_bp, admin_bp, aprob_ar_bp, aprob_ap_bp, concil_bp, fb_bp, ar_real_bp, multi_hotel_bp):
+from tab_exportador import exportador_bp
+for _bp in (auth_bp, config_bp, admin_bp, aprob_ar_bp, aprob_ap_bp, concil_bp, fb_bp, ar_real_bp, multi_hotel_bp, exportador_bp):
     app.register_blueprint(_bp)
 
 _pipeline_running = False
@@ -1356,7 +1357,7 @@ tr:hover td{background:rgba(255,255,255,.025)}
   <!-- PANEL MULTI-HOTEL -->
   <div id="panel-multi_hotel" class="panel">
     <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:20px;flex-wrap:wrap;gap:12px">
-      <h2 style="font-size:18px;font-weight:700;margin:0">🏨 Multi-Hotel Dashboard</h2>
+      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:20px"><h2 style="font-size:18px;font-weight:700;margin:0">🏨 Multi-Hotel Dashboard</h2><a href="/api/exportar/multihotel" style="background:#1a73e8;color:white;border:none;padding:8px 16px;border-radius:8px;cursor:pointer;font-weight:600;text-decoration:none;font-size:13px">⬇️ Descargar Excel</a></div>
       <select id="grupo-filter" onchange="loadMultiHotel()" style="background:#1c1f2e;color:#cdd6f4;border:1px solid #2e3248;border-radius:8px;padding:8px 12px;font-size:13px;cursor:pointer">
         <option value="">Todos los grupos</option>
       </select>
