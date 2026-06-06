@@ -3207,46 +3207,35 @@ function renderCalipolisKpis(kpis) {
 function renderCalipolisHoteles(hoteles) {
   const cont = document.getElementById('cal-hoteles');
   if (!cont) return;
-  cont.innerHTML = hoteles.map(h => {
+  cont.innerHTML = '';
+  hoteles.forEach(h => {
     const sc = h.status === 'ok' ? '#22c55e' : h.status === 'warning' ? '#f97316' : '#ef4444';
-    const apTrend = h.ap_pendientes === 0 ? '✓ Sin pendientes' : h.ap_pendientes + ' fact. pend.';
+    const apTrend = h.ap_pendientes === 0 ? '\u2713 Sin pendientes' : h.ap_pendientes + ' fact. pend.';
     const apColor = h.ap_pendientes === 0 ? '#22c55e' : h.ap_pendientes <= 3 ? '#f97316' : '#ef4444';
     const gopColor = h.gop_pct >= 22 ? '#22c55e' : h.gop_pct >= 18 ? '#f97316' : '#ef4444';
-    return '<div style="background:var(--s1);border:1px solid var(--s2);border-radius:13px;padding:18px;cursor:pointer;transition:border-color .18s" ' +
-      'onclick="abrirDetalleCalipolis('' + h.id + '')" ' +
-      'onmouseover="this.style.borderColor='' + sc + '44'" ' +
-      'onmouseout="this.style.borderColor='var(--s2)'">' +
+    const card = document.createElement('div');
+    card.style.cssText = 'background:var(--s1);border:1px solid var(--s2);border-radius:13px;padding:18px;cursor:pointer;transition:border-color .18s';
+    card.addEventListener('mouseover', function() { card.style.borderColor = sc + '55'; });
+    card.addEventListener('mouseout',  function() { card.style.borderColor = 'var(--s2)'; });
+    card.addEventListener('click',     function() { abrirDetalleCalipolis(h.id); });
+    card.innerHTML =
       '<div style="display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:14px">' +
-        '<div>' +
-          '<div style="font-weight:700;font-size:14px;margin-bottom:3px">' + h.nombre + '</div>' +
-          '<div style="font-size:11px;color:var(--mut)">' + h.categoria + ' · ' + h.habitaciones + ' hab.</div>' +
-        '</div>' +
-        '<div style="width:8px;height:8px;border-radius:50%;background:' + sc + ';box-shadow:0 0 6px ' + sc + ';margin-top:4px"></div>' +
+        '<div><div style="font-weight:700;font-size:14px;margin-bottom:3px">' + h.nombre + '</div>' +
+        '<div style="font-size:11px;color:var(--mut)">' + h.categoria + ' \u00b7 ' + h.habitaciones + ' hab.</div></div>' +
+        '<div style="width:8px;height:8px;border-radius:50%;background:' + sc + ';margin-top:4px;flex-shrink:0"></div>' +
       '</div>' +
       '<div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:14px">' +
-        '<div style="background:var(--s2);border-radius:8px;padding:10px">' +
-          '<div style="font-size:9px;color:var(--dim);text-transform:uppercase;letter-spacing:.5px;margin-bottom:4px">Ocupación</div>' +
-          '<div style="font-size:18px;font-weight:800;color:var(--acc2)">' + h.ocupacion + '%</div>' +
-        '</div>' +
-        '<div style="background:var(--s2);border-radius:8px;padding:10px">' +
-          '<div style="font-size:9px;color:var(--dim);text-transform:uppercase;letter-spacing:.5px;margin-bottom:4px">RevPAR</div>' +
-          '<div style="font-size:18px;font-weight:800;color:var(--ora)">€' + Math.round(h.revpar) + '</div>' +
-        '</div>' +
-        '<div style="background:var(--s2);border-radius:8px;padding:10px">' +
-          '<div style="font-size:9px;color:var(--dim);text-transform:uppercase;letter-spacing:.5px;margin-bottom:4px">Revenue MTD</div>' +
-          '<div style="font-size:18px;font-weight:800;color:var(--tx)">€' + (h.total_ingresos/1000).toFixed(0) + 'K</div>' +
-        '</div>' +
-        '<div style="background:var(--s2);border-radius:8px;padding:10px">' +
-          '<div style="font-size:9px;color:var(--dim);text-transform:uppercase;letter-spacing:.5px;margin-bottom:4px">GOP%</div>' +
-          '<div style="font-size:18px;font-weight:800;color:' + gopColor + '">' + h.gop_pct + '%</div>' +
-        '</div>' +
+        '<div style="background:var(--s2);border-radius:8px;padding:10px"><div style="font-size:9px;color:var(--dim);text-transform:uppercase;letter-spacing:.5px;margin-bottom:4px">Ocup.</div><div style="font-size:18px;font-weight:800;color:var(--acc2)">' + h.ocupacion + '%</div></div>' +
+        '<div style="background:var(--s2);border-radius:8px;padding:10px"><div style="font-size:9px;color:var(--dim);text-transform:uppercase;letter-spacing:.5px;margin-bottom:4px">RevPAR</div><div style="font-size:18px;font-weight:800;color:var(--ora)">\u20ac' + Math.round(h.revpar) + '</div></div>' +
+        '<div style="background:var(--s2);border-radius:8px;padding:10px"><div style="font-size:9px;color:var(--dim);text-transform:uppercase;letter-spacing:.5px;margin-bottom:4px">Revenue MTD</div><div style="font-size:18px;font-weight:800;color:var(--tx)">\u20ac' + Math.round(h.total_ingresos / 1000) + 'K</div></div>' +
+        '<div style="background:var(--s2);border-radius:8px;padding:10px"><div style="font-size:9px;color:var(--dim);text-transform:uppercase;letter-spacing:.5px;margin-bottom:4px">GOP%</div><div style="font-size:18px;font-weight:800;color:' + gopColor + '">' + h.gop_pct + '%</div></div>' +
       '</div>' +
       '<div style="display:flex;justify-content:space-between;align-items:center;padding-top:12px;border-top:1px solid var(--s2)">' +
         '<span style="font-size:11px;color:' + apColor + ';font-weight:600">' + apTrend + '</span>' +
-        '<span style="font-size:11px;color:var(--mut)">Ver detalle →</span>' +
-      '</div>' +
-    '</div>';
-  }).join('');
+        '<span style="font-size:11px;color:var(--mut)">Ver detalle \u2192</span>' +
+      '</div>';
+    cont.appendChild(card);
+  });
 }
 
 
