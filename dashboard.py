@@ -1185,19 +1185,6 @@ tr:hover td{background:rgba(255,255,255,.025)}
 /* ── DRR Revenue chart ── */
 .drr-chart-wrap{height:200px;position:relative;margin-bottom:22px}
 
-/* ── Multi-Hotel Map ── */
-.mh-map-wrap{
-  background:radial-gradient(ellipse at 40% 60%,rgba(59,130,246,.06),transparent 70%),
-             radial-gradient(ellipse at 70% 30%,rgba(139,92,246,.04),transparent 60%),
-             var(--s1);
-  border:1px solid var(--s2);border-radius:14px;
-  padding:20px;margin-bottom:20px;position:relative;overflow:hidden
-}
-.mh-map-svg{width:100%;max-height:380px;display:block}
-.hotel-dot{cursor:pointer;transition:all .18s}
-.hotel-dot:hover circle{r:9;stroke-opacity:.8}
-.hotel-dot text{pointer-events:none;user-select:none}
-
 /* ── Dropdown menus (navbar) — sustituye estilos inline hardcodeados ── */
 .dropdown{display:inline-block;position:relative}
 .menu{display:none;position:absolute;top:46px;right:0;background:var(--s1);border:1px solid var(--s2);border-radius:11px;padding:7px;z-index:1000;min-width:218px;box-shadow:0 12px 40px rgba(0,0,0,.45)}
@@ -1585,59 +1572,21 @@ SMTP_PASSWORD=your_app_password
   </div><!-- /panel-calipolis -->
 
   <div id="panel-multi_hotel" class="panel">
-    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:20px;flex-wrap:wrap;gap:12px">
-      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:20px"><h2 style="font-size:18px;font-weight:700;margin:0">🏨 Multi-Hotel Dashboard</h2><a href="/api/exportar/multihotel" style="background:#1a73e8;color:white;border:none;padding:8px 16px;border-radius:8px;cursor:pointer;font-weight:600;text-decoration:none;font-size:13px">⬇️ Descargar Excel</a></div>
-      <select id="grupo-filter" onchange="loadMultiHotel()" style="background:#1c1f2e;color:#cdd6f4;border:1px solid #2e3248;border-radius:8px;padding:8px 12px;font-size:13px;cursor:pointer">
-        <option value="">Todos los grupos</option>
-      </select>
+    <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:22px;flex-wrap:wrap;gap:12px">
+      <h2 style="font-size:18px;font-weight:700;margin:0">🏨 Multi-Hotel Dashboard</h2>
+      <div style="display:flex;align-items:center;gap:10px">
+        <select id="grupo-filter" onchange="loadMultiHotel()" style="background:var(--s2);color:var(--tx);border:1px solid var(--s2);border-radius:8px;padding:7px 12px;font-size:12px;cursor:pointer;font-family:inherit">
+          <option value="">Todos los grupos</option>
+        </select>
+        <a href="/api/exportar/multihotel" class="btn-ref" style="text-decoration:none">⬇️ Descargar Excel</a>
+      </div>
     </div>
 
     <!-- KPIs Consolidados -->
-    <div id="mh-kpis" style="display:grid;grid-template-columns:repeat(auto-fit,minmax(180px,1fr));gap:12px;margin-bottom:20px"></div>
+    <div id="mh-kpis" style="display:grid;grid-template-columns:repeat(4,1fr);gap:12px;margin-bottom:20px"></div>
 
     <!-- Status Summary -->
     <div id="mh-status" style="display:grid;grid-template-columns:repeat(3,1fr);gap:12px;margin-bottom:20px"></div>
-
-    <!-- Mapa Europa -->
-    <div class="mh-map-wrap">
-      <div class="card-title" style="margin-bottom:14px">Mapa de Hoteles</div>
-      <svg id="mh-map-svg" class="mh-map-svg" viewBox="0 0 700 400" xmlns="http://www.w3.org/2000/svg">
-        <!-- Grid de fondo -->
-        <defs>
-          <pattern id="mapgrid" width="40" height="40" patternUnits="userSpaceOnUse">
-            <path d="M 40 0 L 0 0 0 40" fill="none" stroke="rgba(59,130,246,0.06)" stroke-width="1"/>
-          </pattern>
-          <radialGradient id="dotglow" cx="50%" cy="50%" r="50%">
-            <stop offset="0%" stop-color="#3b82f6" stop-opacity="0.8"/>
-            <stop offset="100%" stop-color="#3b82f6" stop-opacity="0"/>
-          </radialGradient>
-        </defs>
-        <rect width="700" height="400" fill="url(#mapgrid)"/>
-        <!-- Europa simplificada — outline -->
-        <!-- Iberia -->
-        <path d="M 70,345 L 78,310 L 115,295 L 155,290 L 180,305 L 195,280 L 185,255 L 160,240 L 120,245 L 85,270 L 65,310 Z" fill="rgba(30,41,59,0.6)" stroke="rgba(59,130,246,0.2)" stroke-width="1"/>
-        <!-- Francia -->
-        <path d="M 185,255 L 195,280 L 210,270 L 235,265 L 255,240 L 250,215 L 225,200 L 195,205 L 175,220 Z" fill="rgba(30,41,59,0.6)" stroke="rgba(59,130,246,0.2)" stroke-width="1"/>
-        <!-- UK -->
-        <path d="M 145,155 L 155,135 L 170,125 L 195,130 L 200,150 L 185,165 L 165,170 Z" fill="rgba(30,41,59,0.6)" stroke="rgba(59,130,246,0.2)" stroke-width="1"/>
-        <!-- Benelux + Alemanha -->
-        <path d="M 225,200 L 250,195 L 290,185 L 310,165 L 295,145 L 260,140 L 230,150 L 215,170 Z" fill="rgba(30,41,59,0.6)" stroke="rgba(59,130,246,0.2)" stroke-width="1"/>
-        <!-- Italia -->
-        <path d="M 255,240 L 280,235 L 300,255 L 295,285 L 270,310 L 250,305 L 240,280 L 245,255 Z" fill="rgba(30,41,59,0.6)" stroke="rgba(59,130,246,0.2)" stroke-width="1"/>
-        <!-- Paises Nordicos y este -->
-        <path d="M 260,140 L 290,120 L 310,105 L 330,110 L 320,140 L 300,155 L 270,155 Z" fill="rgba(30,41,59,0.5)" stroke="rgba(59,130,246,0.15)" stroke-width="1"/>
-        <!-- Hotel dots renderizados via JS en id="mh-dots" -->
-        <g id="mh-dots"></g>
-        <!-- Leyenda estado -->
-        <g transform="translate(570,20)">
-          <rect x="0" y="0" width="120" height="85" rx="8" fill="rgba(15,23,42,0.85)" stroke="rgba(59,130,246,0.2)" stroke-width="1"/>
-          <text x="10" y="18" fill="#94a3b8" font-size="9" font-family="Inter,sans-serif" font-weight="700">ESTADO</text>
-          <circle cx="22" cy="34" r="5" fill="#22c55e"/><text x="32" y="38" fill="#f1f5f9" font-size="10" font-family="Inter,sans-serif">OK</text>
-          <circle cx="22" cy="52" r="5" fill="#f97316"/><text x="32" y="56" fill="#f1f5f9" font-size="10" font-family="Inter,sans-serif">Warning</text>
-          <circle cx="22" cy="70" r="5" fill="#ef4444"/><text x="32" y="74" fill="#f1f5f9" font-size="10" font-family="Inter,sans-serif">Crítico</text>
-        </g>
-      </svg>
-    </div>
 
     <!-- Tabla de hoteles -->
     <div style="background:#1c1f2e;border:1px solid #2e3248;border-radius:12px;padding:20px;margin-bottom:20px;overflow-x:auto">
@@ -2982,10 +2931,10 @@ function renderMHKpis(kpis) {
     {label: 'GOP% Avg', value: kpis.avg_gop_pct + '%', color: '#1db954'},
     {label: 'Facturas Pend.', value: kpis.total_facturas_pendientes + ' (€' + (kpis.total_facturas_importe/1000).toFixed(0) + 'K)', color: '#e05252'}
   ];
-  cont.innerHTML = cards.map(c => 
-    '<div style="background:#1c1f2e;border:1px solid #2e3248;border-radius:12px;padding:16px">' +
-    '<div style="font-size:11px;color:#8892a4;margin-bottom:4px">' + c.label + '</div>' +
-    '<div style="font-size:20px;font-weight:700;color:' + c.color + '">' + c.value + '</div>' +
+  cont.innerHTML = cards.map(c =>
+    '<div style="background:var(--s1);border:1px solid var(--s2);border-radius:13px;padding:18px 16px">' +
+    '<div style="font-size:10px;color:var(--mut);text-transform:uppercase;letter-spacing:.6px;margin-bottom:10px;font-weight:600">' + c.label + '</div>' +
+    '<div style="font-size:24px;font-weight:800;color:' + c.color + ';line-height:1;letter-spacing:-.5px">' + c.value + '</div>' +
     '</div>'
   ).join('');
 }
@@ -2993,26 +2942,23 @@ function renderMHKpis(kpis) {
 function renderMHStatus(kpis) {
   const cont = document.getElementById('mh-status');
   if (!cont) return;
-  cont.innerHTML = 
-    '<div style="background:#0d2818;border:1px solid #1db954;border-radius:12px;padding:16px;display:flex;align-items:center;gap:12px">' +
-      '<span style="font-size:28px">OK</span>' +
-      '<div><div style="font-size:24px;font-weight:700;color:#1db954">' + kpis.hoteles_ok + '</div>' +
-      '<div style="font-size:12px;color:#8892a4">Hoteles OK</div></div></div>' +
-    '<div style="background:#2d2410;border:1px solid #ff9800;border-radius:12px;padding:16px;display:flex;align-items:center;gap:12px">' +
-      '<span style="font-size:28px">!</span>' +
-      '<div><div style="font-size:24px;font-weight:700;color:#ff9800">' + kpis.hoteles_warning + '</div>' +
-      '<div style="font-size:12px;color:#8892a4">Warnings</div></div></div>' +
-    '<div style="background:#2d1010;border:1px solid #e05252;border-radius:12px;padding:16px;display:flex;align-items:center;gap:12px">' +
-      '<span style="font-size:28px">X</span>' +
-      '<div><div style="font-size:24px;font-weight:700;color:#e05252">' + kpis.hoteles_criticos + '</div>' +
-      '<div style="font-size:12px;color:#8892a4">Criticos</div></div></div>';
+  const _st = (n, col, icon, lbl, bg) =>
+    '<div style="background:' + bg + ';border:1px solid ' + col + '55;border-radius:13px;padding:18px 16px;' +
+    'display:flex;align-items:center;gap:14px;border-left:3px solid ' + col + '">' +
+    '<div style="width:36px;height:36px;border-radius:9px;background:' + col + '22;' +
+    'display:flex;align-items:center;justify-content:center;font-size:15px;font-weight:900;color:' + col + ';flex-shrink:0">' + icon + '</div>' +
+    '<div><div style="font-size:30px;font-weight:800;color:' + col + ';line-height:1;letter-spacing:-1.5px">' + n + '</div>' +
+    '<div style="font-size:11px;color:var(--mut);margin-top:5px;text-transform:uppercase;letter-spacing:.5px">' + lbl + '</div></div></div>';
+  cont.innerHTML =
+    _st(kpis.hoteles_ok,       '#22c55e', '✓', 'Hoteles OK',  'var(--s1)') +
+    _st(kpis.hoteles_warning,  '#f97316', '!', 'Con alertas', 'var(--s1)') +
+    _st(kpis.hoteles_criticos, '#ef4444', '✕', 'Críticos',    'var(--s1)');
 }
 
 function renderMHTable(hoteles) {
   const tbody = document.getElementById('mh-tbody');
   if (!tbody) return;
   tbody.innerHTML = '';
-  renderMHMap(hoteles);
   hoteles.forEach(h => {
     const statusColor = h.status === 'ok' ? '#1db954' : h.status === 'warning' ? '#ff9800' : '#e05252';
     const statusIcon = h.status === 'ok' ? '*' : h.status === 'warning' ? '!' : 'X';
@@ -3124,7 +3070,7 @@ async function openHotelDetail(hotelId) {
       '</div>' +
       '<h3 style="font-size:14px;color:#8892a4;margin:24px 0 12px 0">Performance Financiero</h3>' +
       '<div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(160px,1fr));gap:12px;margin-bottom:24px">' +
-        '<div style="background:linear-gradient(135deg,#0d2818,#1a4a2e);border:1px solid #1db954;border-radius:10px;padding:16px"><div style="font-size:11px;color:#8892a4">Revenue MTD</div><div style="font-size:26px;font-weight:700;color:#1db954">€' + (h.revenue_mtd/1000000).toFixed(2) + 'M</div></div>' +
+        '<div style="background:var(--s1);border:1px solid rgba(34,197,94,.3);border-radius:10px;padding:16px"><div style="font-size:11px;color:var(--mut)">Revenue MTD</div><div style="font-size:26px;font-weight:700;color:#22c55e">€' + (h.revenue_mtd/1000000).toFixed(2) + 'M</div></div>' +
         '<div style="background:#1c1f2e;border:1px solid #2e3248;border-radius:10px;padding:16px"><div style="font-size:11px;color:#8892a4">GOP%</div><div style="font-size:26px;font-weight:700;color:' + gopColor + '">' + h.gop_pct + '%</div></div>' +
         '<div style="background:#1c1f2e;border:1px solid #2e3248;border-radius:10px;padding:16px"><div style="font-size:11px;color:#8892a4">F&B Cost %</div><div style="font-size:26px;font-weight:700;color:' + fbColor + '">' + h.fb_pct + '%</div></div>' +
       '</div>' +
