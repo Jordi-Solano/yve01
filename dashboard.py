@@ -52,7 +52,8 @@ from tab_ar_real import ar_real_bp
 from tab_multi_hotel import multi_hotel_bp
 from tab_exportador import exportador_bp
 from tab_calipolis import calipolis_bp
-for _bp in (auth_bp, config_bp, admin_bp, aprob_ar_bp, aprob_ap_bp, concil_bp, fb_bp, ar_real_bp, multi_hotel_bp, exportador_bp, calipolis_bp):
+from tab_demo import demo_bp
+for _bp in (auth_bp, config_bp, admin_bp, aprob_ar_bp, aprob_ap_bp, concil_bp, fb_bp, ar_real_bp, multi_hotel_bp, exportador_bp, calipolis_bp, demo_bp):
     app.register_blueprint(_bp)
 
 _pipeline_running = False
@@ -2654,6 +2655,54 @@ async function abrirDetalleCalipolis(hotelId) {
     console.error('Error abriendo detalle:', e);
   }
 }
+
+
+
+// ═══════════════════════════════════════════════════════════════════
+// DEMO MODE
+// ═══════════════════════════════════════════════════════════════════
+async function toggleDemoMode() {
+  try {
+    const res = await fetch('/api/demo/toggle');
+    const data = await res.json();
+    const btn = document.getElementById('demo-toggle');
+    if (data.demo_mode) {
+      btn.textContent = '🎭 Demo ON';
+      btn.style.borderColor = '#10b981';
+      btn.style.color = '#10b981';
+      alert('✅ Demo Mode ACTIVADO - Usando datos ficticios realistas');
+    } else {
+      btn.textContent = '🎭 Demo OFF';
+      btn.style.borderColor = '#9333ea';
+      btn.style.color = '#9333ea';
+      alert('Demo mode desactivado');
+    }
+  } catch(e) {
+    console.error('Error toggling demo:', e);
+  }
+}
+
+async function checkDemoStatus() {
+  try {
+    const res = await fetch('/api/demo/status');
+    const data = await res.json();
+    const btn = document.getElementById('demo-toggle');
+    if (btn) {
+      if (data.demo_mode) {
+        btn.textContent = '🎭 Demo ON';
+        btn.style.borderColor = '#10b981';
+        btn.style.color = '#10b981';
+      }
+    }
+  } catch(e) {
+    console.error('Error checking demo status:', e);
+  }
+}
+
+// Check demo status on load
+document.addEventListener('DOMContentLoaded', () => {
+  setTimeout(checkDemoStatus, 500);
+});
 
 
 function closeHotelModal() {
