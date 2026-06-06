@@ -1134,6 +1134,7 @@ tr:hover td{background:rgba(255,255,255,.025)}
   <div class="nav-right">
     <span class="pill" id="date-pill">—</span>
     <span class="pill" style="color:var(--acc2)">👤 __USER_NAME__</span>
+    <button class="btn-ref" id="btn-demo" onclick="toggleDemoMode()" title="Activar Demo Mode para inversores" style="color:#9333ea;border-color:#9333ea">🎭 Demo</button>
     <a href="/configuracion/" class="btn-ref" title="Configuración" style="text-decoration:none">⚙️</a>
     <a href="/admin/" class="btn-ref" title="Admin" style="text-decoration:none;display:__ADMIN_DISPLAY__">👥</a>
     <div style="display:inline-block;position:relative">
@@ -1837,6 +1838,38 @@ setInterval(loadAll, 60000);
 // ══════════════════════════════════════════════════════════════
 // MÓDULO AP — JavaScript
 // ══════════════════════════════════════════════════════════════
+
+
+// ═══════════════════════════════════════════════════════════════════
+// DEMO MODE
+// ═══════════════════════════════════════════════════════════════════
+let demoModeActive = false;
+
+async function toggleDemoMode() {
+  try {
+    const res = await fetch('/api/demo/toggle', {method: 'POST'});
+    const data = await res.json();
+    demoModeActive = data.demo_mode;
+    
+    const btn = document.getElementById('btn-demo');
+    if (demoModeActive) {
+      btn.style.color = '#1db954';
+      btn.style.borderColor = '#1db954';
+      btn.textContent = '🎭 Demo ON';
+      showNotification('✓ Demo Mode ACTIVADO - Datos ficticios cargados', 'success');
+      setTimeout(() => location.reload(), 500);
+    } else {
+      btn.style.color = '#9333ea';
+      btn.style.borderColor = '#9333ea';
+      btn.textContent = '🎭 Demo';
+      showNotification('✗ Demo Mode desactivado - Datos reales', 'info');
+      setTimeout(() => location.reload(), 500);
+    }
+  } catch(e) {
+    console.error('Error en demo:', e);
+  }
+}
+
 
 function switchTab(tab, el) {
   document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
