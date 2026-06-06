@@ -3436,17 +3436,29 @@ function closeHotelModal() {
 // ═══════════════════════════════
 // I18N — Sistema de traducción
 // ═══════════════════════════════
+const _i18nCache = {};   // Caché en memoria — evita fetch repetidos
 let _i18nData = {};
 let _i18nLang = localStorage.getItem('yve_lang') || 'es';
 
 async function loadI18n(lang) {
-  if (lang === 'es') { applyI18n({}); return; } // ES = default, no translate
-  try {
-    const r = await fetch('/static/i18n/' + lang + '.json');
-    _i18nData = await r.json();
+  if (lang === 'es') {
+    _i18nData = {}; _i18nLang = 'es';
+    applyI18n({}); return;
+  }
+  // Si ya está en caché, instantáneo
+  if (_i18nCache[lang]) {
+    _i18nData = _i18nCache[lang]; _i18nLang = lang;
     applyI18n(_i18nData);
     localStorage.setItem('yve_lang', lang);
-    _i18nLang = lang;
+    return;
+  }
+  try {
+    const r = await fetch('/static/i18n/' + lang + '.json');
+    const data = await r.json();
+    _i18nCache[lang] = data;   // Guardar en caché
+    _i18nData = data; _i18nLang = lang;
+    applyI18n(data);
+    localStorage.setItem('yve_lang', lang);
   } catch(e) { console.warn('i18n error:', e); }
 }
 
@@ -3460,17 +3472,27 @@ function applyI18n(data) {
 }
 
 async function cambiarIdioma(lang) {
-  await fetch('/api/set_lang/' + lang);
+  fetch('/api/set_lang/' + lang);   // fire-and-forget, no await
   await loadI18n(lang);
-  // Update active flag in menu
   document.querySelectorAll('.lang-btn').forEach(b => {
     b.style.fontWeight = b.dataset.lang === lang ? '700' : '400';
     b.style.color = b.dataset.lang === lang ? 'var(--acc2)' : 'var(--tx)';
   });
 }
 
-// Load on startup
+// Cargar idioma actual al inicio
 loadI18n(_i18nLang);
+// Precargar todos los demás idiomas en segundo plano (2s delay)
+setTimeout(() => {
+  ['en','ca','fr','de','it','pt'].forEach(lang => {
+    if (!_i18nCache[lang]) {
+      fetch('/static/i18n/' + lang + '.json')
+        .then(r => r.json())
+        .then(d => { _i18nCache[lang] = d; })
+        .catch(() => {});
+    }
+  });
+}, 2000);
 
 </script>
 </body>

@@ -198,18 +198,22 @@ async function doLogin() {
 document.getElementById('password').addEventListener('keydown', function(e){ if(e.key==='Enter') doLogin(); });
 document.getElementById('username').addEventListener('keydown', function(e){ if(e.key==='Enter') document.getElementById('password').focus(); });
 
-// I18N Login
+// I18N Login — con caché
+const _i18nCache = {};
 let _i18nData = {};
 let _i18nLang = localStorage.getItem('yve_lang') || 'es';
 
 async function loadI18n(lang) {
-  if (lang === 'es') { applyI18n({}); return; }
+  if (lang === 'es') { _i18nData = {}; applyI18n({}); return; }
+  if (_i18nCache[lang]) {
+    _i18nData = _i18nCache[lang]; applyI18n(_i18nData);
+    localStorage.setItem('yve_lang', lang); _i18nLang = lang; return;
+  }
   try {
     const r = await fetch('/static/i18n/' + lang + '.json');
-    _i18nData = await r.json();
-    applyI18n(_i18nData);
-    localStorage.setItem('yve_lang', lang);
-    _i18nLang = lang;
+    const data = await r.json();
+    _i18nCache[lang] = data; _i18nData = data; _i18nLang = lang;
+    applyI18n(data); localStorage.setItem('yve_lang', lang);
   } catch(e) { console.warn('i18n error:', e); }
 }
 
@@ -221,7 +225,7 @@ function applyI18n(data) {
 }
 
 async function cambiarIdioma(lang) {
-  await fetch('/api/set_lang/' + lang);
+  fetch('/api/set_lang/' + lang);
   await loadI18n(lang);
   document.querySelectorAll('.lang-btn').forEach(b => {
     b.style.background = b.dataset.lang === lang ? 'rgba(59,130,246,.15)' : 'transparent';
@@ -231,6 +235,11 @@ async function cambiarIdioma(lang) {
 }
 
 loadI18n(_i18nLang);
+setTimeout(() => {
+  ['en','ca','fr','de','it','pt'].forEach(l => {
+    if (!_i18nCache[l]) fetch('/static/i18n/' + l + '.json').then(r=>r.json()).then(d=>{_i18nCache[l]=d;}).catch(()=>{});
+  });
+}, 1500);
 
 </script>
 </body>
