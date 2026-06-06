@@ -60,6 +60,7 @@ from tab_reportes_pdf import reportes_pdf_bp
 from tab_integraciones import integraciones_bp
 from rol_dashboard import get_dashboard_config
 from demo_completo import generar_hoteles_demo, generar_facturas_demo_ar, generar_facturas_demo_ap, generar_alertas_demo
+from landing import LANDING_HTML as LANDING_PAGE
 for _bp in (auth_bp, config_bp, admin_bp, aprob_ar_bp, aprob_ap_bp, concil_bp, fb_bp, ar_real_bp, multi_hotel_bp, exportador_bp, calipolis_bp, demo_bp, demo_sim_bp, calipolis_analisis_bp, reportes_pdf_bp, integraciones_bp):
     app.register_blueprint(_bp)
 
@@ -899,19 +900,25 @@ def _hotel_name():
     return ""
 
 @app.route("/")
-@login_required
 def index():
+    # Muestra landing si no hay sesión, dashboard si la hay
+    if not current_user.is_authenticated:
+        return LANDING_PAGE
     name = _hotel_name()
     tag = name if name else "AR Dashboard"
     configured = "true" if name else "false"
-    # User info for header
-    user_name = current_user.nombre if current_user.is_authenticated else ""
-    user_rol  = current_user.rol if current_user.is_authenticated else ""
+    user_name = current_user.nombre
+    user_rol  = current_user.rol
     out = HTML.replace("__HOTEL_TAG__", tag).replace("__CONFIGURED__", configured)
     admin_display = "inline" if user_rol in ("admin", "financial_controller") else "none"
     out = out.replace("__USER_NAME__", user_name).replace("__USER_ROL__", user_rol)
     out = out.replace("__ADMIN_DISPLAY__", admin_display)
     return out
+
+@app.route("/app")
+@login_required
+def app_dashboard():
+    return index()
 
 # ── HTML ───────────────────────────────────────────────────────────────────
 
