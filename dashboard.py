@@ -53,7 +53,9 @@ from tab_multi_hotel import multi_hotel_bp
 from tab_exportador import exportador_bp
 from tab_calipolis import calipolis_bp
 from tab_demo import demo_bp
-for _bp in (auth_bp, config_bp, admin_bp, aprob_ar_bp, aprob_ap_bp, concil_bp, fb_bp, ar_real_bp, multi_hotel_bp, exportador_bp, calipolis_bp, demo_bp):
+from tab_demo_simulador import demo_sim_bp
+from tab_calipolis_analisis import calipolis_analisis_bp
+for _bp in (auth_bp, config_bp, admin_bp, aprob_ar_bp, aprob_ap_bp, concil_bp, fb_bp, ar_real_bp, multi_hotel_bp, exportador_bp, calipolis_bp, demo_bp, demo_sim_bp, calipolis_analisis_bp):
     app.register_blueprint(_bp)
 
 _pipeline_running = False
