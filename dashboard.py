@@ -1345,7 +1345,7 @@ tr:hover td{background:rgba(255,255,255,.025)}
   </div><!-- /panel-notif -->
 
   <!-- PANEL F&B -->
-  <div id="panel-integraciones" class="panel" style="display:none">
+  <div id="panel-integraciones" class="panel">
     <h2 style="font-size:18px;font-weight:700;margin-bottom:20px">⚙️ Integraciones Externas</h2>
     <div style="background:#1c1f2e;border:1px solid #2e3248;border-radius:12px;padding:24px;margin-bottom:24px">
       <h3 style="margin:0 0 16px 0;font-size:16px;font-weight:600">Canales disponibles</h3>
