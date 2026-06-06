@@ -1185,6 +1185,76 @@ tr:hover td{background:rgba(255,255,255,.025)}
 /* ── DRR Revenue chart ── */
 .drr-chart-wrap{height:200px;position:relative;margin-bottom:22px}
 
+/* ── Mobile / Responsive ──────────────────────────────────── */
+@media(max-width:480px){
+  /* Nav */
+  .nav{height:54px;padding:0 12px;gap:8px}
+  .logo-tag{display:none}
+  .pill{display:none}
+  .btn-run{padding:7px 12px;font-size:11px;gap:5px}
+  .btn-ref{padding:5px 10px;font-size:11px}
+
+  /* Main */
+  .main{padding:12px}
+
+  /* Stats — single column on very small */
+  .stats{grid-template-columns:repeat(2,1fr)!important;gap:8px}
+  .sc{padding:14px 12px}
+  .sc-val{font-size:22px!important}
+  .sc-spark{height:18px}
+
+  /* Tabs — scrollable pill bar */
+  .tabs{gap:2px;padding:3px}
+  .tab{padding:6px 11px;font-size:.78rem}
+
+  /* Cards */
+  .card{padding:16px}
+
+  /* Mid row → single col */
+  .mid{grid-template-columns:1fr!important}
+  .chart-wrap{height:160px}
+
+  /* AR Real 2-col → 1 col */
+  #panel-ar_real [style*="grid-template-columns:1fr 1fr"]{
+    grid-template-columns:1fr!important
+  }
+
+  /* DRR metrics */
+  .drr-metrics{grid-template-columns:1fr!important}
+  .drr-days{grid-template-columns:repeat(5,1fr)!important}
+
+  /* Calipolis hotels */
+  #cal-hoteles{grid-template-columns:1fr!important}
+  #panel-calipolis [style*="grid-template-columns:1fr 1fr"]{
+    grid-template-columns:1fr!important
+  }
+
+  /* Multi-hotel KPIs 4col → 2col */
+  #mh-kpis{grid-template-columns:repeat(2,1fr)!important}
+  #mh-status{grid-template-columns:1fr!important}
+
+  /* Modal full screen */
+  .overlay{padding:0;align-items:flex-end}
+  .modal{border-radius:18px 18px 0 0;max-width:100%;padding:20px}
+
+  /* Chat panel full width */
+  #chat-panel{width:100vw}
+
+  /* Tables: always wrap */
+  .tbl-wrap{overflow-x:auto;-webkit-overflow-scrolling:touch}
+}
+
+@media(min-width:481px) and (max-width:768px){
+  .main{padding:18px}
+  .stats{grid-template-columns:repeat(3,1fr)!important;gap:10px}
+  .mid{grid-template-columns:1fr!important}
+  #cal-hoteles{grid-template-columns:1fr!important}
+  #mh-kpis{grid-template-columns:repeat(4,1fr)!important}
+  #panel-ar_real [style*="grid-template-columns:1fr 1fr"]{
+    grid-template-columns:1fr!important
+  }
+}
+
 /* ── Dropdown menus (navbar) — sustituye estilos inline hardcodeados ── */
 .dropdown{display:inline-block;position:relative}
 .menu{display:none;position:absolute;top:46px;right:0;background:var(--s1);border:1px solid var(--s2);border-radius:11px;padding:7px;z-index:1000;min-width:218px;box-shadow:0 12px 40px rgba(0,0,0,.45)}

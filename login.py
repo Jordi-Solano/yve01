@@ -51,7 +51,13 @@ HTML = r"""<!DOCTYPE html>
 :root{--bg:#0f172a;--s1:#1e293b;--s2:#334155;--s3:#475569;--acc:#3b82f6;--acc2:#60a5fa;--tx:#f1f5f9;--mut:#94a3b8;--dim:#64748b;--red:#ef4444;--grn:#22c55e}
 *{box-sizing:border-box;margin:0;padding:0}
 body{background:var(--bg);color:var(--tx);font-family:'Inter',-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif;
-  min-height:100vh;display:flex;align-items:center;justify-content:center;padding:24px;position:relative;overflow:hidden}
+  min-height:100vh;display:flex;align-items:center;justify-content:center;padding:20px;position:relative;overflow:hidden}
+@media(max-width:480px){
+  body{padding:16px;align-items:flex-start;padding-top:40px}
+  .login-card{padding:28px 22px;border-radius:16px}
+  .brand-name{font-size:22px}
+  .chips{grid-template-columns:1fr}
+}
 body::before{content:"";position:fixed;inset:0;z-index:0;pointer-events:none;
   background:
     radial-gradient(1000px 500px at var(--bx1,82%) var(--by1,-12%), rgba(59,130,246,.18), transparent 60%),
