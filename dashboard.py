@@ -1347,26 +1347,72 @@ tr:hover td{background:rgba(255,255,255,.025)}
   <!-- PANEL F&B -->
   <div id="panel-integraciones" class="panel" style="display:none">
     <h2 style="font-size:18px;font-weight:700;margin-bottom:20px">⚙️ Integraciones Externas</h2>
-    <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(280px,1fr));gap:16px;margin-bottom:24px">
-      <div style="background:#1c1f2e;border:2px solid #e05252;border-radius:12px;padding:16px">
-        <div style="font-size:24px;margin-bottom:8px">💬</div>
-        <div style="font-weight:600;margin-bottom:4px">Slack</div>
-        <div style="font-size:12px;color:#e05252;margin-bottom:12px">No configurado</div>
-        <input type="text" placeholder="Webhook URL" style="width:100%;padding:8px;background:#0f1117;border:1px solid #2e3248;border-radius:6px;color:#fff;font-size:12px;margin-bottom:8px">
-        <button onclick="guardarSlack()" style="width:100%;background:#3b82f6;border:none;color:#fff;padding:8px;border-radius:6px;cursor:pointer;font-weight:600;font-size:12px">Guardar</button>
+    <div style="background:#1c1f2e;border:1px solid #2e3248;border-radius:12px;padding:24px;margin-bottom:24px">
+      <h3 style="margin:0 0 16px 0;font-size:16px;font-weight:600">Canales disponibles</h3>
+      <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(300px,1fr));gap:16px">
+        
+        <div style="background:#0f1117;border:1px solid #2e3248;border-radius:8px;padding:16px">
+          <div style="font-size:28px;margin-bottom:8px">💬</div>
+          <h4 style="margin:0 0 8px 0;font-size:14px;font-weight:600">Slack</h4>
+          <p style="margin:0 0 12px 0;font-size:12px;color:#8892a4">Recibe alertas críticas y reportes en Slack</p>
+          <div style="background:#1c1f2e;padding:8px;border-radius:6px;margin-bottom:12px;font-size:11px;color:#e05252;font-family:monospace">
+            Estado: No configurado
+          </div>
+          <div style="font-size:11px;color:#666;line-height:1.4">
+            <strong>Para habilitar:</strong><br>
+            1. Crear Slack App en api.slack.com<br>
+            2. Obtener Webhook URL<br>
+            3. Agregar a .env: SLACK_WEBHOOK_URL=...
+          </div>
+        </div>
+
+        <div style="background:#0f1117;border:1px solid #2e3248;border-radius:8px;padding:16px">
+          <div style="font-size:28px;margin-bottom:8px">📱</div>
+          <h4 style="margin:0 0 8px 0;font-size:14px;font-weight:600">WhatsApp</h4>
+          <p style="margin:0 0 12px 0;font-size:12px;color:#8892a4">Envía alertas vía WhatsApp con Twilio</p>
+          <div style="background:#1c1f2e;padding:8px;border-radius:6px;margin-bottom:12px;font-size:11px;color:#e05252;font-family:monospace">
+            Estado: No configurado
+          </div>
+          <div style="font-size:11px;color:#666;line-height:1.4">
+            <strong>Para habilitar:</strong><br>
+            1. Crear cuenta en twilio.com<br>
+            2. Obtener credenciales<br>
+            3. Agregar a .env: TWILIO_ACCOUNT_SID, TWILIO_AUTH_TOKEN
+          </div>
+        </div>
+
+        <div style="background:#0f1117;border:1px solid #2e3248;border-radius:8px;padding:16px">
+          <div style="font-size:28px;margin-bottom:8px">📧</div>
+          <h4 style="margin:0 0 8px 0;font-size:14px;font-weight:600">Email (SMTP)</h4>
+          <p style="margin:0 0 12px 0;font-size:12px;color:#8892a4">Reportes y alertas por correo</p>
+          <div style="background:#1c1f2e;padding:8px;border-radius:6px;margin-bottom:12px;font-size:11px;color:#1db954;font-family:monospace">
+            ✓ Configurado
+          </div>
+          <div style="font-size:11px;color:#1db954;line-height:1.4">
+            <strong>Status:</strong> SMTP configurado y funcionando<br>
+            Reportes enviados automáticamente cada día
+          </div>
+        </div>
+
       </div>
-      <div style="background:#1c1f2e;border:2px solid #e05252;border-radius:12px;padding:16px">
-        <div style="font-size:24px;margin-bottom:8px">📱</div>
-        <div style="font-weight:600;margin-bottom:4px">WhatsApp (Twilio)</div>
-        <div style="font-size:12px;color:#e05252;margin-bottom:12px">No configurado</div>
-        <input type="text" placeholder="Account SID" style="width:100%;padding:8px;background:#0f1117;border:1px solid #2e3248;border-radius:6px;color:#fff;font-size:12px;margin-bottom:8px">
-        <button onclick="guardarWhatsApp()" style="width:100%;background:#3b82f6;border:none;color:#fff;padding:8px;border-radius:6px;cursor:pointer;font-weight:600;font-size:12px">Guardar</button>
-      </div>
-      <div style="background:#1c1f2e;border:2px solid #1db954;border-radius:12px;padding:16px">
-        <div style="font-size:24px;margin-bottom:8px">📧</div>
-        <div style="font-weight:600;margin-bottom:4px">Email</div>
-        <div style="font-size:12px;color:#1db954;margin-bottom:8px">✓ Configurado</div>
-        <div style="font-size:11px;color:#8892a4">SMTP configurado en .env</div>
+    </div>
+
+    <div style="background:#1c1f2e;border:1px solid #2e3248;border-radius:12px;padding:24px">
+      <h3 style="margin:0 0 16px 0;font-size:16px;font-weight:600">Configuración de .env</h3>
+      <div style="background:#0f1117;padding:16px;border-radius:8px;font-family:monospace;font-size:12px;color:#8892a4;line-height:1.6;overflow-x:auto">
+# Slack<br>
+SLACK_WEBHOOK_URL=https://hooks.slack.com/services/YOUR/WEBHOOK/URL<br>
+<br>
+# WhatsApp (Twilio)<br>
+TWILIO_ACCOUNT_SID=ACxxxxxxxxxxxxxxxx<br>
+TWILIO_AUTH_TOKEN=your_auth_token<br>
+TWILIO_WHATSAPP_NUMBER=+1234567890<br>
+<br>
+# Email (ya configurado)<br>
+SMTP_SERVER=smtp.gmail.com<br>
+SMTP_PORT=587<br>
+SMTP_USER=your_email@gmail.com<br>
+SMTP_PASSWORD=your_app_password
       </div>
     </div>
   </div><!-- /panel-integraciones -->
