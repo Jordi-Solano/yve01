@@ -1343,6 +1343,20 @@ tr:hover td{background:rgba(255,255,255,.025)}
   </div><!-- /panel-notif -->
 
   <!-- PANEL F&B -->
+  <div id="panel-integraciones" class="panel" style="display:none">
+  <h2 style="font-size:18px;font-weight:700;margin-bottom:20px">⚙️ Integraciones Externas</h2>
+  <div id="integraciones-status" style="display:grid;grid-template-columns:repeat(auto-fit,minmax(250px,1fr));gap:16px;margin-bottom:24px"></div>
+  <div style="background:#1c1f2e;border:1px solid #2e3248;border-radius:12px;padding:20px">
+    <h3 style="margin:0 0 12px 0;font-size:14px;color:#8892a4">Configuración requerida (.env)</h3>
+    <div style="font-size:12px;color:#666;font-family:monospace;line-height:1.6">
+      SLACK_WEBHOOK_URL=https://hooks.slack.com/...<br>
+      TWILIO_ACCOUNT_SID=AC...<br>
+      TWILIO_AUTH_TOKEN=...<br>
+      TWILIO_WHATSAPP_NUMBER=+1234567890
+    </div>
+  </div>
+  </div><!-- /panel-integraciones -->
+
   <div id="panel-fb" class="panel">
     <div id="fb-tab-content"><div class="empty"><p>Cargando F&amp;B...</p></div></div>
   </div><!-- /panel-fb -->
@@ -1763,6 +1777,7 @@ function switchTab(tab, el) {
   if (tab === 'fb') loadFBTab();
   if (tab === 'ar_real') cargarStatusARReal();
   if (tab === 'calipolis') loadCalipolis();
+  if (tab === 'integraciones') loadIntegraciones();
   if (tab === 'multi_hotel') loadMultiHotel();
 }
 async function loadFBTab() {
@@ -2640,6 +2655,39 @@ function renderCalipolisHoteles(hoteles) {
     return div;
   }).map(d => d.outerHTML).join('');
 }
+
+
+// ═══════════════════════════════════════════════════════════════════
+// INTEGRACIONES
+// ═══════════════════════════════════════════════════════════════════
+async function loadIntegraciones() {
+  try {
+    const res = await fetch('/api/integraciones/status');
+    const data = await res.json();
+    
+    const cont = document.getElementById('integraciones-status');
+    if (!cont) return;
+    
+    const integraciones = [
+      {nombre: 'Slack', key: 'slack_disponible', emoji: '💬'},
+      {nombre: 'WhatsApp', key: 'whatsapp_disponible', emoji: '📱'},
+      {nombre: 'Email', key: 'email_disponible', emoji: '📧'}
+    ];
+    
+    cont.innerHTML = integraciones.map(i => {
+      const enabled = data[i.key];
+      const color = enabled ? '#1db954' : '#e05252';
+      const status = enabled ? 'CONFIGURADO' : 'No configurado';
+      return '<div style="background:#1c1f2e;border:2px solid ' + color + ';border-radius:12px;padding:16px">' +
+        '<div style="font-size:24px;margin-bottom:8px">' + i.emoji + '</div>' +
+        '<div style="font-weight:600;margin-bottom:4px">' + i.nombre + '</div>' +
+        '<div style="font-size:12px;color:' + color + '">' + status + '</div></div>';
+    }).join('');
+  } catch(e) {
+    console.error('Error cargando integraciones:', e);
+  }
+}
+
 
 function closeHotelModal() {
   const modal = document.getElementById('hotel-modal');
