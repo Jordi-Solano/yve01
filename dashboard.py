@@ -2618,7 +2618,13 @@ function renderCalipolisHoteles(hoteles) {
   
   cont.innerHTML = hoteles.map(h => {
     const statusColor = h.status === 'ok' ? '#1db954' : h.status === 'warning' ? '#ff9800' : '#e05252';
-    return '<div style="background:#1c1f2e;border:1px solid #2e3248;border-radius:12px;padding:16px;cursor:pointer;transition:all 0.2s" onclick="abrirDetalleCalipolis('' + h.id + '''+')" onmouseover="this.style.background=\'rgba(26,115,232,0.08)\'" onmouseout="this.style.background=\'#1c1f2e\'">' +
+    const div = document.createElement('div');
+    div.style.cssText = 'background:#1c1f2e;border:1px solid #2e3248;border-radius:12px;padding:16px;cursor:pointer;transition:all 0.2s';
+    div.addEventListener('mouseover', () => div.style.background = 'rgba(26,115,232,0.08)');
+    div.addEventListener('mouseout', () => div.style.background = '#1c1f2e');
+    div.addEventListener('click', () => abrirDetalleCalipolis(h.id));
+    
+    div.innerHTML = 
       '<div style="font-weight:600;font-size:14px">' + h.nombre + '</div>' +
       '<div style="font-size:11px;color:#8892a4;margin-bottom:12px">' + h.categoria + ' • ' + h.habitaciones + ' rooms</div>' +
       '<div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;font-size:12px">' +
@@ -2629,86 +2635,11 @@ function renderCalipolisHoteles(hoteles) {
       '</div>' +
       '<div style="margin-top:8px;padding-top:8px;border-top:1px solid #2e3248;font-size:11px;color:#8892a4">' +
         'AP Pend: ' + h.ap_pendientes + ' • AR: ' + h.ar_pendientes +
-      '</div></div>';
-  }).join('');
-}
-
-async function abrirDetalleCalipolis(hotelId) {
-  try {
-    const res = await fetch('/api/calipolis/hotel/' + hotelId);
-    const h = await res.json();
-    
-    const detailDiv = document.getElementById('cal-detail');
-    if (!detailDiv) return;
-    
-    detailDiv.style.display = 'block';
-    detailDiv.innerHTML = 
-      '<h3 style="margin:0 0 16px 0;font-size:16px">' + h.nombre + ' (' + h.categoria + ')</h3>' +
-      '<div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(120px,1fr));gap:12px;margin-bottom:16px">' +
-        '<div><span style="font-size:11px;color:#8892a4">Ocupación</span><br><strong style="font-size:18px;color:#1a73e8">' + h.ocupacion + '%</strong></div>' +
-        '<div><span style="font-size:11px;color:#8892a4">ADR</span><br><strong style="font-size:18px">€' + h.adr.toFixed(0) + '</strong></div>' +
-        '<div><span style="font-size:11px;color:#8892a4">RevPAR</span><br><strong style="font-size:18px">€' + h.revpar.toFixed(0) + '</strong></div>' +
-        '<div><span style="font-size:11px;color:#8892a4">GOP%</span><br><strong style="font-size:18px;color:#1db954">' + h.gop_pct + '%</strong></div>' +
-      '</div>' +
-      '<div style="display:grid;grid-template-columns:repeat(2,1fr);gap:12px;font-size:12px">' +
-        '<div><span style="color:#8892a4">Rooms Revenue</span><br>€' + h.ingresos_rooms.toLocaleString('es-ES') + '</div>' +
-        '<div><span style="color:#8892a4">F&B Revenue</span><br>€' + h.ingresos_fb.toLocaleString('es-ES') + '</div>' +
-        '<div><span style="color:#8892a4">F&B Cost %</span><br>' + h.food_cost_pct + '%</div>' +
-        '<div><span style="color:#8892a4">Alertas</span><br>' + (h.alertas === 0 ? '✅ Ninguna' : '⚠️ ' + h.alertas) + '</div>' +
       '</div>';
-  } catch(e) {
-    console.error('Error abriendo detalle:', e);
-  }
+    
+    return div;
+  }).map(d => d.outerHTML).join('');
 }
-
-
-
-// ═══════════════════════════════════════════════════════════════════
-// DEMO MODE
-// ═══════════════════════════════════════════════════════════════════
-async function toggleDemoMode() {
-  try {
-    const res = await fetch('/api/demo/toggle');
-    const data = await res.json();
-    const btn = document.getElementById('demo-toggle');
-    if (data.demo_mode) {
-      btn.textContent = '🎭 Demo ON';
-      btn.style.borderColor = '#10b981';
-      btn.style.color = '#10b981';
-      alert('✅ Demo Mode ACTIVADO - Usando datos ficticios realistas');
-    } else {
-      btn.textContent = '🎭 Demo OFF';
-      btn.style.borderColor = '#9333ea';
-      btn.style.color = '#9333ea';
-      alert('Demo mode desactivado');
-    }
-  } catch(e) {
-    console.error('Error toggling demo:', e);
-  }
-}
-
-async function checkDemoStatus() {
-  try {
-    const res = await fetch('/api/demo/status');
-    const data = await res.json();
-    const btn = document.getElementById('demo-toggle');
-    if (btn) {
-      if (data.demo_mode) {
-        btn.textContent = '🎭 Demo ON';
-        btn.style.borderColor = '#10b981';
-        btn.style.color = '#10b981';
-      }
-    }
-  } catch(e) {
-    console.error('Error checking demo status:', e);
-  }
-}
-
-// Check demo status on load
-document.addEventListener('DOMContentLoaded', () => {
-  setTimeout(checkDemoStatus, 500);
-});
-
 
 function closeHotelModal() {
   const modal = document.getElementById('hotel-modal');
