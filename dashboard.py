@@ -1166,6 +1166,8 @@ tr:hover td{background:rgba(255,255,255,.025)}
     <button class="tab" onclick="switchTab('notif',this)">🔔 Notificaciones</button>
     <button class="tab" onclick="switchTab('fb',this)" id="tab-fb">🍽️ F&amp;B Cost</button>
     <button class="tab" onclick="switchTab('ar_real',this)" id="tab-ar-real">🏢 AR Real</button>
+    <button class="tab" onclick="switchTab('calipolis',this)" id="tab-calipolis">🏩 Calipolis</button>
+    <button class="tab" onclick="switchTab('integraciones',this)" id="tab-integraciones">⚙️ Integraciones</button>
     <button class="tab" onclick="switchTab('multi_hotel',this)" id="tab-multi-hotel">🏨 Multi-Hotel</button>
   </div>
 
