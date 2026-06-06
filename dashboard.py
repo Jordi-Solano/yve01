@@ -1148,7 +1148,18 @@ tr:hover td{background:rgba(255,255,255,.025)}
     <button class="btn-ref" onclick="loadAll()" title="Actualizar datos">↻ Actualizar</button>
     <button class="btn-run" id="btn-run" onclick="runPipeline()">
       <div class="spin" id="spin"></div>
-      <span id="run-lbl">⚡ Procesar Facturas</span>
+      <div style="display:inline-block;position:relative;margin-right:8px">
+      <button class="btn-ref" id="rol-btn" title="Cambiar rol" style="color:#ff9800;border-color:#ff9800">👤 Admin</button>
+      <div id="rol-menu" style="display:none;position:absolute;top:42px;right:0;background:#1c1f2e;border:1px solid #2e3248;border-radius:8px;padding:8px;z-index:1000;min-width:220px">
+        <div style="padding:8px 12px;color:#8892a4;font-size:11px;font-weight:600">CAMBIAR ROL</div>
+        <button onclick="cambiarRol('admin')" style="display:block;width:100%;text-align:left;padding:8px 12px;color:#fff;border:none;background:transparent;cursor:pointer;border-radius:4px;font-size:12px" onmouseover="this.style.background='#2e3248'" onmouseout="this.style.background='transparent'">🔑 Administrador</button>
+        <button onclick="cambiarRol('financial_controller')" style="display:block;width:100%;text-align:left;padding:8px 12px;color:#fff;border:none;background:transparent;cursor:pointer;border-radius:4px;font-size:12px" onmouseover="this.style.background='#2e3248'" onmouseout="this.style.background='transparent'">💰 Controller Financiero</button>
+        <button onclick="cambiarRol('income_auditor')" style="display:block;width:100%;text-align:left;padding:8px 12px;color:#fff;border:none;background:transparent;cursor:pointer;border-radius:4px;font-size:12px" onmouseover="this.style.background='#2e3248'" onmouseout="this.style.background='transparent'">📊 Income Auditor</button>
+        <button onclick="cambiarRol('fb_manager')" style="display:block;width:100%;text-align:left;padding:8px 12px;color:#fff;border:none;background:transparent;cursor:pointer;border-radius:4px;font-size:12px" onmouseover="this.style.background='#2e3248'" onmouseout="this.style.background='transparent'">🍽️ Jefe F&B</button>
+        <button onclick="cambiarRol('jefe_otras')" style="display:block;width:100%;text-align:left;padding:8px 12px;color:#fff;border:none;background:transparent;cursor:pointer;border-radius:4px;font-size:12px" onmouseover="this.style.background='#2e3248'" onmouseout="this.style.background='transparent'">🛠️ Jefe Servicios</button>
+      </div>
+    </div>
+    <span id="run-lbl">⚡ Procesar Facturas</span>
     </button>
     <a href="/logout" class="btn-ref" title="Cerrar sesión" style="text-decoration:none">Salir</a>
   </div>
@@ -1869,6 +1880,52 @@ async function toggleDemoMode() {
     console.error('Error en demo:', e);
   }
 }
+
+
+
+// ═══════════════════════════════════════════════════════════════════
+// SELECTOR DE ROL
+// ═══════════════════════════════════════════════════════════════════
+let rolActual = 'admin';
+const rolLabels = {
+  'admin': '🔑 Admin',
+  'financial_controller': '💰 Controller',
+  'income_auditor': '📊 Auditor',
+  'fb_manager': '🍽️ F&B',
+  'jefe_otras': '🛠️ Servicios'
+};
+
+function toggleRolMenu() {
+  const menu = document.getElementById('rol-menu');
+  menu.style.display = menu.style.display === 'block' ? 'none' : 'block';
+}
+
+async function cambiarRol(newRole) {
+  try {
+    const res = await fetch(`/api/rol/cambiar/${newRole}`, {method: 'POST'});
+    const data = await res.json();
+    
+    rolActual = newRole;
+    const btn = document.getElementById('rol-btn');
+    btn.textContent = '👤 ' + rolLabels[newRole];
+    
+    document.getElementById('rol-menu').style.display = 'none';
+    showNotification(`✓ Rol cambiado a ${rolLabels[newRole]}`, 'info');
+    
+    // Aquí irían los cambios visuales del dashboard según rol
+    // Por ahora solo cambiamos el label
+  } catch(e) {
+    console.error('Error cambiando rol:', e);
+  }
+}
+
+// Toggle al clickear el botón
+document.addEventListener('DOMContentLoaded', () => {
+  const btn = document.getElementById('rol-btn');
+  if (btn) {
+    btn.addEventListener('click', toggleRolMenu);
+  }
+});
 
 
 function switchTab(tab, el) {
@@ -2829,6 +2886,33 @@ def demo_data():
         "facturas_ar": generar_facturas_demo_ar(),
         "facturas_ap": generar_facturas_demo_ap(),
         "alertas": generar_alertas_demo()
+    })
+
+
+
+@app.route('/api/rol/cambiar/<new_role>', methods=['POST'])
+def cambiar_rol(new_role):
+    """Cambiar rol del usuario actual"""
+    roles_validos = ['admin', 'financial_controller', 'income_auditor', 'fb_manager', 'jefe_otras']
+    if new_role not in roles_validos:
+        return jsonify({"error": "Rol inválido"}), 400
+    
+    session['rol'] = new_role
+    return jsonify({"rol": new_role, "status": "cambiado"})
+
+@app.route('/api/rol/actual')
+def rol_actual():
+    """Retorna el rol actual y todos los roles disponibles"""
+    rol_actual = session.get('rol', 'admin')
+    return jsonify({
+        "rol_actual": rol_actual,
+        "roles_disponibles": {
+            "admin": "Administrador - Acceso total",
+            "financial_controller": "Controller Financiero",
+            "income_auditor": "Income Auditor",
+            "fb_manager": "Jefe de F&B",
+            "jefe_otras": "Jefe de Servicios"
+        }
     })
 
 
