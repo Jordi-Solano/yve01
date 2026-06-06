@@ -2558,40 +2558,6 @@ function closeHotelModal() {
   if (modal) modal.remove();
 }
 
-function renderMHRankings(top) {
-  const cont = document.getElementById('mh-rankings');
-  if (!cont) return;
-  
-  cont.innerHTML = top.map((h, i) => 
-    '<div onclick="openHotelDetail(\'' + h.id + '\')" style="display:flex;justify-content:space-between;align-items:center;padding:10px 0;border-bottom:1px solid #2e3248;cursor:pointer;transition:background 0.2s" onmouseover="this.style.background=\'rgba(26,115,232,0.08)\'" onmouseout="this.style.background=\'transparent\'">' +
-      '<div style="display:flex;align-items:center;gap:12px">' +
-        '<span style="font-size:18px;font-weight:700;color:' + (i === 0 ? '#FFD700' : i === 1 ? '#C0C0C0' : i === 2 ? '#CD7F32' : '#8892a4') + '">' + (i+1) + '</span>' +
-        '<div><div style="font-weight:600;font-size:13px">' + h.nombre + '</div>' +
-        '<div style="font-size:11px;color:#8892a4">' + h.ciudad + ', ' + h.pais + '</div></div>' +
-      '</div>' +
-      '<div style="font-weight:700;color:#1db954;font-size:15px">€' + (h.revenue_mtd/1000000).toFixed(2) + 'M</div>' +
-    '</div>'
-  ).join('');
-}
-
-function renderMHAlertas(alertas) {
-  const cont = document.getElementById('mh-alertas');
-  if (!cont) return;
-  
-  if (alertas.length === 0) {
-    cont.innerHTML = '<div style="color:#1db954;text-align:center;padding:20px">✅ Sin alertas activas</div>';
-    return;
-  }
-  
-  cont.innerHTML = alertas.map(a => {
-    const color = a.severity === 'critical' ? '#e05252' : '#ff9800';
-    return '<div style="padding:10px 12px;border-left:3px solid ' + color + ';background:rgba(255,255,255,0.02);border-radius:4px;margin-bottom:8px">' +
-      '<div style="font-size:13px;color:#cdd6f4">' + a.alerta + '</div>' +
-      '<div style="font-size:11px;color:#8892a4;margin-top:4px">' + a.hotel + ' • ' + a.ciudad + '</div>' +
-    '</div>';
-  }).join('');
-}
-
 </script>
 </body>
 </html>"""
