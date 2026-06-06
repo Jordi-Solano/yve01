@@ -310,7 +310,8 @@ def api_procesar():
             if ok_total:
                 try:
                     sys.path.insert(0, BASE_DIR)
-                    from notificaciones import enviar_pendientes
+                    from exportador_final import generar_reporte_ejecutivo, generar_excel_consolidado
+from notificaciones import enviar_pendientes
                     alertas = enviar_pendientes()
                     if alertas:
                         yield "data: >> Notificaciones: " + str(len(alertas)) + " alerta(s) procesada(s)\n\n"
@@ -488,7 +489,8 @@ def api_procesar_ap():
             if ok_total:
                 try:
                     sys.path.insert(0, BASE_DIR)
-                    from notificaciones import enviar_pendientes
+                    from exportador_final import generar_reporte_ejecutivo, generar_excel_consolidado
+from notificaciones import enviar_pendientes
                     alertas = enviar_pendientes()
                     if alertas:
                         yield "data: >> Notificaciones: " + str(len(alertas)) + " alerta(s) procesada(s)\n\n"
@@ -845,7 +847,8 @@ def api_enviar_notificaciones():
     """Escanea alertas y envía pendientes."""
     try:
         sys.path.insert(0, BASE_DIR)
-        from notificaciones import enviar_pendientes
+        from exportador_final import generar_reporte_ejecutivo, generar_excel_consolidado
+from notificaciones import enviar_pendientes
         alertas = enviar_pendientes()
         return jsonify({"ok": True, "enviadas": len(alertas)})
     except Exception as e:
@@ -1139,10 +1142,15 @@ tr:hover td{background:rgba(255,255,255,.025)}
     <a href="/admin/" class="btn-ref" title="Admin" style="text-decoration:none;display:__ADMIN_DISPLAY__">👥</a>
     <div style="display:inline-block;position:relative">
       <button class="btn-ref" onclick="document.getElementById('reportes-menu').style.display=document.getElementById('reportes-menu').style.display==='block'?'none':'block'" title="Descargar reportes PDF" style="color:#1db954;border-color:#1db954">📄 Reportes</button>
-      <div id="reportes-menu" style="display:none;position:absolute;top:42px;right:0;background:#1c1f2e;border:1px solid #2e3248;border-radius:8px;padding:8px;z-index:1000;min-width:180px;box-shadow:0 4px 12px rgba(0,0,0,0.5)">
-        <a href="/api/reportes/diario" style="display:block;padding:10px 12px;color:#fff;text-decoration:none;border-radius:6px;font-size:13px" onmouseover="this.style.background='#2e3248'" onmouseout="this.style.background='transparent'">📄 Reporte Diario</a>
-        <a href="/api/reportes/semanal" style="display:block;padding:10px 12px;color:#fff;text-decoration:none;border-radius:6px;font-size:13px" onmouseover="this.style.background='#2e3248'" onmouseout="this.style.background='transparent'">📊 Reporte Semanal</a>
-        <a href="/api/reportes/mensual" style="display:block;padding:10px 12px;color:#fff;text-decoration:none;border-radius:6px;font-size:13px" onmouseover="this.style.background='#2e3248'" onmouseout="this.style.background='transparent'">📈 Reporte Mensual</a>
+      <div id="reportes-menu" style="display:none;position:absolute;top:42px;right:0;background:#1c1f2e;border:1px solid #2e3248;border-radius:8px;padding:8px;z-index:1000;min-width:200px;box-shadow:0 4px 12px rgba(0,0,0,0.5)">
+        <div style="padding:6px 12px;color:#8892a4;font-size:10px;font-weight:600">REPORTES PDF</div>
+        <a href="/api/reportes/diario" style="display:block;padding:8px 12px;color:#fff;text-decoration:none;border-radius:6px;font-size:12px" onmouseover="this.style.background='#2e3248'" onmouseout="this.style.background='transparent'">📄 Diario</a>
+        <a href="/api/reportes/semanal" style="display:block;padding:8px 12px;color:#fff;text-decoration:none;border-radius:6px;font-size:12px" onmouseover="this.style.background='#2e3248'" onmouseout="this.style.background='transparent'">📊 Semanal</a>
+        <a href="/api/reportes/mensual" style="display:block;padding:8px 12px;color:#fff;text-decoration:none;border-radius:6px;font-size:12px" onmouseover="this.style.background='#2e3248'" onmouseout="this.style.background='transparent'">📈 Mensual</a>
+        <div style="border-top:1px solid #2e3248;margin:6px 0"></div>
+        <div style="padding:6px 12px;color:#8892a4;font-size:10px;font-weight:600">REPORTES EJECUTIVOS</div>
+        <a href="/api/reportes/ejecutivo.pdf" style="display:block;padding:8px 12px;color:#fff;text-decoration:none;border-radius:6px;font-size:12px" onmouseover="this.style.background='#2e3248'" onmouseout="this.style.background='transparent'">🎯 Ejecutivo PDF</a>
+        <a href="/api/reportes/consolidado.xlsx" style="display:block;padding:8px 12px;color:#fff;text-decoration:none;border-radius:6px;font-size:12px" onmouseover="this.style.background='#2e3248'" onmouseout="this.style.background='transparent'">📊 Consolidado Excel</a>
       </div>
     </div>
     <button class="btn-ref" onclick="loadAll()" title="Actualizar datos">↻ Actualizar</button>
@@ -2939,6 +2947,26 @@ def historial_notificaciones():
         return jsonify(historial[-50:])  # Últimas 50
     except:
         return jsonify([])
+
+
+
+@app.route('/api/reportes/ejecutivo.pdf')
+def reporte_ejecutivo():
+    """Descarga reporte ejecutivo en PDF"""
+    try:
+        pdf = generar_reporte_ejecutivo()
+        return send_file(pdf, mimetype='application/pdf', as_attachment=True, download_name='Reporte_Ejecutivo.pdf')
+    except Exception as e:
+        return jsonify({"error": str(e)}), 500
+
+@app.route('/api/reportes/consolidado.xlsx')
+def reporte_consolidado():
+    """Descarga reporte consolidado en Excel"""
+    try:
+        xlsx = generar_excel_consolidado()
+        return send_file(xlsx, mimetype='application/vnd.openxmlformats-officedocument.spreadsheetml.sheet', as_attachment=True, download_name='Consolidado.xlsx')
+    except Exception as e:
+        return jsonify({"error": str(e)}), 500
 
 
 if __name__ == '__main__':
