@@ -2715,3 +2715,4 @@ if __name__ == '__main__':
     app.run(host='0.0.0.0', port=port, debug=False)
 
 # Redeploy trigger Sat Jun  6 12:09:22 UTC 2026
+# Force fresh deploy 1780748772
