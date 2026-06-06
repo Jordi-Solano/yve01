@@ -1,86 +1,62 @@
 /* ============================================================
-   Yve — Premium Design System v3
-   Dark Carbon · Syne + Plus Jakarta Sans · Teal Accent
+   Yve.01 — Sistema de diseño compartido v2
+   Mismo aesthetic que el login — Inter, azul Tailwind, slate-900
    ============================================================ */
 
-@import url('https://fonts.googleapis.com/css2?family=Syne:wght@700;800&family=Plus+Jakarta+Sans:wght@400;500;600;700;800&family=DM+Mono:wght@400;500&display=swap');
-
 :root{
-  /* ── Yve Carbon Palette ── */
-  --bg:#07090e;--s1:#0b1018;--s2:#111b28;--s3:#182234;--s4:#1e2c40;
-  --bd:#19202f;--bd2:#1f2d42;
-  /* Primary: Electric Blue */
-  --acc:#2d7ff9;--acc2:#5a9bff;--acc3:#99c0ff;
-  /* Teal: Success / Revenue */
-  --teal:#00c8a0;--teal2:#26dab4;
-  /* Text */
-  --tx:#eef1f7;--tx2:#c4cdd8;--mut:#7a8fa8;--dim:#3e5068;
-  /* Status */
-  --grn:#00e08a;--red:#ff3b55;--ora:#ff7a38;--yel:#ffc800;--pur:#9966ff;
-  /* Typography */
-  --font:'Plus Jakarta Sans',system-ui,sans-serif;
-  --font-display:'Syne',sans-serif;
-  --mono:'DM Mono','JetBrains Mono',monospace;
-  /* Geometry */
-  --r-xs:6px;--r-sm:9px;--r-md:14px;--r-lg:18px;--r-xl:24px;
-  /* Shadows */
-  --shadow-soft:0 1px 3px rgba(0,0,0,.3),0 6px 20px rgba(0,0,0,.25);
-  --shadow-lift:0 20px 60px rgba(0,0,0,.55),0 4px 16px rgba(0,0,0,.3);
-  --shadow-acc:0 0 0 1px rgba(45,127,249,.2),0 8px 32px rgba(45,127,249,.18);
+  /* Superficie / fondo */
+  --bg:#0f172a; --s1:#1e293b; --s2:#334155; --s3:#475569;
+  /* Acento */
+  --acc:#3b82f6; --acc2:#60a5fa; --acc3:#93c5fd;
+  /* Texto */
+  --tx:#f1f5f9; --mut:#94a3b8; --dim:#64748b;
+  /* Estados */
+  --grn:#22c55e; --red:#ef4444; --ora:#f97316; --yel:#eab308; --pur:#8b5cf6;
+  /* Tipografía */
+  --font:'Inter','Inter var',-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif;
+  --mono:'JetBrains Mono','Cascadia Code','Fira Code',ui-monospace,monospace;
+  /* Radios / sombras */
+  --r-sm:8px; --r-md:12px; --r-lg:16px; --r-xl:20px;
+  --shadow-soft:0 1px 2px rgba(0,0,0,.20), 0 8px 24px rgba(0,0,0,.22);
+  --shadow-lift:0 12px 40px rgba(0,0,0,.40);
 }
 
-/* ── Base ── */
+/* Render de fuente nítido */
 html{
   -webkit-font-smoothing:antialiased;
   -moz-osx-font-smoothing:grayscale;
   text-rendering:optimizeLegibility;
   -webkit-text-size-adjust:100%;
-  font-feature-settings:'cv02','cv03','ss01';
+  font-feature-settings:'cv02','cv03','cv04','ss01';
 }
-body{font-family:var(--font)}
 
-/* ── Numbers: always tabular mono ── */
-.sc-val,.kpi-val,td,th,.metric,.eur,.num{
-  font-variant-numeric:tabular-nums;
-}
-td,.sc-val{font-family:var(--mono)}
+body{ font-family:var(--font); }
 
-/* ── Brand selection ── */
-::selection{background:rgba(45,127,249,.28);color:#fff}
+/* Números tabulares en métricas/tablas */
+.sc-val,.kpi-val,td,th,.metric,.eur,.num{ font-variant-numeric:tabular-nums; }
 
-/* ── Scrollbars ── */
-*{scrollbar-width:thin;scrollbar-color:var(--s3) transparent}
-*::-webkit-scrollbar{width:8px;height:8px}
-*::-webkit-scrollbar-track{background:transparent}
+/* Selección con acento de marca */
+::selection{ background:rgba(59,130,246,.32); color:#fff; }
+
+/* Scrollbars finas */
+*{ scrollbar-width:thin; scrollbar-color:var(--s3) transparent; }
+*::-webkit-scrollbar{ width:10px; height:10px; }
+*::-webkit-scrollbar-track{ background:transparent; }
 *::-webkit-scrollbar-thumb{
-  background:var(--s3);border-radius:999px;
-  border:2px solid transparent;background-clip:content-box
+  background:var(--s2); border-radius:999px;
+  border:2px solid transparent; background-clip:content-box;
 }
-*::-webkit-scrollbar-thumb:hover{background:var(--s4);background-clip:content-box}
+*::-webkit-scrollbar-thumb:hover{ background:var(--s3); background-clip:content-box; }
 
-/* ── Focus ── */
-:focus-visible{outline:2px solid var(--acc2);outline-offset:2px;border-radius:4px}
+/* Foco accesible */
+:focus-visible{ outline:2px solid var(--acc2); outline-offset:2px; border-radius:4px; }
 
-/* ── Transitions ── */
+/* Transiciones en controles */
 button,a,input,select,textarea{
-  transition:background .15s,border-color .15s,color .15s,box-shadow .15s,transform .15s
+  transition:background .15s, border-color .15s, color .15s, box-shadow .15s, transform .15s;
 }
 
-/* ── Reduced motion ── */
-@media(prefers-reduced-motion:reduce){
-  *,*::before,*::after{animation-duration:.001ms !important;transition-duration:.001ms !important}
-}
-
-/* ── Utility: teal value (revenue metrics) ── */
-.val-teal{color:var(--teal)!important}
-.val-grn{color:var(--grn)!important}
-.val-red{color:var(--red)!important}
-.val-ora{color:var(--ora)!important}
-.val-blu{color:var(--acc2)!important}
-.val-pur{color:var(--pur)!important}
-
-/* ── Dropdown menus: update inline color overrides ── */
-[id$="-menu"]{
-  background:var(--s2)!important;
-  border-color:var(--bd2)!important
+/* Reduced motion */
+@media (prefers-reduced-motion: reduce){
+  *,*::before,*::after{ animation-duration:.001ms !important; transition-duration:.001ms !important; }
 }
