@@ -3,6 +3,7 @@ Blueprint Flask para descarga de reportes
 """
 from flask import Blueprint, send_file, jsonify
 from exportador_reportes import exportar_excel
+from ar_real_completo import exportar_excel as exportar_ar_real
 
 exportador_bp = Blueprint('exportador', __name__)
 
@@ -11,11 +12,14 @@ def api_exportar(tipo):
     """Descarga reporte en Excel"""
     valid_tipos = ['ar', 'ap', 'drr', 'multihotel']
     
-    if tipo not in valid_tipos:
+    if tipo not in valid_tipos and tipo != 'ar_real':
         return jsonify({"error": "Tipo de reporte inválido"}), 400
     
     try:
-        result = exportar_excel(tipo)
+        if tipo == 'ar_real':
+            result = exportar_ar_real(tipo)
+        else:
+            result = exportar_excel(tipo)
         if not result:
             return jsonify({"error": "Error generando reporte"}), 500
         
