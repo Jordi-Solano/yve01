@@ -3,7 +3,7 @@ Blueprint Flask para descarga de reportes
 """
 from flask import Blueprint, send_file, jsonify
 from exportador_reportes import exportar_excel, crear_reporte_calipolis_excel
-from ar_real_completo import exportar_excel as exportar_ar_real
+from ar_real_completo import procesar_ar_real_completo
 
 exportador_bp = Blueprint('exportador', __name__)
 
@@ -17,7 +17,15 @@ def api_exportar(tipo):
     
     try:
         if tipo == 'ar_real':
-            result = exportar_ar_real(tipo)
+            output_file = procesar_ar_real_completo()
+            if not output_file:
+                return jsonify({"error": "No se pudo procesar AR Real"}), 500
+            output = open(output_file, 'rb').read()
+            from io import BytesIO
+            output = BytesIO(output)
+            import os
+            filename = os.path.basename(output_file)
+            result = (output, filename)
         elif tipo == 'calipolis':
             wb = crear_reporte_calipolis_excel()
             from io import BytesIO
