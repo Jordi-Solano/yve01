@@ -1163,7 +1163,7 @@ tr:hover td{background:rgba(255,255,255,.025)}
   </div>
 
   <div id="panel-ar" class="panel active">
-  <div style="display:flex;justify-content:flex-end;margin-bottom:14px"><a href="/aprobaciones-ar/" class="btn-ref" style="text-decoration:none" title="Abrir panel de aprobaciones AR">📲 Aprobar facturas AR</a></div>
+  <div style="display:flex;justify-content:flex-end;gap:12px;margin-bottom:14px"><a href="/api/exportar/ar" style="background:#1a73e8;color:white;padding:8px 16px;border-radius:8px;text-decoration:none;font-weight:600;font-size:13px">⬇️ Descargar Excel</a><a href="/aprobaciones-ar/" class="btn-ref" style="text-decoration:none" title="Abrir panel de aprobaciones AR">📲 Aprobar facturas AR</a></div>
   <!-- STATS -->
   <div class="stats">
     <div class="sc hl c-blu">
@@ -1246,7 +1246,7 @@ tr:hover td{background:rgba(255,255,255,.025)}
 
   <!-- PANEL AP -->
   <div id="panel-ap" class="panel">
-  <div style="display:flex;justify-content:flex-end;margin-bottom:14px"><a href="/aprobaciones-ap/" class="btn-ref" style="text-decoration:none" title="Abrir panel de aprobaciones AP">📲 Aprobar facturas AP</a></div>
+  <div style="display:flex;justify-content:flex-end;gap:12px;margin-bottom:14px"><a href="/api/exportar/ap" style="background:#1a73e8;color:white;padding:8px 16px;border-radius:8px;text-decoration:none;font-weight:600;font-size:13px">⬇️ Descargar Excel</a><a href="/aprobaciones-ap/" class="btn-ref" style="text-decoration:none" title="Abrir panel de aprobaciones AP">📲 Aprobar facturas AP</a></div>
     <div class="stats" id="stats-ap-grid">
       <div class="sc hl c-blu"><div class="sc-lbl">Total Facturas AP</div><div class="sc-val" id="ap-total">—</div><div class="sc-sub">proveedores</div></div>
       <div class="sc"><div class="sc-lbl">Importe Total</div><div class="sc-val" id="ap-importe" style="font-size:18px;letter-spacing:-.5px">—</div><div class="sc-sub">EUR</div></div>
@@ -1269,7 +1269,7 @@ tr:hover td{background:rgba(255,255,255,.025)}
 
   <!-- PANEL DRR -->
   <div id="panel-drr" class="panel">
-
+  <div style="display:flex;justify-content:flex-end;margin-bottom:14px"><a href="/api/exportar/drr" style="background:#1a73e8;color:white;padding:8px 16px;border-radius:8px;text-decoration:none;font-weight:600;font-size:13px">⬇️ Descargar Excel</a></div>
     <div class="drr-upload">
       <label for="drr-file-input">📂 Subir DRR (.xlsm)</label>
       <input type="file" id="drr-file-input" accept=".xlsm" style="display:none" onchange="uploadDRR(this)">
