@@ -172,7 +172,7 @@ footer{background:var(--s1);border-top:1px solid var(--s2);padding:48px 5% 32px;
   <h1>El sistema operativo<br><span class="accent">AI-first para hoteles</span></h1>
   <p class="hero-sub">Automatiza AP, AR, DRR y conciliación bancaria. Tu equipo financiero multiplica su capacidad sin ampliar plantilla.</p>
   <div class="hero-btns">
-    <a href="/login" class="btn-hero-primary">Empezar gratis 14 días</a>
+    <a href="/checkout/starter" class="btn-hero-primary">Empezar gratis 14 días</a>
     <a href="#roi" class="btn-hero-outline">Calcular mi ahorro →</a>
   </div>
 </section>
@@ -329,7 +329,7 @@ footer{background:var(--s1);border-top:1px solid var(--s2);padding:48px 5% 32px;
           <li>Oracle GL (simulación)</li>
           <li>Soporte email</li>
         </ul>
-        <a href="/login" class="price-btn outline">Empezar gratis</a>
+        <a href="/checkout/starter" class="price-btn outline">Empezar gratis</a>
       </div>
       <div class="price-card featured">
         <div class="price-badge">Más popular</div>
@@ -345,7 +345,7 @@ footer{background:var(--s1);border-top:1px solid var(--s2);padding:48px 5% 32px;
           <li>Notificaciones (email, WhatsApp)</li>
           <li>Soporte prioritario</li>
         </ul>
-        <a href="/login" class="price-btn primary">Empezar gratis</a>
+        <a href="/checkout/pro" class="price-btn primary">Empezar gratis</a>
       </div>
       <div class="price-card">
         <div class="price-name">Multi-Hotel</div>
@@ -359,7 +359,7 @@ footer{background:var(--s1);border-top:1px solid var(--s2);padding:48px 5% 32px;
           <li>20% dto pago anual</li>
           <li>Gestor de cuenta dedicado</li>
         </ul>
-        <a href="/login" class="price-btn outline">Hablar con ventas</a>
+        <a href="/checkout/multi" class="price-btn outline">Hablar con ventas</a>
       </div>
     </div>
     <p style="text-align:center;color:var(--dim);font-size:13px;margin-top:24px">14 días gratis. Sin tarjeta de crédito. Cancela cuando quieras.</p>
@@ -407,7 +407,7 @@ footer{background:var(--s1);border-top:1px solid var(--s2);padding:48px 5% 32px;
       <h2>¿Listo para automatizar<br>tus finanzas hoteleras?</h2>
       <p>14 días gratis. Sin tarjeta. Setup en 15 minutos.</p>
       <div style="display:flex;gap:14px;justify-content:center;flex-wrap:wrap">
-        <a href="/login" class="btn-hero-primary">Empezar gratis →</a>
+        <a href="/checkout/starter" class="btn-hero-primary">Empezar gratis →</a>
         <a href="mailto:jordi@yve01.com" class="btn-hero-outline">Hablar con el equipo</a>
       </div>
     </div>
