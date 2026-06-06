@@ -3432,6 +3432,46 @@ function closeHotelModal() {
   if (modal) modal.remove();
 }
 
+
+// ═══════════════════════════════
+// I18N — Sistema de traducción
+// ═══════════════════════════════
+let _i18nData = {};
+let _i18nLang = localStorage.getItem('yve_lang') || 'es';
+
+async function loadI18n(lang) {
+  if (lang === 'es') { applyI18n({}); return; } // ES = default, no translate
+  try {
+    const r = await fetch('/static/i18n/' + lang + '.json');
+    _i18nData = await r.json();
+    applyI18n(_i18nData);
+    localStorage.setItem('yve_lang', lang);
+    _i18nLang = lang;
+  } catch(e) { console.warn('i18n error:', e); }
+}
+
+function t(key) { return _i18nData[key] || key; }
+
+function applyI18n(data) {
+  document.querySelectorAll('[data-i18n]').forEach(el => {
+    const key = el.getAttribute('data-i18n');
+    if (data[key]) el.textContent = data[key];
+  });
+}
+
+async function cambiarIdioma(lang) {
+  await fetch('/api/set_lang/' + lang);
+  await loadI18n(lang);
+  // Update active flag in menu
+  document.querySelectorAll('.lang-btn').forEach(b => {
+    b.style.fontWeight = b.dataset.lang === lang ? '700' : '400';
+    b.style.color = b.dataset.lang === lang ? 'var(--acc2)' : 'var(--tx)';
+  });
+}
+
+// Load on startup
+loadI18n(_i18nLang);
+
 </script>
 </body>
 </html>"""
@@ -3538,6 +3578,14 @@ def reporte_consolidado():
     except Exception as e:
         return jsonify({"error": str(e)}), 500
 
+@app.route('/api/set_lang/<lang>')
+def set_lang(lang):
+    """Guarda preferencia de idioma"""
+    allowed = ['es','en','ca','fr','de','it','pt']
+    if lang in allowed:
+        session['lang'] = lang
+        return jsonify({'ok': True, 'lang': lang})
+    return jsonify({'ok': False}), 400
 
 if __name__ == '__main__':
     import socket

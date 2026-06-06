@@ -125,19 +125,30 @@ input:focus{border-color:var(--acc);box-shadow:0 0 0 3px rgba(59,130,246,.18)}
     <div class="brand"><span class="brand-dot"></span><span class="brand-name">Yve<span>.01</span></span></div>
     <div class="brand-sub">Automatización financiera para hoteles</div>
 
-    <div class="heading">Inicia sesión</div>
+    <div style="display:flex;gap:6px;margin-bottom:20px;flex-wrap:wrap;padding:8px;background:rgba(59,130,246,.05);border-radius:8px;border:1px solid var(--s2)">
+      <span style="font-size:11px;color:var(--mut);text-transform:uppercase;letter-spacing:.6px;display:flex;align-items:center">Lang:</span>
+      <button class="lang-btn" data-lang="es" onclick="cambiarIdioma('es')" style="padding:4px 8px;font-size:11px;border-radius:5px;border:1px solid transparent;background:rgba(59,130,246,.15);color:var(--acc2);font-weight:700;cursor:pointer;transition:.15s">ES</button>
+      <button class="lang-btn" data-lang="en" onclick="cambiarIdioma('en')" style="padding:4px 8px;font-size:11px;border-radius:5px;border:1px solid transparent;background:transparent;color:var(--mut);cursor:pointer;transition:.15s">EN</button>
+      <button class="lang-btn" data-lang="ca" onclick="cambiarIdioma('ca')" style="padding:4px 8px;font-size:11px;border-radius:5px;border:1px solid transparent;background:transparent;color:var(--mut);cursor:pointer;transition:.15s">CA</button>
+      <button class="lang-btn" data-lang="fr" onclick="cambiarIdioma('fr')" style="padding:4px 8px;font-size:11px;border-radius:5px;border:1px solid transparent;background:transparent;color:var(--mut);cursor:pointer;transition:.15s">FR</button>
+      <button class="lang-btn" data-lang="de" onclick="cambiarIdioma('de')" style="padding:4px 8px;font-size:11px;border-radius:5px;border:1px solid transparent;background:transparent;color:var(--mut);cursor:pointer;transition:.15s">DE</button>
+      <button class="lang-btn" data-lang="it" onclick="cambiarIdioma('it')" style="padding:4px 8px;font-size:11px;border-radius:5px;border:1px solid transparent;background:transparent;color:var(--mut);cursor:pointer;transition:.15s">IT</button>
+      <button class="lang-btn" data-lang="pt" onclick="cambiarIdioma('pt')" style="padding:4px 8px;font-size:11px;border-radius:5px;border:1px solid transparent;background:transparent;color:var(--mut);cursor:pointer;transition:.15s">PT</button>
+    </div>
 
-    <label>Usuario</label>
+    <div class="heading" data-i18n="login.titulo">Inicia sesión</div>
+
+    <label data-i18n="login.usuario">Usuario</label>
     <input id="username" placeholder="tu usuario" autocomplete="username" autofocus>
 
-    <label>Contraseña</label>
+    <label data-i18n="login.password">Contraseña</label>
     <input id="password" type="password" placeholder="••••••••" autocomplete="current-password">
 
-    <button class="btn-login" id="btn-login" onclick="doLogin()">Entrar al panel</button>
+    <button class="btn-login" id="btn-login" onclick="doLogin()" data-i18n="login.boton">Entrar al panel</button>
     <div class="error" id="error"></div>
 
     <div class="demo">
-      <div class="demo-h">Accesos de demostración — pulsa para rellenar</div>
+      <div class="demo-h" data-i18n="login.demo">Accesos de demostración — pulsa para rellenar</div>
       <div class="chips">
         <button class="chip" onclick="fill('fc_user','hotel2024')"><span class="chip-role">Financial Controller</span><span class="chip-user">fc_user</span></button>
         <button class="chip" onclick="fill('auditor','hotel2024')"><span class="chip-role">Income Auditor</span><span class="chip-user">auditor</span></button>
@@ -186,6 +197,41 @@ async function doLogin() {
 }
 document.getElementById('password').addEventListener('keydown', function(e){ if(e.key==='Enter') doLogin(); });
 document.getElementById('username').addEventListener('keydown', function(e){ if(e.key==='Enter') document.getElementById('password').focus(); });
+
+// I18N Login
+let _i18nData = {};
+let _i18nLang = localStorage.getItem('yve_lang') || 'es';
+
+async function loadI18n(lang) {
+  if (lang === 'es') { applyI18n({}); return; }
+  try {
+    const r = await fetch('/static/i18n/' + lang + '.json');
+    _i18nData = await r.json();
+    applyI18n(_i18nData);
+    localStorage.setItem('yve_lang', lang);
+    _i18nLang = lang;
+  } catch(e) { console.warn('i18n error:', e); }
+}
+
+function applyI18n(data) {
+  document.querySelectorAll('[data-i18n]').forEach(el => {
+    const key = el.getAttribute('data-i18n');
+    if (data[key]) el.textContent = data[key];
+  });
+}
+
+async function cambiarIdioma(lang) {
+  await fetch('/api/set_lang/' + lang);
+  await loadI18n(lang);
+  document.querySelectorAll('.lang-btn').forEach(b => {
+    b.style.background = b.dataset.lang === lang ? 'rgba(59,130,246,.15)' : 'transparent';
+    b.style.color = b.dataset.lang === lang ? 'var(--acc2)' : 'var(--mut)';
+    b.style.fontWeight = b.dataset.lang === lang ? '700' : '400';
+  });
+}
+
+loadI18n(_i18nLang);
+
 </script>
 </body>
 </html>"""
