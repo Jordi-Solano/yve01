@@ -3,7 +3,7 @@ Blueprint Flask para Dashboard Calipolis
 Integra datos reales de kpis_hoteles.xlsx y hoteles.json
 """
 from flask import Blueprint, jsonify
-from dashboard_calipolis import get_hoteles_calipolis, get_consolidado, get_hotel_detail
+from dashboard_calipolis import get_hoteles_calipolis, get_consolidado, get_hotel_detail, get_tendencias
 
 calipolis_bp = Blueprint('calipolis', __name__)
 
@@ -13,8 +13,10 @@ def api_calipolis_kpis():
     consolidado = get_consolidado()
     hoteles = get_hoteles_calipolis()
     
+    tendencias = get_tendencias()
     return jsonify({
         "consolidado": consolidado,
+        "tendencias": tendencias,
         "hoteles": [
             {
                 "id": h["id"],
