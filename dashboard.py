@@ -51,7 +51,8 @@ from tab_fb_dashboard import fb_bp
 from tab_ar_real import ar_real_bp
 from tab_multi_hotel import multi_hotel_bp
 from tab_exportador import exportador_bp
-for _bp in (auth_bp, config_bp, admin_bp, aprob_ar_bp, aprob_ap_bp, concil_bp, fb_bp, ar_real_bp, multi_hotel_bp, exportador_bp):
+from tab_calipolis import calipolis_bp
+for _bp in (auth_bp, config_bp, admin_bp, aprob_ar_bp, aprob_ap_bp, concil_bp, fb_bp, ar_real_bp, multi_hotel_bp, exportador_bp, calipolis_bp):
     app.register_blueprint(_bp)
 
 _pipeline_running = False
@@ -1355,6 +1356,19 @@ tr:hover td{background:rgba(255,255,255,.025)}
   </div><!-- /panel-ar_real -->
 
   <!-- PANEL MULTI-HOTEL -->
+  <div id="panel-calipolis" class="panel">
+  <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:20px">
+    <h2 style="font-size:18px;font-weight:700;margin:0">🏩 Calipolis Hotels Group</h2>
+    <a href="/api/exportar/calipolis" style="background:#1a73e8;color:white;padding:8px 16px;border-radius:8px;text-decoration:none;font-weight:600;font-size:13px">⬇️ Descargar Excel</a>
+  </div>
+  
+  <div id="cal-kpis" style="display:grid;grid-template-columns:repeat(auto-fit,minmax(160px,1fr));gap:12px;margin-bottom:24px"></div>
+  
+  <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:16px;margin-bottom:24px" id="cal-hoteles"></div>
+  
+  <div id="cal-detail" style="display:none;margin-top:24px;background:#1c1f2e;border:1px solid #2e3248;border-radius:12px;padding:20px;"></div>
+  </div><!-- /panel-calipolis -->
+
   <div id="panel-multi_hotel" class="panel">
     <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:20px;flex-wrap:wrap;gap:12px">
       <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:20px"><h2 style="font-size:18px;font-weight:700;margin:0">🏨 Multi-Hotel Dashboard</h2><a href="/api/exportar/multihotel" style="background:#1a73e8;color:white;border:none;padding:8px 16px;border-radius:8px;cursor:pointer;font-weight:600;text-decoration:none;font-size:13px">⬇️ Descargar Excel</a></div>
@@ -2553,6 +2567,93 @@ async function openHotelDetail(hotelId) {
     alert('Error cargando hotel: ' + e.message);
   }
 }
+
+
+// ═══════════════════════════════════════════════════════════════════
+// CALIPOLIS DASHBOARD
+// ═══════════════════════════════════════════════════════════════════
+async function loadCalipolis() {
+  try {
+    const res = await fetch('/api/calipolis/kpis');
+    const data = await res.json();
+    renderCalipolisKpis(data.consolidado);
+    renderCalipolisHoteles(data.hoteles);
+  } catch(e) {
+    console.error('Error Calipolis:', e);
+  }
+}
+
+function renderCalipolisKpis(kpis) {
+  const cont = document.getElementById('cal-kpis');
+  if (!cont) return;
+  const cards = [
+    {label: 'Hoteles', value: kpis.num_hoteles, color: '#1a73e8'},
+    {label: 'Habitaciones', value: kpis.total_rooms, color: '#1a73e8'},
+    {label: 'Revenue MTD', value: '€' + (kpis.total_revenue_mtd/1000000).toFixed(2) + 'M', color: '#1db954'},
+    {label: 'Ocupación Avg', value: kpis.avg_ocupacion + '%', color: '#1db954'},
+    {label: 'ADR Avg', value: '€' + kpis.avg_adr.toFixed(0), color: '#ff9800'},
+    {label: 'RevPAR Avg', value: '€' + kpis.avg_revpar.toFixed(0), color: '#ff9800'},
+    {label: 'GOP', value: '€' + (kpis.total_gop/1000).toFixed(0) + 'K', color: '#1db954'},
+    {label: 'GOP%', value: kpis.avg_gop_pct + '%', color: '1db954'}
+  ];
+  
+  cont.innerHTML = cards.map(c => 
+    '<div style="background:#1c1f2e;border:1px solid #2e3248;border-radius:12px;padding:16px">' +
+    '<div style="font-size:11px;color:#8892a4;margin-bottom:4px">' + c.label + '</div>' +
+    '<div style="font-size:20px;font-weight:700;color:' + c.color + '">' + c.value + '</div>' +
+    '</div>'
+  ).join('');
+}
+
+function renderCalipolisHoteles(hoteles) {
+  const cont = document.getElementById('cal-hoteles');
+  if (!cont) return;
+  
+  cont.innerHTML = hoteles.map(h => {
+    const statusColor = h.status === 'ok' ? '#1db954' : h.status === 'warning' ? '#ff9800' : '#e05252';
+    return '<div style="background:#1c1f2e;border:1px solid #2e3248;border-radius:12px;padding:16px;cursor:pointer;transition:all 0.2s" onclick="abrirDetalleCalipolis('' + h.id + '''+')" onmouseover="this.style.background=\'rgba(26,115,232,0.08)\'" onmouseout="this.style.background=\'#1c1f2e\'">' +
+      '<div style="font-weight:600;font-size:14px">' + h.nombre + '</div>' +
+      '<div style="font-size:11px;color:#8892a4;margin-bottom:12px">' + h.categoria + ' • ' + h.habitaciones + ' rooms</div>' +
+      '<div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;font-size:12px">' +
+        '<div><span style="color:#8892a4">Occ:</span> <strong>' + h.ocupacion + '%</strong></div>' +
+        '<div><span style="color:#8892a4">RevPAR:</span> <strong>€' + h.revpar.toFixed(0) + '</strong></div>' +
+        '<div><span style="color:#8892a4">Revenue:</span> <strong>€' + (h.total_ingresos/1000).toFixed(0) + 'K</strong></div>' +
+        '<div><span style="color:' + statusColor + '">GOP: ' + h.gop_pct + '%</span></div>' +
+      '</div>' +
+      '<div style="margin-top:8px;padding-top:8px;border-top:1px solid #2e3248;font-size:11px;color:#8892a4">' +
+        'AP Pend: ' + h.ap_pendientes + ' • AR: ' + h.ar_pendientes +
+      '</div></div>';
+  }).join('');
+}
+
+async function abrirDetalleCalipolis(hotelId) {
+  try {
+    const res = await fetch('/api/calipolis/hotel/' + hotelId);
+    const h = await res.json();
+    
+    const detailDiv = document.getElementById('cal-detail');
+    if (!detailDiv) return;
+    
+    detailDiv.style.display = 'block';
+    detailDiv.innerHTML = 
+      '<h3 style="margin:0 0 16px 0;font-size:16px">' + h.nombre + ' (' + h.categoria + ')</h3>' +
+      '<div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(120px,1fr));gap:12px;margin-bottom:16px">' +
+        '<div><span style="font-size:11px;color:#8892a4">Ocupación</span><br><strong style="font-size:18px;color:#1a73e8">' + h.ocupacion + '%</strong></div>' +
+        '<div><span style="font-size:11px;color:#8892a4">ADR</span><br><strong style="font-size:18px">€' + h.adr.toFixed(0) + '</strong></div>' +
+        '<div><span style="font-size:11px;color:#8892a4">RevPAR</span><br><strong style="font-size:18px">€' + h.revpar.toFixed(0) + '</strong></div>' +
+        '<div><span style="font-size:11px;color:#8892a4">GOP%</span><br><strong style="font-size:18px;color:#1db954">' + h.gop_pct + '%</strong></div>' +
+      '</div>' +
+      '<div style="display:grid;grid-template-columns:repeat(2,1fr);gap:12px;font-size:12px">' +
+        '<div><span style="color:#8892a4">Rooms Revenue</span><br>€' + h.ingresos_rooms.toLocaleString('es-ES') + '</div>' +
+        '<div><span style="color:#8892a4">F&B Revenue</span><br>€' + h.ingresos_fb.toLocaleString('es-ES') + '</div>' +
+        '<div><span style="color:#8892a4">F&B Cost %</span><br>' + h.food_cost_pct + '%</div>' +
+        '<div><span style="color:#8892a4">Alertas</span><br>' + (h.alertas === 0 ? '✅ Ninguna' : '⚠️ ' + h.alertas) + '</div>' +
+      '</div>';
+  } catch(e) {
+    console.error('Error abriendo detalle:', e);
+  }
+}
+
 
 function closeHotelModal() {
   const modal = document.getElementById('hotel-modal');

@@ -257,3 +257,92 @@ def exportar_excel(tipo):
     output.seek(0)
     
     return output, filename
+
+def crear_reporte_calipolis_excel():
+    """Crea reporte Calipolis consolidado en Excel"""
+    from dashboard_calipolis import get_hoteles_calipolis, get_consolidado
+    import openpyxl
+    from openpyxl.styles import Font, Alignment, PatternFill, Border, Side
+    from openpyxl.utils import get_column_letter
+    
+    wb = openpyxl.Workbook()
+    ws = wb.active
+    ws.title = "Calipolis"
+    
+    header_fill = PatternFill(start_color="1F4E78", end_color="1F4E78", fill_type="solid")
+    header_font = Font(bold=True, color="FFFFFF")
+    border = Border(left=Side(style='thin'), right=Side(style='thin'), top=Side(style='thin'), bottom=Side(style='thin'))
+    
+    # Título
+    ws.merge_cells('A1:H1')
+    title = ws['A1']
+    title.value = "Calipolis Hotels Group — Consolidado"
+    title.font = Font(bold=True, size=14)
+    
+    consolidado = get_consolidado()
+    
+    row = 3
+    ws[f'A{row}'] = "MÉTRICA"
+    ws[f'B{row}'] = "VALOR"
+    for col in ['A', 'B']:
+        ws[f'{col}{row}'].font = header_font
+        ws[f'{col}{row}'].fill = header_fill
+    
+    row = 4
+    data = [
+        ["Grupo", consolidado['grupo']],
+        ["Hoteles", consolidado['num_hoteles']],
+        ["Habitaciones Total", consolidado['total_rooms']],
+        ["Revenue MTD", f"€{consolidado['total_revenue_mtd']:,.0f}"],
+        ["Ocupación Promedio", f"{consolidado['avg_ocupacion']}%"],
+        ["ADR Promedio", f"€{consolidado['avg_adr']:.2f}"],
+        ["RevPAR Promedio", f"€{consolidado['avg_revpar']:.2f}"],
+        ["GOP Total", f"€{consolidado['total_gop']:,.0f}"],
+        ["GOP% Promedio", f"{consolidado['avg_gop_pct']}%"],
+        ["AP Facturas Pendientes", consolidado['total_ap_pendientes']],
+        ["AR Facturas Pendientes", consolidado['total_ar_pendientes']],
+        ["Alertas Activas", consolidado['total_alertas']],
+    ]
+    
+    for item_row, item in enumerate(data, row):
+        ws[f'A{item_row}'] = item[0]
+        ws[f'B{item_row}'] = item[1]
+        ws[f'A{item_row}'].border = border
+        ws[f'B{item_row}'].border = border
+    
+    # Detalle hoteles
+    row = row + len(data) + 2
+    ws.merge_cells(f'A{row}:H{row}')
+    ws[f'A{row}'] = "DETALLE POR HOTEL"
+    ws[f'A{row}'].font = Font(bold=True)
+    
+    row += 1
+    headers = ["Hotel", "Ciudad", "Rooms", "Occ%", "ADR", "RevPAR", "Revenue", "GOP%"]
+    for col_idx, header in enumerate(headers, 1):
+        cell = ws.cell(row=row, column=col_idx)
+        cell.value = header
+        cell.font = header_font
+        cell.fill = header_fill
+        cell.border = border
+    
+    row += 1
+    hoteles = get_hoteles_calipolis()
+    for h in hoteles:
+        ws.cell(row=row, column=1).value = h['nombre']
+        ws.cell(row=row, column=2).value = h['ciudad']
+        ws.cell(row=row, column=3).value = h['habitaciones']
+        ws.cell(row=row, column=4).value = h['ocupacion']
+        ws.cell(row=row, column=5).value = h['adr']
+        ws.cell(row=row, column=6).value = h['revpar']
+        ws.cell(row=row, column=7).value = h['total_ingresos']
+        ws.cell(row=row, column=8).value = h['gop_pct']
+        
+        for col in range(1, 9):
+            ws.cell(row=row, column=col).border = border
+        
+        row += 1
+    
+    for col in range(1, 9):
+        ws.column_dimensions[get_column_letter(col)].width = 16
+    
+    return wb
