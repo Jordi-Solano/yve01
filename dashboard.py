@@ -61,7 +61,8 @@ from tab_integraciones import integraciones_bp
 from rol_dashboard import get_dashboard_config
 from demo_completo import generar_hoteles_demo, generar_facturas_demo_ar, generar_facturas_demo_ap, generar_alertas_demo
 from landing import LANDING_HTML as LANDING_PAGE
-for _bp in (auth_bp, config_bp, admin_bp, aprob_ar_bp, aprob_ap_bp, concil_bp, fb_bp, ar_real_bp, multi_hotel_bp, exportador_bp, calipolis_bp, demo_bp, demo_sim_bp, calipolis_analisis_bp, reportes_pdf_bp, integraciones_bp):
+from blog import blog_bp
+for _bp in (auth_bp, config_bp, admin_bp, aprob_ar_bp, aprob_ap_bp, concil_bp, fb_bp, ar_real_bp, multi_hotel_bp, exportador_bp, calipolis_bp, demo_bp, demo_sim_bp, calipolis_analisis_bp, reportes_pdf_bp, integraciones_bp, blog_bp):
     app.register_blueprint(_bp)
 
 _pipeline_running = False
