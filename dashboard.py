@@ -32,6 +32,7 @@ APROBACIONES_DIR = os.path.join(BASE_DIR, "aprobaciones")
 NF = "NO_ENCONTRADO"
 
 app = Flask(__name__)
+DEMO_MODE = False
 app.secret_key = os.environ.get("SECRET_KEY") or "yve01-dev-secret-CHANGE-IN-PROD"
 
 # Auth + módulos: la app es UN solo proceso que sirve todo el producto en un puerto
@@ -58,6 +59,7 @@ from tab_calipolis_analisis import calipolis_analisis_bp
 from tab_reportes_pdf import reportes_pdf_bp
 from tab_integraciones import integraciones_bp
 from rol_dashboard import get_dashboard_config
+from demo_completo import generar_hoteles_demo, generar_facturas_demo_ar, generar_facturas_demo_ap, generar_alertas_demo
 for _bp in (auth_bp, config_bp, admin_bp, aprob_ar_bp, aprob_ap_bp, concil_bp, fb_bp, ar_real_bp, multi_hotel_bp, exportador_bp, calipolis_bp, demo_bp, demo_sim_bp, calipolis_analisis_bp, reportes_pdf_bp, integraciones_bp):
     app.register_blueprint(_bp)
 
@@ -2765,6 +2767,37 @@ function closeHotelModal() {
 </script>
 </body>
 </html>"""
+
+
+@app.route('/api/demo/toggle', methods=['POST'])
+def toggle_demo():
+    """Activa/desactiva demo mode"""
+    global DEMO_MODE
+    DEMO_MODE = not DEMO_MODE
+    return jsonify({"demo_mode": DEMO_MODE, "status": "activado" if DEMO_MODE else "desactivado"})
+
+@app.route('/api/demo/status')
+def demo_status():
+    """Retorna estado de demo mode"""
+    return jsonify({
+        "demo_mode": DEMO_MODE,
+        "hoteles": generar_hoteles_demo()["hoteles"] if DEMO_MODE else [],
+        "alertas": generar_alertas_demo() if DEMO_MODE else []
+    })
+
+@app.route('/api/demo/datos')
+def demo_data():
+    """Todos los datos de demo"""
+    if not DEMO_MODE:
+        return jsonify({"error": "Demo mode desactivado"}), 403
+    
+    return jsonify({
+        "hoteles": generar_hoteles_demo()["hoteles"],
+        "facturas_ar": generar_facturas_demo_ar(),
+        "facturas_ap": generar_facturas_demo_ap(),
+        "alertas": generar_alertas_demo()
+    })
+
 
 if __name__ == '__main__':
     import socket
