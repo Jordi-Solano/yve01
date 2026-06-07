@@ -1461,15 +1461,15 @@ tr:hover td{background:rgba(255,255,255,.025)}
 
     <button class="btn-run" id="btn-run" onclick="runPipeline()">
       <div class="spin" id="spin"></div>
-      <span id="run-lbl">⚡ Procesar Facturas</span>
+      <span id="run-lbl" data-i18n="nav.procesar">⚡ Procesar Facturas</span>
     </button>
 
     <div class="dropdown">
       <button class="btn-ref" onclick="toggleMenu('main-menu')" title="Más opciones" style="font-size:17px;line-height:1;padding:5px 12px">⋯</button>
       <div id="main-menu" class="menu">
         <div class="menu-head">Presentación</div>
-        <button class="menu-item" onclick="tourStart();document.getElementById('main-menu').classList.remove('open')">🎯 Tour guiado</button>
-        <button class="menu-item" id="btn-demo" onclick="toggleDemoMode()">🎭 Demo Mode</button>
+        <button class="menu-item" data-i18n="nav.tour" onclick="tourStart();document.getElementById('main-menu').classList.remove('open')">🎯 Tour guiado</button>
+        <button class="menu-item" id="btn-demo" onclick="toggleDemoMode()"><span data-i18n="nav.demo">🎭 Demo Mode</span></button>
         <div class="menu-sep"></div>
         <div class="menu-head">Cambiar rol</div>
         <button class="menu-item" id="rol-btn">👤 Admin</button>
@@ -1481,10 +1481,10 @@ tr:hover td{background:rgba(255,255,255,.025)}
           <button class="menu-item" onclick="cambiarRol('jefe_otras')">🛠️ Jefe Servicios</button>
         </div>
         <div class="menu-sep"></div>
-        <a href="/configuracion/" class="menu-item">⚙️ Configuración</a>
+        <a href="/configuracion/" class="menu-item" data-i18n="nav.config">⚙️ Configuración</a>
         <a href="/admin/" class="menu-item" style="display:__ADMIN_DISPLAY__">👥 Administración</a>
         <div class="menu-sep"></div>
-        <a href="/logout" class="menu-item" style="color:#f87171">↩ Cerrar sesión</a>
+        <a href="/logout" class="menu-item" data-i18n="nav.salir" style="color:#f87171">↩ Cerrar sesión</a>
       </div>
     </div>
   </div>
@@ -1501,20 +1501,20 @@ tr:hover td{background:rgba(255,255,255,.025)}
   <!-- Barra estado -->
   <div class="status-bar">
     <div class="status-dot"></div>
-    <span id="status-txt">Cargando datos...</span>
+    <span id="status-txt" data-i18n="status.cargando">Cargando datos...</span>
   </div>
 
   <!-- TABS -->
   <div class="tabs">
-    <button class="tab active" onclick="switchTab('ar',this)">📥 AR — OTAs</button>
-    <button class="tab" onclick="switchTab('ap',this)">📦 AP — Proveedores</button>
-    <button class="tab" onclick="switchTab('drr',this)">📊 DRR</button>
-    <button class="tab" onclick="switchTab('banco',this)">🏦 Banco</button>
-    <button class="tab" onclick="switchTab('notif',this)">🔔 Notificaciones</button>
-    <button class="tab" onclick="switchTab('fb',this)" id="tab-fb">🍽️ F&amp;B Cost</button>
-    <button class="tab" onclick="switchTab('ar_real',this)" id="tab-ar-real">🏢 AR Real</button>
-    <button class="tab" onclick="switchTab('calipolis',this)" id="tab-calipolis">🏩 Calipolis</button>
-    <button class="tab" onclick="switchTab('multi_hotel',this)" id="tab-multi-hotel">🏨 Multi-Hotel</button>
+    <button class="tab active" onclick="switchTab('ar',this)" data-i18n="tab.ar">📥 AR — OTAs</button>
+    <button class="tab" onclick="switchTab('ap',this)" data-i18n="tab.ap">📦 AP — Proveedores</button>
+    <button class="tab" onclick="switchTab('drr',this)" data-i18n="tab.drr">📊 DRR</button>
+    <button class="tab" onclick="switchTab('banco',this)" data-i18n="tab.banco">🏦 Banco</button>
+    <button class="tab" onclick="switchTab('notif',this)" data-i18n="tab.notif">🔔 Notificaciones</button>
+    <button class="tab" onclick="switchTab('fb',this)" id="tab-fb" data-i18n="tab.fb">🍽️ F&amp;B Cost</button>
+    <button class="tab" onclick="switchTab('ar_real',this)" id="tab-ar-real" data-i18n="tab.arreal">🏢 AR Real</button>
+    <button class="tab" onclick="switchTab('calipolis',this)" id="tab-calipolis" data-i18n="tab.calipolis">🏩 Calipolis</button>
+    <button class="tab" onclick="switchTab('multi_hotel',this)" id="tab-multi-hotel" data-i18n="tab.multihotel">🏨 Multi-Hotel</button>
   </div>
 
   <div id="panel-ar" class="panel active">
@@ -1522,32 +1522,32 @@ tr:hover td{background:rgba(255,255,255,.025)}
   <!-- STATS -->
   <div class="stats">
     <div class="sc hl c-blu">
-      <div class="sc-lbl">Facturas procesadas</div>
+      <div class="sc-lbl" data-i18n="sc.procesadas">Facturas procesadas</div>
       <div class="sc-val" id="s-tot">—</div>
-      <div class="sc-sub">último ciclo AR</div>
+      <div class="sc-sub" data-i18n="sc.ciclo">último ciclo AR</div>
     </div>
     <div class="sc">
-      <div class="sc-lbl">Importe total</div>
+      <div class="sc-lbl" data-i18n="sc.importe">Importe total</div>
       <div class="sc-val" id="s-imp" style="font-size:18px;letter-spacing:-0.5px">—</div>
-      <div class="sc-sub">EUR procesados</div>
+      <div class="sc-sub" data-i18n="sc.eurProcesados">EUR procesados</div>
     </div>
     <div class="sc c-grn">
-      <div class="sc-lbl">Correctas</div>
+      <div class="sc-lbl" data-i18n="sc.correctas">Correctas</div>
       <div class="sc-val" id="s-ok">—</div>
-      <div class="sc-sub">sin incidencias</div>
+      <div class="sc-sub" data-i18n="sc.sinIncidencias">sin incidencias</div>
     </div>
     <div class="sc c-red">
-      <div class="sc-lbl">Discrepancias</div>
+      <div class="sc-lbl" data-i18n="sc.discrepancias">Discrepancias</div>
       <div class="sc-val" id="s-disc">—</div>
       <div class="sc-sub" id="s-disc-sub">reclamable: —</div>
     </div>
     <div class="sc c-ora">
-      <div class="sc-lbl">Certif. DI pendiente</div>
+      <div class="sc-lbl" data-i18n="sc.di">Certif. DI pendiente</div>
       <div class="sc-val" id="s-di">—</div>
-      <div class="sc-sub">facturas extranjeras</div>
+      <div class="sc-sub" data-i18n="sc.extranjer">facturas extranjeras</div>
     </div>
     <div class="sc c-pur">
-      <div class="sc-lbl">Pendientes firma</div>
+      <div class="sc-lbl" data-i18n="sc.pendiente">Pendientes firma</div>
       <div class="sc-val" id="s-pend">—</div>
       <div class="sc-sub" id="s-pend-sub">— apr · — rec</div>
     </div>
@@ -1680,8 +1680,8 @@ tr:hover td{background:rgba(255,255,255,.025)}
     <!-- Configuración de canales -->
     <div class="card" style="margin-bottom:20px">
       <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:18px;flex-wrap:wrap;gap:10px">
-        <div class="card-title" style="margin:0">Canales de notificación</div>
-        <button class="btn-ref" onclick="guardarNotifConfig()" id="btn-save-notif" style="font-size:12px">💾 Guardar configuración</button>
+        <div class="card-title" style="margin:0" data-i18n="notif.canales">Canales de notificación</div>
+        <button class="btn-ref" onclick="guardarNotifConfig()" id="btn-save-notif" data-i18n="notif.guardar" style="font-size:12px">💾 Guardar configuración</button>
       </div>
       <div style="display:grid;grid-template-columns:repeat(4,1fr);gap:12px;margin-bottom:18px" id="notif-canales">
         <!-- channel cards inject here -->
@@ -1696,11 +1696,11 @@ tr:hover td{background:rgba(255,255,255,.025)}
     <!-- Historial -->
     <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:16px;flex-wrap:wrap;gap:12px">
       <div>
-        <span style="font-size:1.1rem;font-weight:700">Historial de Notificaciones</span>
+        <span style="font-size:1.1rem;font-weight:700" data-i18n="notif.historial">Historial de Notificaciones</span>
         <span id="notif-count" style="font-size:.8rem;color:var(--dim);margin-left:8px"></span>
       </div>
       <button class="btn-run" id="btn-send-notif" onclick="enviarNotificaciones()" style="font-size:12px;padding:8px 16px">
-        🔔 Enviar notificaciones pendientes
+        <span data-i18n="notif.enviar">🔔 Enviar notificaciones pendientes</span>
       </button>
     </div>
     <div class="card">
@@ -2676,7 +2676,7 @@ function skelSection() {
 setTimeout(async () => {
   const preloads = [
     '/api/stats_drr', '/api/drr_daily_chart',
-    '/api/ar_real_data', '/calipolis/api/kpis',
+    '/api/ar_real_data', '/api/calipolis/kpis',
     '/api/stats_banco',
   ];
   preloads.forEach(url => fetch(url).catch(() => {}));
@@ -3810,11 +3810,12 @@ async function cargarARRealData() {
     const fmt = v => '€' + Math.round(v).toLocaleString('es-ES');
 
     // KPIs
-    document.getElementById('arp-pend').textContent  = fmt(k.pendiente_facturar);
-    document.getElementById('arp-fact').textContent  = fmt(k.facturado);
-    document.getElementById('arp-cobr').textContent  = fmt(k.cobrado);
-    document.getElementById('arp-saldo').textContent = fmt(k.saldo_total);
-    document.getElementById('arp-nclientes').textContent = k.num_clientes + ' clientes activos';
+    const _s = (id, v) => { const el = document.getElementById(id); if (el) el.textContent = v; };
+    _s('arp-pend',     fmt(k.pendiente_facturar));
+    _s('arp-fact',     fmt(k.facturado));
+    _s('arp-cobr',     fmt(k.cobrado));
+    _s('arp-saldo',    fmt(k.saldo_total));
+    _s('arp-nclientes', k.num_clientes + ' clientes activos');
     const kpisEl = document.getElementById('ar-real-kpis'); if (kpisEl) kpisEl.dataset.loaded = '1';
 
     // Clients table

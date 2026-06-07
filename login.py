@@ -147,7 +147,7 @@ input:focus{border-color:var(--acc);box-shadow:0 0 0 3px rgba(59,130,246,.18)}
     <button class="btn-login" id="btn-login" onclick="doLogin()" data-i18n="login.boton">Entrar al panel</button>
     <div class="error" id="error"></div>
 
-    <div style="text-align:center;margin-top:18px;font-size:13px;color:var(--dim)">¿No tienes cuenta? <a href="/signup" style="color:var(--acc2);text-decoration:none">Crear cuenta gratis</a></div>
+    <div style="text-align:center;margin-top:18px;font-size:13px;color:var(--dim)">¿No tienes cuenta? <a href="/signup" style="color:var(--acc2);text-decoration:none" data-i18n="login.crearCuenta">Crear cuenta gratis</a></div>
     <div class="demo">
       <div class="demo-h" data-i18n="login.demo">Accesos de demostración — pulsa para rellenar</div>
       <div class="chips">
