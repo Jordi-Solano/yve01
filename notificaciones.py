@@ -147,7 +147,32 @@ def enviar_slack(webhook_url, mensaje, asunto="", tipo="general"):
         return False
 
 
+
+def enviar_whatsapp(numero_destino, mensaje, asunto="", tipo="general"):
+    """Envia WhatsApp via Twilio. Vars: TWILIO_ACCOUNT_SID, TWILIO_AUTH_TOKEN, TWILIO_WHATSAPP_FROM"""
+    import os
+    sid   = os.environ.get("TWILIO_ACCOUNT_SID", "")
+    token = os.environ.get("TWILIO_AUTH_TOKEN", "")
+    desde = os.environ.get("TWILIO_WHATSAPP_FROM", "")
+    if not all([sid, token, desde, numero_destino]):
+        _registrar(tipo, asunto, "whatsapp", "error", "Twilio no configurado")
+        return False
+    try:
+        from twilio.rest import Client
+        client = Client(sid, token)
+        fr = ("whatsapp:" + desde) if not desde.startswith("whatsapp:") else desde
+        to = ("whatsapp:" + numero_destino) if not numero_destino.startswith("whatsapp:") else numero_destino
+        body = (("*" + asunto + "*\n") if asunto else "") + mensaje
+        msg = client.messages.create(from_=fr, to=to, body=body[:1600])
+        ok = msg.status not in ("failed", "undelivered")
+        _registrar(tipo, asunto, "whatsapp:" + numero_destino, "enviado" if ok else "error", msg.status)
+        return ok
+    except Exception as e:
+        _registrar(tipo, asunto, "whatsapp", "error", str(e)[:200])
+        return False
+
 def enviar_por_canales(asunto, html, texto, tipo="general"):
+    """Envia por todos los canales activos segun notif_config.json."""
     cfg = _load_config()
     ch  = cfg.get("canales", {})
     res = {}
@@ -155,6 +180,8 @@ def enviar_por_canales(asunto, html, texto, tipo="general"):
         res["email"] = enviar_email(cfg["email"], asunto, html, tipo)
     if ch.get("slack") and cfg.get("slack_webhook"):
         res["slack"] = enviar_slack(cfg["slack_webhook"], texto, asunto, tipo)
+    if ch.get("whatsapp") and cfg.get("whatsapp"):
+        res["whatsapp"] = enviar_whatsapp(cfg["whatsapp"], texto, asunto, tipo)
     return res
 
 def _email_html(titulo, items, color="#3b82f6"):

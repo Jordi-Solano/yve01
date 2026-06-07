@@ -919,7 +919,7 @@ def api_test_notif():
             "ok": True,
             "resultados": resultados,
             "canales_activos": canales_activos,
-            "message": "Notificacion enviada por: " + ", ".join(resultados.keys()) if resultados else "Sin canales configurados"
+            "message": ("Enviado por: " + ", ".join(resultados.keys())) if resultados else "Sin canales configurados. Activa Email, Slack o WhatsApp en el panel de Notificaciones."
         })
     except Exception as e:
         return jsonify({"ok": False, "error": str(e)}), 500
@@ -959,6 +959,80 @@ def api_notif_config_save():
     except Exception as e:
         return jsonify({"ok": False, "error": str(e)}), 500
 
+
+
+@app.route("/fb/api/upload_ventas", methods=["POST"])
+@login_required
+def api_upload_ventas_pos():
+    """Sube un Excel/CSV de ventas POS y lo appendea a ventas_fb_diarias.xlsx."""
+    import pandas as pd, io
+    from datetime import datetime
+    f = request.files.get("file")
+    if not f:
+        return jsonify({"ok": False, "error": "No se recibio archivo"}), 400
+    fname = f.filename.lower()
+    try:
+        if fname.endswith('.csv'):
+            df_new = pd.read_csv(f)
+        elif fname.endswith(('.xlsx', '.xls')):
+            df_new = pd.read_excel(f)
+        else:
+            return jsonify({"ok": False, "error": "Formato no soportado. Usa .xlsx o .csv"}), 400
+
+        # Normalize columns — accept flexible naming
+        col_map = {}
+        for col in df_new.columns:
+            cl = col.lower().replace(' ','_')
+            if 'fecha' in cl or 'date' in cl:                col_map[col] = 'fecha'
+            elif 'receta' in cl or 'recipe' in cl or 'id' in cl: col_map[col] = 'id_receta'
+            elif 'plato' in cl or 'nombre' in cl or 'name' in cl: col_map[col] = 'nombre_plato'
+            elif 'categ' in cl:                               col_map[col] = 'categoria'
+            elif 'unidad' in cl or 'qty' in cl or 'cantidad' in cl: col_map[col] = 'unidades_vendidas'
+            elif 'precio' in cl or 'price' in cl or 'unit' in cl:   col_map[col] = 'precio_unitario'
+            elif 'total' in cl or 'venta' in cl or 'revenue' in cl: col_map[col] = 'total_venta'
+        df_new = df_new.rename(columns=col_map)
+
+        # Validate minimum required columns
+        required = ['fecha', 'nombre_plato', 'total_venta']
+        missing = [c for c in required if c not in df_new.columns]
+        if missing:
+            return jsonify({"ok": False, "error": "Faltan columnas: " + ", ".join(missing) +
+                           ". El archivo debe tener: fecha, nombre_plato, total_venta"}), 400
+
+        # Fill defaults for optional columns
+        df_new['fecha'] = pd.to_datetime(df_new['fecha'], errors='coerce').dt.strftime('%Y-%m-%d')
+        if 'id_receta'          not in df_new.columns: df_new['id_receta']          = 'IMPORT'
+        if 'categoria'          not in df_new.columns: df_new['categoria']          = 'Importado'
+        if 'unidades_vendidas'  not in df_new.columns: df_new['unidades_vendidas']  = 1
+        if 'precio_unitario'    not in df_new.columns:
+            df_new['precio_unitario'] = df_new['total_venta'] / df_new['unidades_vendidas'].replace(0, 1)
+
+        # Load existing and append
+        path = os.path.join(BASE_DIR, "datos-referencia", "ventas_fb_diarias.xlsx")
+        df_existing = pd.read_excel(path) if os.path.exists(path) else pd.DataFrame()
+        df_combined = pd.concat([df_existing, df_new[['fecha','id_receta','nombre_plato',
+                                                       'categoria','unidades_vendidas',
+                                                       'precio_unitario','total_venta']]], ignore_index=True)
+        df_combined = df_combined.drop_duplicates()
+        df_combined.to_excel(path, index=False)
+
+        # Invalidate caches
+        if 'ventas_fb_diarias.xlsx' in _EXCEL_CACHE:
+            del _EXCEL_CACHE['ventas_fb_diarias.xlsx']
+        try:
+            from tab_fb_dashboard import _invalidate
+            _invalidate()
+        except Exception:
+            pass
+
+        return jsonify({
+            "ok": True,
+            "filas_importadas": len(df_new),
+            "total_filas": len(df_combined),
+            "fechas": df_new['fecha'].dropna().unique().tolist()[:5],
+        })
+    except Exception as e:
+        return jsonify({"ok": False, "error": str(e)}), 500
 
 @app.route("/api/cache/clear", methods=["POST"])
 @login_required
@@ -1760,12 +1834,20 @@ tr:hover td{background:rgba(255,255,255,.025)}
 
   <div id="panel-fb" class="panel">
     <!-- F&B Sub-tabs -->
-    <div style="display:flex;gap:4px;background:var(--s1);border-radius:10px;padding:4px;margin-bottom:20px;border:1px solid var(--s2);width:fit-content">
-      <button class="fb-sub active" onclick="fbSub('resumen',this)">📊 Resumen</button>
-      <button class="fb-sub" onclick="fbSub('inventario',this)">📦 Inventario</button>
-      <button class="fb-sub" onclick="fbSub('mermas',this)">⚠️ Mermas</button>
-      <button class="fb-sub" onclick="fbSub('recetas',this)">📋 Recetas</button>
+    <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:20px;flex-wrap:wrap;gap:10px">
+      <div style="display:flex;gap:4px;background:var(--s1);border-radius:10px;padding:4px;border:1px solid var(--s2)">
+        <button class="fb-sub active" onclick="fbSub('resumen',this)">📊 Resumen</button>
+        <button class="fb-sub" onclick="fbSub('inventario',this)">📦 Inventario</button>
+        <button class="fb-sub" onclick="fbSub('mermas',this)">⚠️ Mermas</button>
+        <button class="fb-sub" onclick="fbSub('recetas',this)">📋 Recetas</button>
+      </div>
+      <div style="display:flex;gap:8px;align-items:center">
+        <label for="fb-upload-input" class="btn-ref" style="cursor:pointer;font-size:12px">📤 Importar ventas POS</label>
+        <input type="file" id="fb-upload-input" accept=".xlsx,.xls,.csv" style="display:none" onchange="fbUploadPOS(this)">
+        <a href="/api/exportar/fb/pdf" class="btn-ref" style="text-decoration:none;font-size:12px">📄 PDF</a>
+      </div>
     </div>
+    <div id="fb-upload-msg" style="font-size:12px;margin-bottom:12px;min-height:16px"></div>
     <div id="fb-resumen"><div class="empty"><p>Cargando...</p></div></div>
     <div id="fb-inventario" style="display:none"></div>
     <div id="fb-mermas-panel" style="display:none"></div>
@@ -2501,61 +2583,73 @@ function renderMHMap(hoteles) {
 const TOUR_STEPS = [
   {
     title: '👋 Bienvenido a Yve.01',
-    text: 'En 2 minutos te enseñamos cómo funciona el dashboard financiero. Puedes salir cuando quieras.',
-    selector: null, // centered intro card
+    text: 'Yve automatiza todo el departamento financiero de un hotel. En 90 segundos verás los módulos principales. Pulsa Siguiente para empezar.',
+    selector: null,
     tab: null,
   },
   {
-    title: '📥 AR — OTAs',
-    text: 'Aquí ves todas las facturas de Booking, Expedia y otras OTAs. Yve verifica automáticamente que las comisiones sean las pactadas.',
+    title: '📥 AR — Comisiones OTA',
+    text: 'Booking, Expedia, Hotelbeds... Yve descarga las facturas, verifica que cada comisión coincide con la tarifa pactada, y detecta automáticamente las facturas extranjeras que necesitan certificado de doble imposición.',
     selector: '#tab-ar',
     tab: 'ar',
   },
   {
-    title: '📊 Estadísticas AR',
-    text: 'De un vistazo: cuántas facturas procesadas, importe total, discrepancias detectadas y certificados DI pendientes.',
+    title: '📊 Estado de un vistazo',
+    text: 'Las tarjetas muestran el ciclo AR completo: facturas procesadas, importe total, cuántas son correctas, discrepancias reclamables y certificados DI pendientes. Sin abrir un solo Excel.',
     selector: '.stats',
     tab: 'ar',
   },
   {
-    title: '📋 Tabla de facturas',
-    text: 'Cada factura con su estado: correcta, con discrepancia, o pendiente de certificado. Un clic para ver el detalle.',
-    selector: '.tbl-wrap',
-    tab: 'ar',
-  },
-  {
     title: '📦 AP — Proveedores',
-    text: 'Gestión de cuentas a pagar. Yve lee los PDFs de facturas, los cruza con el PO y los albaranes, y detecta diferencias.',
+    text: 'Yve lee PDFs de facturas vía IA, hace el 3-way matching (factura + albarán + POS) para F&B, y genera emails de reclamación automáticos cuando hay diferencias. Lo que antes costaba 3 horas diarias.',
     selector: '#tab-ap',
     tab: 'ap',
   },
   {
     title: '📈 DRR — Revenue Diario',
-    text: 'El Daily Revenue Report procesado automáticamente. Ocupa, ADR, RevPAR y GOP en tiempo real. Los días Out of Balance se resaltan en rojo.',
+    text: 'El Daily Revenue Report con los datos reales del hotel. Yve detecta los días Out of Balance automáticamente cada mañana. El Income Auditor ve el estado en segundos en vez de revisar 45 hojas Excel.',
     selector: '#tab-drr',
     tab: 'drr',
   },
   {
+    title: '🍽️ F&B Cost Control',
+    text: 'Food Cost % real calculado desde las ventas del POS y las recetas. Categorías con alerta si el coste supera el objetivo, ranking de platos, inventario con nivel de stock, y formulario para registrar mermas.',
+    selector: '#tab-fb',
+    tab: 'fb',
+  },
+  {
     title: '🏦 Conciliación Bancaria',
-    text: 'Cruza el extracto bancario con las facturas pagadas. Los movimientos sin justificar aparecen marcados para revisión.',
+    text: 'Cruza el extracto bancario con las facturas pagadas en Oracle. Los movimientos sin justificar aparecen marcados. Lo que antes llevaba medio día, en segundos.',
     selector: '#tab-banco',
     tab: 'banco',
   },
   {
-    title: '🏩 Calipolis Hotels',
-    text: 'Vista del grupo hotelero: GOP% consolidado, ocupación media y tendencias de los últimos 6 meses para las 3 propiedades.',
+    title: '🏩 Calipolis Hotels Group',
+    text: 'Dashboard del grupo: 3 hoteles, 307 habitaciones, €1.9M revenue en junio. GOP% del grupo subió de 16.4% a 22.4% en 6 meses. Facturas AP pendientes de 25 a 6. Alertas: 0.',
     selector: '#tab-calipolis',
     tab: 'calipolis',
   },
   {
+    title: '🌍 Multi-Hotel',
+    text: 'Para grupos más grandes: KPIs consolidados, ranking de propiedades por GOP%, y alertas activas en toda la cadena. Un solo dashboard para controlar todos los hoteles.',
+    selector: '#tab-multi_hotel',
+    tab: 'multi_hotel',
+  },
+  {
+    title: '🔔 Notificaciones',
+    text: 'Configura los canales: email, WhatsApp, Slack. Elige qué eventos disparan alerta: discrepancias AR, días OOB, facturas sin firmar. Yve te avisa en tiempo real sin que tengas que abrir el dashboard.',
+    selector: '#tab-notif',
+    tab: 'notif',
+  },
+  {
     title: '💬 Pregunta a Yve',
-    text: '¿Tienes dudas sobre el estado financiero? El asistente IA tiene acceso a todos los datos del dashboard en tiempo real.',
+    text: 'El asistente IA tiene acceso a todos los datos del hotel en tiempo real. Pregúntale "¿Cuánto podemos reclamar a Booking?" o "¿Qué facturas faltan por firmar?" y responde con los datos actuales.',
     selector: '#chat-fab',
     tab: null,
   },
   {
-    title: '✅ ¡Listo!',
-    text: 'Ya conoces el dashboard. Activa el Modo Demo desde el menú ⋯ para ver datos de ejemplo, o conecta tus datos reales.',
+    title: '🚀 ¿Listo para automatizar?',
+    text: 'Esto es Yve. Setup en 15 minutos. Sin consultores. Sin contratos. Desde 400€/mes. El primer mes, mide cuántas horas ahorras — y decides si continúas.',
     selector: null,
     tab: null,
     isLast: true,
@@ -2842,6 +2936,34 @@ function switchTab(tab, el) {
 // ══ F&B COST CONTROL ══════════════════════════════════════════════════
 let _fbLoaded = {resumen:false, inventario:false, mermas:false, recetas:false};
 let _fbActive = 'resumen';
+
+async function fbUploadPOS(input) {
+  const file = input.files[0];
+  if (!file) return;
+  const msg = document.getElementById('fb-upload-msg');
+  msg.style.color = 'var(--mut)';
+  msg.textContent = 'Subiendo ' + file.name + '...';
+  const form = new FormData();
+  form.append('file', file);
+  try {
+    const r = await fetch('/fb/api/upload_ventas', {method: 'POST', body: form});
+    const d = await r.json();
+    if (d.ok) {
+      msg.style.color = 'var(--grn)';
+      msg.textContent = '✓ ' + d.filas_importadas + ' ventas importadas de ' + file.name + ' — Total acumulado: ' + d.total_filas + ' registros';
+      // Reload resumen
+      _fbLoaded.resumen = false;
+      if (_fbActive === 'resumen') loadFBResumen(); else fbSub('resumen', document.querySelector('.fb-sub'));
+    } else {
+      msg.style.color = 'var(--red)';
+      msg.textContent = '✗ ' + (d.error || 'Error al importar');
+    }
+  } catch(e) {
+    msg.style.color = 'var(--red)';
+    msg.textContent = '✗ Error de conexion: ' + e.message;
+  }
+  input.value = '';
+}
 
 function fbSub(sub, el) {
   _fbActive = sub;
@@ -3629,7 +3751,8 @@ function renderNotifConfig() {
     if (c.canales && c.canales.email)
       html += notifField('email', 'Email de notificaciones', 'controller@hotel.com', c.email || '');
     if (c.canales && c.canales.whatsapp)
-      html += notifField('whatsapp', 'Número WhatsApp (con prefijo)', '+34600123456', c.whatsapp || '');
+      html += notifField('whatsapp', 'Número WhatsApp destino (+34...)', '+34600123456', c.whatsapp || '') +
+              '<div style="font-size:11px;color:var(--dim);margin-top:4px">Necesita TWILIO_ACCOUNT_SID + TWILIO_AUTH_TOKEN + TWILIO_WHATSAPP_FROM en Render</div>';
     if (c.canales && c.canales.telegram)
       html += notifField('telegram_chat', 'Telegram Chat ID', '123456789', c.telegram_chat || '');
     if (c.canales && c.canales.slack)
