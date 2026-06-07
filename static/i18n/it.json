@@ -94,5 +94,6 @@
   "status.actualizando": "Aggiornamento...",
   "status.error": "Errore nel caricamento",
   "status.facturas": "fatture caricate",
-  "status.actualizado": "Aggiornato"
+  "status.actualizado": "Aggiornato",
+  "btn.aprobarAR": "✔ Approva fatture AR"
 }

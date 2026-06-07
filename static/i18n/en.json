@@ -94,5 +94,6 @@
   "status.actualizando": "Updating...",
   "status.error": "Error loading data",
   "status.facturas": "invoices loaded",
-  "status.actualizado": "Updated"
+  "status.actualizado": "Updated",
+  "btn.aprobarAR": "✔ Approve AR invoices"
 }

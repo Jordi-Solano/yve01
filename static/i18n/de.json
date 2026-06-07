@@ -94,5 +94,6 @@
   "status.actualizando": "Aktualisierung...",
   "status.error": "Fehler beim Laden",
   "status.facturas": "Rechnungen geladen",
-  "status.actualizado": "Aktualisiert"
+  "status.actualizado": "Aktualisiert",
+  "btn.aprobarAR": "✔ AR-Rechnungen genehmigen"
 }

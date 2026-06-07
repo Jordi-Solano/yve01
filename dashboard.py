@@ -2151,7 +2151,7 @@ async function loadAll() {
       hoy.toLocaleTimeString('es-ES', {hour:'2-digit', minute:'2-digit'});
 
     document.getElementById('status-txt').textContent =
-      'Actualizado · ' + (stats.total || 0) + ' factura' + (stats.total !== 1 ? 's' : '') + ' cargada' + (stats.total !== 1 ? 's' : '');
+      (t('status.actualizado') || 'Actualizado') + ' · ' + (stats.total || 0) + ' ' + (t('status.facturas') || 'facturas cargadas');
   } catch(e) {
     console.error('Error en loadAll:', e);
     document.getElementById('status-txt').textContent = t('status.error') || 'Error al cargar datos';

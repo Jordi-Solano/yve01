@@ -94,5 +94,6 @@
   "status.actualizando": "Actualitzant...",
   "status.error": "Error en carregar dades",
   "status.facturas": "factures carregades",
-  "status.actualizado": "Actualitzat"
+  "status.actualizado": "Actualitzat",
+  "btn.aprobarAR": "✔ Aprovar factures AR"
 }
