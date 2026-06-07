@@ -3140,6 +3140,7 @@ async function loadFBInventario() {
     html += '</tbody></table></div></div>';
     cont.innerHTML = html;
   } catch(e) { cont.innerHTML = '<div class="empty"><p>Error: ' + e.message + '</p></div>'; }
+  if (_i18nLang && _i18nLang !== "es") applyI18n(_i18nData);
 }
 
 async function loadFBMermas() {
