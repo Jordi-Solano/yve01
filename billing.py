@@ -136,16 +136,16 @@ body{{background:var(--bg);color:var(--tx);font-family:'Inter',sans-serif;min-he
 <body>
 <div class="card">
   <div class="logo">Yve<span>.01</span></div>
-  <div class="plan-name">Plan {{plan_name}}</div>
-  <div class="plan-price">€{{plan_price}}</div>
+  <div class="plan-name">Plan {plan_name}</div>
+  <div class="plan-price">€{plan_price}</div>
   <div class="plan-period">/mes · sin permanencia</div>
-  <div class="plan-desc">{{plan_desc}}</div>
+  <div class="plan-desc">{plan_desc}</div>
   <div class="notice">
     <strong>Pago en vivo próximamente.</strong><br>
     Stripe está configurándose. Para activar tu cuenta ahora,
     escríbenos a <strong>jordi@yve01.com</strong> y lo gestionamos en 24h.
   </div>
-  <a href="mailto:jordi@yve01.com?subject=Quiero%20el%20plan%20{{plan_name}}&body=Hola%2C%20quiero%20contratar%20Yve%20plan%20{{plan_name}}%20(€{{plan_price}}%2Fmes)." class="btn">Contactar para activar →</a>
+  <a href="mailto:jordi@yve01.com?subject=Quiero%20el%20plan%20{plan_name}&body=Hola%2C%20quiero%20contratar%20Yve%20plan%20{{plan_name}}%20(€{plan_price}%2Fmes)." class="btn">Contactar para activar →</a>
   <a href="/#pricing" class="btn-out">← Volver a precios</a>
 </div>
 </body></html>"""
