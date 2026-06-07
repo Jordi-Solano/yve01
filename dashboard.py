@@ -627,7 +627,10 @@ def api_chat():
 
     if not api_key:
         return jsonify({"reply":
-            "⚠️ API key de Anthropic no configurada. Añade ANTHROPIC_API_KEY en el archivo .env."}), 200
+            "El asistente IA necesita una **API key de Anthropic** para responder.\n\n"
+            "Mientras tanto, puedes consultar todos los datos directamente en las pestañas del dashboard: "
+            "**AR**, **AP**, **DRR** y **Banco**.\n\n"
+            "Para activarme, añade `ANTHROPIC_API_KEY` en las variables de entorno de Render."}), 200
 
     contexto = _cargar_contexto_chat()
 
@@ -663,7 +666,16 @@ INSTRUCCIONES:
         reply = resp.content[0].text.strip()
         return jsonify({"reply": reply})
     except Exception as e:
-        return jsonify({"reply": f"⚠️ Error al llamar a Claude: {str(e)[:120]}"}), 200
+        err = str(e).lower()
+        if "credit" in err or "balance" in err or "quota" in err or "insufficient" in err:
+            msg = ("La cuenta de Anthropic se ha quedado **sin créditos**.\n\n"
+                   "Recarga el saldo en console.anthropic.com para reactivar el asistente. "
+                   "El resto del dashboard sigue funcionando con normalidad.")
+        elif "rate" in err or "429" in err:
+            msg = "Demasiadas consultas seguidas. Espera unos segundos y vuelve a intentarlo."
+        else:
+            msg = f"No he podido procesar la consulta ahora mismo. Inténtalo de nuevo en un momento."
+        return jsonify({"reply": msg}), 200
 
 _pipeline_oracle_running = False
 _pipeline_oracle_lock    = threading.Lock()
@@ -1151,6 +1163,11 @@ tr:hover td{background:rgba(255,255,255,.025)}
   transition:.15s;white-space:nowrap}
 .sug:hover{border-color:#60a5fa;color:#60a5fa;background:#1e3a5f}
 
+.typing{display:inline-flex;gap:4px;align-items:center;padding:4px 0}
+.typing span{width:7px;height:7px;border-radius:50%;background:#60a5fa;animation:typingDot 1.2s infinite}
+.typing span:nth-child(2){animation-delay:.2s}
+.typing span:nth-child(3){animation-delay:.4s}
+@keyframes typingDot{0%,60%,100%{opacity:.3;transform:translateY(0)}30%{opacity:1;transform:translateY(-3px)}}
 #chat-input-row{padding:14px 16px;border-top:1px solid #1e293b;
   display:flex;gap:10px;align-items:center;flex-shrink:0;background:#0f172a}
 #chat-input{flex:1;background:#1e293b;border:1px solid #334155;color:#f1f5f9;
@@ -1806,10 +1823,10 @@ SMTP_PASSWORD=your_app_password
   </div>
   <div id="chat-msgs"></div>
   <div id="chat-suggestions">
-    <button class="sug" onclick="askSug(this)">¿Cuánto llevamos facturado?</button>
-    <button class="sug" onclick="askSug(this)">¿Qué facturas tienen discrepancias?</button>
-    <button class="sug" onclick="askSug(this)">¿Qué proveedor tiene más errores?</button>
-    <button class="sug" onclick="askSug(this)">¿Cuánto podemos reclamar a Booking?</button>
+    <button class="sug" onclick="askSug(this)">📊 Resumen del estado financiero</button>
+    <button class="sug" onclick="askSug(this)">⚠️ ¿Qué discrepancias hay abiertas?</button>
+    <button class="sug" onclick="askSug(this)">💰 ¿Cuánto podemos reclamar?</button>
+    <button class="sug" onclick="askSug(this)">📋 ¿Qué facturas faltan por firmar?</button>
   </div>
   <div id="chat-input-row">
     <textarea id="chat-input" rows="1" placeholder="Pregunta sobre el estado financiero del hotel…"
@@ -2687,11 +2704,30 @@ function toggleChat() {
   if (chatOpen) setTimeout(() => document.getElementById('chat-input').focus(), 300);
 }
 
-function addMsg(role, text) {
+function renderMarkdown(text) {
+  // Escape HTML first
+  let html = text.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+  // Bold **text**
+  html = html.replace(/\*\*(.+?)\*\*/g, '<strong>$1</strong>');
+  // Bullet lists (lines starting with - or •)
+  html = html.replace(/^[\-•]\s+(.+)$/gm, '<li>$1</li>');
+  html = html.replace(/(<li>.*<\/li>\n?)+/g, m => '<ul style="margin:6px 0;padding-left:18px">' + m + '</ul>');
+  // Line breaks
+  html = html.replace(/\n/g, '<br>');
+  // Clean up <br> inside lists
+  html = html.replace(/<\/li><br>/g, '</li>').replace(/<ul([^>]*)><br>/g, '<ul$1>');
+  return html;
+}
+
+function addMsg(role, text, isMarkdown) {
   const msgs = document.getElementById('chat-msgs');
   const div  = document.createElement('div');
   div.className = `msg ${role}`;
-  div.textContent = text;
+  if (isMarkdown && role === 'bot') {
+    div.innerHTML = renderMarkdown(text);
+  } else {
+    div.textContent = text;
+  }
   msgs.appendChild(div);
   msgs.scrollTop = msgs.scrollHeight;
   return div;
@@ -2709,8 +2745,9 @@ async function sendChat() {
   input.style.height = 'auto';
   send.disabled = true;
 
-  const thinkDiv = addMsg('bot', 'Consultando datos del hotel…');
+  const thinkDiv = addMsg('bot', '');
   thinkDiv.classList.add('thinking');
+  thinkDiv.innerHTML = '<span class="typing"><span></span><span></span><span></span></span>';
 
   try {
     const resp = await fetch('/api/chat', {
@@ -2721,7 +2758,7 @@ async function sendChat() {
     const data = await resp.json();
     const reply = data.reply || '⚠️ Sin respuesta del servidor.';
 
-    thinkDiv.textContent = reply;
+    thinkDiv.innerHTML = renderMarkdown(reply);
     thinkDiv.classList.remove('thinking');
     chatHistory.push({ role: 'assistant', content: reply });
 
