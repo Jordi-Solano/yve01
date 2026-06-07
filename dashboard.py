@@ -876,6 +876,42 @@ def api_stats_banco():
         return jsonify({"error": str(e)}), 500
 
 
+@app.route("/api/notif_config", methods=["GET"])
+def api_notif_config_get():
+    """Devuelve la configuración de notificaciones."""
+    path = os.path.join(BASE_DIR, "datos-referencia", "notif_config.json")
+    default = {
+        "canales": {"email": True, "whatsapp": False, "telegram": False, "push": True},
+        "email": "", "whatsapp": "", "telegram_chat": "",
+        "alertas": {
+            "ar_discrepancia": True, "ar_falta_di": True,
+            "ap_discrepancia": True, "drr_oob": True,
+            "banco_sin_conciliar": True, "factura_pendiente_firma": False,
+        },
+        "frecuencia": "inmediata",
+    }
+    if os.path.exists(path):
+        try:
+            saved = json.load(open(path))
+            default.update(saved)
+        except Exception:
+            pass
+    return jsonify(default)
+
+
+@app.route("/api/notif_config", methods=["POST"])
+def api_notif_config_save():
+    """Guarda la configuración de notificaciones."""
+    path = os.path.join(BASE_DIR, "datos-referencia", "notif_config.json")
+    data = request.get_json(silent=True) or {}
+    try:
+        with open(path, "w") as f:
+            json.dump(data, f, indent=2, ensure_ascii=False)
+        return jsonify({"ok": True})
+    except Exception as e:
+        return jsonify({"ok": False, "error": str(e)}), 500
+
+
 @app.route("/api/notificaciones")
 def api_notificaciones():
     """Devuelve historial de notificaciones."""
@@ -1544,7 +1580,24 @@ tr:hover td{background:rgba(255,255,255,.025)}
 
   <!-- PANEL NOTIFICACIONES -->
   <div id="panel-notif" class="panel">
-    <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:20px;flex-wrap:wrap;gap:12px">
+    <!-- Configuración de canales -->
+    <div class="card" style="margin-bottom:20px">
+      <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:18px;flex-wrap:wrap;gap:10px">
+        <div class="card-title" style="margin:0">Canales de notificación</div>
+        <button class="btn-ref" onclick="guardarNotifConfig()" id="btn-save-notif" style="font-size:12px">💾 Guardar configuración</button>
+      </div>
+      <div style="display:grid;grid-template-columns:repeat(4,1fr);gap:12px;margin-bottom:18px" id="notif-canales">
+        <!-- channel cards inject here -->
+      </div>
+      <div id="notif-channel-fields" style="display:grid;gap:12px;margin-bottom:8px"></div>
+      <div style="border-top:1px solid var(--s2);margin-top:14px;padding-top:16px">
+        <div style="font-size:11px;color:var(--mut);text-transform:uppercase;letter-spacing:.5px;font-weight:600;margin-bottom:12px">Eventos que disparan alerta</div>
+        <div id="notif-alertas" style="display:grid;grid-template-columns:1fr 1fr;gap:10px"></div>
+      </div>
+    </div>
+
+    <!-- Historial -->
+    <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:16px;flex-wrap:wrap;gap:12px">
       <div>
         <span style="font-size:1.1rem;font-weight:700">Historial de Notificaciones</span>
         <span id="notif-count" style="font-size:.8rem;color:var(--dim);margin-left:8px"></span>
@@ -2449,6 +2502,7 @@ function switchTab(tab, el) {
   if (tab === 'ar_real') cargarARRealData();
   if (tab === 'drr') loadDRR();
   if (tab === 'banco') loadBanco();
+  if (tab === 'notif') loadNotifConfig();
   if (tab === 'calipolis') loadCalipolis();
   if (tab === 'integraciones') loadIntegraciones();
   if (tab === 'multi_hotel') loadMultiHotel();
@@ -2890,6 +2944,105 @@ async function loadDRR() {
 // ══════════════════════════════════════════════════════════════
 // NOTIFICACIONES — JavaScript
 // ══════════════════════════════════════════════════════════════
+
+const NOTIF_CHANNELS = [
+  {key:'email',    icon:'📧', name:'Email'},
+  {key:'whatsapp', icon:'💬', name:'WhatsApp'},
+  {key:'telegram', icon:'✈️', name:'Telegram'},
+  {key:'push',     icon:'🔔', name:'Push'},
+];
+const NOTIF_ALERTAS = [
+  {key:'ar_discrepancia',         label:'Discrepancia en comisiones OTA (AR)'},
+  {key:'ar_falta_di',             label:'Falta certificado de doble imposición'},
+  {key:'ap_discrepancia',         label:'Discrepancia en facturas proveedor (AP)'},
+  {key:'drr_oob',                 label:'DRR: días Out of Balance'},
+  {key:'banco_sin_conciliar',     label:'Movimientos bancarios sin conciliar'},
+  {key:'factura_pendiente_firma', label:'Facturas pendientes de firma'},
+];
+let _notifConfig = null;
+
+async function loadNotifConfig() {
+  try {
+    const r = await fetch('/api/notif_config');
+    _notifConfig = await r.json();
+  } catch(e) {
+    _notifConfig = {canales:{email:true,push:true},email:'',whatsapp:'',telegram_chat:'',alertas:{}};
+  }
+  renderNotifConfig();
+}
+
+function renderNotifConfig() {
+  const c = _notifConfig;
+  // Channels
+  const cont = document.getElementById('notif-canales');
+  if (cont) {
+    cont.innerHTML = NOTIF_CHANNELS.map(ch => {
+      const on = c.canales && c.canales[ch.key];
+      return '<div onclick="toggleNotifCanal(\'' + ch.key + '\')" style="cursor:pointer;background:' +
+        (on ? 'rgba(59,130,246,.1)' : 'var(--s2)') + ';border:1px solid ' +
+        (on ? 'var(--acc)' : 'var(--s2)') + ';border-radius:12px;padding:14px;text-align:center;transition:.15s">' +
+        '<div style="font-size:22px;margin-bottom:6px">' + ch.icon + '</div>' +
+        '<div style="font-size:13px;font-weight:600;color:' + (on ? 'var(--acc2)' : 'var(--mut)') + '">' + ch.name + '</div>' +
+        '<div style="font-size:10px;color:' + (on ? 'var(--grn)' : 'var(--dim)') + ';margin-top:4px">' + (on ? '● Activo' : '○ Inactivo') + '</div>' +
+        '</div>';
+    }).join('');
+  }
+  // Channel fields (only for active channels needing input)
+  const fields = document.getElementById('notif-channel-fields');
+  if (fields) {
+    let html = '';
+    if (c.canales && c.canales.email)
+      html += notifField('email', 'Email de notificaciones', 'controller@hotel.com', c.email || '');
+    if (c.canales && c.canales.whatsapp)
+      html += notifField('whatsapp', 'Número WhatsApp (con prefijo)', '+34600123456', c.whatsapp || '');
+    if (c.canales && c.canales.telegram)
+      html += notifField('telegram_chat', 'Telegram Chat ID', '123456789', c.telegram_chat || '');
+    fields.innerHTML = html;
+  }
+  // Alertas
+  const al = document.getElementById('notif-alertas');
+  if (al) {
+    al.innerHTML = NOTIF_ALERTAS.map(a => {
+      const on = c.alertas && c.alertas[a.key];
+      return '<label style="display:flex;align-items:center;gap:10px;cursor:pointer;font-size:13px;color:var(--tx)">' +
+        '<input type="checkbox" data-alerta="' + a.key + '"' + (on ? ' checked' : '') +
+        ' style="width:17px;height:17px;accent-color:var(--acc)">' + a.label + '</label>';
+    }).join('');
+  }
+}
+
+function notifField(key, label, ph, val) {
+  return '<div><label style="display:block;font-size:11px;color:var(--mut);margin-bottom:5px;text-transform:uppercase;letter-spacing:.4px">' + label + '</label>' +
+    '<input data-field="' + key + '" value="' + val + '" placeholder="' + ph + '" ' +
+    'style="width:100%;background:var(--bg);border:1px solid var(--s2);color:var(--tx);border-radius:9px;padding:10px 13px;font-size:14px;outline:none;font-family:inherit"></div>';
+}
+
+function toggleNotifCanal(key) {
+  if (!_notifConfig.canales) _notifConfig.canales = {};
+  _notifConfig.canales[key] = !_notifConfig.canales[key];
+  renderNotifConfig();
+}
+
+async function guardarNotifConfig() {
+  // Collect field values
+  document.querySelectorAll('[data-field]').forEach(el => {
+    _notifConfig[el.dataset.field] = el.value.trim();
+  });
+  if (!_notifConfig.alertas) _notifConfig.alertas = {};
+  document.querySelectorAll('[data-alerta]').forEach(el => {
+    _notifConfig.alertas[el.dataset.alerta] = el.checked;
+  });
+  const btn = document.getElementById('btn-save-notif');
+  btn.textContent = 'Guardando...';
+  try {
+    await fetch('/api/notif_config', {method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify(_notifConfig)});
+    btn.textContent = '✓ Guardado';
+    setTimeout(() => { btn.textContent = '💾 Guardar configuración'; }, 2000);
+  } catch(e) {
+    btn.textContent = '⚠️ Error';
+    setTimeout(() => { btn.textContent = '💾 Guardar configuración'; }, 2000);
+  }
+}
 
 async function loadNotif() {
   try {
