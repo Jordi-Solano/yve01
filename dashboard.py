@@ -1560,7 +1560,7 @@ tr:hover td{background:rgba(255,255,255,.025)}
     <span class="pill" style="color:var(--acc2)">👤 __USER_NAME__</span>
 
     <div class="dropdown">
-      <button class="btn-ref" onclick="toggleMenu('reportes-menu')" title="Descargar reportes">📄 Reportes</button>
+      <button class="btn-ref" onclick="toggleMenu('reportes-menu')" title="Descargar reportes" data-i18n="nav.reportes">📄 Reportes</button>
       <div id="reportes-menu" class="menu">
         <div class="menu-head">Reportes PDF</div>
         <a href="/api/reportes/diario" class="menu-item">📄 Diario</a>
@@ -1573,7 +1573,7 @@ tr:hover td{background:rgba(255,255,255,.025)}
       </div>
     </div>
 
-    <button class="btn-ref" onclick="loadAll()" title="Actualizar datos">↻ Actualizar</button>
+    <button class="btn-ref" onclick="loadAll()" title="Actualizar datos" data-i18n="nav.actualizar">↻ Actualizar</button>
 
     <button class="btn-run" id="btn-run" onclick="runPipeline()">
       <div class="spin" id="spin"></div>
@@ -1583,11 +1583,11 @@ tr:hover td{background:rgba(255,255,255,.025)}
     <div class="dropdown">
       <button class="btn-ref" onclick="toggleMenu('main-menu')" title="Más opciones" style="font-size:17px;line-height:1;padding:5px 12px">⋯</button>
       <div id="main-menu" class="menu">
-        <div class="menu-head">Presentación</div>
+        <div class="menu-head" data-i18n="menu.presentacion">Presentación</div>
         <button class="menu-item" data-i18n="nav.tour" onclick="tourStart();document.getElementById('main-menu').classList.remove('open')">🎯 Tour guiado</button>
         <button class="menu-item" id="btn-demo" onclick="toggleDemoMode()"><span data-i18n="nav.demo">🎭 Demo Mode</span></button>
         <div class="menu-sep"></div>
-        <div class="menu-head">Cambiar rol</div>
+        <div class="menu-head" data-i18n="menu.cambiarRol">Cambiar rol</div>
         <button class="menu-item" id="rol-btn">👤 Admin</button>
         <div id="rol-menu" class="rol-sub" style="display:none">
           <button class="menu-item" onclick="cambiarRol('admin')">🔑 Administrador</button>
@@ -1598,7 +1598,7 @@ tr:hover td{background:rgba(255,255,255,.025)}
         </div>
         <div class="menu-sep"></div>
         <a href="/configuracion/" class="menu-item" data-i18n="nav.config">⚙️ Configuración</a>
-        <a href="/admin/" class="menu-item" style="display:__ADMIN_DISPLAY__">👥 Administración</a>
+        <a href="/admin/" class="menu-item" style="display:__ADMIN_DISPLAY__" data-i18n="menu.admin">👥 Administración</a>
         <div class="menu-sep"></div>
         <a href="/logout" class="menu-item" data-i18n="nav.salir" style="color:#f87171">↩ Cerrar sesión</a>
       </div>
@@ -1672,11 +1672,11 @@ tr:hover td{background:rgba(255,255,255,.025)}
   <!-- MID ROW -->
   <div class="mid">
     <div class="card">
-      <div class="card-title">Facturas por OTA</div>
+      <div class="card-title" data-i18n="card.porOta">Facturas por OTA</div>
       <div class="chart-wrap"><canvas id="ota-chart"></canvas></div>
     </div>
     <div class="card">
-      <div class="card-title">Resumen de estados</div>
+      <div class="card-title" data-i18n="card.resumen">Resumen de estados</div>
       <div id="activity">
         <div class="empty"><div class="ei">📂</div><p>Sin datos.<br>Pulsa ⚡ Procesar Facturas.</p></div>
       </div>
@@ -1693,17 +1693,17 @@ tr:hover td{background:rgba(255,255,255,.025)}
       <table>
         <thead>
           <tr>
-            <th>Archivo</th>
-            <th>Nº Factura</th>
-            <th>OTA</th>
-            <th>Hotel</th>
-            <th>Fecha</th>
-            <th>Importe bruto</th>
-            <th>% Com.</th>
-            <th>Estado</th>
-            <th>Estado DI</th>
-            <th>Discrepancia</th>
-            <th>Aprobación</th>
+            <th data-i18n="th.archivo">Archivo</th>
+            <th data-i18n="th.factura">Nº Factura</th>
+            <th data-i18n="th.ota">OTA</th>
+            <th data-i18n="th.hotel">Hotel</th>
+            <th data-i18n="th.fecha">Fecha</th>
+            <th data-i18n="th.importe">Importe bruto</th>
+            <th data-i18n="th.comision">% Com.</th>
+            <th data-i18n="th.estado">Estado</th>
+            <th data-i18n="th.estadoDI">Estado DI</th>
+            <th data-i18n="th.discrepancia">Discrepancia</th>
+            <th data-i18n="th.aprobacion">Aprobación</th>
           </tr>
         </thead>
         <tbody id="tbl-body">
@@ -1724,13 +1724,13 @@ tr:hover td{background:rgba(255,255,255,.025)}
       <div class="sc c-grn"><div class="sc-lbl">Matches OK</div><div class="sc-val" id="ap-matches">—</div><div class="sc-sub">F&B + OTRAS</div></div>
       <div class="sc c-red"><div class="sc-lbl">Discrepancias</div><div class="sc-val" id="ap-disc">—</div><div class="sc-sub">vs PO</div></div>
       <div class="sc c-ora"><div class="sc-lbl">Sin PO</div><div class="sc-val" id="ap-sinpo">—</div><div class="sc-sub">sin orden compra</div></div>
-      <div class="sc c-pur"><div class="sc-lbl">Aprobadas</div><div class="sc-val" id="ap-aprobadas">—</div><div class="sc-sub">firmadas</div></div>
+      <div class="sc c-pur"><div class="sc-lbl">Aprobadas</div><div class="sc-val" id="ap-aprobadas">—</div><div class="sc-sub" data-i18n="ap.firmadas">firmadas</div></div>
     </div>
     <div class="card" style="margin-bottom:22px">
       <div class="card-title">Facturas AP</div>
       <div class="tbl-wrap">
         <table>
-          <thead><tr><th>Factura</th><th>Proveedor</th><th>Tipo</th><th>Total</th><th>Cuenta</th><th>Matching</th><th>Aprobación</th></tr></thead>
+          <thead><tr><th>Factura</th><th>Proveedor</th><th>Tipo</th><th>Total</th><th>Cuenta</th><th>Matching</th><th data-i18n="th.aprobacion">Aprobación</th></tr></thead>
           <tbody id="ap-tbody"><tr><td colspan="7" class="empty"><p>Sin datos AP.</p></td></tr></tbody>
         </table>
       </div>
@@ -1754,19 +1754,19 @@ tr:hover td{background:rgba(255,255,255,.025)}
 
     <!-- Revenue Chart -->
     <div class="card" style="margin-bottom:22px" id="drr-chart-card" style="display:none">
-      <div class="card-title">Revenue Diario</div>
+      <div class="card-title" data-i18n="card.revDiario">Revenue Diario</div>
       <div class="drr-chart-wrap"><canvas id="drr-revenue-chart"></canvas></div>
     </div>
 
     <!-- Days grid -->
     <div class="card" style="margin-bottom:22px">
-      <div class="card-title">Trial Balance — Estado Diario</div>
+      <div class="card-title" data-i18n="card.trialBalance">Trial Balance — Estado Diario</div>
       <div class="drr-days" id="drr-days"></div>
     </div>
 
     <!-- Alerts -->
     <div class="card">
-      <div class="card-title">Alertas DRR</div>
+      <div class="card-title" data-i18n="card.alertasDrr">Alertas DRR</div>
       <div class="drr-alerts" id="drr-alerts">
         <div class="empty"><p>Sin alertas.</p></div>
       </div>
@@ -1783,7 +1783,7 @@ tr:hover td{background:rgba(255,255,255,.025)}
       <div class="sc c-red"><div class="sc-lbl">Diferencias</div><div class="sc-val" id="bk-diff">—</div><div class="sc-sub">importe no cuadra</div></div>
     </div>
     <div class="card">
-      <div class="card-title">Alertas Bancarias</div>
+      <div class="card-title" data-i18n="card.alertasBanco">Alertas Bancarias</div>
       <div id="bk-alertas"><div class="empty"><p>Cargando...</p></div></div>
     </div>
     <div style="margin-top:16px">
@@ -1823,7 +1823,7 @@ tr:hover td{background:rgba(255,255,255,.025)}
     <div class="card">
       <div class="tbl-wrap">
         <table>
-          <thead><tr><th>Fecha</th><th>Tipo</th><th>Asunto</th><th>Destinatario</th><th>Estado</th></tr></thead>
+          <thead><tr><th>Fecha</th><th>Tipo</th><th>Asunto</th><th>Destinatario</th><th data-i18n="th.estado">Estado</th></tr></thead>
           <tbody id="notif-tbody"><tr><td colspan="5" class="empty"><p>Sin notificaciones.</p></td></tr></tbody>
         </table>
       </div>
@@ -1880,7 +1880,7 @@ tr:hover td{background:rgba(255,255,255,.025)}
     <div style="display:grid;grid-template-columns:1fr 1fr;gap:16px;margin-bottom:20px">
       <!-- Clients table -->
       <div class="card">
-        <div class="card-title">Clientes de Crédito</div>
+        <div class="card-title" data-i18n="card.clientesCredito">Clientes de Crédito</div>
         <div class="tbl-wrap" style="min-width:0">
           <table style="min-width:0;width:100%">
             <thead><tr>
@@ -1892,7 +1892,7 @@ tr:hover td{background:rgba(255,255,255,.025)}
       </div>
       <!-- Reservations table -->
       <div class="card">
-        <div class="card-title">Reservas Corporativas</div>
+        <div class="card-title" data-i18n="card.reservasCorp">Reservas Corporativas</div>
         <div class="tbl-wrap" style="min-width:0">
           <table style="min-width:0;width:100%">
             <thead><tr>
@@ -1906,7 +1906,7 @@ tr:hover td{background:rgba(255,255,255,.025)}
 
     <!-- Process log (collapsed by default) -->
     <div class="card" id="ar-log-card" style="display:none">
-      <div class="card-title">Log de Procesamiento</div>
+      <div class="card-title" data-i18n="card.logProcesamiento">Log de Procesamiento</div>
       <div id="ar-real-log" style="background:#060c1a;border:1px solid var(--s2);border-radius:10px;padding:14px;max-height:220px;overflow-y:auto;font-family:'JetBrains Mono',monospace;font-size:11px;line-height:1.8;color:var(--tx)"></div>
     </div>
     <div id="ar-real-status" style="display:none"></div>
@@ -1932,11 +1932,11 @@ tr:hover td{background:rgba(255,255,255,.025)}
   <!-- Trend row: GOP y Facturas pendientes últimos 6 meses -->
   <div style="display:grid;grid-template-columns:1fr 1fr;gap:16px;margin-bottom:22px">
     <div class="card">
-      <div class="card-title">GOP% — evolución 6 meses</div>
+      <div class="card-title" data-i18n="card.gopEvolucion">GOP% — evolución 6 meses</div>
       <div style="height:120px;position:relative"><canvas id="cal-gop-chart"></canvas></div>
     </div>
     <div class="card">
-      <div class="card-title">Facturas AP pendientes — evolución 6 meses</div>
+      <div class="card-title" data-i18n="card.apEvolucion">Facturas AP pendientes — evolución 6 meses</div>
       <div style="height:120px;position:relative"><canvas id="cal-ap-chart"></canvas></div>
     </div>
   </div>
@@ -2020,7 +2020,7 @@ tr:hover td{background:rgba(255,255,255,.025)}
 <!-- Chat AI — Yve Copilot -->
 <button id="chat-fab" onclick="toggleChat()">
   <span style="font-size:1.3rem">💬</span>
-  <span>Pregunta a Yve</span>
+  <span data-i18n="chat.pregunta" data-i18n="chat.pregunta">Pregunta a Yve</span>
   <div class="fab-dot"></div>
 </button>
 
@@ -3041,12 +3041,12 @@ async function loadFBResumen() {
     html += '</div>';
 
     // Ventas diarias chart
-    html += '<div class="card" style="margin-bottom:16px"><div class="card-title">Ventas diarias F&B</div>';
+    html += '<div class="card" style="margin-bottom:16px"><div class="card-title" data-i18n="card.ventasDiarias">Ventas diarias F&B</div>';
     html += '<div style="height:160px;position:relative"><canvas id="fb-ventas-chart"></canvas></div></div>';
 
     // Categories + ranking
     html += '<div style="display:grid;grid-template-columns:1.2fr 0.8fr;gap:16px">';
-    html += '<div class="card"><div class="card-title">Food Cost por Categoría</div>';
+    html += '<div class="card"><div class="card-title" data-i18n="card.fcCategoria">Food Cost por Categoría</div>';
     html += '<div class="tbl-wrap"><table style="min-width:0;width:100%"><thead><tr>';
     html += '<th>Categoría</th><th style="text-align:right">Ventas</th><th style="text-align:right">FC%</th><th style="text-align:center">Estado</th>';
     html += '</tr></thead><tbody>';
@@ -3060,7 +3060,7 @@ async function loadFBResumen() {
     });
     html += '</tbody></table></div></div>';
 
-    html += '<div class="card"><div class="card-title">Top Platos</div>';
+    html += '<div class="card"><div class="card-title" data-i18n="card.topPlatos">Top Platos</div>';
     html += '<div class="tbl-wrap"><table style="min-width:0;width:100%"><thead><tr><th>Plato</th><th style="text-align:right">€</th><th style="text-align:right">FC%</th></tr></thead><tbody>';
     data.ranking_top.forEach((p, i) => {
       const pC = p.fc_real_pct > 30 ? 'var(--ora)' : 'var(--grn)';
@@ -3117,7 +3117,7 @@ async function loadFBInventario() {
     html += _fbKpi('Alertas Stock Bajo', alertas.length, alertas.length > 0 ? 'revisar urgente' : 'todo OK', alertas.length > 0 ? 'var(--red)' : 'var(--grn)');
     html += '</div>';
 
-    html += '<div class="card"><div class="card-title">Stock de Ingredientes</div>';
+    html += '<div class="card"><div class="card-title" data-i18n="card.stockIngredientes">Stock de Ingredientes</div>';
     html += '<div class="tbl-wrap"><table style="min-width:0;width:100%"><thead><tr>';
     html += '<th>Ingrediente</th><th>Categoría</th><th>Proveedor</th>';
     html += '<th style="text-align:right">Actual</th><th style="text-align:right">€/u</th>';
@@ -3157,7 +3157,7 @@ async function loadFBMermas() {
 
     let html = '<div style="display:grid;grid-template-columns:1fr 1fr;gap:16px;margin-bottom:20px">';
     // Mermas por causa
-    html += '<div class="card"><div class="card-title">Mermas por Causa</div><div style="margin-top:8px">';
+    html += '<div class="card"><div class="card-title" data-i18n="card.mermasCausa">Mermas por Causa</div><div style="margin-top:8px">';
     const causas = Object.entries(data.por_causa).sort((a,b) => b[1]-a[1]);
     const maxCausa = causas[0]?.[1] || 1;
     causas.forEach(([causa, coste]) => {
@@ -3169,7 +3169,7 @@ async function loadFBMermas() {
     html += '</div></div>';
 
     // Formulario registrar merma
-    html += '<div class="card"><div class="card-title">Registrar Merma</div>';
+    html += '<div class="card"><div class="card-title" data-i18n="card.registrarMerma">Registrar Merma</div>';
     html += '<div style="display:grid;gap:10px;margin-top:8px">';
     html += _fbField('mb-ing', 'Ingrediente', 'text', 'Ej: Gambas');
     html += '<div style="display:grid;grid-template-columns:1fr 1fr;gap:10px">';
@@ -3246,7 +3246,7 @@ async function loadFBRecetas() {
     html += _fbKpi('Alertas FC alto', data.recetas.filter(r=>r.alerta).length, '>35% FC', 'var(--red)');
     html += '</div>';
 
-    html += '<div class="card"><div class="card-title">Ficha de Recetas con Coste Teórico</div>';
+    html += '<div class="card"><div class="card-title" data-i18n="card.fichaRecetas">Ficha de Recetas con Coste Teórico</div>';
     html += '<div class="tbl-wrap"><table style="min-width:0;width:100%"><thead><tr>';
     html += '<th>Receta</th><th>Categoría</th><th style="text-align:right">PVP</th>';
     html += '<th style="text-align:right">Coste</th><th style="text-align:right">FC%</th>';
