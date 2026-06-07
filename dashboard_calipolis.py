@@ -4,14 +4,28 @@ Datos reales de hoteles.json + kpis_hoteles.xlsx (6 meses 2026)
 """
 import pandas as pd, json, os
 from pathlib import Path
+import time as _t
 
 BASE_DIR  = Path(__file__).parent
 DATOS     = BASE_DIR / "datos-referencia"
 
+_CAL_CACHE = {}
+_CAL_TTL   = 300
+
+def _cal_excel(path):
+    key = str(path)
+    now = _t.time()
+    if key in _CAL_CACHE:
+        df, ts = _CAL_CACHE[key]
+        if now - ts < _CAL_TTL: return df
+    df = pd.read_excel(path)
+    _CAL_CACHE[key] = (df, now)
+    return df
+
 def _load():
     with open(DATOS / "hoteles.json") as f:
         hoteles = json.load(f)
-    df = pd.read_excel(DATOS / "kpis_hoteles.xlsx")
+    df = _cal_excel(DATOS / "kpis_hoteles.xlsx")
     df["mes"] = df["mes"].astype(str)
     return hoteles, df
 

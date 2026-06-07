@@ -17,10 +17,22 @@ from flask import Blueprint, request, redirect, Response, jsonify
 
 billing_bp = Blueprint('billing', __name__)
 
+# Precio base: ~2€/habitación/mes (100 hab ≈ €200, 300 hab ≈ €600)
+# Para simplificar el checkout usamos 3 tiers flat.
+# En el futuro: precio dinámico según habitaciones registradas en onboarding.
 PLANS = {
-    'starter': {'name':'Starter',     'price_eur':400, 'stripe_price_id':os.environ.get('STRIPE_PRICE_STARTER',''), 'desc':'1 hotel · AP + AR + DRR + Banco', 'features':['Módulo AP — Proveedores','Módulo AR — OTAs','DRR & Conciliación bancaria','Soporte por email']},
-    'pro':     {'name':'Pro',         'price_eur':600, 'stripe_price_id':os.environ.get('STRIPE_PRICE_PRO',''),     'desc':'1 hotel · Todo incluido + Oracle', 'features':['Todo lo de Starter','F&B Cost Control','Oracle GL API producción','Notificaciones WhatsApp/Slack','Soporte prioritario']},
-    'multi':   {'name':'Multi-Hotel', 'price_eur':400, 'stripe_price_id':os.environ.get('STRIPE_PRICE_MULTI',''),   'desc':'Por hotel · Mín. 2 · Dashboard consolidado', 'features':['Todo lo de Pro en cada hotel','Dashboard Multi-Hotel','Benchmarking propiedades','Gestor de cuenta dedicado']},
+    'starter': {'name':'Starter',     'price_eur':400, 'stripe_price_id':os.environ.get('STRIPE_PRICE_STARTER',''),
+                'desc':'Hasta 150 hab · AP + AR + DRR + Banco',
+                'features':['Módulo AP — Proveedores','Módulo AR — OTAs','DRR & Conciliación bancaria',
+                            'Hasta 150 habitaciones','Soporte por email']},
+    'pro':     {'name':'Pro',         'price_eur':600, 'stripe_price_id':os.environ.get('STRIPE_PRICE_PRO',''),
+                'desc':'Hasta 400 hab · Todo incluido + Oracle',
+                'features':['Todo lo de Starter','F&B Cost Control','Oracle GL API producción',
+                            'Hasta 400 habitaciones','Notificaciones WhatsApp/Slack','Soporte prioritario']},
+    'multi':   {'name':'Multi-Hotel', 'price_eur':400, 'stripe_price_id':os.environ.get('STRIPE_PRICE_MULTI',''),
+                'desc':'Por hotel · Mín. 2 hoteles · Dashboard consolidado',
+                'features':['Todo lo de Pro en cada hotel','Sin límite de habitaciones',
+                            'Dashboard Multi-Hotel','Benchmarking propiedades','Gestor de cuenta dedicado']},
 }
 
 def _stripe():

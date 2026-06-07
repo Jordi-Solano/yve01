@@ -31,6 +31,31 @@ PROCESADAS_DIR   = os.path.join(BASE_DIR, "facturas-procesadas")
 APROBACIONES_DIR = os.path.join(BASE_DIR, "aprobaciones")
 NF = "NO_ENCONTRADO"
 
+# ── Excel cache (TTL 5 min) ──────────────────────────────────────────────
+import time as _time
+_EXCEL_CACHE: dict = {}
+_CACHE_TTL = 300  # seconds
+
+def _excel(path, sheet_name=0, header=0, **kw):
+    key = f"{path}|{sheet_name}|{header}"
+    now = _time.time()
+    if key in _EXCEL_CACHE:
+        df, ts = _EXCEL_CACHE[key]
+        if now - ts < _CACHE_TTL:
+            return df
+    df = pd.read_excel(path, sheet_name=sheet_name, header=header, **kw)
+    _EXCEL_CACHE[key] = (df, now)
+    return df
+
+def _invalidate_cache(path_fragment=None):
+    """Invalida entradas del caché (llamar al guardar nuevos datos)."""
+    global _EXCEL_CACHE
+    if path_fragment:
+        _EXCEL_CACHE = {k: v for k, v in _EXCEL_CACHE.items() if path_fragment not in k}
+    else:
+        _EXCEL_CACHE = {}
+
+
 app = Flask(__name__)
 DEMO_MODE = False
 app.secret_key = os.environ.get("SECRET_KEY") or "yve01-dev-secret-CHANGE-IN-PROD"
@@ -768,7 +793,7 @@ def api_drr_daily_chart():
     if not ruta:
         return jsonify(None)
     try:
-        df = pd.read_excel(ruta, sheet_name="Trial_Balance_Completo", header=0)
+        df = _excel(ruta, sheet_name="Trial_Balance_Completo", header=0)
         income = df[df["Sección"] == "INCOME"].copy()
         income["Total"] = pd.to_numeric(income["Total"], errors="coerce").abs()
         expenses = df[df["Sección"] == "EXPENSES"].copy()
@@ -1297,6 +1322,15 @@ tr:hover td{background:rgba(255,255,255,.025)}
 @media(max-width:600px){
   #tour-card{width:calc(100vw - 24px)!important;left:12px!important;bottom:16px!important;top:auto!important}
 }
+
+/* ── Skeleton loading ─────────────────────────────────────── */
+@keyframes shimmer{0%{background-position:-400px 0}100%{background-position:400px 0}}
+.skel{border-radius:10px;background:linear-gradient(90deg,var(--s1) 25%,var(--s2) 50%,var(--s1) 75%);background-size:800px 100%;animation:shimmer 1.4s infinite}
+.skel-card{height:88px;border-radius:13px}
+.skel-line{height:14px;border-radius:6px;margin-bottom:10px}
+.skel-line.short{width:60%}
+.skel-line.med{width:80%}
+.skel-title{height:20px;border-radius:6px;width:40%;margin-bottom:16px}
 /* ── Sparklines en stat cards ── */
 .sc-spark{display:block;width:100%;height:24px;margin-top:8px;opacity:.7}
 .sc:hover .sc-spark{opacity:1}
@@ -2606,6 +2640,31 @@ document.getElementById('tour-overlay').addEventListener('click', function(e) {
 });
 
 
+
+// ── Skeleton helpers ──────────────────────────────────────
+function skelCards(n=4, extraStyle='') {
+  return '<div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(160px,1fr));gap:12px;' + extraStyle + '">' +
+    Array(n).fill('<div class="skel skel-card"></div>').join('') + '</div>';
+}
+function skelTable(rows=5) {
+  const header = '<div class="skel skel-line med" style="margin-bottom:16px"></div>';
+  const r = Array(rows).fill('<div class="skel skel-line" style="margin-bottom:8px"></div>').join('');
+  return header + r;
+}
+function skelSection() {
+  return '<div style="padding:4px 0">' + skelCards(4) + '<div style="margin-top:18px">' + skelTable() + '</div></div>';
+}
+
+// ── Preload all tab data in background (3s after load) ────
+setTimeout(async () => {
+  const preloads = [
+    '/api/stats_drr', '/api/drr_daily_chart',
+    '/api/ar_real_data', '/calipolis/api/kpis',
+    '/api/stats_banco',
+  ];
+  preloads.forEach(url => fetch(url).catch(() => {}));
+}, 3000);
+
 loadAll();
 setInterval(loadAll, 60000);
 
@@ -2724,20 +2783,108 @@ async function loadFBTab() {
   var cont = document.getElementById('fb-tab-content');
   if (!cont || cont.dataset.loaded) return;
   cont.dataset.loaded = '1';
+  // Show skeleton while loading
+  cont.innerHTML = '<div style="display:grid;grid-template-columns:repeat(4,1fr);gap:12px;margin-bottom:22px">' +
+    Array(4).fill('<div class="skel skel-card"></div>').join('') + '</div>' +
+    '<div style="display:grid;grid-template-columns:1fr 1fr;gap:16px">' +
+    '<div class="card"><div class="skel skel-title"></div>' + skelTable(5) + '</div>' +
+    '<div class="card"><div class="skel skel-title"></div>' + skelTable(5) + '</div></div>';
   try {
     var res = await fetch('/fb/api/resultados');
     var data = await res.json();
-    if (!data.ok) { cont.innerHTML = '<div class="empty"><p>Pulsa Ejecutar para generar datos F&B.</p><button onclick="runFB()" style="margin-top:12px;background:#1a73e8;color:white;border:none;padding:8px 18px;border-radius:8px;cursor:pointer">Ejecutar</button></div>'; return; }
-    var r2 = data.resumen;
-    var html = '<h2 style="font-size:18px;font-weight:700;margin-bottom:20px">F&B Cost Control</h2>';
-    html += '<div style="display:grid;grid-template-columns:repeat(4,1fr);gap:16px;margin-bottom:24px">';
-    html += '<div style="background:#1c1f2e;border:1px solid #2e3248;border-radius:12px;padding:20px"><div style="font-size:12px;color:#8892a4">Ventas F&B</div><div style="font-size:22px;font-weight:700;color:#1a73e8">' + r2.total_ventas.toLocaleString('es-ES') + ' €</div></div>';
-    html += '<div style="background:#1c1f2e;border:1px solid #2e3248;border-radius:12px;padding:20px"><div style="font-size:12px;color:#8892a4">FC Teórico</div><div style="font-size:22px;font-weight:700;color:#1db954">' + r2.fc_teorico_pct + '%</div></div>';
-    html += '<div style="background:#1c1f2e;border:1px solid #2e3248;border-radius:12px;padding:20px"><div style="font-size:12px;color:#8892a4">FC Real</div><div style="font-size:22px;font-weight:700;color:' + (r2.alerta ? '#e05252' : '#ff9800') + '">' + r2.fc_real_pct + '%</div></div>';
-    html += '<div style="background:#1c1f2e;border:1px solid #2e3248;border-radius:12px;padding:20px"><div style="font-size:12px;color:#8892a4">Mermas</div><div style="font-size:22px;font-weight:700;color:#e05252">' + r2.coste_mermas.toLocaleString('es-ES') + ' €</div></div>';
+    if (!data.ok) {
+      cont.innerHTML = '<div class="empty"><p>Sin datos F&B. Pulsa Ejecutar para generar el análisis.</p>' +
+        '<button class="btn-run" onclick="runFB()" style="margin-top:16px;font-size:13px">▶ Ejecutar Análisis</button></div>';
+      return;
+    }
+    var r = data.resumen;
+    var fcColor = r.alerta ? 'var(--red)' : (r.fc_real_pct <= r.fc_teorico_pct ? 'var(--grn)' : 'var(--ora)');
+    var fcDiff = (r.fc_real_pct - r.fc_teorico_pct).toFixed(2);
+    var fcSign = fcDiff > 0 ? '+' : '';
+
+    var html = '';
+
+    // Header
+    html += '<div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:20px;flex-wrap:wrap;gap:12px">';
+    html += '<div><h2 style="font-size:18px;font-weight:700;margin:0">🍽️ F&B Cost Control</h2>';
+    html += '<div style="font-size:12px;color:var(--mut);margin-top:4px">Coste real vs teórico · Categorías · Ranking · Mermas</div></div>';
+    html += '<button class="btn-run" onclick="runFB()" style="font-size:12px;padding:8px 16px">↺ Recalcular</button></div>';
+
+    // KPI cards
+    html += '<div style="display:grid;grid-template-columns:repeat(4,1fr);gap:14px;margin-bottom:22px">';
+    html += _fbKpi('Ventas F&B', '€' + Math.round(r.total_ventas).toLocaleString('es-ES'), 'este período', 'var(--acc2)');
+    html += _fbKpi('FC Teórico', r.fc_teorico_pct + '%', 'objetivo', 'var(--grn)');
+    html += _fbKpi('FC Real', r.fc_real_pct + '%', fcSign + fcDiff + 'pp vs teórico', fcColor);
+    html += _fbKpi('Mermas', '€' + Math.round(r.coste_mermas).toLocaleString('es-ES'), r.alerta ? '⚠ Revisar' : 'controladas', r.alerta ? 'var(--red)' : 'var(--ora)');
     html += '</div>';
+
+    // FC % visual gauge
+    var target = r.fc_teorico_pct;
+    var real   = r.fc_real_pct;
+    var maxG   = Math.max(target, real) * 1.3;
+    var tW = Math.round(target/maxG*100);
+    var rW = Math.round(real/maxG*100);
+    html += '<div class="card" style="margin-bottom:18px">';
+    html += '<div class="card-title">Food Cost % — Teórico vs Real</div>';
+    html += '<div style="margin-top:4px">';
+    html += '<div style="display:flex;align-items:center;gap:12px;margin-bottom:10px">';
+    html += '<div style="font-size:12px;color:var(--mut);width:60px">Teórico</div>';
+    html += '<div style="flex:1;background:var(--s2);border-radius:6px;height:14px;overflow:hidden"><div style="height:100%;background:var(--grn);border-radius:6px;width:' + tW + '%;transition:width .8s"></div></div>';
+    html += '<div style="font-size:14px;font-weight:700;color:var(--grn);width:40px;text-align:right">' + target + '%</div></div>';
+    html += '<div style="display:flex;align-items:center;gap:12px">';
+    html += '<div style="font-size:12px;color:var(--mut);width:60px">Real</div>';
+    html += '<div style="flex:1;background:var(--s2);border-radius:6px;height:14px;overflow:hidden"><div style="height:100%;background:' + fcColor + ';border-radius:6px;width:' + rW + '%;transition:width .8s"></div></div>';
+    html += '<div style="font-size:14px;font-weight:700;color:' + fcColor + ';width:40px;text-align:right">' + real + '%</div></div></div></div>';
+
+    // Categories table + Ranking
+    html += '<div style="display:grid;grid-template-columns:1.2fr 0.8fr;gap:16px;margin-bottom:18px">';
+
+    // Categories
+    html += '<div class="card"><div class="card-title">Food Cost por Categoría</div>';
+    html += '<div class="tbl-wrap"><table style="min-width:0;width:100%"><thead><tr>';
+    html += '<th>Categoría</th><th style="text-align:right">Ventas</th><th style="text-align:right">FC Teórico</th><th style="text-align:right">FC Real</th><th style="text-align:center">Estado</th>';
+    html += '</tr></thead><tbody>';
+    if (data.categorias && data.categorias.length) {
+      data.categorias.forEach(c => {
+        var cColor = c.alerta ? 'var(--red)' : 'var(--grn)';
+        var badge = c.alerta ? '<span class="badge b-disc">⚠ Alerta</span>' : '<span class="badge b-ok">OK</span>';
+        html += '<tr><td style="font-weight:600">' + c.nombre + '</td>' +
+          '<td style="text-align:right">€' + Math.round(c.total_ventas).toLocaleString('es-ES') + '</td>' +
+          '<td style="text-align:right;color:var(--grn)">' + c.fc_teorico_pct + '%</td>' +
+          '<td style="text-align:right;color:' + cColor + ';font-weight:700">' + c.fc_real_pct + '%</td>' +
+          '<td style="text-align:center">' + badge + '</td></tr>';
+      });
+    } else {
+      html += '<tr><td colspan="5" style="text-align:center;color:var(--dim);padding:16px">Sin datos de categorías</td></tr>';
+    }
+    html += '</tbody></table></div></div>';
+
+    // Top ranking
+    html += '<div class="card"><div class="card-title">Ranking — Platos más vendidos</div>';
+    html += '<div class="tbl-wrap"><table style="min-width:0;width:100%"><thead><tr><th>Plato</th><th style="text-align:right">€</th><th style="text-align:right">FC%</th></tr></thead><tbody>';
+    if (data.ranking_top && data.ranking_top.length) {
+      data.ranking_top.forEach((p, i) => {
+        var pColor = p.fc_real_pct > p.fc_teorico_pct ? 'var(--ora)' : 'var(--grn)';
+        html += '<tr><td><span style="color:var(--dim);font-size:11px;margin-right:6px">#' + (i+1) + '</span>' + p.nombre + '</td>' +
+          '<td style="text-align:right">€' + Math.round(p.total_ventas) + '</td>' +
+          '<td style="text-align:right;font-weight:700;color:' + pColor + '">' + p.fc_real_pct + '%</td></tr>';
+      });
+    } else {
+      html += '<tr><td colspan="3" style="text-align:center;color:var(--dim);padding:16px">Sin datos</td></tr>';
+    }
+    html += '</tbody></table></div></div></div>';
+
     cont.innerHTML = html;
-  } catch(e) { cont.innerHTML = '<div class="empty"><p>Error F&B: ' + e.message + '</p></div>'; }
+  } catch(e) {
+    cont.innerHTML = '<div class="empty"><p>Error F&B: ' + e.message + '</p></div>';
+  }
+}
+
+function _fbKpi(lbl, val, sub, color) {
+  return '<div style="background:var(--s1);border:1px solid var(--s2);border-radius:13px;padding:18px 16px">' +
+    '<div style="font-size:10px;color:var(--mut);text-transform:uppercase;letter-spacing:.6px;margin-bottom:10px;font-weight:600">' + lbl + '</div>' +
+    '<div style="font-size:24px;font-weight:800;color:' + color + ';line-height:1;letter-spacing:-.5px">' + val + '</div>' +
+    '<div style="font-size:11px;color:var(--dim);margin-top:7px">' + sub + '</div></div>';
 }
 function runFB() {
   var es = new EventSource('/fb/api/ejecutar');
@@ -3177,8 +3324,11 @@ let _notifConfig = null;
 
 async function loadNotifConfig() {
   try {
+    const ch = document.getElementById('notif-canales');
+    if (ch && !ch.dataset.loaded) ch.innerHTML = skelCards(5, 'grid-template-columns:repeat(5,1fr)');
     const r = await fetch('/api/notif_config');
     _notifConfig = await r.json();
+    if (ch) ch.dataset.loaded = '1';
   } catch(e) {
     _notifConfig = {canales:{email:true,push:true},email:'',whatsapp:'',telegram_chat:'',alertas:{}};
   }
@@ -3422,6 +3572,9 @@ async function cargarStatusARReal() { await cargarARRealData(); }
 
 async function cargarARRealData() {
   try {
+    // Skeleton while loading
+    const kpis = document.getElementById('ar-real-kpis');
+    if (kpis && !kpis.dataset.loaded) kpis.innerHTML = skelCards(4, 'grid-template-columns:repeat(4,1fr)');
     const r = await fetch('/api/ar_real_data');
     const d = await r.json();
     if (d.error) return;
@@ -3434,6 +3587,7 @@ async function cargarARRealData() {
     document.getElementById('arp-cobr').textContent  = fmt(k.cobrado);
     document.getElementById('arp-saldo').textContent = fmt(k.saldo_total);
     document.getElementById('arp-nclientes').textContent = k.num_clientes + ' clientes activos';
+    const kpisEl = document.getElementById('ar-real-kpis'); if (kpisEl) kpisEl.dataset.loaded = '1';
 
     // Clients table
     const ctbody = document.getElementById('ar-clients-tbody');
@@ -3479,6 +3633,8 @@ let _mh_loaded = false;
 async function loadMultiHotel() {
   const grupoSelect = document.getElementById('grupo-filter');
   const grupo = grupoSelect ? grupoSelect.value : '';
+  const mhk = document.getElementById('mh-kpis');
+  if (mhk && !mhk.dataset.loaded) mhk.innerHTML = skelCards(8, 'grid-template-columns:repeat(4,1fr)');
   try {
     const overviewRes = await fetch('/api/multi_hotel/overview' + (grupo ? '?grupo=' + encodeURIComponent(grupo) : ''));
     const overview = await overviewRes.json();
@@ -3696,6 +3852,10 @@ let _calCharts = {};
 
 async function loadCalipolis() {
   try {
+    const kEl = document.getElementById('cal-kpis');
+    const hEl = document.getElementById('cal-hoteles');
+    if (kEl && !kEl.dataset.loaded) kEl.innerHTML = skelCards(4, 'grid-template-columns:repeat(4,1fr)');
+    if (hEl && !hEl.dataset.loaded) hEl.innerHTML = skelCards(3, 'grid-template-columns:repeat(3,1fr)');
     const res = await fetch('/api/calipolis/kpis');
     const data = await res.json();
     renderCalipolisKpis(data.consolidado);

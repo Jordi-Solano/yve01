@@ -99,8 +99,16 @@ def api_ar_real_data():
     base = _os.path.dirname(_os.path.abspath(__file__))
     datos = _os.path.join(base, 'datos-referencia')
     try:
-        df_c = pd.read_excel(_os.path.join(datos, 'clientes_credito.xlsx'))
-        df_r = pd.read_excel(_os.path.join(datos, 'reservas_credito.xlsx'))
+        # Simple cache for small files
+        import time as _t2
+        _ar_cache = getattr(api_ar_real_data, '_cache', {})
+        now2 = _t2.time()
+        if 'data' in _ar_cache and now2 - _ar_cache.get('ts', 0) < 300:
+            df_c, df_r = _ar_cache['data']
+        else:
+            df_c = pd.read_excel(_os.path.join(datos, 'clientes_credito.xlsx'))
+            df_r = pd.read_excel(_os.path.join(datos, 'reservas_credito.xlsx'))
+            api_ar_real_data._cache = {'data': (df_c, df_r), 'ts': now2}
         df_r['fecha_entrada'] = pd.to_datetime(df_r['fecha_entrada'], errors='coerce')
         df_r['fecha_emision'] = pd.to_datetime(df_r['fecha_emision'], errors='coerce')
 
