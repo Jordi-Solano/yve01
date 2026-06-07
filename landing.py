@@ -156,6 +156,7 @@ footer{background:var(--s1);border-top:1px solid var(--s2);padding:48px 5% 32px;
     <a href="#roi">ROI</a>
     <a href="#pricing">Precios</a>
     <a href="#comparativa">Comparativa</a>
+    <a href="/casos">Casos</a>
   </div>
   <div class="nav-cta">
     <a href="/login" class="btn-outline">Iniciar sesión</a>
@@ -431,6 +432,8 @@ footer{background:var(--s1);border-top:1px solid var(--s2);padding:48px 5% 32px;
         <a href="#pricing">Precios</a>
         <a href="#roi">Calculadora ROI</a>
         <a href="#comparativa">Comparativa</a>
+        <a href="/casos">Casos de éxito</a>
+        <a href="/about">Quiénes somos</a>
         <a href="/login">Demo</a>
       </div>
       <div class="footer-col">
