@@ -1717,20 +1717,20 @@ tr:hover td{background:rgba(255,255,255,.025)}
 
   <!-- PANEL AP -->
   <div id="panel-ap" class="panel">
-  <div style="display:flex;justify-content:flex-end;gap:12px;margin-bottom:14px"><a href="/api/exportar/ap" style="background:#1a73e8;color:white;padding:8px 16px;border-radius:8px;text-decoration:none;font-weight:600;font-size:13px">⬇️ Descargar Excel</a><a href="/aprobaciones-ap/" class="btn-ref" style="text-decoration:none" title="Abrir panel de aprobaciones AP">📲 Aprobar facturas AP</a></div>
+  <div style="display:flex;justify-content:flex-end;gap:12px;margin-bottom:14px"><a href="/api/exportar/ap" style="background:#1a73e8;color:white;padding:8px 16px;border-radius:8px;text-decoration:none;font-weight:600;font-size:13px" data-i18n="btn.downloadExcel" data-i18n="btn.downloadExcel">⬇️ Descargar Excel</a><a href="/aprobaciones-ap/" class="btn-ref" style="text-decoration:none" title="Abrir panel de aprobaciones AP" data-i18n="btn.aprobarAP">📲 Aprobar facturas AP</a></div>
     <div class="stats" id="stats-ap-grid">
-      <div class="sc hl c-blu"><div class="sc-lbl">Total Facturas AP</div><div class="sc-val" id="ap-total">—</div><div class="sc-sub">proveedores</div></div>
-      <div class="sc"><div class="sc-lbl">Importe Total</div><div class="sc-val" id="ap-importe" style="font-size:18px;letter-spacing:-.5px">—</div><div class="sc-sub">EUR</div></div>
-      <div class="sc c-grn"><div class="sc-lbl">Matches OK</div><div class="sc-val" id="ap-matches">—</div><div class="sc-sub">F&B + OTRAS</div></div>
-      <div class="sc c-red"><div class="sc-lbl">Discrepancias</div><div class="sc-val" id="ap-disc">—</div><div class="sc-sub">vs PO</div></div>
-      <div class="sc c-ora"><div class="sc-lbl">Sin PO</div><div class="sc-val" id="ap-sinpo">—</div><div class="sc-sub">sin orden compra</div></div>
-      <div class="sc c-pur"><div class="sc-lbl">Aprobadas</div><div class="sc-val" id="ap-aprobadas">—</div><div class="sc-sub" data-i18n="ap.firmadas">firmadas</div></div>
+      <div class="sc hl c-blu"><div class="sc-lbl" data-i18n="ap.totalLabel">Total Facturas AP</div><div class="sc-val" id="ap-total">—</div><div class="sc-sub" data-i18n="ap.proveedores">proveedores</div></div>
+      <div class="sc"><div class="sc-lbl" data-i18n="ap.importe">Importe Total</div><div class="sc-val" id="ap-importe" style="font-size:18px;letter-spacing:-.5px">—</div><div class="sc-sub">EUR</div></div>
+      <div class="sc c-grn"><div class="sc-lbl" data-i18n="ap.matchOk">Matches OK</div><div class="sc-val" id="ap-matches">—</div><div class="sc-sub" data-i18n="ap.fbOtras">F&B + OTRAS</div></div>
+      <div class="sc c-red"><div class="sc-lbl" data-i18n="sc.discrepancias">Discrepancias</div><div class="sc-val" id="ap-disc">—</div><div class="sc-sub" data-i18n="ap.vsPo">vs PO</div></div>
+      <div class="sc c-ora"><div class="sc-lbl" data-i18n="ap.sinPO">Sin PO</div><div class="sc-val" id="ap-sinpo">—</div><div class="sc-sub" data-i18n="ap.sinOrden">sin orden compra</div></div>
+      <div class="sc c-pur"><div class="sc-lbl" data-i18n="ap.aprobadas">Aprobadas</div><div class="sc-val" id="ap-aprobadas">—</div><div class="sc-sub" data-i18n="ap.firmadas">firmadas</div></div>
     </div>
     <div class="card" style="margin-bottom:22px">
-      <div class="card-title">Facturas AP</div>
+      <div class="card-title" data-i18n="card.facturasAP">Facturas AP</div>
       <div class="tbl-wrap">
         <table>
-          <thead><tr><th>Factura</th><th>Proveedor</th><th>Tipo</th><th>Total</th><th>Cuenta</th><th>Matching</th><th data-i18n="th.aprobacion">Aprobación</th></tr></thead>
+          <thead><tr><th>Factura</th><th data-i18n="th.proveedor">Proveedor</th><th data-i18n="th.tipo">Tipo</th><th>Total</th><th data-i18n="th.cuenta">Cuenta</th><th data-i18n="th.matching">Matching</th><th data-i18n="th.aprobacion">Aprobación</th></tr></thead>
           <tbody id="ap-tbody"><tr><td colspan="7" class="empty"><p>Sin datos AP.</p></td></tr></tbody>
         </table>
       </div>
@@ -1742,7 +1742,7 @@ tr:hover td{background:rgba(255,255,255,.025)}
   <div id="panel-drr" class="panel">
   <div style="display:flex;justify-content:flex-end;margin-bottom:14px"><a href="/api/exportar/drr" style="background:#1a73e8;color:white;padding:8px 16px;border-radius:8px;text-decoration:none;font-weight:600;font-size:13px">⬇️ Descargar Excel</a></div>
     <div class="drr-upload">
-      <label for="drr-file-input">📂 Subir DRR (.xlsm)</label>
+      <label for="drr-file-input" data-i18n="btn.uploadDrr">📂 Subir DRR (.xlsm)</label>
       <input type="file" id="drr-file-input" accept=".xlsm" style="display:none" onchange="uploadDRR(this)">
       <span class="drr-status" id="drr-status">Sin archivo cargado</span>
     </div>
@@ -1777,17 +1777,17 @@ tr:hover td{background:rgba(255,255,255,.025)}
   <!-- PANEL BANCO -->
   <div id="panel-banco" class="panel">
     <div class="stats" id="banco-stats">
-      <div class="sc hl c-blu"><div class="sc-lbl">Movimientos</div><div class="sc-val" id="bk-total">—</div><div class="sc-sub">del extracto</div></div>
-      <div class="sc c-grn"><div class="sc-lbl">Conciliados</div><div class="sc-val" id="bk-conc">—</div><div class="sc-sub">con factura</div></div>
-      <div class="sc c-ora"><div class="sc-lbl">Pendientes</div><div class="sc-val" id="bk-pend">—</div><div class="sc-sub" id="bk-imp-pend">—</div></div>
-      <div class="sc c-red"><div class="sc-lbl">Diferencias</div><div class="sc-val" id="bk-diff">—</div><div class="sc-sub">importe no cuadra</div></div>
+      <div class="sc hl c-blu"><div class="sc-lbl" data-i18n="sc.movimientos">Movimientos</div><div class="sc-val" id="bk-total">—</div><div class="sc-sub" data-i18n="sc.delExtracto">del extracto</div></div>
+      <div class="sc c-grn"><div class="sc-lbl" data-i18n="sc.conciliados">Conciliados</div><div class="sc-val" id="bk-conc">—</div><div class="sc-sub" data-i18n="sc.conFactura">con factura</div></div>
+      <div class="sc c-ora"><div class="sc-lbl" data-i18n="sc.pendientes">Pendientes</div><div class="sc-val" id="bk-pend">—</div><div class="sc-sub" id="bk-imp-pend">—</div></div>
+      <div class="sc c-red"><div class="sc-lbl" data-i18n="sc.diferencias">Diferencias</div><div class="sc-val" id="bk-diff">—</div><div class="sc-sub" data-i18n="sc.importeNoCuadra">importe no cuadra</div></div>
     </div>
     <div class="card">
       <div class="card-title" data-i18n="card.alertasBanco">Alertas Bancarias</div>
       <div id="bk-alertas"><div class="empty"><p>Cargando...</p></div></div>
     </div>
     <div style="margin-top:16px">
-      <a href="/conciliacion/" class="btn-run" style="text-decoration:none;display:inline-flex;font-size:13px;padding:10px 20px">🏦 Ver conciliación completa</a>
+      <a href="/conciliacion/" class="btn-run" style="text-decoration:none;display:inline-flex;font-size:13px;padding:10px 20px" data-i18n="btn.verConciliacion">🏦 Ver conciliación completa</a>
     </div>
   </div><!-- /panel-banco -->
 
@@ -1798,14 +1798,14 @@ tr:hover td{background:rgba(255,255,255,.025)}
       <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:18px;flex-wrap:wrap;gap:10px">
         <div class="card-title" style="margin:0" data-i18n="notif.canales">Canales de notificación</div>
         <button class="btn-ref" onclick="guardarNotifConfig()" id="btn-save-notif" data-i18n="notif.guardar" style="font-size:12px">💾 Guardar configuración</button>
-        <button class="btn-ref" onclick="probarNotif()" style="font-size:12px">🔔 Probar</button>
+        <button class="btn-ref" onclick="probarNotif()" style="font-size:12px" data-i18n="btn.test">🔔 Probar</button>
       </div>
       <div style="display:grid;grid-template-columns:repeat(4,1fr);gap:12px;margin-bottom:18px" id="notif-canales">
         <!-- channel cards inject here -->
       </div>
       <div id="notif-channel-fields" style="display:grid;gap:12px;margin-bottom:8px"></div>
       <div style="border-top:1px solid var(--s2);margin-top:14px;padding-top:16px">
-        <div style="font-size:11px;color:var(--mut);text-transform:uppercase;letter-spacing:.5px;font-weight:600;margin-bottom:12px">Eventos que disparan alerta</div>
+        <div style="font-size:11px;color:var(--mut);text-transform:uppercase;letter-spacing:.5px;font-weight:600;margin-bottom:12px" data-i18n="notif.eventosLabel">Eventos que disparan alerta</div>
         <div id="notif-alertas" style="display:grid;grid-template-columns:1fr 1fr;gap:10px"></div>
       </div>
     </div>
@@ -1836,13 +1836,13 @@ tr:hover td{background:rgba(255,255,255,.025)}
     <!-- F&B Sub-tabs -->
     <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:20px;flex-wrap:wrap;gap:10px">
       <div style="display:flex;gap:4px;background:var(--s1);border-radius:10px;padding:4px;border:1px solid var(--s2)">
-        <button class="fb-sub active" onclick="fbSub('resumen',this)">📊 Resumen</button>
-        <button class="fb-sub" onclick="fbSub('inventario',this)">📦 Inventario</button>
-        <button class="fb-sub" onclick="fbSub('mermas',this)">⚠️ Mermas</button>
-        <button class="fb-sub" onclick="fbSub('recetas',this)">📋 Recetas</button>
+        <button class="fb-sub active" onclick="fbSub('resumen',this)" data-i18n="fb.resumen">📊 Resumen</button>
+        <button class="fb-sub" onclick="fbSub('inventario',this)" data-i18n="fb.inventario">📦 Inventario</button>
+        <button class="fb-sub" onclick="fbSub('mermas',this)" data-i18n="fb.mermas">⚠️ Mermas</button>
+        <button class="fb-sub" onclick="fbSub('recetas',this)" data-i18n="fb.recetas">📋 Recetas</button>
       </div>
       <div style="display:flex;gap:8px;align-items:center">
-        <label for="fb-upload-input" class="btn-ref" style="cursor:pointer;font-size:12px">📤 Importar ventas POS</label>
+        <label for="fb-upload-input" class="btn-ref" style="cursor:pointer;font-size:12px" data-i18n="btn.importarPos">📤 Importar ventas POS</label>
         <input type="file" id="fb-upload-input" accept=".xlsx,.xls,.csv" style="display:none" onchange="fbUploadPOS(this)">
         <a href="/api/exportar/fb/pdf" class="btn-ref" style="text-decoration:none;font-size:12px">📄 PDF</a>
       </div>
@@ -3019,22 +3019,22 @@ async function loadFBResumen() {
 
     let html = '<div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:18px;flex-wrap:wrap;gap:10px">';
     html += '<div><h2 style="font-size:17px;font-weight:700;margin:0">F&B Cost Control</h2>';
-    html += '<div style="font-size:12px;color:var(--mut);margin-top:3px">Datos calculados desde ventas reales · ' + data.ventas_diarias.fechas.length + ' días</div></div>';
-    html += '<button class="btn-ref" onclick="runFB()" style="font-size:12px">↺ Recalcular</button></div>';
+    html += '<div style="font-size:12px;color:var(--mut);margin-top:3px">' + (t('fb.datosReales')||'Datos calculados desde ventas reales') + ' · ' + data.ventas_diarias.fechas.length + ' ' + (t('fb.dias')||'días</div></div>';
+    html += '<button class="btn-ref" onclick="runFB()" style="font-size:12px" data-i18n="btn.recalcular">↺ Recalcular</button></div>';
 
     // KPIs
     html += '<div style="display:grid;grid-template-columns:repeat(4,1fr);gap:14px;margin-bottom:20px">';
-    html += _fbKpi('Ventas F&B', '€' + Math.round(r.total_ventas).toLocaleString('es-ES'), 'período completo', 'var(--acc2)');
-    html += _fbKpi('FC Teórico', r.fc_teorico_pct + '%', 'objetivo calculado', 'var(--grn)');
-    html += _fbKpi('FC Real', r.fc_real_pct + '%', fcSign + fcDiff + 'pp vs objetivo', fcColor);
-    html += _fbKpi('Mermas', '€' + r.coste_mermas.toLocaleString('es-ES'), r.alerta ? '⚠ Revisar' : 'bajo control', r.alerta ? 'var(--red)' : 'var(--mut)');
+    html += _fbKpi(t('fb.ventasFb')||'Ventas F&B', '€' + Math.round(r.total_ventas).toLocaleString('es-ES'), t('fb.periodoCompleto')||'período completo', 'var(--acc2)');
+    html += _fbKpi(t('fb.fcTeorico')||'FC Teórico', r.fc_teorico_pct + '%', t('fb.objetivoCalc')||'objetivo calculado', 'var(--grn)');
+    html += _fbKpi(t('fb.fcReal')||'FC Real', r.fc_real_pct + '%', fcSign + fcDiff + ' ' + (t('fb.vsObjetivo')||'pp vs objetivo'), fcColor);
+    html += _fbKpi(t('fb.mermasLabel')||'Mermas', '€' + r.coste_mermas.toLocaleString('es-ES'), r.alerta ? t('fb.revisar')||'⚠ Revisar' : t('fb.bajoControl')||'bajo control', r.alerta ? 'var(--red)' : 'var(--mut)');
     html += '</div>';
 
     // FC% gauge
     const maxG = Math.max(r.fc_teorico_pct, r.fc_real_pct) * 1.35;
-    html += '<div class="card" style="margin-bottom:16px"><div class="card-title" style="margin-bottom:14px">Food Cost % — Teórico vs Real</div>';
-    html += _fcBar('Teórico', r.fc_teorico_pct, maxG, 'var(--grn)');
-    html += _fcBar('Real',    r.fc_real_pct,    maxG, fcColor);
+    html += '<div class="card" style="margin-bottom:16px"><div class="card-title" style="margin-bottom:14px" data-i18n="fb.gaugeTitle">Food Cost % — Teórico vs Real</div>';
+    html += _fcBar(t('fb.gaugeTeorico')||'Teórico', r.fc_teorico_pct, maxG, 'var(--grn)');
+    html += _fcBar(t('fb.gaugeReal')||'Real',    r.fc_real_pct,    maxG, fcColor);
     html += '</div>';
 
     // Ventas diarias chart
@@ -3045,7 +3045,7 @@ async function loadFBResumen() {
     html += '<div style="display:grid;grid-template-columns:1.2fr 0.8fr;gap:16px">';
     html += '<div class="card"><div class="card-title" data-i18n="card.fcCategoria">Food Cost por Categoría</div>';
     html += '<div class="tbl-wrap"><table style="min-width:0;width:100%"><thead><tr>';
-    html += '<th>Categoría</th><th style="text-align:right">Ventas</th><th style="text-align:right">FC%</th><th style="text-align:center">Estado</th>';
+    html += '<th>' + (t(\'fb.thCategoria\')||'Categoría') + '</th><th style="text-align:right">' + (t(\'fb.thVentas\')||'Ventas') + '</th><th style="text-align:right">FC%</th><th style="text-align:center">' + (t(\'fb.thEstado\')||'Estado') + '</th>';
     html += '</tr></thead><tbody>';
     data.categorias.forEach(c => {
       const cC = c.alerta ? 'var(--red)' : 'var(--grn)';
@@ -3058,7 +3058,7 @@ async function loadFBResumen() {
     html += '</tbody></table></div></div>';
 
     html += '<div class="card"><div class="card-title" data-i18n="card.topPlatos">Top Platos</div>';
-    html += '<div class="tbl-wrap"><table style="min-width:0;width:100%"><thead><tr><th>Plato</th><th style="text-align:right">€</th><th style="text-align:right">FC%</th></tr></thead><tbody>';
+    html += '<div class="tbl-wrap"><table style="min-width:0;width:100%"><thead><tr><th>' + (t('fb.thPlato')||'Plato') + '</th><th style="text-align:right">€</th><th style="text-align:right">FC%</th></tr></thead><tbody>';
     data.ranking_top.forEach((p, i) => {
       const pC = p.fc_real_pct > 30 ? 'var(--ora)' : 'var(--grn)';
       html += '<tr><td><span style="color:var(--dim);font-size:10px;margin-right:5px">#' + (i+1) + '</span>' + p.nombre + '</td>' +
@@ -3109,15 +3109,15 @@ async function loadFBInventario() {
 
     const alertas = data.items.filter(i => i.alerta);
     let html = '<div style="display:grid;grid-template-columns:repeat(3,1fr);gap:14px;margin-bottom:20px">';
-    html += _fbKpi('Items en Stock', data.items.length, 'ingredientes', 'var(--acc2)');
-    html += _fbKpi('Valor Inventario', '€' + data.valor_total.toLocaleString('es-ES'), 'valoración actual', 'var(--grn)');
-    html += _fbKpi('Alertas Stock Bajo', alertas.length, alertas.length > 0 ? 'revisar urgente' : 'todo OK', alertas.length > 0 ? 'var(--red)' : 'var(--grn)');
+    html += _fbKpi(t('fb.itemsStock')||'Items en Stock', data.items.length, t('fb.ingredientes')||'ingredientes', 'var(--acc2)');
+    html += _fbKpi(t('fb.valorInv')||'Valor Inventario', '€' + data.valor_total.toLocaleString('es-ES'), t('fb.valorActual')||'valoración actual', 'var(--grn)');
+    html += _fbKpi(t('fb.alertasStock')||'Alertas Stock Bajo', alertas.length, alertas.length > 0 ? 'revisar urgente' : t('fb.todoOk')||'todo OK', alertas.length > 0 ? 'var(--red)' : 'var(--grn)');
     html += '</div>';
 
     html += '<div class="card"><div class="card-title" data-i18n="card.stockIngredientes">Stock de Ingredientes</div>';
     html += '<div class="tbl-wrap"><table style="min-width:0;width:100%"><thead><tr>';
-    html += '<th>Ingrediente</th><th>Categoría</th><th>Proveedor</th>';
-    html += '<th style="text-align:right">Actual</th><th style="text-align:right">€/u</th>';
+    html += '<th>' + (t(\'fb.thIngrediente\')||'Ingrediente') + '</th><th>' + (t(\'fb.thCategoria\')||'Categoría') + '</th><th>' + (t(\'th.proveedor\')||'Proveedor') + '</th>';
+    html += '<th style="text-align:right">' + (t('fb.thActual')||'Actual') + '</th><th style="text-align:right">€/u</th>';
     html += '<th style="text-align:right;width:130px">Stock</th><th style="text-align:center">Estado</th>';
     html += '</tr></thead><tbody>';
     data.items.forEach(item => {
@@ -3703,12 +3703,12 @@ const NOTIF_CHANNELS = [
   {key:'push',     icon:'🔔', name:'Push'},
 ];
 const NOTIF_ALERTAS = [
-  {key:'ar_discrepancia',         label:'Discrepancia en comisiones OTA (AR)'},
-  {key:'ar_falta_di',             label:'Falta certificado de doble imposición'},
-  {key:'ap_discrepancia',         label:'Discrepancia en facturas proveedor (AP)'},
-  {key:'drr_oob',                 label:'DRR: días Out of Balance'},
-  {key:'banco_sin_conciliar',     label:'Movimientos bancarios sin conciliar'},
-  {key:'factura_pendiente_firma', label:'Facturas pendientes de firma'},
+  {key:'ar_discrepancia',         get label(){return t('notif.evAr')    ||'Discrepancia en comisiones OTA (AR)'}},
+  {key:'ar_falta_di',             get label(){return t('notif.evDi')    ||'Falta certificado de doble imposición'}},
+  {key:'ap_discrepancia',         get label(){return t('notif.evAp')    ||'Discrepancia en facturas proveedor (AP)'}},
+  {key:'drr_oob',                 get label(){return t('notif.evDrr')   ||'DRR: días Out of Balance'}},
+  {key:'banco_sin_conciliar',     get label(){return t('notif.evBanco') ||'Movimientos bancarios sin conciliar'}},
+  {key:'factura_pendiente_firma', get label(){return t('notif.evFirma') ||'Facturas pendientes de firma'}},
 ];
 let _notifConfig = null;
 
@@ -3737,7 +3737,7 @@ function renderNotifConfig() {
         (on ? 'var(--acc)' : 'var(--s2)') + ';border-radius:12px;padding:14px;text-align:center;transition:.15s">' +
         '<div style="font-size:22px;margin-bottom:6px">' + ch.icon + '</div>' +
         '<div style="font-size:13px;font-weight:600;color:' + (on ? 'var(--acc2)' : 'var(--mut)') + '">' + ch.name + '</div>' +
-        '<div style="font-size:10px;color:' + (on ? 'var(--grn)' : 'var(--dim)') + ';margin-top:4px">' + (on ? '● Activo' : '○ Inactivo') + '</div>' +
+        '<div style="font-size:10px;color:' + (on ? 'var(--grn)' : 'var(--dim)') + ';margin-top:4px">' + (on ? '● ' + (t(\'notif.activo\')||'Activo') : '○ ' + (t(\'notif.inactivo\')||'Inactivo')) + '</div>' +
         '</div>';
     }).join('');
   }
@@ -3746,7 +3746,7 @@ function renderNotifConfig() {
   if (fields) {
     let html = '';
     if (c.canales && c.canales.email)
-      html += notifField('email', 'Email de notificaciones', 'controller@hotel.com', c.email || '');
+      html += notifField('email', t('notif.emailLabel') || 'Email de notificaciones', 'controller@hotel.com', c.email || '');
     if (c.canales && c.canales.whatsapp)
       html += notifField('whatsapp', 'Número WhatsApp destino (+34...)', '+34600123456', c.whatsapp || '') +
               '<div style="font-size:11px;color:var(--dim);margin-top:4px">Necesita TWILIO_ACCOUNT_SID + TWILIO_AUTH_TOKEN + TWILIO_WHATSAPP_FROM en Render</div>';
