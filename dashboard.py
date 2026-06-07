@@ -2260,24 +2260,21 @@ function renderActivity(rows) {
     if (r.estado_di) d[r.estado_di] = (d[r.estado_di] || 0) + 1;
   });
   const items = [
-    { dot:'g', n: c.CORRECTO             || 0, txt: 'correctas sin incidencias' },
-    { dot:'r', n: c.DISCREPANCIA         || 0, txt: 'con discrepancia de comisión' },
-    { dot:'o', n: d.FALTA_CERTIFICADO_DI || 0, txt: 'sin certificado DI' },
-    { dot:'b', n: d.CERTIFICADO_OK       || 0, txt: 'con certificado DI OK' },
-    { dot:'m', n: d.OTA_DESCONOCIDA      || 0, txt: 'OTA no reconocida' },
+    { dot:'g', n: c.CORRECTO             || 0, txt: 'correctas sin incidencias',    key:'res.correctas' },
+    { dot:'r', n: c.DISCREPANCIA         || 0, txt: 'con discrepancia de comisión',  key:'res.discrepancia' },
+    { dot:'o', n: d.FALTA_CERTIFICADO_DI || 0, txt: 'sin certificado DI',            key:'res.sinDI' },
+    { dot:'b', n: d.CERTIFICADO_OK       || 0, txt: 'con certificado DI OK',         key:'res.conDI' },
+    { dot:'m', n: d.OTA_DESCONOCIDA      || 0, txt: 'OTA no reconocida',             key:'res.noReconocida' },
   ];
   el.innerHTML = items.map(i =>
     '<div class="act-item">' +
     '<div class="adot ' + i.dot + '"></div>' +
-    '<div class="atxt"><b>' + i.n + '</b> factura' + (i.n !== 1 ? 's' : '') + ' ' + i.txt + '</div>' +
+    '<div class="atxt"><b>' + i.n + '</b> factura' + (i.n !== 1 ? 's' : '') +
+    ' <span data-i18n="' + i.key + '">' + i.txt + '</span></div>' +
     '</div>'
   ).join('');
-}
-
-// ── Pipeline SSE ─────────────────────────────────────────────────────────
-function runPipeline() {
-  const btn    = document.getElementById('btn-run');
-  const spin   = document.getElementById('spin');
+  // Re-apply current language to freshly rendered spans
+  if (_i18nLang && _i18nLang !== 'es') applyI18n(_i18nData);
   const lbl    = document.getElementById('run-lbl');
   const log    = document.getElementById('log');
   const btnCl  = document.getElementById('btn-cl');
