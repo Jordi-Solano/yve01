@@ -1241,6 +1241,45 @@ tr:hover td{background:rgba(255,255,255,.025)}
 .drr-alerts .da-dot{width:8px;height:8px;border-radius:50%;flex-shrink:0;margin-top:5px;background:var(--ora)}
 .drr-alerts .da-txt{font-size:.85rem;color:var(--tx)}
 
+
+/* ── GUIDED TOUR ─────────────────────────────────── */
+#tour-overlay{
+  position:fixed;inset:0;z-index:9000;pointer-events:none;
+  background:transparent;transition:background .3s;
+}
+#tour-overlay.active{pointer-events:all;background:rgba(0,0,0,.6)}
+#tour-spotlight{
+  position:fixed;z-index:9001;
+  border-radius:12px;box-shadow:0 0 0 9999px rgba(0,0,0,.6);
+  transition:all .4s cubic-bezier(.4,0,.2,1);
+  pointer-events:none;
+  border:2px solid rgba(59,130,246,.7);
+}
+#tour-card{
+  position:fixed;z-index:9002;
+  background:linear-gradient(135deg,var(--s1),#0d1827);
+  border:1px solid rgba(59,130,246,.4);
+  border-radius:16px;padding:22px 24px;width:320px;
+  box-shadow:0 20px 60px rgba(0,0,0,.6);
+  transition:all .35s cubic-bezier(.4,0,.2,1);
+}
+#tour-card h3{font-size:15px;font-weight:700;margin-bottom:8px;color:var(--tx)}
+#tour-card p{font-size:13px;color:var(--mut);line-height:1.6;margin-bottom:18px}
+.tour-footer{display:flex;align-items:center;justify-content:space-between;gap:10px}
+.tour-step-counter{font-size:11px;color:var(--dim);font-weight:600}
+.tour-dots{display:flex;gap:5px}
+.tour-dot{width:6px;height:6px;border-radius:50%;background:var(--s2);transition:.2s}
+.tour-dot.active{background:var(--acc);width:18px;border-radius:3px}
+.tour-btns{display:flex;gap:8px}
+.tour-btn-skip{background:none;border:none;font-size:12px;color:var(--dim);cursor:pointer;padding:5px 8px;border-radius:7px;transition:.15s}
+.tour-btn-skip:hover{color:var(--mut)}
+.tour-btn-prev{background:var(--s2);border:none;color:var(--tx);font-size:12px;font-weight:600;padding:7px 14px;border-radius:8px;cursor:pointer;transition:.15s}
+.tour-btn-prev:hover{background:var(--s3)}
+.tour-btn-next{background:linear-gradient(135deg,var(--acc),#2563eb);border:none;color:#fff;font-size:12px;font-weight:700;padding:7px 16px;border-radius:8px;cursor:pointer;box-shadow:0 0 12px rgba(59,130,246,.35);transition:.15s}
+.tour-btn-next:hover{box-shadow:0 0 20px rgba(59,130,246,.55);transform:translateY(-1px)}
+/* Tour highlight pulse on target element */
+.tour-target{outline:2px solid var(--acc) !important;outline-offset:3px !important;border-radius:8px !important;animation:tourPulse 1.5s ease-in-out infinite !important}
+@keyframes tourPulse{0%,100%{outline-color:rgba(59,130,246,.7)}50%{outline-color:rgba(96,165,250,1)}}
 /* ── Sparklines en stat cards ── */
 .sc-spark{display:block;width:100%;height:24px;margin-top:8px;opacity:.7}
 .sc:hover .sc-spark{opacity:1}
@@ -1371,6 +1410,7 @@ tr:hover td{background:rgba(255,255,255,.025)}
       <button class="btn-ref" onclick="toggleMenu('main-menu')" title="Más opciones" style="font-size:17px;line-height:1;padding:5px 12px">⋯</button>
       <div id="main-menu" class="menu">
         <div class="menu-head">Presentación</div>
+        <button class="menu-item" onclick="tourStart();document.getElementById('main-menu').classList.remove('open')">🎯 Tour guiado</button>
         <button class="menu-item" id="btn-demo" onclick="toggleDemoMode()">🎭 Demo Mode</button>
         <div class="menu-sep"></div>
         <div class="menu-head">Cambiar rol</div>
@@ -1813,6 +1853,24 @@ tr:hover td{background:rgba(255,255,255,.025)}
     <textarea id="chat-input" rows="1" placeholder="Pregunta sobre el estado financiero del hotel…"
       onkeydown="chatKeydown(event)" oninput="autoResize(this)"></textarea>
     <button id="chat-send" onclick="sendChat()">➤</button>
+  </div>
+</div>
+
+<!-- GUIDED TOUR -->
+<div id="tour-overlay"></div>
+<div id="tour-spotlight" style="display:none"></div>
+<div id="tour-card" style="display:none">
+  <h3 id="tour-title">Tour</h3>
+  <p id="tour-text"></p>
+  <div class="tour-footer">
+    <div>
+      <div class="tour-dots" id="tour-dots"></div>
+    </div>
+    <div class="tour-btns">
+      <button class="tour-btn-skip" onclick="tourEnd()">Salir</button>
+      <button class="tour-btn-prev" id="tour-prev" onclick="tourPrev()">←</button>
+      <button class="tour-btn-next" id="tour-next" onclick="tourNext()">Siguiente →</button>
+    </div>
   </div>
 </div>
 
@@ -2319,6 +2377,196 @@ function renderMHMap(hoteles) {
     g.appendChild(dotEl);
   });
 }
+
+
+// ══════════════════════════════════════════════════════════════
+// GUIDED TOUR — Demo interactiva paso a paso
+// ══════════════════════════════════════════════════════════════
+
+const TOUR_STEPS = [
+  {
+    title: '👋 Bienvenido a Yve.01',
+    text: 'En 2 minutos te enseñamos cómo funciona el dashboard financiero. Puedes salir cuando quieras.',
+    selector: null, // centered intro card
+    tab: null,
+  },
+  {
+    title: '📥 AR — OTAs',
+    text: 'Aquí ves todas las facturas de Booking, Expedia y otras OTAs. Yve verifica automáticamente que las comisiones sean las pactadas.',
+    selector: '#tab-ar',
+    tab: 'ar',
+  },
+  {
+    title: '📊 Estadísticas AR',
+    text: 'De un vistazo: cuántas facturas procesadas, importe total, discrepancias detectadas y certificados DI pendientes.',
+    selector: '.stats',
+    tab: 'ar',
+  },
+  {
+    title: '📋 Tabla de facturas',
+    text: 'Cada factura con su estado: correcta, con discrepancia, o pendiente de certificado. Un clic para ver el detalle.',
+    selector: '.tbl-wrap',
+    tab: 'ar',
+  },
+  {
+    title: '📦 AP — Proveedores',
+    text: 'Gestión de cuentas a pagar. Yve lee los PDFs de facturas, los cruza con el PO y los albaranes, y detecta diferencias.',
+    selector: '#tab-ap',
+    tab: 'ap',
+  },
+  {
+    title: '📈 DRR — Revenue Diario',
+    text: 'El Daily Revenue Report procesado automáticamente. Ocupa, ADR, RevPAR y GOP en tiempo real. Los días Out of Balance se resaltan en rojo.',
+    selector: '#tab-drr',
+    tab: 'drr',
+  },
+  {
+    title: '🏦 Conciliación Bancaria',
+    text: 'Cruza el extracto bancario con las facturas pagadas. Los movimientos sin justificar aparecen marcados para revisión.',
+    selector: '#tab-banco',
+    tab: 'banco',
+  },
+  {
+    title: '🏩 Calipolis Hotels',
+    text: 'Vista del grupo hotelero: GOP% consolidado, ocupación media y tendencias de los últimos 6 meses para las 3 propiedades.',
+    selector: '#tab-calipolis',
+    tab: 'calipolis',
+  },
+  {
+    title: '💬 Pregunta a Yve',
+    text: '¿Tienes dudas sobre el estado financiero? El asistente IA tiene acceso a todos los datos del dashboard en tiempo real.',
+    selector: '#chat-fab',
+    tab: null,
+  },
+  {
+    title: '✅ ¡Listo!',
+    text: 'Ya conoces el dashboard. Activa el Modo Demo desde el menú ⋯ para ver datos de ejemplo, o conecta tus datos reales.',
+    selector: null,
+    tab: null,
+    isLast: true,
+  },
+];
+
+let _tourStep = 0;
+let _tourActive = false;
+
+function tourStart() {
+  _tourStep = 0;
+  _tourActive = true;
+  document.getElementById('tour-overlay').classList.add('active');
+  document.getElementById('tour-card').style.display = 'block';
+  document.getElementById('tour-spotlight').style.display = 'block';
+  _buildDots();
+  tourGo(_tourStep);
+}
+
+function tourEnd() {
+  _tourActive = false;
+  document.getElementById('tour-overlay').classList.remove('active');
+  document.getElementById('tour-card').style.display = 'none';
+  document.getElementById('tour-spotlight').style.display = 'none';
+  document.querySelectorAll('.tour-target').forEach(el => el.classList.remove('tour-target'));
+}
+
+function tourNext() {
+  if (_tourStep < TOUR_STEPS.length - 1) { _tourStep++; tourGo(_tourStep); }
+  else tourEnd();
+}
+function tourPrev() {
+  if (_tourStep > 0) { _tourStep--; tourGo(_tourStep); }
+}
+
+function _buildDots() {
+  const cont = document.getElementById('tour-dots');
+  cont.innerHTML = TOUR_STEPS.map((_,i) =>
+    '<div class="tour-dot' + (i === 0 ? ' active' : '') + '"></div>'
+  ).join('');
+}
+
+function tourGo(stepIdx) {
+  const step = TOUR_STEPS[stepIdx];
+  // Switch tab if needed
+  if (step.tab) {
+    const tabEl = document.getElementById('tab-' + step.tab);
+    if (tabEl) switchTab(step.tab, tabEl);
+  }
+  // Update card content
+  document.getElementById('tour-title').textContent = step.title;
+  document.getElementById('tour-text').textContent  = step.text;
+  // Update dots
+  document.querySelectorAll('.tour-dot').forEach((d,i) => d.classList.toggle('active', i === stepIdx));
+  // Prev button visibility
+  document.getElementById('tour-prev').style.visibility = stepIdx === 0 ? 'hidden' : 'visible';
+  // Next button text
+  document.getElementById('tour-next').textContent = step.isLast ? '¡Empezar! 🚀' : 'Siguiente →';
+  // Remove previous target
+  document.querySelectorAll('.tour-target').forEach(el => el.classList.remove('tour-target'));
+
+  // Position spotlight and card
+  setTimeout(() => _positionTour(step), step.tab ? 400 : 50);
+}
+
+function _positionTour(step) {
+  const spotlight = document.getElementById('tour-spotlight');
+  const card      = document.getElementById('tour-card');
+  const W = window.innerWidth, H = window.innerHeight;
+  const PAD = 10;
+
+  if (!step.selector) {
+    // Centered card, no spotlight
+    spotlight.style.cssText = 'display:none';
+    card.style.cssText = 'display:block;position:fixed;top:50%;left:50%;transform:translate(-50%,-50%);width:340px;z-index:9002';
+    return;
+  }
+
+  const el = document.querySelector(step.selector);
+  if (!el) {
+    spotlight.style.cssText = 'display:none';
+    card.style.cssText = 'display:block;position:fixed;top:50%;left:50%;transform:translate(-50%,-50%);width:340px;z-index:9002';
+    return;
+  }
+
+  el.classList.add('tour-target');
+  el.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+
+  // Wait for scroll, then position
+  setTimeout(() => {
+    const r = el.getBoundingClientRect();
+    // Spotlight
+    spotlight.style.cssText = [
+      'display:block',
+      'left:' + Math.max(0, r.left - PAD) + 'px',
+      'top:' + Math.max(0, r.top - PAD) + 'px',
+      'width:' + (r.width + PAD*2) + 'px',
+      'height:' + (r.height + PAD*2) + 'px',
+      'z-index:9001',
+    ].join(';');
+
+    // Card: try below first, else above
+    const cardH = 180;
+    let cardTop  = r.bottom + PAD + 10;
+    let cardLeft = r.left;
+    if (cardTop + cardH > H - 10) cardTop = r.top - cardH - 20;
+    if (cardTop < 70) cardTop = 80;
+    if (cardLeft + 330 > W - 10) cardLeft = W - 340;
+    if (cardLeft < 10) cardLeft = 10;
+    card.style.cssText = [
+      'display:block',
+      'position:fixed',
+      'top:' + cardTop + 'px',
+      'left:' + cardLeft + 'px',
+      'width:320px',
+      'transform:none',
+      'z-index:9002',
+    ].join(';');
+  }, 150);
+}
+
+// Close tour on overlay click (if clicking outside card and spotlight)
+document.getElementById('tour-overlay').addEventListener('click', function(e) {
+  if (e.target === this) tourEnd();
+});
+
 
 loadAll();
 setInterval(loadAll, 60000);
