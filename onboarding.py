@@ -226,6 +226,7 @@ function next() {
 }
 
 function save() {
+  _saveProgress();
   if (step === 0) {
     D.hotel = {
       nombre: v('h-nombre'), direccion: v('h-dir'), nif: v('h-nif'),
@@ -273,15 +274,43 @@ function save() {
 
 function v(id) { const el = document.getElementById(id); return el ? el.value.trim() : ''; }
 
+function _saveProgress() {
+  try { localStorage.setItem('yve_onboarding', JSON.stringify({step, D})); } catch(e) {}
+}
+function _loadProgress() {
+  try {
+    const raw = localStorage.getItem('yve_onboarding');
+    if (raw) { const s = JSON.parse(raw); return s; }
+  } catch(e) {}
+  return null;
+}
+function showError(msg) {
+  let bar = document.getElementById('err-bar');
+  if (!bar) {
+    bar = document.createElement('div');
+    bar.id = 'err-bar';
+    bar.style.cssText = 'background:rgba(239,68,68,.1);border:1px solid rgba(239,68,68,.3);border-radius:10px;padding:11px 16px;font-size:.85rem;color:#fca5a5;margin-bottom:16px;display:flex;align-items:center;gap:8px';
+    const card = document.getElementById('card');
+    card.insertBefore(bar, card.firstChild);
+  }
+  bar.innerHTML = '⚠️ ' + msg;
+  bar.scrollIntoView({behavior:'smooth', block:'center'});
+}
+function clearError() { const b = document.getElementById('err-bar'); if (b) b.remove(); }
+
 function validate() {
   let ok = true;
+  clearError();
   document.querySelectorAll('.err').forEach(e => e.classList.remove('err'));
   if (step === 0) {
-    ['h-nombre','h-nif'].forEach(id => {
-      if (!v(id)) { document.getElementById(id).classList.add('err'); ok = false; }
-    });
+    if (!v('h-nombre')) { document.getElementById('h-nombre').classList.add('err'); ok = false; }
+    if (!v('h-nif'))    { document.getElementById('h-nif').classList.add('err'); ok = false; }
+    if (!ok) showError('Completa el nombre del hotel y el NIF/CIF para continuar.');
   } else if (step === 1) {
-    if (!document.querySelectorAll('.ota-row').length) ok = false;
+    const rows = document.querySelectorAll('.ota-row');
+    let hasName = false;
+    rows.forEach(r => { if (r.querySelector('.ota-nombre').value.trim()) hasName = true; });
+    if (!hasName) { showError('Añade al menos una OTA con nombre (ej: Booking.com).'); ok = false; }
   }
   return ok;
 }
@@ -318,7 +347,7 @@ function stepHotel() {
     + '<label>NIF / CIF *</label><input id="h-nif" placeholder="B12345678">'
     + '<div class="row2">'
     + '<div><label>PMS (sistema de gestión)</label><select id="h-pms">'
-    + '<option value="Opera">Oracle Opera</option><option value="Mews">Mews</option>'
+    + '<option value="Opera">Oracle Opera Cloud</option><option value="PEP">Hilton PEP</option><option value="OnQ">Hilton OnQ</option><option value="Mews">Mews</option>'
     + '<option value="Protel">Protel</option><option value="Sihot">Sihot</option>'
     + '<option value="Otro">Otro</option></select></div>'
     + '<div><label>Sistema contable</label><select id="h-contable">'
@@ -334,9 +363,15 @@ function stepOTAs() {
   let rows = '';
   const otas = D.otas.length ? D.otas : [{nombre:'Booking.com',porcentaje:'15',mercado:'Internacional'}];
   otas.forEach((o, i) => { rows += otaRow(i, o); });
-  return '<h2>OTAs y Comisiones Pactadas</h2><p class="sub">Añade las OTAs con las que trabaja el hotel y su comisión</p>'
+  return '<h2>OTAs y Comisiones Pactadas</h2><p class="sub">Añade las OTAs con las que trabaja el hotel y su comisión pactada</p>'
+    + '<div style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:14px">'
+    + presetChip('Booking.com', '15', 'addOTAPreset(\'Booking.com\',\'15\')')
+    + presetChip('Expedia', '18', 'addOTAPreset(\'Expedia\',\'18\')')
+    + presetChip('Hotelbeds', '16', 'addOTAPreset(\'Hotelbeds\',\'16\')')
+    + presetChip('Airbnb', '14', 'addOTAPreset(\'Airbnb\',\'14\')')
+    + '</div>'
     + '<div id="ota-list">' + rows + '</div>'
-    + '<button class="btn-add" onclick="addOTA()">+ Añadir OTA</button>'
+    + '<button class="btn-add" onclick="addOTA()">+ Añadir OTA manualmente</button>'
     + btnRow(true, true);
 }
 
@@ -357,14 +392,35 @@ function addOTA() {
   const n = list.querySelectorAll('.ota-row').length;
   list.insertAdjacentHTML('beforeend', otaRow(n, {}));
 }
+function presetChip(name, pct, onclick) {
+  return '<button onclick="' + onclick + '" style="background:rgba(59,130,246,.1);border:1px solid rgba(59,130,246,.3);color:var(--acc2);border-radius:20px;padding:6px 14px;font-size:.8rem;cursor:pointer;font-weight:600;transition:.15s" onmouseover="this.style.background=\'rgba(59,130,246,.2)\'" onmouseout="this.style.background=\'rgba(59,130,246,.1)\'">+ ' + name + ' (' + pct + '%)</button>';
+}
+function addOTAPreset(name, pct) {
+  // Avoid duplicates
+  let exists = false;
+  document.querySelectorAll('.ota-nombre').forEach(el => { if (el.value.trim() === name) exists = true; });
+  if (exists) return;
+  // Remove empty first row if present
+  const list = document.getElementById('ota-list');
+  const rows = list.querySelectorAll('.ota-row');
+  if (rows.length === 1 && !rows[0].querySelector('.ota-nombre').value.trim()) rows[0].remove();
+  const n = list.querySelectorAll('.ota-row').length;
+  list.insertAdjacentHTML('beforeend', otaRow(n, {nombre:name, porcentaje:pct, mercado:'Internacional'}));
+}
 
 // ── Step 3: Proveedores ──
 function stepProv() {
   let rows = '';
   D.proveedores.forEach((p, i) => { rows += provRow(i, p); });
-  return '<h2>Proveedores Habituales</h2><p class="sub">Proveedores de F&B y otros servicios del hotel</p>'
+  return '<h2>Proveedores Habituales</h2><p class="sub">Proveedores de F&B y otros servicios del hotel (opcional)</p>'
+    + '<div style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:14px">'
+    + provChip('Makro', 'FB')
+    + provChip('Coca-Cola', 'FB')
+    + provChip('Lavandería', 'OTRAS')
+    + provChip('Mantenimiento', 'OTRAS')
+    + '</div>'
     + '<div id="prov-list">' + rows + '</div>'
-    + '<button class="btn-add" onclick="addProv()">+ Añadir Proveedor</button>'
+    + '<button class="btn-add" onclick="addProv()">+ Añadir Proveedor manualmente</button>'
     + btnRow(true, true);
 }
 
@@ -387,6 +443,15 @@ function addProv() {
   const list = document.getElementById('prov-list');
   const n = list.querySelectorAll('.prov-row').length;
   list.insertAdjacentHTML('beforeend', provRow(n, {}));
+}
+function provChip(name, tipo) {
+  return '<button onclick="addProvPreset(\'' + name + '\',\'' + tipo + '\')" style="background:rgba(139,92,246,.1);border:1px solid rgba(139,92,246,.3);color:#c4b5fd;border-radius:20px;padding:6px 14px;font-size:.8rem;cursor:pointer;font-weight:600;transition:.15s">+ ' + name + '</button>';
+}
+function addProvPreset(name, tipo) {
+  const list = document.getElementById('prov-list');
+  const n = list.querySelectorAll('.prov-row').length;
+  const cuenta = tipo === 'FB' ? '600' : '629';
+  list.insertAdjacentHTML('beforeend', provRow(n, {nombre:name, tipo:tipo, cuenta:cuenta, iva:'21'}));
 }
 
 // ── Step 4: Usuarios ──
@@ -487,6 +552,7 @@ async function confirm() {
         + '<a class="btn-dash" href="/">Ir al Dashboard →</a>'
         + '</div>';
       document.querySelector('.progress-wrap').style.display = 'none';
+      try { localStorage.removeItem('yve_onboarding'); } catch(e) {}
     } else {
       btn.disabled = false;
       btn.textContent = '✓ Confirmar y Guardar';
@@ -508,18 +574,25 @@ function btnRow(showPrev, showNext) {
 }
 
 // ── Init ──
-// Load existing config if any
 (async () => {
+  // 1. Si hay config guardada en servidor → ir al resumen
   try {
     const r = await fetch('/configuracion/api/config');
     const cfg = await r.json();
-    if (cfg && cfg.hotel) {
-      D = cfg;
-      step = 4; // Go to summary
+    if (cfg && cfg.hotel && cfg.hotel.nombre) {
+      D = cfg; step = 4; render(); return;
     }
   } catch(e) {}
+  // 2. Si hay progreso local sin terminar → restaurar
+  const saved = _loadProgress();
+  if (saved && saved.D && saved.D.hotel && (saved.D.hotel.nombre || saved.step > 0)) {
+    D = saved.D; step = saved.step || 0;
+  }
   render();
 })();
+
+// Limpiar progreso al confirmar con éxito
+window.addEventListener('beforeunload', () => {});
 </script>
 </body>
 </html>"""
