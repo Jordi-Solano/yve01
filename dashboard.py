@@ -57,7 +57,6 @@ from tab_demo import demo_bp
 from tab_demo_simulador import demo_sim_bp
 from tab_calipolis_analisis import calipolis_analisis_bp
 from tab_reportes_pdf import reportes_pdf_bp
-from tab_integraciones import integraciones_bp
 from rol_dashboard import get_dashboard_config
 from demo_completo import generar_hoteles_demo, generar_facturas_demo_ar, generar_facturas_demo_ap, generar_alertas_demo
 from landing import LANDING_HTML as LANDING_PAGE
@@ -65,7 +64,7 @@ from blog import blog_bp
 from billing import billing_bp
 from signup import signup_bp
 from about import about_bp
-for _bp in (auth_bp, config_bp, admin_bp, aprob_ar_bp, aprob_ap_bp, concil_bp, fb_bp, ar_real_bp, multi_hotel_bp, exportador_bp, calipolis_bp, demo_bp, demo_sim_bp, calipolis_analisis_bp, reportes_pdf_bp, integraciones_bp, blog_bp, billing_bp, signup_bp, about_bp):
+for _bp in (auth_bp, config_bp, admin_bp, aprob_ar_bp, aprob_ap_bp, concil_bp, fb_bp, ar_real_bp, multi_hotel_bp, exportador_bp, calipolis_bp, demo_bp, demo_sim_bp, calipolis_analisis_bp, reportes_pdf_bp, blog_bp, billing_bp, signup_bp, about_bp):
     app.register_blueprint(_bp)
 
 _pipeline_running = False
@@ -882,8 +881,8 @@ def api_notif_config_get():
     """Devuelve la configuración de notificaciones."""
     path = os.path.join(BASE_DIR, "datos-referencia", "notif_config.json")
     default = {
-        "canales": {"email": True, "whatsapp": False, "telegram": False, "push": True},
-        "email": "", "whatsapp": "", "telegram_chat": "",
+        "canales": {"email": True, "whatsapp": False, "telegram": False, "slack": False, "push": True},
+        "email": "", "whatsapp": "", "telegram_chat": "", "slack_webhook": "",
         "alertas": {
             "ar_discrepancia": True, "ar_falta_di": True,
             "ap_discrepancia": True, "drr_oob": True,
@@ -1417,7 +1416,6 @@ tr:hover td{background:rgba(255,255,255,.025)}
     <button class="tab" onclick="switchTab('fb',this)" id="tab-fb">🍽️ F&amp;B Cost</button>
     <button class="tab" onclick="switchTab('ar_real',this)" id="tab-ar-real">🏢 AR Real</button>
     <button class="tab" onclick="switchTab('calipolis',this)" id="tab-calipolis">🏩 Calipolis</button>
-    <button class="tab" onclick="switchTab('integraciones',this)" id="tab-integraciones">⚙️ Integraciones</button>
     <button class="tab" onclick="switchTab('multi_hotel',this)" id="tab-multi-hotel">🏨 Multi-Hotel</button>
   </div>
 
@@ -1618,77 +1616,6 @@ tr:hover td{background:rgba(255,255,255,.025)}
   </div><!-- /panel-notif -->
 
   <!-- PANEL F&B -->
-  <div id="panel-integraciones" class="panel">
-    <h2 style="font-size:18px;font-weight:700;margin-bottom:20px">⚙️ Integraciones Externas</h2>
-    <div style="background:#1c1f2e;border:1px solid #2e3248;border-radius:12px;padding:24px;margin-bottom:24px">
-      <h3 style="margin:0 0 16px 0;font-size:16px;font-weight:600">Canales disponibles</h3>
-      <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(300px,1fr));gap:16px">
-        
-        <div style="background:#0f1117;border:1px solid #2e3248;border-radius:8px;padding:16px">
-          <div style="font-size:28px;margin-bottom:8px">💬</div>
-          <h4 style="margin:0 0 8px 0;font-size:14px;font-weight:600">Slack</h4>
-          <p style="margin:0 0 12px 0;font-size:12px;color:#8892a4">Recibe alertas críticas y reportes en Slack</p>
-          <div style="background:#1c1f2e;padding:8px;border-radius:6px;margin-bottom:12px;font-size:11px;color:#e05252;font-family:monospace">
-            Estado: No configurado
-          </div>
-          <div style="font-size:11px;color:#666;line-height:1.4">
-            <strong>Para habilitar:</strong><br>
-            1. Crear Slack App en api.slack.com<br>
-            2. Obtener Webhook URL<br>
-            3. Agregar a .env: SLACK_WEBHOOK_URL=...
-          </div>
-        </div>
-
-        <div style="background:#0f1117;border:1px solid #2e3248;border-radius:8px;padding:16px">
-          <div style="font-size:28px;margin-bottom:8px">📱</div>
-          <h4 style="margin:0 0 8px 0;font-size:14px;font-weight:600">WhatsApp</h4>
-          <p style="margin:0 0 12px 0;font-size:12px;color:#8892a4">Envía alertas vía WhatsApp con Twilio</p>
-          <div style="background:#1c1f2e;padding:8px;border-radius:6px;margin-bottom:12px;font-size:11px;color:#e05252;font-family:monospace">
-            Estado: No configurado
-          </div>
-          <div style="font-size:11px;color:#666;line-height:1.4">
-            <strong>Para habilitar:</strong><br>
-            1. Crear cuenta en twilio.com<br>
-            2. Obtener credenciales<br>
-            3. Agregar a .env: TWILIO_ACCOUNT_SID, TWILIO_AUTH_TOKEN
-          </div>
-        </div>
-
-        <div style="background:#0f1117;border:1px solid #2e3248;border-radius:8px;padding:16px">
-          <div style="font-size:28px;margin-bottom:8px">📧</div>
-          <h4 style="margin:0 0 8px 0;font-size:14px;font-weight:600">Email (SMTP)</h4>
-          <p style="margin:0 0 12px 0;font-size:12px;color:#8892a4">Reportes y alertas por correo</p>
-          <div style="background:#1c1f2e;padding:8px;border-radius:6px;margin-bottom:12px;font-size:11px;color:#1db954;font-family:monospace">
-            ✓ Configurado
-          </div>
-          <div style="font-size:11px;color:#1db954;line-height:1.4">
-            <strong>Status:</strong> SMTP configurado y funcionando<br>
-            Reportes enviados automáticamente cada día
-          </div>
-        </div>
-
-      </div>
-    </div>
-
-    <div style="background:#1c1f2e;border:1px solid #2e3248;border-radius:12px;padding:24px">
-      <h3 style="margin:0 0 16px 0;font-size:16px;font-weight:600">Configuración de .env</h3>
-      <div style="background:#0f1117;padding:16px;border-radius:8px;font-family:monospace;font-size:12px;color:#8892a4;line-height:1.6;overflow-x:auto">
-# Slack<br>
-SLACK_WEBHOOK_URL=https://hooks.slack.com/services/YOUR/WEBHOOK/URL<br>
-<br>
-# WhatsApp (Twilio)<br>
-TWILIO_ACCOUNT_SID=ACxxxxxxxxxxxxxxxx<br>
-TWILIO_AUTH_TOKEN=your_auth_token<br>
-TWILIO_WHATSAPP_NUMBER=+1234567890<br>
-<br>
-# Email (ya configurado)<br>
-SMTP_SERVER=smtp.gmail.com<br>
-SMTP_PORT=587<br>
-SMTP_USER=your_email@gmail.com<br>
-SMTP_PASSWORD=your_app_password
-      </div>
-    </div>
-  </div><!-- /panel-integraciones -->
 
   <div id="panel-fb" class="panel">
     <div id="fb-tab-content"><div class="empty"><p>Cargando F&amp;B...</p></div></div>
@@ -2505,7 +2432,6 @@ function switchTab(tab, el) {
   if (tab === 'banco') loadBanco();
   if (tab === 'notif') loadNotifConfig();
   if (tab === 'calipolis') loadCalipolis();
-  if (tab === 'integraciones') loadIntegraciones();
   if (tab === 'multi_hotel') loadMultiHotel();
 }
 async function loadFBTab() {
@@ -2950,6 +2876,7 @@ const NOTIF_CHANNELS = [
   {key:'email',    icon:'📧', name:'Email'},
   {key:'whatsapp', icon:'💬', name:'WhatsApp'},
   {key:'telegram', icon:'✈️', name:'Telegram'},
+  {key:'slack',    icon:'💼', name:'Slack'},
   {key:'push',     icon:'🔔', name:'Push'},
 ];
 const NOTIF_ALERTAS = [
@@ -2998,6 +2925,8 @@ function renderNotifConfig() {
       html += notifField('whatsapp', 'Número WhatsApp (con prefijo)', '+34600123456', c.whatsapp || '');
     if (c.canales && c.canales.telegram)
       html += notifField('telegram_chat', 'Telegram Chat ID', '123456789', c.telegram_chat || '');
+    if (c.canales && c.canales.slack)
+      html += notifField('slack_webhook', 'Slack Webhook URL', 'https://hooks.slack.com/services/...', c.slack_webhook || '');
     fields.innerHTML = html;
   }
   // Alertas
@@ -3592,33 +3521,6 @@ function renderCalipolisHoteles(hoteles) {
 // ═══════════════════════════════════════════════════════════════════
 // INTEGRACIONES
 // ═══════════════════════════════════════════════════════════════════
-async function loadIntegraciones() {
-  try {
-    const res = await fetch('/api/integraciones/status');
-    const data = await res.json();
-    
-    const cont = document.getElementById('integraciones-status');
-    if (!cont) return;
-    
-    const integraciones = [
-      {nombre: 'Slack', key: 'slack_disponible', emoji: '💬'},
-      {nombre: 'WhatsApp', key: 'whatsapp_disponible', emoji: '📱'},
-      {nombre: 'Email', key: 'email_disponible', emoji: '📧'}
-    ];
-    
-    cont.innerHTML = integraciones.map(i => {
-      const enabled = data[i.key];
-      const color = enabled ? '#1db954' : '#e05252';
-      const status = enabled ? 'CONFIGURADO' : 'No configurado';
-      return '<div style="background:#1c1f2e;border:2px solid ' + color + ';border-radius:12px;padding:16px">' +
-        '<div style="font-size:24px;margin-bottom:8px">' + i.emoji + '</div>' +
-        '<div style="font-weight:600;margin-bottom:4px">' + i.nombre + '</div>' +
-        '<div style="font-size:12px;color:' + color + '">' + status + '</div></div>';
-    }).join('');
-  } catch(e) {
-    console.error('Error cargando integraciones:', e);
-  }
-}
 
 
 function closeHotelModal() {
@@ -3630,38 +3532,43 @@ function closeHotelModal() {
 // ═══════════════════════════════
 // I18N — Sistema de traducción
 // ═══════════════════════════════
-const _i18nCache = {};   // Caché en memoria — evita fetch repetidos
+const _i18nCache = {};
+const _i18nOriginal = {}; // textos ES originales — para restaurar al volver a español
 let _i18nData = {};
 let _i18nLang = localStorage.getItem('yve_lang') || 'es';
 
+function _saveOriginals() {
+  document.querySelectorAll('[data-i18n]').forEach(el => {
+    const k = el.getAttribute('data-i18n');
+    if (!_i18nOriginal[k]) _i18nOriginal[k] = el.textContent;
+  });
+}
+
 async function loadI18n(lang) {
+  _saveOriginals();
   if (lang === 'es') {
     _i18nData = {}; _i18nLang = 'es';
-    applyI18n({}); return;
+    applyI18n(_i18nOriginal); // restaura textos originales
+    localStorage.setItem('yve_lang', 'es'); return;
   }
-  // Si ya está en caché, instantáneo
   if (_i18nCache[lang]) {
     _i18nData = _i18nCache[lang]; _i18nLang = lang;
-    applyI18n(_i18nData);
-    localStorage.setItem('yve_lang', lang);
-    return;
+    applyI18n(_i18nData); localStorage.setItem('yve_lang', lang); return;
   }
   try {
     const r = await fetch('/static/i18n/' + lang + '.json');
     const data = await r.json();
-    _i18nCache[lang] = data;   // Guardar en caché
-    _i18nData = data; _i18nLang = lang;
-    applyI18n(data);
-    localStorage.setItem('yve_lang', lang);
+    _i18nCache[lang] = data; _i18nData = data; _i18nLang = lang;
+    applyI18n(data); localStorage.setItem('yve_lang', lang);
   } catch(e) { console.warn('i18n error:', e); }
 }
 
-function t(key) { return _i18nData[key] || key; }
+function t(key) { return _i18nData[key] || _i18nOriginal[key] || key; }
 
 function applyI18n(data) {
   document.querySelectorAll('[data-i18n]').forEach(el => {
-    const key = el.getAttribute('data-i18n');
-    if (data[key]) el.textContent = data[key];
+    const k = el.getAttribute('data-i18n');
+    if (data[k] !== undefined) el.textContent = data[k];
   });
 }
 

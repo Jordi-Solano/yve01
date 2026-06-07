@@ -201,14 +201,27 @@ document.getElementById('username').addEventListener('keydown', function(e){ if(
 
 // I18N Login — con caché
 const _i18nCache = {};
+const _i18nOriginal = {}; // textos ES originales — para restaurar al volver a español
 let _i18nData = {};
 let _i18nLang = localStorage.getItem('yve_lang') || 'es';
 
+function _saveOriginals() {
+  document.querySelectorAll('[data-i18n]').forEach(el => {
+    const k = el.getAttribute('data-i18n');
+    if (!_i18nOriginal[k]) _i18nOriginal[k] = el.textContent;
+  });
+}
+
 async function loadI18n(lang) {
-  if (lang === 'es') { _i18nData = {}; applyI18n({}); return; }
+  _saveOriginals();
+  if (lang === 'es') {
+    _i18nData = {}; _i18nLang = 'es';
+    applyI18n(_i18nOriginal); // restaura textos originales
+    localStorage.setItem('yve_lang', 'es'); return;
+  }
   if (_i18nCache[lang]) {
-    _i18nData = _i18nCache[lang]; applyI18n(_i18nData);
-    localStorage.setItem('yve_lang', lang); _i18nLang = lang; return;
+    _i18nData = _i18nCache[lang]; _i18nLang = lang;
+    applyI18n(_i18nData); localStorage.setItem('yve_lang', lang); return;
   }
   try {
     const r = await fetch('/static/i18n/' + lang + '.json');
@@ -218,10 +231,12 @@ async function loadI18n(lang) {
   } catch(e) { console.warn('i18n error:', e); }
 }
 
+function t(key) { return _i18nData[key] || _i18nOriginal[key] || key; }
+
 function applyI18n(data) {
   document.querySelectorAll('[data-i18n]').forEach(el => {
-    const key = el.getAttribute('data-i18n');
-    if (data[key]) el.textContent = data[key];
+    const k = el.getAttribute('data-i18n');
+    if (data[k] !== undefined) el.textContent = data[k];
   });
 }
 
