@@ -1245,41 +1245,58 @@ tr:hover td{background:rgba(255,255,255,.025)}
 /* ── GUIDED TOUR ─────────────────────────────────── */
 #tour-overlay{
   position:fixed;inset:0;z-index:9000;pointer-events:none;
-  background:transparent;transition:background .3s;
+  background:transparent;transition:background .35s;
 }
-#tour-overlay.active{pointer-events:all;background:rgba(0,0,0,.6)}
+#tour-overlay.active{pointer-events:all;background:rgba(4,9,20,.72)}
 #tour-spotlight{
   position:fixed;z-index:9001;
-  border-radius:12px;box-shadow:0 0 0 9999px rgba(0,0,0,.6);
-  transition:all .4s cubic-bezier(.4,0,.2,1);
+  border-radius:14px;
+  box-shadow:0 0 0 9999px rgba(4,9,20,.72);
+  transition:left .38s cubic-bezier(.4,0,.2,1),
+             top .38s cubic-bezier(.4,0,.2,1),
+             width .38s cubic-bezier(.4,0,.2,1),
+             height .38s cubic-bezier(.4,0,.2,1);
   pointer-events:none;
-  border:2px solid rgba(59,130,246,.7);
+  border:2px solid rgba(59,130,246,.65);
+  animation:spotGlow 2s ease-in-out infinite;
+}
+@keyframes spotGlow{
+  0%,100%{border-color:rgba(59,130,246,.55);box-shadow:0 0 0 9999px rgba(4,9,20,.72),0 0 0 4px rgba(59,130,246,.12)}
+  50%{border-color:rgba(96,165,250,.9);box-shadow:0 0 0 9999px rgba(4,9,20,.72),0 0 0 6px rgba(59,130,246,.22)}
 }
 #tour-card{
   position:fixed;z-index:9002;
-  background:linear-gradient(135deg,var(--s1),#0d1827);
-  border:1px solid rgba(59,130,246,.4);
-  border-radius:16px;padding:22px 24px;width:320px;
-  box-shadow:0 20px 60px rgba(0,0,0,.6);
-  transition:all .35s cubic-bezier(.4,0,.2,1);
+  background:linear-gradient(160deg,rgba(30,41,59,.98),rgba(10,18,35,.98));
+  border:1px solid rgba(59,130,246,.35);
+  border-radius:18px;padding:24px 26px;width:330px;
+  box-shadow:0 24px 64px rgba(0,0,0,.7),0 0 0 1px rgba(59,130,246,.08) inset;
+  transition:left .38s cubic-bezier(.4,0,.2,1),top .38s cubic-bezier(.4,0,.2,1);
 }
-#tour-card h3{font-size:15px;font-weight:700;margin-bottom:8px;color:var(--tx)}
-#tour-card p{font-size:13px;color:var(--mut);line-height:1.6;margin-bottom:18px}
-.tour-footer{display:flex;align-items:center;justify-content:space-between;gap:10px}
-.tour-step-counter{font-size:11px;color:var(--dim);font-weight:600}
-.tour-dots{display:flex;gap:5px}
-.tour-dot{width:6px;height:6px;border-radius:50%;background:var(--s2);transition:.2s}
-.tour-dot.active{background:var(--acc);width:18px;border-radius:3px}
-.tour-btns{display:flex;gap:8px}
-.tour-btn-skip{background:none;border:none;font-size:12px;color:var(--dim);cursor:pointer;padding:5px 8px;border-radius:7px;transition:.15s}
+#tour-card.entering{animation:cardEnter .28s cubic-bezier(.2,.8,.2,1)}
+@keyframes cardEnter{from{opacity:0;transform:translateY(8px) scale(.97)}to{opacity:1;transform:none}}
+.tour-content-wrap{transition:opacity .18s;min-height:56px}
+.tour-content-wrap.fading{opacity:0}
+#tour-card h3{font-size:15px;font-weight:800;margin-bottom:8px;color:var(--tx);letter-spacing:-.2px}
+#tour-card p{font-size:13.5px;color:var(--mut);line-height:1.65;margin-bottom:0}
+.tour-progress-bar{height:2px;background:var(--s2);border-radius:1px;margin-bottom:16px;overflow:hidden}
+.tour-progress-fill{height:100%;background:linear-gradient(90deg,var(--acc),var(--pur));border-radius:1px;transition:width .38s cubic-bezier(.4,0,.2,1)}
+.tour-footer{display:flex;align-items:center;justify-content:space-between;gap:10px;margin-top:18px}
+.tour-counter{font-size:11px;color:var(--dim);font-weight:600;letter-spacing:.3px}
+.tour-dots{display:flex;gap:5px;align-items:center}
+.tour-dot{width:6px;height:6px;border-radius:50%;background:var(--s3);transition:all .25s}
+.tour-dot.active{background:var(--acc);width:20px;border-radius:3px}
+.tour-btns{display:flex;gap:7px;align-items:center}
+.tour-btn-skip{background:none;border:none;font-size:11px;color:var(--dim);cursor:pointer;padding:5px 7px;border-radius:6px;transition:.15s;letter-spacing:.2px}
 .tour-btn-skip:hover{color:var(--mut)}
-.tour-btn-prev{background:var(--s2);border:none;color:var(--tx);font-size:12px;font-weight:600;padding:7px 14px;border-radius:8px;cursor:pointer;transition:.15s}
-.tour-btn-prev:hover{background:var(--s3)}
-.tour-btn-next{background:linear-gradient(135deg,var(--acc),#2563eb);border:none;color:#fff;font-size:12px;font-weight:700;padding:7px 16px;border-radius:8px;cursor:pointer;box-shadow:0 0 12px rgba(59,130,246,.35);transition:.15s}
-.tour-btn-next:hover{box-shadow:0 0 20px rgba(59,130,246,.55);transform:translateY(-1px)}
-/* Tour highlight pulse on target element */
-.tour-target{outline:2px solid var(--acc) !important;outline-offset:3px !important;border-radius:8px !important;animation:tourPulse 1.5s ease-in-out infinite !important}
-@keyframes tourPulse{0%,100%{outline-color:rgba(59,130,246,.7)}50%{outline-color:rgba(96,165,250,1)}}
+.tour-btn-prev{background:rgba(51,65,85,.6);border:1px solid var(--s2);color:var(--mut);font-size:12px;font-weight:600;padding:7px 13px;border-radius:9px;cursor:pointer;transition:.15s}
+.tour-btn-prev:hover{background:var(--s2);color:var(--tx)}
+.tour-btn-next{background:linear-gradient(135deg,var(--acc),#2563eb);border:none;color:#fff;font-size:12px;font-weight:700;padding:8px 18px;border-radius:9px;cursor:pointer;box-shadow:0 0 14px rgba(59,130,246,.4);transition:.15s;white-space:nowrap}
+.tour-btn-next:hover{box-shadow:0 0 22px rgba(59,130,246,.6);transform:translateY(-1px)}
+.tour-target{outline:2px solid var(--acc)!important;outline-offset:4px!important;border-radius:10px!important;animation:tourPulse 2s ease-in-out infinite!important;position:relative!important;z-index:9001!important}
+@keyframes tourPulse{0%,100%{outline-color:rgba(59,130,246,.6)}50%{outline-color:rgba(96,165,250,1)}}
+@media(max-width:600px){
+  #tour-card{width:calc(100vw - 24px)!important;left:12px!important;bottom:16px!important;top:auto!important}
+}
 /* ── Sparklines en stat cards ── */
 .sc-spark{display:block;width:100%;height:24px;margin-top:8px;opacity:.7}
 .sc:hover .sc-spark{opacity:1}
@@ -1860,14 +1877,18 @@ tr:hover td{background:rgba(255,255,255,.025)}
 <div id="tour-overlay"></div>
 <div id="tour-spotlight" style="display:none"></div>
 <div id="tour-card" style="display:none">
-  <h3 id="tour-title">Tour</h3>
-  <p id="tour-text"></p>
+  <div class="tour-progress-bar"><div class="tour-progress-fill" id="tour-progress" style="width:0%"></div></div>
+  <div class="tour-content-wrap" id="tour-content">
+    <h3 id="tour-title"></h3>
+    <p id="tour-text"></p>
+  </div>
   <div class="tour-footer">
     <div>
+      <div class="tour-counter" id="tour-counter">1 / 10</div>
       <div class="tour-dots" id="tour-dots"></div>
     </div>
     <div class="tour-btns">
-      <button class="tour-btn-skip" onclick="tourEnd()">Salir</button>
+      <button class="tour-btn-skip" onclick="tourEnd()">✕ Salir</button>
       <button class="tour-btn-prev" id="tour-prev" onclick="tourPrev()">←</button>
       <button class="tour-btn-next" id="tour-next" onclick="tourNext()">Siguiente →</button>
     </div>
@@ -2485,25 +2506,42 @@ function _buildDots() {
 
 function tourGo(stepIdx) {
   const step = TOUR_STEPS[stepIdx];
+  const total = TOUR_STEPS.length;
+
   // Switch tab if needed
   if (step.tab) {
     const tabEl = document.getElementById('tab-' + step.tab);
     if (tabEl) switchTab(step.tab, tabEl);
   }
-  // Update card content
-  document.getElementById('tour-title').textContent = step.title;
-  document.getElementById('tour-text').textContent  = step.text;
-  // Update dots
+
+  // Fade content out, update, fade in
+  const content = document.getElementById('tour-content');
+  content.classList.add('fading');
+  setTimeout(() => {
+    document.getElementById('tour-title').textContent = step.title;
+    document.getElementById('tour-text').textContent  = step.text;
+    document.getElementById('tour-counter').textContent = (stepIdx + 1) + ' / ' + total;
+    // Progress bar
+    const pct = (stepIdx / (total - 1)) * 100;
+    document.getElementById('tour-progress').style.width = pct + '%';
+    content.classList.remove('fading');
+  }, 160);
+
+  // Dots
   document.querySelectorAll('.tour-dot').forEach((d,i) => d.classList.toggle('active', i === stepIdx));
-  // Prev button visibility
+  // Prev / Next buttons
   document.getElementById('tour-prev').style.visibility = stepIdx === 0 ? 'hidden' : 'visible';
-  // Next button text
   document.getElementById('tour-next').textContent = step.isLast ? '¡Empezar! 🚀' : 'Siguiente →';
   // Remove previous target
   document.querySelectorAll('.tour-target').forEach(el => el.classList.remove('tour-target'));
+  // Entrance animation on card
+  const card = document.getElementById('tour-card');
+  card.classList.remove('entering');
+  void card.offsetWidth; // reflow
+  card.classList.add('entering');
 
   // Position spotlight and card
-  setTimeout(() => _positionTour(step), step.tab ? 400 : 50);
+  setTimeout(() => _positionTour(step), step.tab ? 420 : 60);
 }
 
 function _positionTour(step) {
