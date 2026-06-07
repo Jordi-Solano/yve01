@@ -25,6 +25,10 @@ LANDING_HTML = r"""<!DOCTYPE html>
 html{scroll-behavior:smooth}
 body{background:var(--bg);color:var(--tx);font-family:'Inter',sans-serif;line-height:1.6;-webkit-font-smoothing:antialiased}
 a{color:inherit;text-decoration:none}
+
+.fade-up{opacity:0;transform:translateY(20px);transition:opacity .55s ease,transform .55s ease}
+.fade-up.visible{opacity:1;transform:none}
+.fade-up-delay-1{transition-delay:.1s}.fade-up-delay-2{transition-delay:.2s}.fade-up-delay-3{transition-delay:.3s}
 /* NAV */
 .nav{position:sticky;top:0;z-index:100;background:rgba(15,23,42,.92);backdrop-filter:blur(12px);border-bottom:1px solid var(--s2);padding:0 5%;height:64px;display:flex;align-items:center;justify-content:space-between}
 .nav-logo{display:flex;align-items:baseline;gap:8px}
@@ -155,24 +159,25 @@ footer{background:var(--s1);border-top:1px solid var(--s2);padding:48px 5% 32px;
     <a href="#features">Funciones</a>
     <a href="#roi">ROI</a>
     <a href="#pricing">Precios</a>
-    <a href="#comparativa">Comparativa</a>
+    <a href="/blog">Blog</a>
     <a href="/casos">Casos</a>
+    <a href="/about">Nosotros</a>
   </div>
   <div class="nav-cta">
-    <a href="/login" class="btn-outline">Iniciar sesión</a>
+    <a href="/login" class="btn-outline">Acceder</a>
     <a href="/signup" class="btn-primary">Empezar gratis →</a>
   </div>
 </nav>
 
 <!-- HERO -->
 <section class="hero">
-  <div class="hero-badge">
+  <div class="hero-badge fade-up">
     <div class="dot"></div>
     Nuevo · Yve.01 Beta disponible para hoteles independientes
   </div>
-  <h1>El sistema operativo<br><span class="accent">AI-first para hoteles</span></h1>
-  <p class="hero-sub">Automatiza AP, AR, DRR y conciliación bancaria. Tu equipo financiero multiplica su capacidad sin ampliar plantilla.</p>
-  <div class="hero-btns">
+  <h1 class="fade-up fade-up-delay-1">El sistema operativo<br><span class="accent">AI-first para hoteles</span></h1>
+  <p class="hero-sub fade-up fade-up-delay-2">Automatiza AP, AR, DRR y conciliación bancaria. Tu equipo financiero multiplica su capacidad sin ampliar plantilla.</p>
+  <div class="hero-btns fade-up fade-up-delay-3">
     <a href="/signup" class="btn-hero-primary">Empezar gratis 14 días</a>
     <a href="#roi" class="btn-hero-outline">Calcular mi ahorro →</a>
   </div>
@@ -470,6 +475,10 @@ function calcROI() {
   document.getElementById('roi-price').textContent  = '€' + price.toLocaleString('es-ES') + '/mes';
   document.getElementById('roi-saving').style.color = net >= 0 ? 'var(--grn)' : 'var(--red)';
 }
+</script>
+<script>
+const _obs=new IntersectionObserver(e=>{e.forEach(x=>{if(x.isIntersecting){x.target.classList.add('visible');_obs.unobserve(x.target);}});},{threshold:.12});
+document.querySelectorAll('.fade-up').forEach(el=>_obs.observe(el));
 calcROI();
 </script>
 </body>
