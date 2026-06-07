@@ -88,5 +88,11 @@
   "card.stockIngredientes": "Stock d'Ingrédients",
   "card.mermasCausa": "Gaspillage par cause",
   "card.registrarMerma": "Enregistrer le gaspillage",
-  "card.fichaRecetas": "Fiches de recettes avec coût théorique"
+  "card.fichaRecetas": "Fiches de recettes avec coût théorique",
+  "alert.discrepancias": "écart(s) réclamable(s)",
+  "alert.sinDI": "facture(s) sans certificat DI",
+  "status.actualizando": "Mise à jour...",
+  "status.error": "Erreur lors du chargement",
+  "status.facturas": "factures chargées",
+  "status.actualizado": "Mis à jour"
 }

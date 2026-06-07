@@ -88,5 +88,11 @@
   "card.stockIngredientes": "Estoc d'Ingredients",
   "card.mermasCausa": "Mermes per Causa",
   "card.registrarMerma": "Registrar Merma",
-  "card.fichaRecetas": "Fitxa de Receptes amb Cost Teòric"
+  "card.fichaRecetas": "Fitxa de Receptes amb Cost Teòric",
+  "alert.discrepancias": "discrepància/es reclamable/s",
+  "alert.sinDI": "factura(es) sense certificat DI",
+  "status.actualizando": "Actualitzant...",
+  "status.error": "Error en carregar dades",
+  "status.facturas": "factures carregades",
+  "status.actualizado": "Actualitzat"
 }

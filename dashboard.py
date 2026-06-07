@@ -2113,7 +2113,7 @@ function bApro(a) {
 
 // ── Carga datos ──────────────────────────────────────────────────────────
 async function loadAll() {
-  document.getElementById('status-txt').textContent = 'Actualizando...';
+  document.getElementById('status-txt').textContent = t('status.actualizando') || 'Actualizando...';
   try {
     // 1. Cargar y renderizar stats primero (independiente de facturas)
     const sr = await fetch('/api/stats');
@@ -2125,9 +2125,9 @@ async function loadAll() {
     const alertBar = document.getElementById('alert-bar');
     const parts = [];
     if (stats.discrepancias > 0)
-      parts.push(stats.discrepancias + ' discrepancia(s) · ' + eur(stats.importe_reclamable) + ' reclamables');
+      parts.push(stats.discrepancias + ' ' + (t('alert.discrepancias') || 'discrepancia(s) · ' + eur(stats.importe_reclamable) + ' reclamables'));
     if (stats.di_pendientes > 0)
-      parts.push(stats.di_pendientes + ' factura(s) sin certificado DI');
+      parts.push(stats.di_pendientes + ' ' + (t('alert.sinDI') || 'factura(s) sin certificado DI'));
     if (parts.length) {
       document.getElementById('alert-msg').textContent = parts.join(' — ');
       alertBar.classList.add('on');
@@ -2154,7 +2154,7 @@ async function loadAll() {
       'Actualizado · ' + (stats.total || 0) + ' factura' + (stats.total !== 1 ? 's' : '') + ' cargada' + (stats.total !== 1 ? 's' : '');
   } catch(e) {
     console.error('Error en loadAll:', e);
-    document.getElementById('status-txt').textContent = 'Error al cargar datos';
+    document.getElementById('status-txt').textContent = t('status.error') || 'Error al cargar datos';
   }
 }
 

@@ -88,5 +88,11 @@
   "card.stockIngredientes": "Stock de Ingredientes",
   "card.mermasCausa": "Desperdício por causa",
   "card.registrarMerma": "Registar desperdício",
-  "card.fichaRecetas": "Fichas de receitas com custo teórico"
+  "card.fichaRecetas": "Fichas de receitas com custo teórico",
+  "alert.discrepancias": "discrepância(s) reclamável/eis",
+  "alert.sinDI": "fatura(s) sem certificado DI",
+  "status.actualizando": "Atualizando...",
+  "status.error": "Erro ao carregar dados",
+  "status.facturas": "faturas carregadas",
+  "status.actualizado": "Atualizado"
 }

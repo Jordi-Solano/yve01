@@ -88,5 +88,11 @@
   "card.stockIngredientes": "Zutatenbestand",
   "card.mermasCausa": "Verluste nach Ursache",
   "card.registrarMerma": "Verlust erfassen",
-  "card.fichaRecetas": "Rezeptkarten mit theoretischen Kosten"
+  "card.fichaRecetas": "Rezeptkarten mit theoretischen Kosten",
+  "alert.discrepancias": "Abweichung(en) forderbar",
+  "alert.sinDI": "Rechnung(en) ohne DI-Zertifikat",
+  "status.actualizando": "Aktualisierung...",
+  "status.error": "Fehler beim Laden",
+  "status.facturas": "Rechnungen geladen",
+  "status.actualizado": "Aktualisiert"
 }

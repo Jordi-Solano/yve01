@@ -88,5 +88,11 @@
   "card.stockIngredientes": "Stock Ingredienti",
   "card.mermasCausa": "Sprechi per causa",
   "card.registrarMerma": "Registra spreco",
-  "card.fichaRecetas": "Schede ricette con costo teorico"
+  "card.fichaRecetas": "Schede ricette con costo teorico",
+  "alert.discrepancias": "discrepanza/e reclamabile/i",
+  "alert.sinDI": "fattura/e senza certificato DI",
+  "status.actualizando": "Aggiornamento...",
+  "status.error": "Errore nel caricamento",
+  "status.facturas": "fatture caricate",
+  "status.actualizado": "Aggiornato"
 }

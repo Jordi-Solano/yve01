@@ -88,5 +88,11 @@
   "card.stockIngredientes": "Ingredient Stock",
   "card.mermasCausa": "Waste by Cause",
   "card.registrarMerma": "Register Waste",
-  "card.fichaRecetas": "Recipe Cards with Theoretical Cost"
+  "card.fichaRecetas": "Recipe Cards with Theoretical Cost",
+  "alert.discrepancias": "discrepancy/ies claimable",
+  "alert.sinDI": "invoice(s) without DI certificate",
+  "status.actualizando": "Updating...",
+  "status.error": "Error loading data",
+  "status.facturas": "invoices loaded",
+  "status.actualizado": "Updated"
 }
