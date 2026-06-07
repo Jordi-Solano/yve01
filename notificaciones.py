@@ -126,6 +126,37 @@ def enviar_email(destinatario, asunto, cuerpo_html, tipo="general"):
 
 # ── Plantilla email ───────────────────────────────────────────────────────
 
+
+
+def enviar_slack(webhook_url, mensaje, asunto="", tipo="general"):
+    import urllib.request as _req, json as _j
+    if not webhook_url or "hooks.slack.com" not in webhook_url:
+        _registrar(tipo, asunto or "slack", "slack", "error", "Webhook no configurado")
+        return False
+    try:
+        text = ("*" + (asunto or "Yve") + "*" + chr(10) + mensaje)
+        payload = _j.dumps({"text": text}).encode("utf-8")
+        req = _req.Request(webhook_url, data=payload,
+                           headers={"Content-Type": "application/json"}, method="POST")
+        with _req.urlopen(req, timeout=10) as r:
+            ok = r.read() == b"ok"
+        _registrar(tipo, asunto, "slack", "enviado" if ok else "warning")
+        return ok
+    except Exception as e:
+        _registrar(tipo, asunto, "slack", "error", str(e)[:200])
+        return False
+
+
+def enviar_por_canales(asunto, html, texto, tipo="general"):
+    cfg = _load_config()
+    ch  = cfg.get("canales", {})
+    res = {}
+    if ch.get("email") and cfg.get("email"):
+        res["email"] = enviar_email(cfg["email"], asunto, html, tipo)
+    if ch.get("slack") and cfg.get("slack_webhook"):
+        res["slack"] = enviar_slack(cfg["slack_webhook"], texto, asunto, tipo)
+    return res
+
 def _email_html(titulo, items, color="#3b82f6"):
     """Genera HTML para un email de alerta."""
     rows = "".join(

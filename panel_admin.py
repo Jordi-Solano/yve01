@@ -1,18 +1,15 @@
-"""
-panel_admin.py — Yve.01
-Panel de administración de usuarios. Solo accesible para rol admin.
-Se integra como blueprint o se ejecuta standalone en puerto 5006.
-"""
-
-import os, sys
+"""panel_admin.py - Yve.01 Admin Panel"""
+import os, sys, json
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 
-from flask import Blueprint, request, jsonify, redirect
+from flask import Blueprint, request, jsonify
 from flask_login import login_required, current_user
 from auth import (init_login, inicializar_usuarios, listar_usuarios,
                   crear_usuario, cambiar_password, toggle_activo, ROLES_VALIDOS)
+from pathlib import Path
 
 bp = Blueprint("admin", __name__, url_prefix="/admin")
+BASE_DIR = Path(__file__).parent
 
 
 def _admin_required(f):
@@ -21,7 +18,7 @@ def _admin_required(f):
     @login_required
     def decorated(*args, **kwargs):
         if current_user.rol != "admin":
-            return jsonify({"error": "Acceso denegado — solo admin"}), 403
+            return jsonify({"error": "Acceso denegado"}), 403
         return f(*args, **kwargs)
     return decorated
 
@@ -30,7 +27,7 @@ def _admin_required(f):
 @login_required
 def index():
     if current_user.rol != "admin":
-        return "<h3>Acceso denegado</h3><p>Solo administradores.</p>", 403
+        return "<h3>Acceso denegado</h3>", 403
     return HTML
 
 
@@ -49,187 +46,190 @@ def api_crear():
         d.get("password", ""),
         d.get("nombre", ""),
         d.get("email", ""),
-        d.get("rol", "income_auditor"),
+        d.get("rol", "financial_controller"),
     )
-    if result is True:
-        return jsonify({"ok": True})
-    return jsonify({"ok": False, "error": result}), 400
+    return jsonify({"ok": result is True, "error": result if result is not True else None})
 
 
 @bp.route("/api/cambiar_password", methods=["POST"])
 @_admin_required
 def api_cambiar_pass():
     d = request.get_json(force=True) or {}
-    result = cambiar_password(d.get("username", ""), d.get("password", ""))
-    if result is True:
-        return jsonify({"ok": True})
-    return jsonify({"ok": False, "error": result}), 400
+    ok = cambiar_password(d.get("username", ""), d.get("nueva_password", ""))
+    return jsonify({"ok": ok})
 
 
 @bp.route("/api/toggle_usuario", methods=["POST"])
 @_admin_required
 def api_toggle():
     d = request.get_json(force=True) or {}
-    result = toggle_activo(d.get("username", ""))
-    if result is not None:
-        return jsonify({"ok": True, "activo": result})
-    return jsonify({"ok": False, "error": "Usuario no encontrado"}), 404
+    ok = toggle_activo(d.get("username", ""))
+    return jsonify({"ok": ok})
+
+
+@bp.route("/api/stats")
+@_admin_required
+def api_admin_stats():
+    import glob, time
+    from datetime import datetime
+
+    try:
+        users = json.loads((BASE_DIR / "datos-referencia" / "usuarios.json").read_text())
+        n_users  = len(users)
+        n_active = sum(1 for u in users if u.get("activo", True))
+    except Exception:
+        n_users = n_active = 0
+
+    try:
+        hotels = json.loads((BASE_DIR / "datos-referencia" / "hoteles.json").read_text())
+        n_hotels = len(hotels)
+    except Exception:
+        n_hotels = 0
+
+    n_reports = len(glob.glob(str(BASE_DIR / "reportes" / "*.xlsx")))
+
+    uptime = "-"
+    try:
+        with open("/proc/uptime") as f:
+            secs = float(f.read().split()[0])
+        h = int(secs // 3600); m = int((secs % 3600) // 60)
+        uptime = str(h) + "h " + str(m) + "m"
+    except Exception:
+        pass
+
+    return jsonify({
+        "usuarios": n_users,
+        "usuarios_activos": n_active,
+        "hoteles": n_hotels,
+        "reportes_generados": n_reports,
+        "uptime": uptime,
+        "version": "Yve.01 Beta",
+        "timestamp": datetime.now().strftime("%d/%m/%Y %H:%M"),
+    })
+
+
+@bp.route("/api/hoteles")
+@_admin_required
+def api_hoteles():
+    try:
+        hotels = json.loads((BASE_DIR / "datos-referencia" / "hoteles.json").read_text())
+        return jsonify({"ok": True, "hoteles": hotels})
+    except Exception as e:
+        return jsonify({"ok": False, "error": str(e)}), 500
+
+
+@bp.route("/api/hoteles/eliminar", methods=["POST"])
+@_admin_required
+def api_eliminar_hotel():
+    data = request.get_json(silent=True) or {}
+    hotel_id = data.get("id")
+    if not hotel_id:
+        return jsonify({"ok": False, "error": "ID requerido"}), 400
+    try:
+        path = BASE_DIR / "datos-referencia" / "hoteles.json"
+        hotels = json.loads(path.read_text())
+        hotels = [h for h in hotels if h.get("id") != hotel_id]
+        path.write_text(json.dumps(hotels, indent=2, ensure_ascii=False))
+        return jsonify({"ok": True})
+    except Exception as e:
+        return jsonify({"ok": False, "error": str(e)}), 500
+
+
 
 
 HTML = r"""<!DOCTYPE html>
 <html lang="es">
 <head>
-<meta charset="UTF-8">
-<meta name="viewport" content="width=device-width,initial-scale=1">
-<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Ccircle cx='16' cy='16' r='9' fill='%233b82f6'/%3E%3C/svg%3E">
-<link rel="preconnect" href="https://fonts.googleapis.com">
-<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&display=swap" rel="stylesheet">
-<link rel="stylesheet" href="/static/yve.css">
-<title>Yve.01 — Admin</title>
+<meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Admin - Yve.01</title>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
 <style>
-:root{--bg:#0f172a;--s1:#1e293b;--s2:#334155;--s3:#475569;--acc:#3b82f6;--acc2:#60a5fa;--tx:#f1f5f9;--mut:#94a3b8;--dim:#64748b;--grn:#22c55e;--red:#ef4444;--ora:#f97316}
+:root{--bg:#0f172a;--s1:#1e293b;--s2:#334155;--acc:#3b82f6;--acc2:#60a5fa;--tx:#f1f5f9;--mut:#94a3b8;--dim:#64748b;--grn:#22c55e;--red:#ef4444}
 *{box-sizing:border-box;margin:0;padding:0}
-body{background:var(--bg);color:var(--tx);font-family:'Inter',-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif;min-height:100vh}
-.nav{background:var(--s1);border-bottom:1px solid var(--s2);padding:0 24px;height:60px;display:flex;align-items:center;gap:16px}
-.logo-dot{width:8px;height:8px;border-radius:50%;background:var(--acc);box-shadow:0 0 8px var(--acc);display:inline-block;margin-right:8px}
-.logo-name{font-size:20px;font-weight:800;color:var(--acc2)}
-.logo-tag{font-size:11px;color:var(--mut);margin-left:8px}
-.nav-right{margin-left:auto}
-.nav-right a{color:var(--acc2);text-decoration:none;font-size:.85rem;padding:6px 14px;border:1px solid var(--s2);border-radius:8px;transition:.15s}
-.nav-right a:hover{border-color:var(--acc)}
-.main{max-width:900px;margin:32px auto;padding:0 24px}
-.card{background:var(--s1);border:1px solid var(--s2);border-radius:14px;padding:24px;margin-bottom:24px}
-.card h2{font-size:1.1rem;margin-bottom:16px}
-table{width:100%;border-collapse:collapse;font-size:.85rem}
-th{background:rgba(51,65,85,.6);color:var(--mut);font-size:.7rem;text-transform:uppercase;letter-spacing:.5px;padding:10px 12px;text-align:left;border-bottom:1px solid var(--s2)}
-td{padding:10px 12px;border-bottom:1px solid rgba(51,65,85,.4)}
-.badge{display:inline-block;padding:2px 8px;border-radius:4px;font-size:.7rem;font-weight:700}
-.b-on{background:rgba(34,197,94,.15);color:#86efac}.b-off{background:rgba(239,68,68,.15);color:#fca5a5}
-.b-role{background:rgba(59,130,246,.15);color:#93c5fd}
-.btn{padding:6px 12px;border-radius:8px;font-size:.8rem;font-weight:600;cursor:pointer;border:none;transition:.15s}
-.btn-sm{padding:4px 10px;font-size:.75rem}
-.btn-blue{background:var(--acc);color:#fff}.btn-blue:hover{background:var(--acc2)}
-.btn-red{background:rgba(239,68,68,.2);color:#fca5a5}.btn-red:hover{background:rgba(239,68,68,.3)}
-.btn-grn{background:rgba(34,197,94,.2);color:#86efac}.btn-grn:hover{background:rgba(34,197,94,.3)}
-.form-row{display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-bottom:12px}
-@media(max-width:600px){.form-row{grid-template-columns:1fr}}
-input,select{width:100%;background:var(--bg);border:1px solid var(--s2);color:var(--tx);border-radius:8px;padding:9px 12px;font-size:.85rem;outline:none}
-input:focus,select:focus{border-color:var(--acc)}
-label{font-size:.75rem;color:var(--mut);text-transform:uppercase;letter-spacing:.4px;margin-bottom:4px;display:block;margin-top:10px}
-#msg{display:none;padding:10px;border-radius:8px;font-size:.85rem;margin-bottom:14px}
-#msg.ok{display:block;background:rgba(34,197,94,.1);color:#86efac;border:1px solid rgba(34,197,94,.2)}
-#msg.err{display:block;background:rgba(239,68,68,.1);color:#fca5a5;border:1px solid rgba(239,68,68,.2)}
+body{background:var(--bg);color:var(--tx);font-family:'Inter',sans-serif;padding:28px;-webkit-font-smoothing:antialiased}
+h1{font-size:20px;font-weight:800;margin-bottom:6px}
+.sub{font-size:13px;color:var(--mut);margin-bottom:24px}
+.sg{display:grid;grid-template-columns:repeat(auto-fit,minmax(130px,1fr));gap:12px;margin-bottom:24px}
+.kc{background:var(--s1);border:1px solid var(--s2);border-radius:13px;padding:18px}
+.kl{font-size:10px;color:var(--mut);text-transform:uppercase;letter-spacing:.5px;margin-bottom:8px;font-weight:600}
+.kv{font-size:26px;font-weight:800;color:var(--acc2);letter-spacing:-1px;line-height:1}
+.card{background:var(--s1);border:1px solid var(--s2);border-radius:14px;padding:22px;margin-bottom:18px}
+.ct{font-size:14px;font-weight:700;margin-bottom:16px}
+.g2{display:grid;grid-template-columns:1fr 1fr;gap:18px}
+@media(max-width:768px){.g2{grid-template-columns:1fr}}
+label{display:block;font-size:11px;color:var(--mut);text-transform:uppercase;letter-spacing:.4px;margin-bottom:5px;margin-top:12px;font-weight:600}
+label:first-child{margin-top:0}
+input,select{width:100%;background:var(--bg);border:1px solid var(--s2);color:var(--tx);border-radius:9px;padding:10px 13px;font-size:14px;font-family:inherit;outline:none}
+.btn{padding:9px 18px;border:none;border-radius:9px;font-size:13px;font-weight:700;cursor:pointer;font-family:inherit}
+.bp{background:linear-gradient(135deg,#3b82f6,#2563eb);color:#fff}
+.bd{background:rgba(239,68,68,.1);border:1px solid rgba(239,68,68,.3);color:#ef4444}
+.bsm{padding:5px 12px;font-size:11px;border-radius:7px}
+.ut{width:100%;border-collapse:collapse;font-size:13px}
+.ut th{padding:9px 12px;font-size:10px;color:#94a3b8;text-transform:uppercase;border-bottom:1px solid #334155;text-align:left}
+.ut td{padding:9px 12px;border-bottom:1px solid rgba(51,65,85,.4);vertical-align:middle}
+.msg{font-size:12px;text-align:center;margin-top:10px;min-height:16px}
+.ok{background:rgba(34,197,94,.1);color:#22c55e;padding:3px 9px;border-radius:20px;font-size:10px;font-weight:700;display:inline-block}
+.off{background:rgba(100,116,139,.1);color:#64748b;padding:3px 9px;border-radius:20px;font-size:10px;font-weight:700;display:inline-block}
 </style>
 </head>
 <body>
-<nav class="nav">
-  <span class="logo-dot"></span><span class="logo-name">Yve.01</span>
-  <span class="logo-tag">Administración</span>
-  <div class="nav-right"><a href="/">← Dashboard</a></div>
-</nav>
-
-<div class="main">
-  <!-- Crear usuario -->
-  <div class="card">
-    <h2>Crear Usuario</h2>
-    <div id="msg"></div>
-    <div class="form-row">
-      <div><label>Username</label><input id="nu-user" placeholder="nuevo_usuario"></div>
-      <div><label>Contraseña</label><input id="nu-pass" type="password" placeholder="••••••"></div>
+<h1>Admin - Yve.01</h1>
+<div class="sub">Panel de administracion - Solo accesible para administradores</div>
+<div class="sg">
+  <div class="kc"><div class="kl">Usuarios</div><div class="kv" id="su">-</div></div>
+  <div class="kc"><div class="kl">Activos</div><div class="kv" id="sa">-</div></div>
+  <div class="kc"><div class="kl">Hoteles</div><div class="kv" id="sh">-</div></div>
+  <div class="kc"><div class="kl">Reportes</div><div class="kv" id="sr">-</div></div>
+  <div class="kc"><div class="kl">Uptime</div><div class="kv" style="font-size:15px" id="sup">-</div></div>
+  <div class="kc"><div class="kl">Version</div><div class="kv" style="font-size:13px" id="sv">-</div></div>
+</div>
+<div class="g2">
+  <div>
+    <div class="card">
+      <div class="ct">Usuarios</div>
+      <table class="ut"><thead><tr><th>User</th><th>Nombre</th><th>Rol</th><th>Estado</th><th></th></tr></thead>
+      <tbody id="utb"></tbody></table>
     </div>
-    <div class="form-row">
-      <div><label>Nombre</label><input id="nu-nombre" placeholder="Nombre completo"></div>
-      <div><label>Email</label><input id="nu-email" type="email" placeholder="email@hotel.com"></div>
-    </div>
-    <div class="form-row">
-      <div><label>Rol</label>
-        <select id="nu-rol">
-          <option value="financial_controller">Financial Controller</option>
-          <option value="income_auditor">Income Auditor</option>
-          <option value="fb_manager">F&B Manager</option>
-          <option value="jefe_otras">Jefe de OTRAS</option>
-          <option value="admin">Admin</option>
-        </select>
-      </div>
-      <div style="display:flex;align-items:flex-end"><button class="btn btn-blue" onclick="crearUsuario()">+ Crear</button></div>
+    <div class="card">
+      <div class="ct">Crear usuario</div>
+      <label>Username</label><input id="nu">
+      <label>Password</label><input id="np" type="password">
+      <label>Nombre</label><input id="nn">
+      <label>Email</label><input id="ne" type="email">
+      <label>Rol</label>
+      <select id="nr">
+        <option value="financial_controller">Financial Controller</option>
+        <option value="income_auditor">Income Auditor</option>
+        <option value="fb_manager">F&amp;B Manager</option>
+        <option value="jefe_otras">Jefe Servicios</option>
+        <option value="admin">Admin</option>
+      </select>
+      <button class="btn bp" style="margin-top:16px;width:100%" onclick="crearU()">+ Crear</button>
+      <div class="msg" id="mu"></div>
     </div>
   </div>
-
-  <!-- Lista usuarios -->
-  <div class="card">
-    <h2>Usuarios</h2>
-    <table>
-      <thead><tr><th>Username</th><th>Nombre</th><th>Email</th><th>Rol</th><th>Estado</th><th>Acciones</th></tr></thead>
-      <tbody id="usr-tbody"></tbody>
-    </table>
+  <div>
+    <div class="card">
+      <div class="ct">Hoteles</div>
+      <table class="ut"><thead><tr><th>Hotel</th><th>Ciudad</th><th>Hab</th><th></th></tr></thead>
+      <tbody id="htb"></tbody></table>
+    </div>
+    <div class="card" style="border-color:rgba(239,68,68,.2)">
+      <div class="ct" style="color:#ef4444">Herramientas</div>
+      <button class="btn bd bsm" onclick="cleanCache()">Limpiar cache</button>
+      <div class="msg" id="md"></div>
+    </div>
   </div>
 </div>
-
 <script>
-async function loadUsers() {
-  const r = await fetch('/admin/api/usuarios');
-  const users = await r.json();
-  const tbody = document.getElementById('usr-tbody');
-  tbody.innerHTML = users.map(function(u) {
-    const est = u.activo !== false
-      ? '<span class="badge b-on">Activo</span>'
-      : '<span class="badge b-off">Inactivo</span>';
-    const toggleBtn = u.activo !== false
-      ? '<button class="btn btn-sm btn-red" onclick="toggleUser(\'' + u.username + '\')">Desactivar</button>'
-      : '<button class="btn btn-sm btn-grn" onclick="toggleUser(\'' + u.username + '\')">Activar</button>';
-    return '<tr>'
-      + '<td style="font-weight:700">' + u.username + '</td>'
-      + '<td>' + (u.nombre || '') + '</td>'
-      + '<td style="color:var(--dim)">' + (u.email || '') + '</td>'
-      + '<td><span class="badge b-role">' + u.rol + '</span></td>'
-      + '<td>' + est + '</td>'
-      + '<td style="display:flex;gap:6px">'
-      + toggleBtn
-      + '<button class="btn btn-sm btn-blue" onclick="resetPass(\'' + u.username + '\')">Reset pass</button>'
-      + '</td></tr>';
-  }).join('');
-}
-
-function showMsg(text, ok) {
-  const el = document.getElementById('msg');
-  el.textContent = text;
-  el.className = ok ? 'ok' : 'err';
-  setTimeout(function() { el.className = ''; }, 4000);
-}
-
-async function crearUsuario() {
-  const d = {
-    username: document.getElementById('nu-user').value.trim(),
-    password: document.getElementById('nu-pass').value,
-    nombre:   document.getElementById('nu-nombre').value.trim(),
-    email:    document.getElementById('nu-email').value.trim(),
-    rol:      document.getElementById('nu-rol').value,
-  };
-  if (!d.username || !d.password) { showMsg('Username y contraseña requeridos', false); return; }
-  const r = await fetch('/admin/api/crear_usuario', {method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify(d)});
-  const res = await r.json();
-  if (res.ok) { showMsg('Usuario creado: ' + d.username, true); loadUsers(); }
-  else { showMsg(res.error || 'Error', false); }
-}
-
-async function toggleUser(username) {
-  const r = await fetch('/admin/api/toggle_usuario', {method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify({username})});
-  const res = await r.json();
-  if (res.ok) loadUsers();
-}
-
-async function resetPass(username) {
-  const pw = prompt('Nueva contraseña para ' + username + ':');
-  if (!pw) return;
-  const r = await fetch('/admin/api/cambiar_password', {method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify({username, password:pw})});
-  const res = await r.json();
-  if (res.ok) showMsg('Contraseña cambiada para ' + username, true);
-  else showMsg(res.error || 'Error', false);
-}
-
-loadUsers();
+async function ls(){const r=await fetch('/admin/api/stats'),d=await r.json();['u','a','h','r','up','v'].forEach((k,i)=>{const el=document.getElementById('s'+k);if(el)el.textContent=[d.usuarios,d.usuarios_activos,d.hoteles,d.reportes_generados,d.uptime,d.version][i];});}
+async function lu(){const r=await fetch('/admin/api/usuarios'),us=await r.json();document.getElementById('utb').innerHTML=us.map(u=>'<tr><td><b>'+u.username+'</b></td><td>'+(u.nombre||'-')+'</td><td style="color:#60a5fa">'+u.rol+'</td><td><span class="'+(u.activo!==false?'ok':'off')+'">'+(u.activo!==false?'Activo':'Inactivo')+'</span></td><td><button class="btn bd bsm" onclick="tU(\''+u.username+'\')">Toggle</button></td></tr>').join('');}
+async function lh(){const r=await fetch('/admin/api/hoteles'),d=await r.json();if(!d.ok)return;document.getElementById('htb').innerHTML=d.hoteles.map(h=>'<tr><td><b>'+h.nombre+'</b></td><td style="color:#94a3b8">'+(h.ciudad||'-')+'</td><td>'+(h.habitaciones||'-')+'</td><td><button class="btn bd bsm" onclick="dH(\''+h.id+'\')">x</button></td></tr>').join('');}
+async function tU(u){await fetch('/admin/api/toggle_usuario',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({username:u})});lu();ls();}
+async function dH(id){if(!confirm('Eliminar '+id+'?'))return;await fetch('/admin/api/hoteles/eliminar',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({id})});lh();ls();}
+async function crearU(){const d={username:document.getElementById('nu').value.trim(),password:document.getElementById('np').value,nombre:document.getElementById('nn').value.trim(),email:document.getElementById('ne').value.trim(),rol:document.getElementById('nr').value};const m=document.getElementById('mu');if(!d.username||!d.password){m.style.color='#ef4444';m.textContent='Faltan campos.';return;}const r=await fetch('/admin/api/crear_usuario',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(d)});const res=await r.json();m.style.color=res.ok?'#22c55e':'#ef4444';m.textContent=res.ok?'Creado: '+d.username:(res.error||'Error');if(res.ok){lu();ls();}}
+async function cleanCache(){const d=document.getElementById('md');d.textContent='Cache limpiado';d.style.color='#22c55e';}
+ls();lu();lh();
 </script>
 </body>
 </html>"""
-

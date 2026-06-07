@@ -89,7 +89,8 @@ from blog import blog_bp
 from billing import billing_bp
 from signup import signup_bp
 from about import about_bp
-for _bp in (auth_bp, config_bp, admin_bp, aprob_ar_bp, aprob_ap_bp, concil_bp, fb_bp, ar_real_bp, multi_hotel_bp, exportador_bp, calipolis_bp, demo_bp, demo_sim_bp, calipolis_analisis_bp, reportes_pdf_bp, blog_bp, billing_bp, signup_bp, about_bp):
+from exportador_pdf import pdf_bp
+for _bp in (auth_bp, config_bp, admin_bp, aprob_ar_bp, aprob_ap_bp, concil_bp, fb_bp, ar_real_bp, multi_hotel_bp, exportador_bp, calipolis_bp, demo_bp, demo_sim_bp, calipolis_analisis_bp, reportes_pdf_bp, blog_bp, billing_bp, signup_bp, about_bp, pdf_bp):
     app.register_blueprint(_bp)
 
 _pipeline_running = False
@@ -901,6 +902,28 @@ def api_stats_banco():
         return jsonify({"error": str(e)}), 500
 
 
+
+@app.route("/api/test_notif", methods=["POST"])
+@login_required
+def api_test_notif():
+    """Envia una notificacion de prueba por todos los canales activos."""
+    try:
+        from notificaciones import enviar_por_canales, _load_config
+        cfg = _load_config()
+        asunto = "Test Yve.01 — Notificacion de prueba"
+        html_body = "<p>Esta es una notificacion de prueba de <strong>Yve.01</strong>.</p><p>Si ves este mensaje, las notificaciones estan correctamente configuradas.</p>"
+        txt_body = "Notificacion de prueba de Yve.01. Si ves este mensaje, las notificaciones funcionan correctamente."
+        resultados = enviar_por_canales(asunto, html_body, txt_body, "test")
+        canales_activos = [k for k, v in cfg.get("canales", {}).items() if v]
+        return jsonify({
+            "ok": True,
+            "resultados": resultados,
+            "canales_activos": canales_activos,
+            "message": "Notificacion enviada por: " + ", ".join(resultados.keys()) if resultados else "Sin canales configurados"
+        })
+    except Exception as e:
+        return jsonify({"ok": False, "error": str(e)}), 500
+
 @app.route("/api/notif_config", methods=["GET"])
 def api_notif_config_get():
     """Devuelve la configuración de notificaciones."""
@@ -935,6 +958,25 @@ def api_notif_config_save():
         return jsonify({"ok": True})
     except Exception as e:
         return jsonify({"ok": False, "error": str(e)}), 500
+
+
+@app.route("/api/cache/clear", methods=["POST"])
+@login_required
+def api_cache_clear():
+    """Limpia el cache de Excel en memoria."""
+    global _EXCEL_CACHE
+    _EXCEL_CACHE = {}
+    try:
+        from tab_fb_dashboard import _invalidate
+        _invalidate()
+    except Exception:
+        pass
+    try:
+        from dashboard_calipolis import _CAL_CACHE
+        _CAL_CACHE.clear()
+    except Exception:
+        pass
+    return jsonify({"ok": True, "message": "Cache limpiado"})
 
 
 @app.route("/api/notificaciones")
@@ -1518,7 +1560,7 @@ tr:hover td{background:rgba(255,255,255,.025)}
   </div>
 
   <div id="panel-ar" class="panel active">
-  <div style="display:flex;justify-content:flex-end;gap:12px;margin-bottom:14px"><a href="/api/exportar/ar" style="background:#1a73e8;color:white;padding:8px 16px;border-radius:8px;text-decoration:none;font-weight:600;font-size:13px">⬇️ Descargar Excel</a><a href="/aprobaciones-ar/" class="btn-ref" style="text-decoration:none" title="Abrir panel de aprobaciones AR">📲 Aprobar facturas AR</a></div>
+  <div style="display:flex;justify-content:flex-end;gap:12px;margin-bottom:14px"><a href="/api/exportar/ar" class="btn-ref" style="text-decoration:none">⬇️ Excel</a><a href="/api/exportar/ar/pdf" class="btn-ref" style="text-decoration:none">📄 PDF</a><a href="/aprobaciones-ar/" class="btn-ref" style="text-decoration:none" title="Abrir panel de aprobaciones AR">📲 Aprobar facturas AR</a></div>
   <!-- STATS -->
   <div class="stats">
     <div class="sc hl c-blu">
@@ -1682,6 +1724,7 @@ tr:hover td{background:rgba(255,255,255,.025)}
       <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:18px;flex-wrap:wrap;gap:10px">
         <div class="card-title" style="margin:0" data-i18n="notif.canales">Canales de notificación</div>
         <button class="btn-ref" onclick="guardarNotifConfig()" id="btn-save-notif" data-i18n="notif.guardar" style="font-size:12px">💾 Guardar configuración</button>
+        <button class="btn-ref" onclick="probarNotif()" style="font-size:12px">🔔 Probar</button>
       </div>
       <div style="display:grid;grid-template-columns:repeat(4,1fr);gap:12px;margin-bottom:18px" id="notif-canales">
         <!-- channel cards inject here -->
@@ -3635,6 +3678,22 @@ async function guardarNotifConfig() {
   } catch(e) {
     btn.textContent = '⚠️ Error';
     setTimeout(() => { btn.textContent = '💾 Guardar configuración'; }, 2000);
+  }
+}
+
+async function probarNotif() {
+  const btn = document.querySelector('[onclick="probarNotif()"]');
+  if (btn) { btn.disabled = true; btn.textContent = '⏳ Enviando...'; }
+  try {
+    const r = await fetch('/api/test_notif', {method:'POST'});
+    const d = await r.json();
+    if (btn) {
+      btn.textContent = d.ok ? ('✓ ' + (d.message || 'Enviado')) : ('✗ ' + (d.error || 'Error'));
+      btn.style.color = d.ok ? 'var(--grn)' : 'var(--red)';
+      setTimeout(() => { btn.textContent = '🔔 Probar'; btn.style.color = ''; btn.disabled = false; }, 3000);
+    }
+  } catch(e) {
+    if (btn) { btn.textContent = '✗ Error'; btn.disabled = false; }
   }
 }
 
