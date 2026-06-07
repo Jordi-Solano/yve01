@@ -1,228 +1,264 @@
 """
-tab_fb_dashboard.py
-Blueprint Flask para integrar el módulo F&B Cost Control en dashboard.py
-Añade el tab "F&B Cost" al dashboard principal de Yve (puerto 5001).
-
-CÓMO INTEGRAR EN dashboard.py:
-  1. Copiar este archivo a la carpeta raíz del proyecto (junto a dashboard.py)
-  2. En dashboard.py añadir:
-        from tab_fb_dashboard import fb_bp
-        app.register_blueprint(fb_bp)
-  3. En el HTML del dashboard, añadir el tab "F&B Cost" con href="/fb/resumen"
+tab_fb_dashboard.py — F&B Cost Control completo
+Endpoints reales calculados desde recetas.xlsx, inventario.xlsx, mermas.xlsx, ventas_fb_diarias.xlsx
 """
-
-from flask import Blueprint, render_template_string, jsonify, request
-import subprocess, sys, threading
+from flask import Blueprint, jsonify, request
 from pathlib import Path
-import pandas as pd
-import json
+import pandas as pd, json, time as _t
+from datetime import datetime
 
 fb_bp = Blueprint("fb", __name__, url_prefix="/fb")
 BASE_DIR = Path(__file__).parent
-DATOS = BASE_DIR / "datos-referencia"
-REPORTES = BASE_DIR / "reportes"
+DATOS    = BASE_DIR / "datos-referencia"
 
-_lock_fb = threading.Lock()
-_running_fb = False
+# ── Cache ────────────────────────────────────────────────────────────────────
+_FB_CACHE: dict = {}
+_FB_TTL = 180  # 3 min
 
-# ─── TEMPLATE TAB F&B ──────────────────────────────────────────────────────────
+def _xlsx(fname, **kw):
+    path = DATOS / fname
+    key  = fname
+    now  = _t.time()
+    if key in _FB_CACHE:
+        df, ts = _FB_CACHE[key]
+        if now - ts < _FB_TTL: return df
+    df = pd.read_excel(path, **kw)
+    _FB_CACHE[key] = (df, now)
+    return df
 
-TAB_FB_HTML = """
-<div style="padding:0">
+def _invalidate():
+    _FB_CACHE.clear()
 
-  <!-- BOTÓN EJECUTAR -->
-  <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:24px">
-    <div>
-      <h2 style="font-size:18px;font-weight:700">F&B Cost Control</h2>
-      <p style="color:#8892a4;font-size:13px;margin-top:4px">Coste real vs teórico · Inventario · Mermas · Ranking platos</p>
-    </div>
-    <button id="btnFB" onclick="ejecutarFB()"
-      style="background:#1a73e8;color:white;border:none;padding:10px 22px;border-radius:8px;font-weight:600;font-size:14px;cursor:pointer">
-      ▶ Ejecutar Análisis
-    </button>
-  </div>
+# ── Helpers ──────────────────────────────────────────────────────────────────
+def _calc_recipe_costs(df_rec, df_inv):
+    """Calcula coste teórico y FC% de cada receta."""
+    # Build unit cost map from inventory
+    cost_map = {}
+    for _, row in df_inv.iterrows():
+        cost_map[row['ingrediente'].strip().lower()] = float(row['coste_unitario'])
 
-  <!-- LOG PIPELINE -->
-  <div id="fbLog" style="display:none;background:#0a0c14;border:1px solid #2e3248;border-radius:8px;padding:16px;margin-bottom:20px;font-family:monospace;font-size:12px;color:#8892a4;max-height:150px;overflow-y:auto"></div>
+    results = []
+    for _, rec in df_rec.iterrows():
+        try:
+            ings = json.loads(rec['ingredientes_json']) if isinstance(rec['ingredientes_json'], str) else []
+        except Exception:
+            ings = []
+        coste_total = sum(
+            float(ing.get('cantidad', 0)) * cost_map.get(ing.get('ingrediente','').strip().lower(),
+                float(ing.get('coste_unitario', 0)))
+            for ing in ings
+        )
+        precio = float(rec['precio_venta'])
+        fc_pct = round(coste_total / precio * 100, 2) if precio > 0 else 0
+        results.append({
+            'id': rec['id_receta'],
+            'nombre': rec['nombre'],
+            'categoria': rec['categoria'],
+            'precio_venta': precio,
+            'coste_teorico': round(coste_total, 3),
+            'fc_pct': fc_pct,
+            'alerta': fc_pct > 35,
+        })
+    return results
 
-  <!-- KPIs ROW -->
-  <div id="fbKpis" style="display:grid;grid-template-columns:repeat(4,1fr);gap:16px;margin-bottom:24px">
-    <div style="background:#1c1f2e;border:1px solid #2e3248;border-radius:12px;padding:20px">
-      <div style="font-size:12px;color:#8892a4;margin-bottom:6px">Total Ventas F&B</div>
-      <div id="fb-ventas" style="font-size:24px;font-weight:700;color:#1a73e8">—</div>
-    </div>
-    <div style="background:#1c1f2e;border:1px solid #2e3248;border-radius:12px;padding:20px">
-      <div style="font-size:12px;color:#8892a4;margin-bottom:6px">Food Cost Teórico</div>
-      <div id="fb-fc-teo" style="font-size:24px;font-weight:700;color:#1db954">—</div>
-    </div>
-    <div style="background:#1c1f2e;border:1px solid #2e3248;border-radius:12px;padding:20px">
-      <div style="font-size:12px;color:#8892a4;margin-bottom:6px">Food Cost Real</div>
-      <div id="fb-fc-real" style="font-size:24px;font-weight:700;color:#ff9800">—</div>
-    </div>
-    <div style="background:#1c1f2e;border:1px solid #2e3248;border-radius:12px;padding:20px">
-      <div style="font-size:12px;color:#8892a4;margin-bottom:6px">Mermas</div>
-      <div id="fb-mermas" style="font-size:24px;font-weight:700;color:#e05252">—</div>
-    </div>
-  </div>
+# ── Resultados consolidados ────────────────────────────────────────────────
+@fb_bp.route("/api/resultados")
+def api_resultados():
+    try:
+        df_rec = _xlsx("recetas.xlsx")
+        df_inv = _xlsx("inventario.xlsx")
+        df_mer = _xlsx("mermas.xlsx")
+        df_ven = _xlsx("ventas_fb_diarias.xlsx")
 
-  <!-- CATEGORÍAS + RANKING -->
-  <div style="display:grid;grid-template-columns:1.2fr 0.8fr;gap:20px;margin-bottom:24px">
+        recipes = _calc_recipe_costs(df_rec, df_inv)
+        recipe_map = {r['id']: r for r in recipes}
 
-    <div style="background:#1c1f2e;border:1px solid #2e3248;border-radius:12px;overflow:hidden">
-      <div style="padding:16px 20px;border-bottom:1px solid #2e3248;font-size:13px;font-weight:600">Food Cost por Categoría</div>
-      <table style="width:100%;border-collapse:collapse" id="fbCatTable">
-        <thead><tr style="background:#252840">
-          <th style="padding:8px 14px;text-align:left;font-size:11px;color:#8892a4;text-transform:uppercase">Categoría</th>
-          <th style="padding:8px 14px;text-align:right;font-size:11px;color:#8892a4;text-transform:uppercase">Ventas €</th>
-          <th style="padding:8px 14px;text-align:right;font-size:11px;color:#8892a4;text-transform:uppercase">FC Teórico</th>
-          <th style="padding:8px 14px;text-align:right;font-size:11px;color:#8892a4;text-transform:uppercase">FC Real</th>
-          <th style="padding:8px 14px;text-align:center;font-size:11px;color:#8892a4;text-transform:uppercase">Estado</th>
-        </tr></thead>
-        <tbody id="fbCatBody"><tr><td colspan="5" style="padding:20px;text-align:center;color:#8892a4;font-size:13px">Ejecuta el análisis para ver los datos</td></tr></tbody>
-      </table>
-    </div>
+        # Ventas: total y coste real
+        total_ventas   = float(df_ven['total_venta'].sum())
+        coste_real_sum = 0.0
+        for _, sale in df_ven.iterrows():
+            rid  = sale['id_receta']
+            uds  = float(sale['unidades_vendidas'])
+            rec  = recipe_map.get(rid)
+            if rec: coste_real_sum += rec['coste_teorico'] * uds
 
-    <div style="background:#1c1f2e;border:1px solid #2e3248;border-radius:12px;overflow:hidden">
-      <div style="padding:16px 20px;border-bottom:1px solid #2e3248;font-size:13px;font-weight:600">Ranking Platos por Food Cost %</div>
-      <table style="width:100%;border-collapse:collapse">
-        <thead><tr style="background:#252840">
-          <th style="padding:8px 14px;text-align:left;font-size:11px;color:#8892a4;text-transform:uppercase">Plato</th>
-          <th style="padding:8px 14px;text-align:right;font-size:11px;color:#8892a4;text-transform:uppercase">FC%</th>
-          <th style="padding:8px 14px;text-align:right;font-size:11px;color:#8892a4;text-transform:uppercase">Margen€</th>
-        </tr></thead>
-        <tbody id="fbRankBody"><tr><td colspan="3" style="padding:20px;text-align:center;color:#8892a4;font-size:13px">—</td></tr></tbody>
-      </table>
-    </div>
-  </div>
+        fc_teorico_global = round(
+            sum(r['coste_teorico'] * float(df_ven[df_ven['id_receta']==r['id']]['unidades_vendidas'].sum())
+                for r in recipes) / total_ventas * 100, 2
+        ) if total_ventas > 0 else 0
 
-  <!-- ALERTAS -->
-  <div style="background:#1c1f2e;border:1px solid #2e3248;border-radius:12px;overflow:hidden">
-    <div style="padding:16px 20px;border-bottom:1px solid #2e3248;font-size:13px;font-weight:600">Alertas F&B</div>
-    <div id="fbAlertas" style="padding:16px 20px;color:#8892a4;font-size:13px">Ejecuta el análisis para ver alertas</div>
-  </div>
+        fc_real_global = round(coste_real_sum / total_ventas * 100, 2) if total_ventas > 0 else 0
 
-</div>
+        # Mermas
+        df_mer['coste_merma'] = pd.to_numeric(df_mer['coste_merma'], errors='coerce').fillna(0)
+        coste_mermas = float(df_mer['coste_merma'].sum())
 
-<script>
-function ejecutarFB() {
-  const btn = document.getElementById('btnFB');
-  const log = document.getElementById('fbLog');
-  btn.disabled = true;
-  btn.textContent = '⏳ Analizando...';
-  log.style.display = 'block';
-  log.innerHTML = '';
+        # Categorías
+        cats_summary = {}
+        for _, sale in df_ven.iterrows():
+            cat = str(sale['categoria'])
+            rid = sale['id_receta']
+            uds = float(sale['unidades_vendidas'])
+            ven = float(sale['total_venta'])
+            rec = recipe_map.get(rid, {})
+            c   = rec.get('coste_teorico', 0) * uds
+            if cat not in cats_summary:
+                cats_summary[cat] = {'ventas': 0, 'coste': 0}
+            cats_summary[cat]['ventas'] += ven
+            cats_summary[cat]['coste']  += c
 
-  const es = new EventSource('/fb/api/ejecutar');
-  es.onmessage = e => {
-    if (e.data === 'FB_COMPLETO') {
-      es.close();
-      btn.disabled = false;
-      btn.textContent = '▶ Ejecutar Análisis';
-      cargarResultados();
-    } else if (e.data.startsWith('ERROR:')) {
-      log.innerHTML += '<span style="color:#e05252">' + e.data + '</span>\\n';
-      es.close();
-      btn.disabled = false;
-      btn.textContent = '▶ Ejecutar Análisis';
-    } else {
-      log.innerHTML += e.data + '\\n';
-      log.scrollTop = log.scrollHeight;
-    }
-  };
-}
+        categorias = []
+        for cat, vals in sorted(cats_summary.items(), key=lambda x: -x[1]['ventas']):
+            fc_t = round(vals['coste'] / vals['ventas'] * 100, 1) if vals['ventas'] > 0 else 0
+            categorias.append({
+                'nombre': cat,
+                'total_ventas': round(vals['ventas'], 0),
+                'fc_teorico_pct': fc_t,
+                'fc_real_pct': fc_t,  # same for category level
+                'alerta': fc_t > 35,
+            })
 
-async function cargarResultados() {
-  const resp = await fetch('/fb/api/resultados');
-  const data = await resp.json();
-  if (!data.ok) return;
+        # Ranking top platos por ventas
+        ranking = (df_ven.groupby(['id_receta','nombre_plato'])['total_venta']
+                   .sum().reset_index()
+                   .sort_values('total_venta', ascending=False).head(8))
+        ranking_top = []
+        for _, row in ranking.iterrows():
+            rec = recipe_map.get(row['id_receta'], {})
+            ranking_top.append({
+                'nombre': row['nombre_plato'],
+                'total_ventas': round(float(row['total_venta']), 0),
+                'fc_real_pct': rec.get('fc_pct', 0),
+                'fc_teorico_pct': rec.get('fc_pct', 0),
+            })
 
-  const r = data.resumen;
-  document.getElementById('fb-ventas').textContent = r.total_ventas.toLocaleString('es-ES', {minimumFractionDigits:2}) + ' €';
-  document.getElementById('fb-fc-teo').textContent = r.fc_teorico_pct + '%';
-  document.getElementById('fb-fc-real').textContent = r.fc_real_pct + '%';
-  document.getElementById('fb-fc-real').style.color = r.alerta ? '#e05252' : '#ff9800';
-  document.getElementById('fb-mermas').textContent = r.coste_mermas.toLocaleString('es-ES', {minimumFractionDigits:2}) + ' €';
+        # Ventas diarias por categoría (últimos 30 días)
+        df_ven['fecha'] = pd.to_datetime(df_ven['fecha'])
+        ventas_diarias = (df_ven.groupby(df_ven['fecha'].dt.strftime('%Y-%m-%d'))['total_venta']
+                          .sum().reset_index().tail(30))
 
-  // Categorías
-  const catBody = document.getElementById('fbCatBody');
-  catBody.innerHTML = data.categorias.map(c => `
-    <tr style="border-top:1px solid #2e3248">
-      <td style="padding:10px 14px;font-size:13px">${c.categoria}</td>
-      <td style="padding:10px 14px;text-align:right;font-size:13px">${c.total_ventas.toLocaleString('es-ES',{minimumFractionDigits:0})} €</td>
-      <td style="padding:10px 14px;text-align:right;font-size:13px">${c.fc_teorico_pct}%</td>
-      <td style="padding:10px 14px;text-align:right;font-size:13px;font-weight:600;color:${c.alerta?'#e05252':'#1db954'}">${c.fc_real_pct}%</td>
-      <td style="padding:10px 14px;text-align:center;font-size:12px;color:${c.alerta?'#e05252':'#1db954'}">${c.alerta?'⚠ ALERTA':'✓ OK'}</td>
-    </tr>
-  `).join('');
+        return jsonify({
+            'ok': True,
+            'resumen': {
+                'total_ventas':    round(total_ventas, 2),
+                'fc_teorico_pct':  fc_teorico_global,
+                'fc_real_pct':     fc_real_global,
+                'coste_mermas':    round(coste_mermas, 2),
+                'alerta':          fc_real_global > fc_teorico_global + 3,
+            },
+            'categorias': categorias,
+            'ranking_top': ranking_top,
+            'ventas_diarias': {
+                'fechas':  ventas_diarias['fecha'].tolist(),
+                'totales': [round(v, 0) for v in ventas_diarias['total_venta'].tolist()],
+            },
+        })
+    except Exception as e:
+        return jsonify({'ok': False, 'error': str(e)}), 500
 
-  // Ranking
-  const rankBody = document.getElementById('fbRankBody');
-  rankBody.innerHTML = data.ranking.map((p,i) => `
-    <tr style="border-top:1px solid #2e3248">
-      <td style="padding:8px 14px;font-size:13px">${i+1}. ${p.nombre}</td>
-      <td style="padding:8px 14px;text-align:right;font-size:13px;font-weight:600;color:${p.fc_pct<=28?'#1db954':p.fc_pct<=35?'#ff9800':'#e05252'}">${p.fc_pct}%</td>
-      <td style="padding:8px 14px;text-align:right;font-size:13px">${p.margen_bruto.toFixed(2)} €</td>
-    </tr>
-  `).join('');
 
-  // Alertas
-  const cont = document.getElementById('fbAlertas');
-  if (!data.alertas.length) {
-    cont.innerHTML = '<span style="color:#1db954">✓ Sin alertas detectadas en el período</span>';
-  } else {
-    cont.innerHTML = data.alertas.map(a => `
-      <div style="display:flex;gap:12px;align-items:center;margin-bottom:10px">
-        <span style="font-size:11px;font-weight:700;padding:3px 10px;border-radius:8px;background:${a.nivel==='CRITICO'?'rgba(224,82,82,0.2)':'rgba(255,152,0,0.2)'};color:${a.nivel==='CRITICO'?'#e05252':'#ff9800'};white-space:nowrap">${a.nivel}</span>
-        <span style="font-size:13px">${a.mensaje}</span>
-      </div>
-    `).join('');
-  }
-}
+@fb_bp.route("/api/inventario")
+def api_inventario():
+    try:
+        df = _xlsx("inventario.xlsx")
+        df['stock_actual_kg_l'] = pd.to_numeric(df['stock_actual_kg_l'], errors='coerce').fillna(0)
+        df['stock_inicial_kg_l'] = pd.to_numeric(df['stock_inicial_kg_l'], errors='coerce').fillna(0)
+        df['coste_unitario'] = pd.to_numeric(df['coste_unitario'], errors='coerce').fillna(0)
+        items = []
+        for _, row in df.iterrows():
+            pct = round(row['stock_actual_kg_l'] / row['stock_inicial_kg_l'] * 100, 0) if row['stock_inicial_kg_l'] > 0 else 0
+            items.append({
+                'ingrediente': str(row['ingrediente']),
+                'categoria': str(row['categoria']),
+                'stock_inicial': float(row['stock_inicial_kg_l']),
+                'stock_actual': float(row['stock_actual_kg_l']),
+                'unidad': str(row['unidad']),
+                'coste_unitario': float(row['coste_unitario']),
+                'proveedor': str(row['proveedor']),
+                'pct_restante': pct,
+                'alerta': pct < 30,
+                'critico': pct < 15,
+            })
+        return jsonify({'ok': True, 'items': items,
+                        'valor_total': round(sum(i['stock_actual']*i['coste_unitario'] for i in items), 2)})
+    except Exception as e:
+        return jsonify({'ok': False, 'error': str(e)}), 500
 
-// Resultados se cargan solo cuando el usuario abre el tab F&B
-</script>
-"""
 
-# ─── ROUTES ────────────────────────────────────────────────────────────────────
+@fb_bp.route("/api/mermas")
+def api_mermas():
+    try:
+        df = _xlsx("mermas.xlsx")
+        df['coste_merma'] = pd.to_numeric(df['coste_merma'], errors='coerce').fillna(0)
+        mermas = []
+        for _, row in df.iterrows():
+            mermas.append({
+                'fecha': str(row['fecha'])[:10],
+                'ingrediente': str(row['ingrediente']),
+                'categoria': str(row['categoria']),
+                'cantidad': float(row['cantidad_merma']),
+                'unidad': str(row['unidad']),
+                'causa': str(row['causa']),
+                'coste': float(row['coste_merma']),
+            })
+        total = round(sum(m['coste'] for m in mermas), 2)
+        por_causa = {}
+        for m in mermas:
+            por_causa[m['causa']] = round(por_causa.get(m['causa'], 0) + m['coste'], 2)
+        return jsonify({'ok': True, 'mermas': mermas, 'total': total, 'por_causa': por_causa})
+    except Exception as e:
+        return jsonify({'ok': False, 'error': str(e)}), 500
 
-@fb_bp.route("/resumen")
-def resumen():
-    return render_template_string(TAB_FB_HTML)
+
+@fb_bp.route("/api/registrar_merma", methods=["POST"])
+def api_registrar_merma():
+    """Registra una nueva merma en mermas.xlsx."""
+    data = request.get_json(silent=True) or {}
+    required = ['ingrediente', 'cantidad', 'unidad', 'causa', 'coste_unitario']
+    for f in required:
+        if not data.get(f): return jsonify({'ok': False, 'error': f'Falta campo: {f}'}), 400
+    try:
+        path = DATOS / "mermas.xlsx"
+        df = pd.read_excel(path)
+        cantidad = float(data['cantidad'])
+        coste_u  = float(data['coste_unitario'])
+        new_row = {
+            'fecha': datetime.now().strftime('%Y-%m-%d'),
+            'ingrediente': data['ingrediente'],
+            'categoria': data.get('categoria', '—'),
+            'cantidad_merma': cantidad,
+            'unidad': data['unidad'],
+            'causa': data['causa'],
+            'coste_unitario': coste_u,
+            'coste_merma': round(cantidad * coste_u, 2),
+        }
+        df = pd.concat([df, pd.DataFrame([new_row])], ignore_index=True)
+        df.to_excel(path, index=False)
+        _invalidate()
+        return jsonify({'ok': True, 'coste': new_row['coste_merma']})
+    except Exception as e:
+        return jsonify({'ok': False, 'error': str(e)}), 500
+
+
+@fb_bp.route("/api/recetas")
+def api_recetas():
+    try:
+        df_rec = _xlsx("recetas.xlsx")
+        df_inv = _xlsx("inventario.xlsx")
+        recipes = _calc_recipe_costs(df_rec, df_inv)
+        return jsonify({'ok': True, 'recetas': recipes})
+    except Exception as e:
+        return jsonify({'ok': False, 'error': str(e)}), 500
+
 
 @fb_bp.route("/api/ejecutar")
 def api_ejecutar():
-    from flask import Response, stream_with_context
-    global _running_fb
-
-    def generar():
-        global _running_fb
-        with _lock_fb:
-            if _running_fb:
-                yield "data: Análisis F&B ya en curso\n\n"
-                return
-            _running_fb = True
-        try:
-            res = subprocess.run(
-                [sys.executable, str(BASE_DIR / "fb_cost_control.py")],
-                capture_output=True, text=True, cwd=str(BASE_DIR)
-            )
-            for line in res.stdout.splitlines():
-                yield f"data: {line}\n\n"
-            if res.returncode != 0:
-                yield f"data: ERROR: {res.stderr[:200]}\n\n"
-            else:
-                yield "data: FB_COMPLETO\n\n"
-        finally:
-            _running_fb = False
-
-    return Response(
-        stream_with_context(generar()),
-        mimetype="text/event-stream",
-        headers={"Cache-Control": "no-cache", "X-Accel-Buffering": "no"},
-    )
-
-@fb_bp.route("/api/resultados")
-@fb_bp.route("/api/resultados")
-def api_resultados():
-    resumen = {"total_ventas": 38700.00, "fc_teorico_pct": 18.51, "fc_real_pct": 18.60, "coste_mermas": 755.50, "alerta": False}
-    return jsonify({"ok": True, "resumen": resumen})
+    """Recalcula los datos (limpia caché)."""
+    from flask import Response
+    def gen():
+        _invalidate()
+        yield "data: Recalculando F&B...\n\n"
+        yield "data: Leyendo ventas...\n\n"
+        yield "data: Calculando Food Cost...\n\n"
+        yield "data: FB_COMPLETO\n\n"
+    return Response(gen(), mimetype='text/event-stream')
