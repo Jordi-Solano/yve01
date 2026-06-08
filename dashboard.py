@@ -1868,13 +1868,13 @@ tr:hover td{background:rgba(255,255,255,.025)}
       </div>
       <button class="btn-run" onclick="procesarARReal()" id="btn-ar-real" style="font-size:13px">
         <div class="spin" id="spin-ar"></div>
-        <span id="lbl-ar">▶ Procesar Archivos</span>
+        <span id="lbl-ar">🔄 Cargar datos</span>
       </button>
     </div>
 
     <!-- KPI row -->
     <div id="ar-real-kpis" class="stats" style="grid-template-columns:repeat(4,1fr);margin-bottom:22px">
-      <div class="sc hl c-ora"><div class="sc-lbl">Pend. Facturar</div><div class="sc-val" id="arp-pend">—</div><div class="sc-sub">en reservas</div></div>
+      <div class="sc hl c-ora"><div class="sc-lbl">PENDIENTE FACTURAR</div><div class="sc-val" id="arp-pend">—</div><div class="sc-sub">en reservas activas</div></div>
       <div class="sc c-yel"><div class="sc-lbl">Facturado</div><div class="sc-val" id="arp-fact">—</div><div class="sc-sub">pendiente cobro</div></div>
       <div class="sc c-grn"><div class="sc-lbl">Cobrado</div><div class="sc-val" id="arp-cobr">—</div><div class="sc-sub">este período</div></div>
       <div class="sc c-red"><div class="sc-lbl">Saldo Total</div><div class="sc-val" id="arp-saldo">—</div><div class="sc-sub" id="arp-nclientes">— clientes</div></div>
@@ -1912,6 +1912,11 @@ tr:hover td{background:rgba(255,255,255,.025)}
     <div class="card" id="ar-log-card" style="display:none">
       <div class="card-title" data-i18n="card.logProcesamiento">Log de Procesamiento</div>
       <div id="ar-real-log" style="background:#060c1a;border:1px solid var(--s2);border-radius:10px;padding:14px;max-height:220px;overflow-y:auto;font-family:'JetBrains Mono',monospace;font-size:11px;line-height:1.8;color:var(--tx)"></div>
+    </div>
+    <!-- Alert: pending balance -->
+    <div id="ar-balance-alert" style="display:none;background:rgba(245,158,11,.08);border:1px solid rgba(245,158,11,.25);border-radius:12px;padding:14px 18px;font-size:13px;color:var(--ora);margin-top:12px">
+      <strong>💰 Saldo pendiente de cobro:</strong> <span id="ar-balance-txt">—</span>
+      — Contactar clientes para gestionar cobro.
     </div>
     <div id="ar-real-status" style="display:none"></div>
   </div><!-- /panel-ar_real -->
@@ -1970,11 +1975,11 @@ tr:hover td{background:rgba(255,255,255,.025)}
     <div id="mh-status" style="display:grid;grid-template-columns:repeat(3,1fr);gap:12px;margin-bottom:20px"></div>
 
     <!-- Tabla de hoteles -->
-    <div style="background:#1c1f2e;border:1px solid #2e3248;border-radius:12px;padding:20px;margin-bottom:20px;overflow-x:auto">
-      <h3 style="font-size:14px;margin-bottom:16px;color:#8892a4">Performance por Hotel</h3>
+    <div style="background:var(--s1);border:1px solid var(--s2);border-radius:14px;padding:20px;margin-bottom:20px;overflow-x:auto">
+      <h3 style="font-size:14px;margin-bottom:16px;color:var(--mut)">Performance por Hotel</h3>
       <table id="mh-table" style="width:100%;border-collapse:collapse;font-size:13px;min-width:900px">
         <thead>
-          <tr style="border-bottom:1px solid #2e3248;color:#8892a4">
+          <tr style="border-bottom:1px solid var(--s2);color:var(--mut)">
             <th style="text-align:left;padding:10px;font-weight:600">Hotel</th>
             <th style="text-align:left;padding:10px;font-weight:600">Ciudad</th>
             <th style="text-align:right;padding:10px;font-weight:600">Rooms</th>
@@ -1993,12 +1998,12 @@ tr:hover td{background:rgba(255,255,255,.025)}
 
     <!-- Rankings y Alertas -->
     <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(400px,1fr));gap:16px">
-      <div style="background:#1c1f2e;border:1px solid #2e3248;border-radius:12px;padding:20px">
-        <h3 style="font-size:14px;margin-bottom:16px;color:#8892a4">🏆 Top Performers (Revenue MTD)</h3>
+      <div style="background:var(--s1);border:1px solid var(--s2);border-radius:14px;padding:20px">
+        <h3 style="font-size:14px;margin-bottom:16px;color:var(--mut)">🏆 Top Performers (Revenue MTD)</h3>
         <div id="mh-rankings"></div>
       </div>
-      <div style="background:#1c1f2e;border:1px solid #2e3248;border-radius:12px;padding:20px">
-        <h3 style="font-size:14px;margin-bottom:16px;color:#8892a4">⚠️ Alertas Activas</h3>
+      <div style="background:var(--s1);border:1px solid var(--s2);border-radius:14px;padding:20px">
+        <h3 style="font-size:14px;margin-bottom:16px;color:var(--mut)">⚠️ Alertas Activas</h3>
         <div id="mh-alertas"></div>
       </div>
     </div>
@@ -4067,6 +4072,7 @@ async function cargarARRealData() {
     _s('arp-fact',     fmt(k.facturado));
     _s('arp-cobr',     fmt(k.cobrado));
     _s('arp-saldo',    fmt(k.saldo_total));
+    if (k.saldo_total > 0) { const al = document.getElementById('ar-balance-alert'); if (al) { al.style.display='block'; const bt = document.getElementById('ar-balance-txt'); if(bt) bt.textContent = fmt(k.saldo_total); } }
     _s('arp-nclientes', k.num_clientes + ' clientes activos');
     const kpisEl = document.getElementById('ar-real-kpis'); if (kpisEl) kpisEl.dataset.loaded = '1';
 
@@ -4145,22 +4151,25 @@ async function loadMultiHotel() {
 function renderMHKpis(kpis) {
   const cont = document.getElementById('mh-kpis');
   if (!cont) return;
+  cont.dataset.loaded = '1';
   const cards = [
-    {label: 'Hoteles', value: kpis.num_hoteles, color: '#1a73e8'},
-    {label: 'Habitaciones', value: kpis.total_rooms.toLocaleString('es-ES'), color: '#1a73e8'},
-    {label: 'Revenue MTD', value: '€' + (kpis.total_revenue_mtd / 1000000).toFixed(2) + 'M', color: '#1db954'},
-    {label: 'Ocupacion Avg', value: kpis.avg_occupancy + '%', color: '#1db954'},
-    {label: 'ADR Avg', value: '€' + kpis.avg_adr.toFixed(0), color: '#ff9800'},
-    {label: 'RevPAR Avg', value: '€' + kpis.avg_revpar.toFixed(0), color: '#ff9800'},
-    {label: 'GOP% Avg', value: kpis.avg_gop_pct + '%', color: '#1db954'},
-    {label: 'Facturas Pend.', value: kpis.total_facturas_pendientes + ' (€' + (kpis.total_facturas_importe/1000).toFixed(0) + 'K)', color: '#e05252'}
+    {label:'Hoteles activos',    value: kpis.num_hoteles,    sub: kpis.total_rooms + ' hab. totales', color:'var(--acc2)'},
+    {label:'Revenue MTD',        value: '€' + (kpis.total_revenue_mtd/1000).toFixed(0) + 'K', sub: 'ingresos del mes', color:'var(--grn)'},
+    {label:'Ocupación media',    value: kpis.avg_occupancy + '%', sub: 'ADR €' + kpis.avg_adr, color:'var(--grn)'},
+    {label:'GOP% medio',         value: kpis.avg_gop_pct + '%',   sub: 'RevPAR €' + kpis.avg_revpar, color: kpis.avg_gop_pct >= 20 ? 'var(--grn)' : 'var(--ora)'},
+    {label:'Facturas pendientes',value: kpis.total_facturas_pendientes, sub: kpis.total_alertas + ' alertas activas', color: kpis.total_facturas_pendientes > 20 ? 'var(--ora)' : 'var(--mut)'},
+    {label:'Estado propiedades', value: kpis.hoteles_ok + '/' + kpis.num_hoteles, sub: kpis.hoteles_warning + ' avisos · ' + kpis.hoteles_criticos + ' críticos', color: kpis.hoteles_criticos > 0 ? 'var(--red)' : 'var(--grn)'},
   ];
-  cont.innerHTML = cards.map(c =>
-    '<div style="background:var(--s1);border:1px solid var(--s2);border-radius:13px;padding:18px 16px">' +
-    '<div style="font-size:10px;color:var(--mut);text-transform:uppercase;letter-spacing:.6px;margin-bottom:10px;font-weight:600">' + c.label + '</div>' +
-    '<div style="font-size:24px;font-weight:800;color:' + c.color + ';line-height:1;letter-spacing:-.5px">' + c.value + '</div>' +
-    '</div>'
-  ).join('');
+  cont.innerHTML = '<div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:12px">' +
+    cards.map(c =>
+      '<div style="background:var(--s1);border:1px solid var(--s2);border-radius:13px;padding:16px">' +
+      '<div style="font-size:10px;color:var(--mut);text-transform:uppercase;letter-spacing:.5px;font-weight:600;margin-bottom:8px">' + c.label + '</div>' +
+      '<div style="font-size:26px;font-weight:800;color:' + c.color + ';letter-spacing:-1px;line-height:1">' + c.value + '</div>' +
+      '<div style="font-size:11px;color:var(--dim);margin-top:5px">' + c.sub + '</div>' +
+      '</div>'
+    ).join('') + '</div>';
+  // Re-apply language
+  if (_i18nLang && _i18nLang !== 'es') applyI18n(_i18nData);
 }
 
 function renderMHStatus(kpis) {
@@ -4182,29 +4191,32 @@ function renderMHStatus(kpis) {
 function renderMHTable(hoteles) {
   const tbody = document.getElementById('mh-tbody');
   if (!tbody) return;
-  tbody.innerHTML = '';
-  hoteles.forEach(h => {
-    const statusColor = h.status === 'ok' ? '#1db954' : h.status === 'warning' ? '#ff9800' : '#e05252';
-    const statusIcon = h.status === 'ok' ? '*' : h.status === 'warning' ? '!' : 'X';
-    const tr = document.createElement('tr');
-    tr.style.cssText = 'border-bottom:1px solid #2e3248;cursor:pointer;transition:background 0.2s';
-    tr.dataset.hotelId = h.id;
-    tr.addEventListener('mouseover', () => tr.style.background = 'rgba(26,115,232,0.08)');
-    tr.addEventListener('mouseout', () => tr.style.background = 'transparent');
-    tr.addEventListener('click', () => openHotelDetail(h.id));
-    tr.innerHTML = 
-      '<td style="padding:10px;font-weight:600">' + h.nombre + ' <span style="color:#8892a4;font-size:11px">' + h.tier + '</span></td>' +
-      '<td style="padding:10px;color:#8892a4">' + h.ciudad + ', ' + h.pais + '</td>' +
+  if (!hoteles || !hoteles.length) {
+    tbody.innerHTML = '<tr><td colspan="10" style="text-align:center;padding:24px;color:var(--dim)">Sin datos de hoteles</td></tr>';
+    return;
+  }
+  tbody.innerHTML = hoteles.map(h => {
+    const gopColor = h.gop_pct >= 22 ? 'var(--grn)' : h.gop_pct >= 16 ? 'var(--ora)' : 'var(--red)';
+    const occColor = h.ocupacion_pct >= 80 ? 'var(--grn)' : h.ocupacion_pct >= 65 ? 'var(--ora)' : 'var(--red)';
+    const statusBadge = h.status === 'ok' ? '<span class="badge b-ok">OK</span>' :
+                        h.status === 'warning' ? '<span class="badge b-unk">Aviso</span>' :
+                        '<span class="badge b-disc">Crítico</span>';
+    const revMTD = h.revenue_mtd >= 1000000
+      ? '€' + (h.revenue_mtd/1000000).toFixed(2) + 'M'
+      : '€' + Math.round(h.revenue_mtd/1000) + 'K';
+    return '<tr style="border-bottom:1px solid var(--s2)">' +
+      '<td style="padding:10px;font-weight:600">' + h.nombre + '</td>' +
+      '<td style="padding:10px;color:var(--mut)">' + (h.ciudad||'—') + '</td>' +
       '<td style="padding:10px;text-align:right">' + h.habitaciones + '</td>' +
-      '<td style="padding:10px;text-align:right">' + h.ocupacion_pct + '%</td>' +
-      '<td style="padding:10px;text-align:right">€' + h.adr.toFixed(0) + '</td>' +
-      '<td style="padding:10px;text-align:right;font-weight:600">€' + h.revpar.toFixed(0) + '</td>' +
-      '<td style="padding:10px;text-align:right;font-weight:600;color:#1db954">€' + (h.revenue_mtd/1000000).toFixed(2) + 'M</td>' +
-      '<td style="padding:10px;text-align:right">' + h.gop_pct + '%</td>' +
-      '<td style="padding:10px;text-align:right">' + h.facturas_pendientes + '</td>' +
-      '<td style="padding:10px;text-align:center;color:' + statusColor + ';font-size:18px">' + statusIcon + '</td>';
-    tbody.appendChild(tr);
-  });
+      '<td style="padding:10px;text-align:right;color:' + occColor + ';font-weight:700">' + h.ocupacion_pct + '%</td>' +
+      '<td style="padding:10px;text-align:right">€' + h.adr + '</td>' +
+      '<td style="padding:10px;text-align:right">€' + h.revpar + '</td>' +
+      '<td style="padding:10px;text-align:right;font-weight:600">' + revMTD + '</td>' +
+      '<td style="padding:10px;text-align:right;font-weight:800;color:' + gopColor + '">' + h.gop_pct + '%</td>' +
+      '<td style="padding:10px;text-align:right;color:' + (h.facturas_pendientes > 10 ? 'var(--ora)' : 'var(--mut)') + '">' + (h.facturas_pendientes||0) + '</td>' +
+      '<td style="padding:10px;text-align:center">' + statusBadge + '</td>' +
+      '</tr>';
+  }).join('');
 }
 
 function renderMHRankings(top) {

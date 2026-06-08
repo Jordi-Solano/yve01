@@ -1,296 +1,135 @@
 """
-Generador de datos demo realistas para Multi-Hotel Dashboard
-Estructura escalable: desde grupos pequeños (3 hoteles) hasta cadenas grandes (100+)
+multi_hotel_data.py — Multi-Hotel Dashboard data
+Primary: kpis_hoteles.xlsx (Calipolis real data)
+Fallback: HOTELES_DEMO (extended demo for larger groups)
 """
-import json
-import os
-import random
+import json, os
+import pandas as pd
+from pathlib import Path
 from datetime import datetime, timedelta
 
-# Estructura de datos: cada hotel tiene métricas, finanzas, alertas
+BASE_DIR = Path(__file__).parent
+DATOS    = BASE_DIR / "datos-referencia"
+
+# ── Load real Calipolis data ──────────────────────────────────────────────
+def _load_calipolis():
+    try:
+        df = pd.read_excel(DATOS / "kpis_hoteles.xlsx")
+        hotels = []
+        for hid in df['hotel_id'].unique():
+            hdf  = df[df['hotel_id'] == hid].sort_values('mes')
+            last = hdf.iloc[-1]
+            # 6-month trend
+            trend_gop = hdf['gop_pct'].tolist()
+            trend_occ = hdf['ocupacion_pct'].tolist()
+            alertas_list = []
+            if float(last.get('alertas_activas', 0)) > 0:
+                alertas_list.append(f"{int(last['alertas_activas'])} alerta(s) activa(s)")
+            if float(last.get('out_of_balance_dias', 0)) > 0:
+                alertas_list.append(f"DRR: {int(last['out_of_balance_dias'])} día(s) OOB")
+            if float(last.get('facturas_ap_pendientes', 0)) > 8:
+                alertas_list.append(f"AP: {int(last['facturas_ap_pendientes'])} facturas pendientes")
+            gop = float(last['gop_pct'])
+            status = 'ok' if gop >= 20 else ('warning' if gop >= 15 else 'critical')
+            hotels.append({
+                "id":                  str(hid),
+                "nombre":              str(last['hotel_nombre']),
+                "grupo":               "Grupo Calipolis",
+                "ciudad":              "Sitges",
+                "pais":                "España",
+                "tier":                "4★",
+                "habitaciones":        int(last['habitaciones']),
+                "ocupacion_pct":       float(last['ocupacion_pct']),
+                "adr":                 float(last['adr_eur']),
+                "revpar":              float(last['revpar_eur']),
+                "revenue_mtd":         float(last['total_ingresos']),
+                "ingresos_rooms":      float(last['ingresos_rooms']),
+                "ingresos_fb":         float(last['ingresos_fb']),
+                "gop_pct":             gop,
+                "gop_eur":             float(last['gop_eur']),
+                "food_cost_pct":       float(last['food_cost_pct']),
+                "facturas_pendientes": int(last['facturas_ap_pendientes']) + int(last['facturas_ar_pendientes']),
+                "facturas_importe":    float(last['coste_ap_eur']),
+                "alertas":             alertas_list,
+                "status":              status,
+                "trend_gop":           trend_gop,
+                "trend_occ":           trend_occ,
+                "mes_actual":          str(last['mes']),
+            })
+        return hotels
+    except Exception as e:
+        print(f"[multi_hotel_data] Error loading Calipolis: {e}")
+        return []
+
+_CAL_CACHE = {"data": None, "ts": 0}
+
+def _get_hotels():
+    import time
+    now = time.time()
+    if _CAL_CACHE["data"] is None or now - _CAL_CACHE["ts"] > 300:
+        _CAL_CACHE["data"] = _load_calipolis() or HOTELES_DEMO
+        _CAL_CACHE["ts"]   = now
+    return _CAL_CACHE["data"]
+
+# ── Fallback demo data ────────────────────────────────────────────────────
 HOTELES_DEMO = [
-    # Grupo 1: Cadena pequeña (3 hoteles Calipolis-like)
-    {
-        "id": "h001",
-        "nombre": "Sitges Beach Hotel",
-        "grupo": "Mediterranean Hotels Group",
-        "ciudad": "Sitges",
-        "pais": "España",
-        "tier": "4★",
-        "habitaciones": 158,
-        "ocupacion_pct": 87.3,
-        "adr": 142.50,
-        "revpar": 124.40,
-        "revenue_mtd": 587450,
-        "gop_pct": 38.2,
-        "fb_pct": 18.6,
-        "facturas_pendientes": 23,
-        "facturas_importe": 47820,
-        "alertas": ["F&B cost 0.6% sobre target"],
-        "status": "ok"
-    },
-    {
-        "id": "h002",
-        "nombre": "Sitges Promenade Resort",
-        "grupo": "Mediterranean Hotels Group",
-        "ciudad": "Sitges",
-        "pais": "España",
-        "tier": "4★",
-        "habitaciones": 210,
-        "ocupacion_pct": 91.8,
-        "adr": 158.20,
-        "revpar": 145.20,
-        "revenue_mtd": 842900,
-        "gop_pct": 41.5,
-        "fb_pct": 17.2,
-        "facturas_pendientes": 31,
-        "facturas_importe": 62100,
-        "alertas": [],
-        "status": "ok"
-    },
-    {
-        "id": "h003",
-        "nombre": "Sitges Marina Suites",
-        "grupo": "Mediterranean Hotels Group",
-        "ciudad": "Sitges",
-        "pais": "España",
-        "tier": "5★",
-        "habitaciones": 89,
-        "ocupacion_pct": 78.4,
-        "adr": 285.00,
-        "revpar": 223.42,
-        "revenue_mtd": 597230,
-        "gop_pct": 35.8,
-        "fb_pct": 22.1,
-        "facturas_pendientes": 18,
-        "facturas_importe": 38500,
-        "alertas": ["Ocupación 4.2% bajo budget", "F&B cost crítico: 22.1%"],
-        "status": "warning"
-    },
-    # Grupo 2: Cadena grande internacional (8 hoteles "European Premier")
-    {
-        "id": "h101",
-        "nombre": "Premier Barcelona Diagonal",
-        "grupo": "European Premier Hotels",
-        "ciudad": "Barcelona",
-        "pais": "España",
-        "tier": "5★",
-        "habitaciones": 412,
-        "ocupacion_pct": 90.1,
-        "adr": 245.80,
-        "revpar": 221.46,
-        "revenue_mtd": 2754320,
-        "gop_pct": 42.8,
-        "fb_pct": 16.5,
-        "facturas_pendientes": 87,
-        "facturas_importe": 312400,
-        "alertas": [],
-        "status": "ok"
-    },
-    {
-        "id": "h102",
-        "nombre": "Premier Madrid Recoletos",
-        "grupo": "European Premier Hotels",
-        "ciudad": "Madrid",
-        "pais": "España",
-        "tier": "5★",
-        "habitaciones": 387,
-        "ocupacion_pct": 88.7,
-        "adr": 232.40,
-        "revpar": 206.14,
-        "revenue_mtd": 2412780,
-        "gop_pct": 40.2,
-        "fb_pct": 17.8,
-        "facturas_pendientes": 72,
-        "facturas_importe": 285900,
-        "alertas": ["3 facturas sin DI cert"],
-        "status": "warning"
-    },
-    {
-        "id": "h103",
-        "nombre": "Premier Paris Champs",
-        "grupo": "European Premier Hotels",
-        "ciudad": "Paris",
-        "pais": "Francia",
-        "tier": "5★",
-        "habitaciones": 290,
-        "ocupacion_pct": 92.4,
-        "adr": 412.50,
-        "revpar": 381.15,
-        "revenue_mtd": 3289400,
-        "gop_pct": 45.1,
-        "fb_pct": 19.2,
-        "facturas_pendientes": 64,
-        "facturas_importe": 421800,
-        "alertas": [],
-        "status": "ok"
-    },
-    {
-        "id": "h104",
-        "nombre": "Premier London Mayfair",
-        "grupo": "European Premier Hotels",
-        "ciudad": "London",
-        "pais": "Reino Unido",
-        "tier": "5★",
-        "habitaciones": 245,
-        "ocupacion_pct": 89.6,
-        "adr": 485.20,
-        "revpar": 434.74,
-        "revenue_mtd": 3194580,
-        "gop_pct": 43.7,
-        "fb_pct": 18.9,
-        "facturas_pendientes": 91,
-        "facturas_importe": 487200,
-        "alertas": [],
-        "status": "ok"
-    },
-    {
-        "id": "h105",
-        "nombre": "Premier Berlin Mitte",
-        "grupo": "European Premier Hotels",
-        "ciudad": "Berlin",
-        "pais": "Alemania",
-        "tier": "4★",
-        "habitaciones": 320,
-        "ocupacion_pct": 75.2,
-        "adr": 178.30,
-        "revpar": 134.08,
-        "revenue_mtd": 1287400,
-        "gop_pct": 32.4,
-        "fb_pct": 21.3,
-        "facturas_pendientes": 54,
-        "facturas_importe": 198400,
-        "alertas": ["GOP 8% bajo budget", "F&B cost crítico"],
-        "status": "critical"
-    },
-    {
-        "id": "h106",
-        "nombre": "Premier Roma Veneto",
-        "grupo": "European Premier Hotels",
-        "ciudad": "Roma",
-        "pais": "Italia",
-        "tier": "5★",
-        "habitaciones": 195,
-        "ocupacion_pct": 86.4,
-        "adr": 298.50,
-        "revpar": 257.91,
-        "revenue_mtd": 1498200,
-        "gop_pct": 39.8,
-        "fb_pct": 18.4,
-        "facturas_pendientes": 41,
-        "facturas_importe": 187300,
-        "alertas": [],
-        "status": "ok"
-    },
-    {
-        "id": "h107",
-        "nombre": "Premier Amsterdam Center",
-        "grupo": "European Premier Hotels",
-        "ciudad": "Amsterdam",
-        "pais": "Países Bajos",
-        "tier": "4★",
-        "habitaciones": 178,
-        "ocupacion_pct": 93.8,
-        "adr": 215.40,
-        "revpar": 202.04,
-        "revenue_mtd": 1115400,
-        "gop_pct": 41.2,
-        "fb_pct": 16.8,
-        "facturas_pendientes": 38,
-        "facturas_importe": 142600,
-        "alertas": [],
-        "status": "ok"
-    },
-    {
-        "id": "h108",
-        "nombre": "Premier Lisbon Avenida",
-        "grupo": "European Premier Hotels",
-        "ciudad": "Lisboa",
-        "pais": "Portugal",
-        "tier": "4★",
-        "habitaciones": 156,
-        "ocupacion_pct": 84.7,
-        "adr": 168.20,
-        "revpar": 142.46,
-        "revenue_mtd": 689400,
-        "gop_pct": 36.5,
-        "fb_pct": 19.6,
-        "facturas_pendientes": 28,
-        "facturas_importe": 89400,
-        "alertas": ["2 facturas duplicadas detectadas"],
-        "status": "warning"
-    }
+    {"id":"h001","nombre":"Sitges Beach Hotel","grupo":"Mediterranean Hotels Group","ciudad":"Sitges","pais":"España","tier":"4★","habitaciones":158,"ocupacion_pct":87.3,"adr":142.50,"revpar":124.40,"revenue_mtd":587450,"gop_pct":38.2,"fb_pct":18.6,"facturas_pendientes":23,"facturas_importe":47820,"alertas":["F&B cost 0.6% sobre target"],"status":"ok"},
+    {"id":"h002","nombre":"Barcelona Diagonal","grupo":"Mediterranean Hotels Group","ciudad":"Barcelona","pais":"España","tier":"5★","habitaciones":245,"ocupacion_pct":82.1,"adr":210.00,"revpar":172.41,"revenue_mtd":1124600,"gop_pct":41.8,"fb_pct":19.2,"facturas_pendientes":18,"facturas_importe":89340,"alertas":[],"status":"ok"},
+    {"id":"h003","nombre":"Tarragona Resort","grupo":"Mediterranean Hotels Group","ciudad":"Tarragona","pais":"España","tier":"4★","habitaciones":120,"ocupacion_pct":71.2,"adr":98.50,"revpar":70.13,"revenue_mtd":224400,"gop_pct":28.4,"fb_pct":21.8,"facturas_pendientes":34,"facturas_importe":28740,"alertas":["Ocupación baja — 71%","F&B cost alto"],"status":"warning"},
 ]
 
-def get_hoteles():
-    """Devuelve lista de hoteles con datos actualizados"""
-    return HOTELES_DEMO
+# ── Public API ────────────────────────────────────────────────────────────
+def get_hoteles(grupo=None):
+    hotels = _get_hotels()
+    if grupo:
+        hotels = [h for h in hotels if h.get("grupo") == grupo]
+    return hotels
 
 def get_grupos():
-    """Devuelve grupos hoteleros únicos"""
-    return list(set(h["grupo"] for h in HOTELES_DEMO))
+    seen, groups = set(), []
+    for h in _get_hotels():
+        g = h.get("grupo", "—")
+        if g not in seen:
+            seen.add(g)
+            groups.append(g)
+    return groups
 
 def get_kpis_consolidados(grupo=None):
-    """Calcula KPIs consolidados del grupo o de todos"""
-    hoteles = [h for h in HOTELES_DEMO if not grupo or h["grupo"] == grupo]
-    
-    if not hoteles:
-        return {}
-    
-    total_revenue = sum(h["revenue_mtd"] for h in hoteles)
-    total_rooms = sum(h["habitaciones"] for h in hoteles)
-    avg_occupancy = sum(h["ocupacion_pct"] * h["habitaciones"] for h in hoteles) / total_rooms
-    avg_adr = sum(h["adr"] * h["habitaciones"] for h in hoteles) / total_rooms
-    avg_revpar = sum(h["revpar"] * h["habitaciones"] for h in hoteles) / total_rooms
-    avg_gop = sum(h["gop_pct"] * h["revenue_mtd"] for h in hoteles) / total_revenue
-    total_facturas = sum(h["facturas_pendientes"] for h in hoteles)
-    total_facturas_eur = sum(h["facturas_importe"] for h in hoteles)
-    total_alertas = sum(len(h["alertas"]) for h in hoteles)
-    hoteles_criticos = sum(1 for h in hoteles if h["status"] == "critical")
-    hoteles_warning = sum(1 for h in hoteles if h["status"] == "warning")
-    
+    hotels = get_hoteles(grupo)
+    if not hotels: return {}
+    total_rev = sum(h.get("revenue_mtd", 0) for h in hotels)
+    avg_occ   = sum(h.get("ocupacion_pct", 0) for h in hotels) / len(hotels)
+    avg_gop   = sum(h.get("gop_pct", 0) for h in hotels) / len(hotels)
+    total_rooms = sum(h.get("habitaciones", 0) for h in hotels)
+    total_pend  = sum(h.get("facturas_pendientes", 0) for h in hotels)
+    total_alertas = sum(len(h.get("alertas", [])) for h in hotels)
     return {
-        "num_hoteles": len(hoteles),
-        "total_rooms": total_rooms,
-        "total_revenue_mtd": total_revenue,
-        "avg_occupancy": round(avg_occupancy, 1),
-        "avg_adr": round(avg_adr, 2),
-        "avg_revpar": round(avg_revpar, 2),
-        "avg_gop_pct": round(avg_gop, 1),
-        "total_facturas_pendientes": total_facturas,
-        "total_facturas_importe": total_facturas_eur,
-        "total_alertas": total_alertas,
-        "hoteles_criticos": hoteles_criticos,
-        "hoteles_warning": hoteles_warning,
-        "hoteles_ok": len(hoteles) - hoteles_criticos - hoteles_warning
+        "num_hoteles":              len(hotels),
+        "total_rooms":              total_rooms,
+        "total_revenue_mtd":        round(total_rev, 0),
+        "avg_occupancy":            round(avg_occ, 1),
+        "avg_adr":                  round(sum(h.get("adr", 0) for h in hotels) / len(hotels), 2),
+        "avg_revpar":               round(sum(h.get("revpar", 0) for h in hotels) / len(hotels), 2),
+        "avg_gop_pct":              round(avg_gop, 1),
+        "total_facturas_pendientes":total_pend,
+        "total_alertas":            total_alertas,
+        "hoteles_criticos":         sum(1 for h in hotels if h.get("status") == "critical"),
+        "hoteles_warning":          sum(1 for h in hotels if h.get("status") == "warning"),
+        "hoteles_ok":               sum(1 for h in hotels if h.get("status") == "ok"),
     }
 
-def get_top_performers(grupo=None, metric="revpar", limit=5):
-    """Ranking de top hoteles por métrica"""
-    hoteles = [h for h in HOTELES_DEMO if not grupo or h["grupo"] == grupo]
-    return sorted(hoteles, key=lambda h: h.get(metric, 0), reverse=True)[:limit]
+def get_top_performers(grupo=None, metric="gop_pct", n=5):
+    hotels = get_hoteles(grupo)
+    return sorted(hotels, key=lambda h: h.get(metric, 0), reverse=True)[:n]
 
 def get_alertas_consolidadas(grupo=None):
-    """Lista todas las alertas de hoteles del grupo"""
-    hoteles = [h for h in HOTELES_DEMO if not grupo or h["grupo"] == grupo]
     alertas = []
-    for h in hoteles:
-        for a in h["alertas"]:
+    for h in get_hoteles(grupo):
+        for a in h.get("alertas", []):
             alertas.append({
-                "hotel": h["nombre"],
-                "ciudad": h["ciudad"],
-                "alerta": a,
-                "severity": h["status"]
+                "hotel":    h["nombre"],
+                "hotel_id": h["id"],
+                "mensaje":  a,
+                "severity": "warning",
             })
     return alertas
-
-if __name__ == "__main__":
-    print("Multi-Hotel Demo Data")
-    print("="*60)
-    print(f"Total hoteles: {len(HOTELES_DEMO)}")
-    print(f"Grupos: {get_grupos()}")
-    print()
-    print("KPIs Consolidados (todos):")
-    kpis = get_kpis_consolidados()
-    for k, v in kpis.items():
-        print(f"  {k}: {v}")
