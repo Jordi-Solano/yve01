@@ -2106,8 +2106,8 @@ function bDI(e) {
 
 function bApro(a) {
   if (!a || a === '') return '<span class="badge b-pen">· ' + (t('lbl.pendiente')||'Pendiente') + '</span>';
-  if (a === 'APROBADA')  return '<span class="badge b-apr">✓ ' + (t(\'lbl.aprobado\')||'Aprobada') + '</span>';
-  if (a === 'RECHAZADA') return '<span class="badge b-rec">✗ ' + (t(\'lbl.rechazado\')||'Rechazada') + '</span>';
+  if (a === 'APROBADA')  return '<span class="badge b-apr">✓ ' + (t('lbl.aprobado')||'Aprobada') + '</span>';
+  if (a === 'RECHAZADA') return '<span class="badge b-rec">✗ ' + (t('lbl.rechazado')||'Rechazada') + '</span>';
   return '<span class="badge b-na">—</span>';
 }
 
@@ -3045,7 +3045,7 @@ async function loadFBResumen() {
     html += '<div style="display:grid;grid-template-columns:1.2fr 0.8fr;gap:16px">';
     html += '<div class="card"><div class="card-title" data-i18n="card.fcCategoria">Food Cost por Categoría</div>';
     html += '<div class="tbl-wrap"><table style="min-width:0;width:100%"><thead><tr>';
-    html += '<th>' + (t(\'fb.thCategoria\')||'Categoría') + '</th><th style="text-align:right">' + (t(\'fb.thVentas\')||'Ventas') + '</th><th style="text-align:right">FC%</th><th style="text-align:center">' + (t(\'fb.thEstado\')||'Estado') + '</th>';
+    html += '<th>' + (t('fb.thCategoria')||'Categoría') + '</th><th style="text-align:right">' + (t('fb.thVentas')||'Ventas') + '</th><th style="text-align:right">FC%</th><th style="text-align:center">' + (t('fb.thEstado')||'Estado') + '</th>';
     html += '</tr></thead><tbody>';
     data.categorias.forEach(c => {
       const cC = c.alerta ? 'var(--red)' : 'var(--grn)';
@@ -3116,7 +3116,7 @@ async function loadFBInventario() {
 
     html += '<div class="card"><div class="card-title" data-i18n="card.stockIngredientes">Stock de Ingredientes</div>';
     html += '<div class="tbl-wrap"><table style="min-width:0;width:100%"><thead><tr>';
-    html += '<th>' + (t(\'fb.thIngrediente\')||'Ingrediente') + '</th><th>' + (t(\'fb.thCategoria\')||'Categoría') + '</th><th>' + (t(\'th.proveedor\')||'Proveedor') + '</th>';
+    html += '<th>' + (t('fb.thIngrediente')||'Ingrediente') + '</th><th>' + (t('fb.thCategoria')||'Categoría') + '</th><th>' + (t('th.proveedor')||'Proveedor') + '</th>';
     html += '<th style="text-align:right">' + (t('fb.thActual')||'Actual') + '</th><th style="text-align:right">€/u</th>';
     html += '<th style="text-align:right;width:130px">Stock</th><th style="text-align:center">Estado</th>';
     html += '</tr></thead><tbody>';
@@ -3738,7 +3738,7 @@ function renderNotifConfig() {
         (on ? 'var(--acc)' : 'var(--s2)') + ';border-radius:12px;padding:14px;text-align:center;transition:.15s">' +
         '<div style="font-size:22px;margin-bottom:6px">' + ch.icon + '</div>' +
         '<div style="font-size:13px;font-weight:600;color:' + (on ? 'var(--acc2)' : 'var(--mut)') + '">' + ch.name + '</div>' +
-        '<div style="font-size:10px;color:' + (on ? 'var(--grn)' : 'var(--dim)') + ';margin-top:4px">' + (on ? '● ' + (t(\'notif.activo\')||'Activo') : '○ ' + (t(\'notif.inactivo\')||'Inactivo')) + '</div>' +
+        '<div style="font-size:10px;color:' + (on ? 'var(--grn)' : 'var(--dim)') + ';margin-top:4px">' + (on ? '● ' + (t('notif.activo')||'Activo') : '○ ' + (t('notif.inactivo')||'Inactivo')) + '</div>' +
         '</div>';
     }).join('');
   }
