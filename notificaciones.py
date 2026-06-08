@@ -185,26 +185,55 @@ def enviar_por_canales(asunto, html, texto, tipo="general"):
     return res
 
 def _email_html(titulo, items, color="#3b82f6"):
-    """Genera HTML para un email de alerta."""
+    """Genera HTML profesional para un email de alerta Yve.01."""
+    from datetime import datetime
+    date_str = datetime.now().strftime("%d/%m/%Y %H:%M")
+    color_light = "rgba(59,130,246,.08)" if color == "#3b82f6" else "rgba(239,68,68,.06)"
     rows = "".join(
-        f'<tr><td style="padding:8px 12px;border-bottom:1px solid #eee">{it}</td></tr>'
+        f'<tr><td style="padding:10px 16px;border-bottom:1px solid #1e293b;font-size:14px;color:#cbd5e1;line-height:1.5">'
+        f'<span style="display:inline-block;width:6px;height:6px;border-radius:50%;background:{color};margin-right:10px;vertical-align:middle"></span>'
+        f'{it}</td></tr>'
         for it in items
     )
-    return f"""
-    <div style="font-family:-apple-system,sans-serif;max-width:600px;margin:0 auto">
-      <div style="background:{color};color:#fff;padding:16px 20px;border-radius:12px 12px 0 0">
-        <h2 style="margin:0;font-size:18px">Yve.01 — {titulo}</h2>
-        <p style="margin:4px 0 0;font-size:12px;opacity:.8">{datetime.now().strftime("%d/%m/%Y %H:%M")}</p>
+    return f"""<!DOCTYPE html>
+<html>
+<head><meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Yve.01 — {titulo}</title></head>
+<body style="margin:0;padding:0;background:#0f172a;font-family:-apple-system,BlinkMacSystemFont,'Inter',sans-serif">
+  <div style="max-width:600px;margin:0 auto;padding:24px 16px">
+    <!-- Header -->
+    <div style="display:flex;align-items:center;gap:10px;margin-bottom:24px;padding-bottom:20px;border-bottom:1px solid #1e293b">
+      <div style="width:10px;height:10px;border-radius:50%;background:#3b82f6;box-shadow:0 0 8px #3b82f6;flex-shrink:0"></div>
+      <span style="font-size:20px;font-weight:800;color:#f1f5f9;letter-spacing:-.5px">Yve<span style="color:#60a5fa">.01</span></span>
+      <span style="font-size:11px;background:rgba(59,130,246,.15);color:#60a5fa;border:1px solid rgba(59,130,246,.25);border-radius:12px;padding:2px 8px;margin-left:4px">Dashboard</span>
+    </div>
+    <!-- Alert Card -->
+    <div style="background:#1e293b;border-radius:16px;overflow:hidden;border:1px solid #334155;margin-bottom:20px">
+      <!-- Alert header -->
+      <div style="background:{color};padding:18px 20px">
+        <div style="font-size:18px;font-weight:700;color:#fff;margin-bottom:4px">{titulo}</div>
+        <div style="font-size:12px;color:rgba(255,255,255,.7)">{date_str} &nbsp;·&nbsp; Yve.01 Finance Dashboard</div>
       </div>
-      <div style="background:#fff;border:1px solid #e5e7eb;border-top:none;border-radius:0 0 12px 12px;padding:4px 0">
-        <table style="width:100%;font-size:14px;color:#1f2937">{rows}</table>
-      </div>
-      <p style="font-size:11px;color:#9ca3af;margin-top:12px;text-align:center">
-        Notificación automática de Yve.01 — Dashboard Financiero
-      </p>
-    </div>"""
+      <!-- Alert items -->
+      <table style="width:100%;border-collapse:collapse">
+        {rows}
+      </table>
+    </div>
+    <!-- CTA -->
+    <div style="text-align:center;margin-bottom:24px">
+      <a href="https://yve01.onrender.com" style="display:inline-block;background:linear-gradient(135deg,#3b82f6,#2563eb);color:#fff;padding:13px 32px;border-radius:12px;font-size:14px;font-weight:700;text-decoration:none;box-shadow:0 4px 20px rgba(59,130,246,.4)">
+        Ver en el dashboard →
+      </a>
+    </div>
+    <!-- Footer -->
+    <div style="text-align:center;font-size:11px;color:#475569;padding-top:16px;border-top:1px solid #1e293b">
+      <strong style="color:#64748b">Yve.01</strong> &nbsp;·&nbsp; Sistema financiero AI para hoteles &nbsp;·&nbsp; Barcelona, España<br>
+      <span style="margin-top:6px;display:block">Este email fue generado automáticamente. No respondas a este mensaje.</span>
+    </div>
+  </div>
+</body>
+</html>"""
 
-# ── Escaneo de alertas ────────────────────────────────────────────────────
 
 def _safe_float(v):
     try:

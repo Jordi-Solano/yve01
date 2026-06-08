@@ -1744,11 +1744,17 @@ tr:hover td{background:rgba(255,255,255,.025)}
 
   <!-- PANEL DRR -->
   <div id="panel-drr" class="panel">
-  <div style="display:flex;justify-content:flex-end;margin-bottom:14px"><a href="/api/exportar/drr" style="background:#1a73e8;color:white;padding:8px 16px;border-radius:8px;text-decoration:none;font-weight:600;font-size:13px">⬇️ Descargar Excel</a></div>
-    <div class="drr-upload">
-      <label for="drr-file-input" data-i18n="btn.uploadDrr">📂 Subir DRR (.xlsm)</label>
-      <input type="file" id="drr-file-input" accept=".xlsm" style="display:none" onchange="uploadDRR(this)">
-      <span class="drr-status" id="drr-status">Sin archivo cargado</span>
+  <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:18px;flex-wrap:wrap;gap:12px">
+      <div class="drr-upload">
+        <label for="drr-file-input" class="btn-run" style="cursor:pointer;font-size:13px" data-i18n="btn.uploadDrr">📂 Subir DRR (.xlsm)</label>
+        <input type="file" id="drr-file-input" accept=".xlsm" style="display:none" onchange="uploadDRR(this)">
+        <span class="drr-status" id="drr-status" style="font-size:12px;color:var(--mut);margin-left:10px">Sin archivo cargado</span>
+      </div>
+      <div style="display:flex;gap:8px">
+        <div id="drr-oob-badge" style="display:none;background:rgba(239,68,68,.1);border:1px solid rgba(239,68,68,.25);color:var(--red);border-radius:8px;padding:5px 12px;font-size:12px;font-weight:700"></div>
+        <a href="/api/exportar/drr" class="btn-ref" style="text-decoration:none;font-size:12px" data-i18n="btn.downloadExcel">⬇️ Excel</a>
+        <a href="/api/exportar/drr/pdf" class="btn-ref" style="text-decoration:none;font-size:12px">📄 PDF</a>
+      </div>
     </div>
 
     <!-- KPI Metrics -->
@@ -4359,43 +4365,44 @@ async function loadCalipolis() {
   }
 }
 
-function renderCalipolisTrends(t) {
-  if (!window.Chart) return;
-  const meses = (t.meses || []).map(m => m.slice(5)); // MM only
-  const cfg = (id, label, data, color, isCurrency) => {
-    const el = document.getElementById(id);
-    if (!el) return;
-    if (_calCharts[id]) { _calCharts[id].destroy(); }
-    _calCharts[id] = new Chart(el, {
-      type: 'line',
-      data: {
+function renderCalipolisTrends(tendencias) {
+  if (!tendencias || !tendencias.gop_mensual) return;
+  const cont = document.getElementById('cal-tendencias');
+  if (!cont) return;
+  const gop = tendencias.gop_mensual;
+  const meses = gop.map(d => d.mes.slice(5)); // MM
+  const vals  = gop.map(d => d.gop_pct);
+  cont.innerHTML = '<div class="card" style="margin-top:16px"><div class="card-title">Evolución GOP% — 6 meses</div>' +
+    '<div style="height:140px;position:relative;margin-top:8px"><canvas id="cal-gop-chart"></canvas></div></div>';
+  setTimeout(() => {
+    const cv = document.getElementById('cal-gop-chart');
+    if (!cv || !window.Chart) return;
+    new Chart(cv, {
+      type:'line',
+      data:{
         labels: meses,
-        datasets: [{
-          data: data,
-          borderColor: color,
-          backgroundColor: color + '18',
-          fill: true,
-          tension: 0.35,
-          borderWidth: 2,
-          pointRadius: 3,
-          pointBackgroundColor: color,
+        datasets:[{
+          data: vals,
+          borderColor:'#22c55e',
+          backgroundColor:'rgba(34,197,94,.08)',
+          borderWidth:2.5,
+          pointRadius:4,
+          pointBackgroundColor:'#22c55e',
+          fill:true,
+          tension:.3
         }]
       },
-      options: {
-        responsive: true,
-        maintainAspectRatio: false,
-        plugins: { legend: { display: false },
-          tooltip: { callbacks: { label: v => isCurrency ? v.raw + '%' : v.raw + ' fact.' }}},
-        scales: {
-          x: { grid: { color: 'rgba(51,65,85,.3)' }, ticks: { color: '#64748b', font: { size: 9 }}},
-          y: { grid: { color: 'rgba(51,65,85,.3)' }, ticks: { color: '#64748b', font: { size: 9 },
-            callback: v => isCurrency ? v + '%' : v }}
+      options:{
+        responsive:true,maintainAspectRatio:false,
+        plugins:{legend:{display:false},tooltip:{callbacks:{label:ctx=>ctx.parsed.y.toFixed(1)+'%'}}},
+        scales:{
+          x:{grid:{color:'rgba(51,65,85,.3)'},ticks:{color:'#64748b',font:{size:10}}},
+          y:{grid:{color:'rgba(51,65,85,.3)'},ticks:{color:'#64748b',font:{size:10},callback:v=>v+'%'},
+             min: Math.max(0, Math.min(...vals)-3), max: Math.max(...vals)+3}
         }
       }
     });
-  };
-  cfg('cal-gop-chart',  'GOP%',       t.gop_pct_grupo,  '#22c55e', true);
-  cfg('cal-ap-chart',   'AP Pend.',   t.ap_pendientes_total, '#ef4444', false);
+  }, 100);
 }
 
 function renderCalipolisKpis(kpis) {
@@ -4426,34 +4433,76 @@ function renderCalipolisHoteles(hoteles) {
   const cont = document.getElementById('cal-hoteles');
   if (!cont) return;
   cont.innerHTML = '';
-  hoteles.forEach(h => {
-    const sc = h.status === 'ok' ? '#22c55e' : h.status === 'warning' ? '#f97316' : '#ef4444';
-    const apTrend = h.ap_pendientes === 0 ? '\u2713 Sin pendientes' : h.ap_pendientes + ' fact. pend.';
-    const apColor = h.ap_pendientes === 0 ? '#22c55e' : h.ap_pendientes <= 3 ? '#f97316' : '#ef4444';
-    const gopColor = h.gop_pct >= 22 ? '#22c55e' : h.gop_pct >= 18 ? '#f97316' : '#ef4444';
+  hoteles.forEach((h, idx) => {
+    const sc = h.status === 'ok' ? 'var(--grn)' : h.status === 'warning' ? 'var(--ora)' : 'var(--red)';
+    const gopColor = h.gop_pct >= 22 ? 'var(--grn)' : h.gop_pct >= 18 ? 'var(--ora)' : 'var(--red)';
+    const apColor = h.ap_pendientes === 0 ? 'var(--grn)' : h.ap_pendientes <= 3 ? 'var(--ora)' : 'var(--red)';
     const card = document.createElement('div');
-    card.style.cssText = 'background:var(--s1);border:1px solid var(--s2);border-radius:13px;padding:18px;cursor:pointer;transition:border-color .18s';
-    card.addEventListener('mouseover', function() { card.style.borderColor = sc + '55'; });
-    card.addEventListener('mouseout',  function() { card.style.borderColor = 'var(--s2)'; });
-    card.addEventListener('click',     function() { abrirDetalleCalipolis(h.id); });
+    card.style.cssText = 'background:var(--s1);border:1px solid var(--s2);border-radius:14px;padding:20px;transition:border-color .18s,transform .18s;cursor:pointer';
+    card.addEventListener('mouseover', () => { card.style.borderColor='rgba(59,130,246,.4)'; card.style.transform='translateY(-2px)'; });
+    card.addEventListener('mouseout',  () => { card.style.borderColor='var(--s2)'; card.style.transform=''; });
+
+    // Build GOP sparkline SVG if trend data available
+    let sparkSvg = '';
+    if (h.gop_trend && h.gop_trend.length > 1) {
+      const vals = h.gop_trend;
+      const min = Math.min(...vals), max = Math.max(...vals) || 1;
+      const w = 80, ht = 30;
+      const pts = vals.map((v, i) => {
+        const x = (i / (vals.length-1)) * w;
+        const y = ht - ((v - min) / (max - min + 0.001)) * (ht - 4);
+        return x + ',' + y;
+      }).join(' ');
+      const lastColor = vals[vals.length-1] >= 20 ? '#22c55e' : '#f97316';
+      sparkSvg = '<svg width="' + w + '" height="' + ht + '" viewBox="0 0 ' + w + ' ' + ht + '" style="overflow:visible">' +
+        '<polyline points="' + pts + '" fill="none" stroke="' + lastColor + '" stroke-width="1.8" stroke-linejoin="round" stroke-linecap="round"/>' +
+        '<circle cx="' + (w) + '" cy="' + (ht - ((vals[vals.length-1]-min)/(max-min+0.001))*(ht-4)) + '" r="3" fill="' + lastColor + '"/>' +
+        '</svg>';
+    }
+    const gopDelta = h.gop_trend && h.gop_trend.length > 1
+      ? (h.gop_trend[h.gop_trend.length-1] - h.gop_trend[0]).toFixed(1)
+      : null;
+    const deltaEl = gopDelta !== null
+      ? '<span style="font-size:10px;color:' + (gopDelta > 0 ? 'var(--grn)' : 'var(--red)') + ';margin-left:6px">' + (gopDelta > 0 ? '+' : '') + gopDelta + 'pp 6m</span>'
+      : '';
+
     card.innerHTML =
       '<div style="display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:14px">' +
-        '<div><div style="font-weight:700;font-size:14px;margin-bottom:3px">' + h.nombre + '</div>' +
-        '<div style="font-size:11px;color:var(--mut)">' + h.categoria + ' \u00b7 ' + h.habitaciones + ' hab.</div></div>' +
-        '<div style="width:8px;height:8px;border-radius:50%;background:' + sc + ';margin-top:4px;flex-shrink:0"></div>' +
+        '<div>' +
+          '<div style="font-weight:700;font-size:14px;margin-bottom:3px">' + h.nombre + '</div>' +
+          '<div style="font-size:11px;color:var(--mut)">' + h.categoria + ' · ' + h.habitaciones + ' hab.</div>' +
+        '</div>' +
+        '<div style="width:9px;height:9px;border-radius:50%;background:' + sc + ';margin-top:4px;flex-shrink:0;box-shadow:0 0 6px ' + sc + '"></div>' +
       '</div>' +
-      '<div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:14px">' +
-        '<div style="background:var(--s2);border-radius:8px;padding:10px"><div style="font-size:9px;color:var(--dim);text-transform:uppercase;letter-spacing:.5px;margin-bottom:4px">Ocup.</div><div style="font-size:18px;font-weight:800;color:var(--acc2)">' + h.ocupacion + '%</div></div>' +
-        '<div style="background:var(--s2);border-radius:8px;padding:10px"><div style="font-size:9px;color:var(--dim);text-transform:uppercase;letter-spacing:.5px;margin-bottom:4px">RevPAR</div><div style="font-size:18px;font-weight:800;color:var(--ora)">\u20ac' + Math.round(h.revpar) + '</div></div>' +
-        '<div style="background:var(--s2);border-radius:8px;padding:10px"><div style="font-size:9px;color:var(--dim);text-transform:uppercase;letter-spacing:.5px;margin-bottom:4px">Revenue MTD</div><div style="font-size:18px;font-weight:800;color:var(--tx)">\u20ac' + Math.round(h.total_ingresos / 1000) + 'K</div></div>' +
-        '<div style="background:var(--s2);border-radius:8px;padding:10px"><div style="font-size:9px;color:var(--dim);text-transform:uppercase;letter-spacing:.5px;margin-bottom:4px">GOP%</div><div style="font-size:18px;font-weight:800;color:' + gopColor + '">' + h.gop_pct + '%</div></div>' +
+      // KPI row
+      '<div style="display:grid;grid-template-columns:repeat(3,1fr);gap:8px;margin-bottom:14px">' +
+        _calKpi('Ocupación', h.ocupacion + '%', h.ocupacion >= 80 ? 'var(--grn)' : 'var(--ora)') +
+        _calKpi('ADR', '€' + h.adr, 'var(--acc2)') +
+        _calKpi('RevPAR', '€' + h.revpar, 'var(--tx)') +
       '</div>' +
-      '<div style="display:flex;justify-content:space-between;align-items:center;padding-top:12px;border-top:1px solid var(--s2)">' +
-        '<span style="font-size:11px;color:' + apColor + ';font-weight:600">' + apTrend + '</span>' +
-        '<span style="font-size:11px;color:var(--mut)">Ver detalle \u2192</span>' +
+      // GOP with sparkline
+      '<div style="display:flex;align-items:center;justify-content:space-between;padding:10px;background:var(--bg);border-radius:10px;margin-bottom:10px">' +
+        '<div>' +
+          '<div style="font-size:10px;color:var(--mut);font-weight:600;text-transform:uppercase;letter-spacing:.4px">GOP%</div>' +
+          '<div style="font-size:22px;font-weight:800;color:' + gopColor + ';letter-spacing:-1px;line-height:1">' + h.gop_pct + '%' + deltaEl + '</div>' +
+          '<div style="font-size:10px;color:var(--dim);margin-top:2px">€' + Math.round(h.gop/1000) + 'K este mes</div>' +
+        '</div>' +
+        '<div>' + sparkSvg + '</div>' +
+      '</div>' +
+      // AP pendientes
+      '<div style="display:flex;align-items:center;justify-content:space-between;font-size:12px">' +
+        '<span style="color:var(--mut)">AP pendientes</span>' +
+        '<span style="font-weight:700;color:' + apColor + '">' + h.ap_pendientes + (h.ap_pendientes === 0 ? ' ✓' : ' facturas') + '</span>' +
       '</div>';
     cont.appendChild(card);
   });
+}
+
+function _calKpi(label, val, color) {
+  return '<div style="background:var(--bg);border-radius:8px;padding:8px;text-align:center">' +
+    '<div style="font-size:10px;color:var(--mut);font-weight:600;margin-bottom:3px">' + label + '</div>' +
+    '<div style="font-size:15px;font-weight:700;color:' + color + '">' + val + '</div>' +
+    '</div>';
 }
 
 

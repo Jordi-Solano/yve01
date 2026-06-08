@@ -34,7 +34,11 @@ def api_calipolis_kpis():
                 "ap_pendientes": h["ap_pendientes"],
                 "ar_pendientes": h["ar_pendientes"],
                 "alertas": h["alertas"],
-                "status": "ok" if h["alertas"] == 0 else "warning" if h["alertas"] <= 1 else "critical"
+                "status": "ok" if h["alertas"] == 0 else "warning" if h["alertas"] <= 1 else "critical",
+                "gop_trend": [k["gop_pct"] for k in h.get("kpis_historicos", [])],
+                "occ_trend": [k["ocupacion"] for k in h.get("kpis_historicos", [])],
+                "ap_trend":  [k["ap_pendientes"] for k in h.get("kpis_historicos", [])],
+                "meses":     [k["mes"] for k in h.get("kpis_historicos", [])]
             }
             for h in hoteles
         ]
