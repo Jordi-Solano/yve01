@@ -2279,6 +2279,12 @@ function renderActivity(rows) {
   ).join('');
   // Re-apply current language to freshly rendered spans
   if (_i18nLang && _i18nLang !== 'es') applyI18n(_i18nData);
+}
+
+// ── Pipeline SSE ──────────────────────────────────────────────────────
+function runPipeline() {
+  const btn    = document.getElementById('btn-run');
+  const spin   = document.getElementById('spin');
   const lbl    = document.getElementById('run-lbl');
   const log    = document.getElementById('log');
   const btnCl  = document.getElementById('btn-cl');
@@ -3830,7 +3836,7 @@ function renderNotifConfig() {
       const on = c.alertas && c.alertas[a.key];
       return '<label style="display:flex;align-items:center;gap:10px;cursor:pointer;font-size:13px;color:var(--tx)">' +
         '<input type="checkbox" data-alerta="' + a.key + '"' + (on ? ' checked' : '') +
-        ' style="width:17px;height:17px;accent-color:var(--acc)">' + a(t(ev.labelKey)||ev.label) + '</label>';
+        ' style="width:17px;height:17px;accent-color:var(--acc)">' + (t(a.labelKey)||a.label) + '</label>';
     }).join('');
   }
 }
