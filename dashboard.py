@@ -3019,7 +3019,7 @@ async function loadFBResumen() {
 
     let html = '<div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:18px;flex-wrap:wrap;gap:10px">';
     html += '<div><h2 style="font-size:17px;font-weight:700;margin:0">F&B Cost Control</h2>';
-    html += '<div style="font-size:12px;color:var(--mut);margin-top:3px">' + (t('fb.datosReales')||'Datos calculados desde ventas reales') + ' · ' + data.ventas_diarias.fechas.length + ' ' + (t('fb.dias')||'días</div></div>';
+    html += '<div style="font-size:12px;color:var(--mut);margin-top:3px">' + (t('fb.datosReales')||'Datos calculados desde ventas reales') + ' · ' + data.ventas_diarias.fechas.length + ' ' + (t('fb.dias')||'días') + '</div>';
     html += '<button class="btn-ref" onclick="runFB()" style="font-size:12px" data-i18n="btn.recalcular">↺ Recalcular</button></div>';
 
     // KPIs
@@ -3704,12 +3704,12 @@ const NOTIF_CHANNELS = [
   {key:'push',     icon:'🔔', name:'Push'},
 ];
 const NOTIF_ALERTAS = [
-  {key:'ar_discrepancia',         get label(){return t('notif.evAr')    ||'Discrepancia en comisiones OTA (AR)'}},
-  {key:'ar_falta_di',             get label(){return t('notif.evDi')    ||'Falta certificado de doble imposición'}},
-  {key:'ap_discrepancia',         get label(){return t('notif.evAp')    ||'Discrepancia en facturas proveedor (AP)'}},
-  {key:'drr_oob',                 get label(){return t('notif.evDrr')   ||'DRR: días Out of Balance'}},
-  {key:'banco_sin_conciliar',     get label(){return t('notif.evBanco') ||'Movimientos bancarios sin conciliar'}},
-  {key:'factura_pendiente_firma', get label(){return t('notif.evFirma') ||'Facturas pendientes de firma'}},
+  {key:'ar_discrepancia',         labelKey:'notif.evAr',    label:'Discrepancia en comisiones OTA (AR)'},
+  {key:'ar_falta_di',             labelKey:'notif.evDi',    label:'Falta certificado de doble imposición'},
+  {key:'ap_discrepancia',         labelKey:'notif.evAp',    label:'Discrepancia en facturas proveedor (AP)'},
+  {key:'drr_oob',                 labelKey:'notif.evDrr',   label:'DRR: días Out of Balance'},
+  {key:'banco_sin_conciliar',     labelKey:'notif.evBanco', label:'Movimientos bancarios sin conciliar'},
+  {key:'factura_pendiente_firma', labelKey:'notif.evFirma', label:'Facturas pendientes de firma'},
 ];
 let _notifConfig = null;
 
@@ -3764,7 +3764,7 @@ function renderNotifConfig() {
       const on = c.alertas && c.alertas[a.key];
       return '<label style="display:flex;align-items:center;gap:10px;cursor:pointer;font-size:13px;color:var(--tx)">' +
         '<input type="checkbox" data-alerta="' + a.key + '"' + (on ? ' checked' : '') +
-        ' style="width:17px;height:17px;accent-color:var(--acc)">' + a.label + '</label>';
+        ' style="width:17px;height:17px;accent-color:var(--acc)">' + a(t(ev.labelKey)||ev.label) + '</label>';
     }).join('');
   }
 }
