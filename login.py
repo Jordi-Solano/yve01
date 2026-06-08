@@ -41,7 +41,7 @@ HTML = r"""<!DOCTYPE html>
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width,initial-scale=1">
-<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Ccircle cx='16' cy='16' r='9' fill='%233b82f6'/%3E%3C/svg%3E">
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect width='32' height='32' rx='8' fill='%230f172a'/%3E%3Crect width='32' height='32' rx='8' fill='url(%23g)'/%3E%3Cdefs%3E%3ClinearGradient id='g' x1='0' y1='0' x2='32' y2='32' gradientUnits='userSpaceOnUse'%3E%3Cstop offset='0' stop-color='%233b82f6' stop-opacity='.15'/%3E%3Cstop offset='1' stop-color='%23a78bfa' stop-opacity='.08'/%3E%3C/linearGradient%3E%3C/defs%3E%3Ccircle cx='16' cy='10' r='3' fill='%233b82f6'/%3E%3Cpath d='M10 6 L16 16 L22 6' stroke='%233b82f6' stroke-width='2.5' fill='none' stroke-linecap='round' stroke-linejoin='round'/%3E%3Cline x1='16' y1='16' x2='16' y2='26' stroke='%2360a5fa' stroke-width='2.5' stroke-linecap='round'/%3E%3C/svg%3E">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&display=swap" rel="stylesheet">
@@ -145,6 +145,16 @@ input:focus{border-color:var(--acc);box-shadow:0 0 0 3px rgba(59,130,246,.18)}
     <input id="password" type="password" placeholder="••••••••" autocomplete="current-password">
 
     <button class="btn-login" id="btn-login" onclick="doLogin()" data-i18n="login.boton">Entrar al panel</button>
+
+    <div style="display:flex;align-items:center;gap:10px;margin-top:14px">
+      <div style="flex:1;height:1px;background:rgba(51,65,85,.5)"></div>
+      <span style="font-size:11px;color:#475569">o</span>
+      <div style="flex:1;height:1px;background:rgba(51,65,85,.5)"></div>
+    </div>
+    <button onclick="loginDemo()" style="width:100%;margin-top:10px;padding:12px;background:rgba(59,130,246,.08);border:1px solid rgba(59,130,246,.2);color:#60a5fa;border-radius:11px;font-size:13px;font-weight:600;cursor:pointer;transition:.15s"
+      onmouseover="this.style.background='rgba(59,130,246,.15)'" onmouseout="this.style.background='rgba(59,130,246,.08)'">
+      🎭 Ver demo — Grupo Calipolis Hotels
+    </button>
     <div class="error" id="error"></div>
 
     <div style="text-align:center;margin-top:18px;font-size:13px;color:var(--dim)">¿No tienes cuenta? <a href="/signup" style="color:var(--acc2);text-decoration:none" data-i18n="login.crearCuenta">Crear cuenta gratis</a></div>
@@ -170,7 +180,15 @@ function fill(u,p){
   document.getElementById('password').value=p;
   document.getElementById('btn-login').focus();
 }
-async function doLogin() {
+async function loginDemo() {
+  document.getElementById('username').value = 'admin';
+  document.getElementById('password').value = 'admin123';
+  // Set demo flag and login
+  sessionStorage.setItem('demo_mode_pending', '1');
+  doLogin();
+}
+
+function doLogin() {
   const btn = document.getElementById('btn-login');
   const err = document.getElementById('error');
   const username = document.getElementById('username').value.trim();

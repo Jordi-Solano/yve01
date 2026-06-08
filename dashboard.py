@@ -1119,7 +1119,7 @@ HTML = r"""<!DOCTYPE html>
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width,initial-scale=1">
-<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Ccircle cx='16' cy='16' r='9' fill='%233b82f6'/%3E%3C/svg%3E">
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect width='32' height='32' rx='8' fill='%230f172a'/%3E%3Crect width='32' height='32' rx='8' fill='url(%23g)'/%3E%3Cdefs%3E%3ClinearGradient id='g' x1='0' y1='0' x2='32' y2='32' gradientUnits='userSpaceOnUse'%3E%3Cstop offset='0' stop-color='%233b82f6' stop-opacity='.15'/%3E%3Cstop offset='1' stop-color='%23a78bfa' stop-opacity='.08'/%3E%3C/linearGradient%3E%3C/defs%3E%3Ccircle cx='16' cy='10' r='3' fill='%233b82f6'/%3E%3Cpath d='M10 6 L16 16 L22 6' stroke='%233b82f6' stroke-width='2.5' fill='none' stroke-linecap='round' stroke-linejoin='round'/%3E%3Cline x1='16' y1='16' x2='16' y2='26' stroke='%2360a5fa' stroke-width='2.5' stroke-linecap='round'/%3E%3C/svg%3E">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&display=swap" rel="stylesheet">
@@ -1184,7 +1184,28 @@ body::before{
 /* ── STATS ── */
 .stats{display:grid;grid-template-columns:repeat(6,1fr);gap:12px;margin-bottom:22px}
 @media(max-width:1200px){.stats{grid-template-columns:repeat(3,1fr)}}
-@media(max-width:600px){.stats{grid-template-columns:repeat(2,1fr)}}
+@media(max-width:768px){
+  .tabs{gap:0;overflow-x:auto;-webkit-overflow-scrolling:touch;scrollbar-width:none}
+  .tabs::-webkit-scrollbar{display:none}
+  .tab-btn{white-space:nowrap;flex-shrink:0;font-size:11px;padding:8px 10px}
+  .nav{padding:0 12px;gap:6px}
+  .logo-name{font-size:16px}
+  .logo-tag{display:none}
+  .nav-right{gap:6px}
+  .btn-ref{font-size:11px;padding:6px 10px}
+  .btn-run{font-size:12px;padding:8px 14px}
+  .sc-lbl{font-size:9px}
+  .sc-val{font-size:20px}
+  .stats{grid-template-columns:repeat(2,1fr);gap:8px}
+  .panel{padding:14px 12px}
+  .card{padding:14px}
+  #demo-banner{font-size:11px;padding:5px 10px}
+}
+@media(max-width:600px){
+  .stats{grid-template-columns:repeat(2,1fr)}
+  .tab-btn span{display:none}
+  .tab-btn{font-size:16px;padding:8px}
+}
 .sc{background:var(--s1);border:1px solid var(--s2);border-radius:14px;padding:18px 16px;transition:.2s}
 .sc:hover{border-color:var(--s3);transform:translateY(-1px)}
 .sc.hl{border-color:rgba(59,130,246,.4);background:rgba(59,130,246,.05)}
@@ -4648,6 +4669,47 @@ def set_lang(lang):
         session['lang'] = lang
         return jsonify({'ok': True, 'lang': lang})
     return jsonify({'ok': False}), 400
+
+
+# ── Error handlers ───────────────────────────────────────────────────────
+@app.errorhandler(404)
+def not_found(e):
+    return f"""<!DOCTYPE html>
+<html lang="es">
+<head><meta charset="UTF-8"><title>404 · Yve.01</title>
+<style>*{{margin:0;padding:0;box-sizing:border-box}}body{{background:#0f172a;color:#f1f5f9;font-family:-apple-system,'Inter',sans-serif;display:flex;align-items:center;justify-content:center;min-height:100vh;text-align:center}}
+.e{{max-width:400px;padding:40px}}.dot{{width:10px;height:10px;border-radius:50%;background:#3b82f6;box-shadow:0 0 12px #3b82f6;display:inline-block;margin-right:8px}}
+.code{{font-size:96px;font-weight:900;background:linear-gradient(135deg,#3b82f6,#a78bfa);-webkit-background-clip:text;-webkit-text-fill-color:transparent;line-height:1}}
+h1{{font-size:20px;font-weight:700;margin:16px 0 8px}}p{{font-size:14px;color:#64748b;line-height:1.6;margin-bottom:24px}}
+a{{background:linear-gradient(135deg,#3b82f6,#2563eb);color:#fff;padding:11px 24px;border-radius:10px;text-decoration:none;font-weight:600;font-size:14px}}</style>
+</head>
+<body><div class="e">
+  <div><div class="dot"></div><span style="font-weight:800;font-size:18px">Yve<span style="color:#60a5fa">.01</span></span></div>
+  <div class="code">404</div>
+  <h1>Página no encontrada</h1>
+  <p>La página que buscas no existe o ha sido movida.</p>
+  <a href="/">← Volver al dashboard</a>
+</div></body></html>""", 404
+
+@app.errorhandler(500)
+def server_error(e):
+    return f"""<!DOCTYPE html>
+<html lang="es">
+<head><meta charset="UTF-8"><title>500 · Yve.01</title>
+<style>*{{margin:0;padding:0;box-sizing:border-box}}body{{background:#0f172a;color:#f1f5f9;font-family:-apple-system,'Inter',sans-serif;display:flex;align-items:center;justify-content:center;min-height:100vh;text-align:center}}
+.e{{max-width:400px;padding:40px}}.dot{{width:10px;height:10px;border-radius:50%;background:#ef4444;box-shadow:0 0 12px #ef4444;display:inline-block;margin-right:8px}}
+.code{{font-size:96px;font-weight:900;background:linear-gradient(135deg,#ef4444,#f97316);-webkit-background-clip:text;-webkit-text-fill-color:transparent;line-height:1}}
+h1{{font-size:20px;font-weight:700;margin:16px 0 8px}}p{{font-size:14px;color:#64748b;line-height:1.6;margin-bottom:24px}}
+a{{background:linear-gradient(135deg,#3b82f6,#2563eb);color:#fff;padding:11px 24px;border-radius:10px;text-decoration:none;font-weight:600;font-size:14px}}</style>
+</head>
+<body><div class="e">
+  <div><div class="dot"></div><span style="font-weight:800;font-size:18px">Yve<span style="color:#60a5fa">.01</span></span></div>
+  <div class="code">500</div>
+  <h1>Error del servidor</h1>
+  <p>Algo ha salido mal. El equipo ha sido notificado.<br>Inténtalo de nuevo en unos minutos.</p>
+  <a href="/">← Volver al inicio</a>
+</div></body></html>""", 500
+
 
 if __name__ == '__main__':
     import socket

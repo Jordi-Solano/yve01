@@ -23,7 +23,7 @@ LANDING_HTML = r"""<!DOCTYPE html>
 {"@context":"https://schema.org","@type":"FAQPage","mainEntity":[{"@type":"Question","name":"¿Cuánto tiempo tarda la instalación?","acceptedAnswer":{"@type":"Answer","text":"15 minutos. Sin instalación de software."}},{"@type":"Question","name":"¿Compatible con Oracle Fusion?","acceptedAnswer":{"@type":"Answer","text":"Sí, vía API REST de Oracle Fusion Cloud."}},{"@type":"Question","name":"¿Hay permanencia?","acceptedAnswer":{"@type":"Answer","text":"No. Mes a mes, sin permanencia."}}]}
 </script>
 <title>Yve.01 — El sistema operativo para hoteles</title>
-<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Ccircle cx='16' cy='16' r='9' fill='%233b82f6'/%3E%3C/svg%3E">
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect width='32' height='32' rx='8' fill='%230f172a'/%3E%3Crect width='32' height='32' rx='8' fill='url(%23g)'/%3E%3Cdefs%3E%3ClinearGradient id='g' x1='0' y1='0' x2='32' y2='32' gradientUnits='userSpaceOnUse'%3E%3Cstop offset='0' stop-color='%233b82f6' stop-opacity='.15'/%3E%3Cstop offset='1' stop-color='%23a78bfa' stop-opacity='.08'/%3E%3C/linearGradient%3E%3C/defs%3E%3Ccircle cx='16' cy='10' r='3' fill='%233b82f6'/%3E%3Cpath d='M10 6 L16 16 L22 6' stroke='%233b82f6' stroke-width='2.5' fill='none' stroke-linecap='round' stroke-linejoin='round'/%3E%3Cline x1='16' y1='16' x2='16' y2='26' stroke='%2360a5fa' stroke-width='2.5' stroke-linecap='round'/%3E%3C/svg%3E">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Inter:ital,wght@0,300;0,400;0,500;0,600;0,700;0,800;0,900;1,400&display=swap" rel="stylesheet">
@@ -186,10 +186,10 @@ footer{background:var(--s1);border-top:1px solid var(--s2);padding:48px 5% 32px;
 <section class="hero">
   <div class="hero-badge fade-up">
     <div class="dot"></div>
-    Nuevo · Yve.01 Beta disponible para hoteles independientes
+    🚀 En producción · 3 hoteles activos · Grupo Calipolis, Sitges
   </div>
   <h1 class="fade-up fade-up-delay-1">El sistema operativo<br><span class="accent">AI-first para hoteles</span></h1>
-  <p class="hero-sub fade-up fade-up-delay-2">Automatiza AP, AR, DRR y conciliación bancaria. Tu equipo financiero multiplica su capacidad sin ampliar plantilla.</p>
+  <p class="hero-sub fade-up fade-up-delay-2">Automatiza AR, AP, DRR y conciliación bancaria con IA.<br>Setup en 15 minutos · Sin consultores · Sin permanencia · Desde 400€/mes.</p>
   <div class="hero-btns fade-up fade-up-delay-3">
     <a href="/signup" class="btn-hero-primary">Empezar gratis 14 días</a>
     <a href="#roi" class="btn-hero-outline">Calcular mi ahorro →</a>
@@ -198,10 +198,10 @@ footer{background:var(--s1);border-top:1px solid var(--s2);padding:48px 5% 32px;
 
 <!-- STATS BAR -->
 <div class="stats-bar">
-  <div class="stat-item"><div class="stat-val">~150</div><div class="stat-lbl">Facturas/mes automatizadas</div></div>
+  <div class="stat-item"><div class="stat-val">150+</div><div class="stat-lbl">Facturas/mes automatizadas</div></div>
   <div class="stat-item"><div class="stat-val">8h</div><div class="stat-lbl">Ahorradas a la semana</div></div>
-  <div class="stat-item"><div class="stat-val">3→1</div><div class="stat-lbl">Sistemas reemplazados</div></div>
-  <div class="stat-item"><div class="stat-val">0€</div><div class="stat-lbl">Setup. Sin consultores.</div></div>
+  <div class="stat-item"><div class="stat-val">+6pp</div><div class="stat-lbl">Mejora media GOP%</div></div>
+  <div class="stat-item"><div class="stat-val">15 min</div><div class="stat-lbl">Setup completo</div></div>
 </div>
 
 <!-- PROBLEM -->
@@ -389,7 +389,7 @@ footer{background:var(--s1);border-top:1px solid var(--s2);padding:48px 5% 32px;
 <section class="section" id="comparativa">
   <div class="container">
     <div class="section-label">Comparativa</div>
-    <h2 class="section-title">Por qué Yve<br>es diferente</h2>
+    <h2 class="section-title">Yve vs.<br>la competencia</h2>
     <p class="section-sub">Los competidores existen, pero ninguno integra todo con IA a precio accesible para hoteles independientes.</p>
     <div style="overflow-x:auto;margin-top:56px">
     <table class="comp-table">
