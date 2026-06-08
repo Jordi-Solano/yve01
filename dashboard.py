@@ -1555,6 +1555,10 @@ tr:hover td{background:rgba(255,255,255,.025)}
     <span class="logo-tag">__HOTEL_TAG__</span>
   </div>
   <div class="nav-mid"></div>
+  <div id="demo-banner" style="display:none;position:fixed;top:0;left:0;right:0;z-index:8000;background:linear-gradient(90deg,#f59e0b,#d97706);color:#000;text-align:center;padding:6px 16px;font-size:13px;font-weight:700;letter-spacing:.3px">
+    🎭 MODO DEMO · Grupo Calipolis Hotels · <span style="font-weight:400">Datos reales de las 3 propiedades en Sitges</span>
+    <button onclick="toggleDemoMode()" style="margin-left:16px;background:rgba(0,0,0,.2);border:none;padding:3px 10px;border-radius:6px;cursor:pointer;font-size:12px;font-weight:700">✕ Salir</button>
+  </div>
   <div class="nav-right">
     <span class="pill" id="date-pill">—</span>
     <span class="pill" style="color:var(--acc2)">👤 __USER_NAME__</span>
@@ -2835,20 +2839,33 @@ async function toggleDemoMode() {
     const res = await fetch('/api/demo/toggle', {method: 'POST'});
     const data = await res.json();
     demoModeActive = data.demo_mode;
-    
     const btn = document.getElementById('btn-demo');
+    const banner = document.getElementById('demo-banner');
+
     if (demoModeActive) {
-      btn.style.color = '#1db954';
-      btn.style.borderColor = '#1db954';
-      btn.textContent = '🎭 Demo ON';
-      showNotification('✓ Demo Mode ACTIVADO - Datos ficticios cargados', 'success');
-      setTimeout(() => location.reload(), 500);
+      // Show banner + push content down
+      if (banner) { banner.style.display = 'block'; document.body.style.paddingTop = '36px'; }
+      if (btn) { btn.style.color = '#f59e0b'; btn.querySelector('span') && (btn.querySelector('span').textContent = '🎭 Demo ON'); }
+      // Close the menu
+      document.getElementById('main-menu')?.classList.remove('open');
+      // Switch to Calipolis tab
+      setTimeout(() => {
+        const calTab = document.getElementById('tab-calipolis');
+        if (calTab) switchTab('calipolis', calTab);
+        // Load Calipolis data
+        loadCalipolis();
+        // Show tour prompt after 1.5s
+        setTimeout(() => {
+          const tourMsg = document.createElement('div');
+          tourMsg.style.cssText = 'position:fixed;bottom:80px;right:20px;background:linear-gradient(135deg,#1e293b,#0d1827);border:1px solid rgba(245,158,11,.4);border-radius:14px;padding:18px 20px;z-index:8500;max-width:280px;box-shadow:0 8px 32px rgba(0,0,0,.5)';
+          tourMsg.innerHTML = '<div style="font-size:14px;font-weight:700;margin-bottom:8px;color:#f59e0b">🎭 Demo Calipolis</div><div style="font-size:13px;color:#94a3b8;line-height:1.5;margin-bottom:14px">Estás viendo los datos reales del Grupo Calipolis Hotels (3 propiedades, 307 hab.).</div><button onclick="tourStart();this.parentElement.remove()" style="background:linear-gradient(135deg,#3b82f6,#2563eb);border:none;color:#fff;padding:8px 16px;border-radius:8px;cursor:pointer;font-size:12px;font-weight:700;width:100%">🎯 Iniciar Tour Guiado →</button><button onclick="this.parentElement.remove()" style="background:none;border:none;color:#64748b;font-size:11px;margin-top:8px;cursor:pointer;width:100%">Explorar sin tour</button>';
+          document.body.appendChild(tourMsg);
+          setTimeout(() => tourMsg.remove(), 12000);
+        }, 1500);
+      }, 300);
     } else {
-      btn.style.color = '#9333ea';
-      btn.style.borderColor = '#9333ea';
-      btn.textContent = '🎭 Demo';
-      showNotification('✗ Demo Mode desactivado - Datos reales', 'info');
-      setTimeout(() => location.reload(), 500);
+      if (banner) { banner.style.display = 'none'; document.body.style.paddingTop = ''; }
+      if (btn) { btn.style.color = ''; btn.querySelector('span') && (btn.querySelector('span').textContent = '🎭 Demo Mode'); }
     }
   } catch(e) {
     console.error('Error en demo:', e);
