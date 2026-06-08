@@ -731,9 +731,10 @@ def _leer_drr_stats(ruta):
             name = str(row.iloc[0]).strip() if pd.notna(row.iloc[0]) else ""
             if name in KEYS:
                 metricas[name] = {
-                    "today": str(row.iloc[1]) if pd.notna(row.iloc[1]) else "N/D",
-                    "mtd": str(row.iloc[2]) if pd.notna(row.iloc[2]) else "N/D",
+                    "today":    str(row.iloc[1]) if pd.notna(row.iloc[1]) else "N/D",
+                    "mtd":      str(row.iloc[2]) if pd.notna(row.iloc[2]) else "N/D",
                     "forecast": str(row.iloc[3]) if pd.notna(row.iloc[3]) else "N/D",
+                    "budget":   str(row.iloc[4]) if len(row) > 4 and pd.notna(row.iloc[4]) else "N/D",
                 }
 
         # Hoja Alertas — días y su estado
@@ -1893,7 +1894,9 @@ tr:hover td{background:rgba(255,255,255,.025)}
         <h2 style="font-size:18px;font-weight:700;margin:0">🏢 AR Real — Grupos Corporativos</h2>
         <div style="font-size:12px;color:var(--mut);margin-top:4px">Clientes de crédito · Facturas corporativas · BEOs y grupos</div>
       </div>
-      <button class="btn-run" onclick="procesarARReal()" id="btn-ar-real" style="font-size:13px">
+      <div style="display:flex;gap:8px">
+        <button class="btn-ref" onclick="abrirEmitirFactura()" style="font-size:12px">📄 Emitir factura</button>
+        <button class="btn-run" onclick="procesarARReal()" id="btn-ar-real" style="font-size:13px">
         <div class="spin" id="spin-ar"></div>
         <span id="lbl-ar">🔄 Cargar datos</span>
       </button>
@@ -1940,6 +1943,68 @@ tr:hover td{background:rgba(255,255,255,.025)}
       <div class="card-title" data-i18n="card.logProcesamiento">Log de Procesamiento</div>
       <div id="ar-real-log" style="background:#060c1a;border:1px solid var(--s2);border-radius:10px;padding:14px;max-height:220px;overflow-y:auto;font-family:'JetBrains Mono',monospace;font-size:11px;line-height:1.8;color:var(--tx)"></div>
     </div>
+    <!-- Modal: Emitir Factura Corporativa -->
+    <div id="modal-emitir" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,.7);z-index:9000;align-items:center;justify-content:center">
+      <div style="background:var(--s1);border:1px solid var(--s2);border-radius:16px;padding:28px;max-width:480px;width:90%;max-height:85vh;overflow-y:auto">
+        <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:20px">
+          <h3 style="font-size:16px;font-weight:700;margin:0">📄 Emitir Factura Corporativa</h3>
+          <button onclick="cerrarEmitirFactura()" style="background:none;border:none;color:var(--mut);font-size:20px;cursor:pointer">×</button>
+        </div>
+        <div style="display:flex;flex-direction:column;gap:12px">
+          <div>
+            <label style="font-size:11px;color:var(--mut);font-weight:600;text-transform:uppercase;letter-spacing:.4px">Cliente</label>
+            <select id="ef-cliente" style="width:100%;background:var(--bg);border:1px solid var(--s2);color:var(--tx);padding:9px;border-radius:8px;font-size:13px;margin-top:4px">
+              <option value="">Seleccionar cliente...</option>
+            </select>
+          </div>
+          <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px">
+            <div>
+              <label style="font-size:11px;color:var(--mut);font-weight:600;text-transform:uppercase;letter-spacing:.4px">Fecha entrada</label>
+              <input type="date" id="ef-entrada" style="width:100%;background:var(--bg);border:1px solid var(--s2);color:var(--tx);padding:9px;border-radius:8px;font-size:13px;margin-top:4px">
+            </div>
+            <div>
+              <label style="font-size:11px;color:var(--mut);font-weight:600;text-transform:uppercase;letter-spacing:.4px">Fecha salida</label>
+              <input type="date" id="ef-salida" style="width:100%;background:var(--bg);border:1px solid var(--s2);color:var(--tx);padding:9px;border-radius:8px;font-size:13px;margin-top:4px">
+            </div>
+          </div>
+          <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:10px">
+            <div>
+              <label style="font-size:11px;color:var(--mut);font-weight:600;text-transform:uppercase;letter-spacing:.4px">Habitaciones</label>
+              <input type="number" id="ef-hab" value="1" min="1" style="width:100%;background:var(--bg);border:1px solid var(--s2);color:var(--tx);padding:9px;border-radius:8px;font-size:13px;margin-top:4px">
+            </div>
+            <div>
+              <label style="font-size:11px;color:var(--mut);font-weight:600;text-transform:uppercase;letter-spacing:.4px">€/noche</label>
+              <input type="number" id="ef-precio" value="186" min="0" step="0.01" style="width:100%;background:var(--bg);border:1px solid var(--s2);color:var(--tx);padding:9px;border-radius:8px;font-size:13px;margin-top:4px">
+            </div>
+            <div>
+              <label style="font-size:11px;color:var(--mut);font-weight:600;text-transform:uppercase;letter-spacing:.4px">F&B extras</label>
+              <input type="number" id="ef-fb" value="0" min="0" step="0.01" style="width:100%;background:var(--bg);border:1px solid var(--s2);color:var(--tx);padding:9px;border-radius:8px;font-size:13px;margin-top:4px">
+            </div>
+          </div>
+          <div style="background:var(--bg);border-radius:10px;padding:12px;font-size:13px">
+            <div style="display:flex;justify-content:space-between;color:var(--mut);margin-bottom:4px">
+              <span>Subtotal habitaciones:</span><span id="ef-sub-hab">—</span>
+            </div>
+            <div style="display:flex;justify-content:space-between;color:var(--mut);margin-bottom:4px">
+              <span>F&B:</span><span id="ef-sub-fb">—</span>
+            </div>
+            <div style="display:flex;justify-content:space-between;color:var(--mut);margin-bottom:6px">
+              <span>IVA (10%):</span><span id="ef-iva">—</span>
+            </div>
+            <div style="display:flex;justify-content:space-between;font-weight:800;font-size:16px;color:var(--tx);border-top:1px solid var(--s2);padding-top:8px">
+              <span>TOTAL:</span><span id="ef-total" style="color:var(--acc2)">—</span>
+            </div>
+          </div>
+          <div id="ef-msg" style="font-size:12px;display:none"></div>
+          <div style="display:flex;gap:10px">
+            <button onclick="calcularFactura()" class="btn-ref" style="flex:1;font-size:13px">Calcular</button>
+            <button onclick="emitirFactura()" class="btn-run" style="flex:2;font-size:13px">📄 Emitir y guardar</button>
+          </div>
+        </div>
+      </div>
+    </div>
+    <!-- /Modal emitir factura -->
+
     <!-- Alert: pending balance -->
     <div id="ar-balance-alert" style="display:none;background:rgba(245,158,11,.08);border:1px solid rgba(245,158,11,.25);border-radius:12px;padding:14px 18px;font-size:13px;color:var(--ora);margin-top:12px">
       <strong>💰 Saldo pendiente de cobro:</strong> <span id="ar-balance-txt">—</span>
@@ -3751,6 +3816,8 @@ function renderDRR(s) {
       + '<div class="mc-row"><span class="mc-k">Today</span><span class="mc-v" style="color:' + m.color + '">' + (d.today || 'N/D') + '</span></div>'
       + '<div class="mc-row"><span class="mc-k">MTD</span><span class="mc-v">' + (d.mtd || 'N/D') + '</span></div>'
       + '<div class="mc-row"><span class="mc-k">Forecast</span><span class="mc-v">' + (d.forecast || 'N/D') + '</span></div>'
+      + '<div class="mc-row"><span class="mc-k">Budget</span><span class="mc-v" style="color:var(--dim)">'
+      + (d.budget || 'N/D') + '</span></div>'
       + '</div>';
   }).join('');
 
@@ -4044,6 +4111,73 @@ loadBanco();
 // ═════════════════════════════════════════════════════════════════════
 // AR REAL — Procesar grupos corporativos
 // ═════════════════════════════════════════════════════════════════════
+function abrirEmitirFactura() {
+  const modal = document.getElementById('modal-emitir');
+  modal.style.display = 'flex';
+  // Populate client select
+  fetch('/api/ar_real/clientes').then(r=>r.json()).then(d => {
+    const sel = document.getElementById('ef-cliente');
+    sel.innerHTML = '<option value="">Seleccionar cliente...</option>';
+    (d.clientes || []).forEach(c => {
+      const opt = document.createElement('option');
+      opt.value = c.nombre; opt.textContent = c.nombre + ' — ' + (c.NIF||'');
+      sel.appendChild(opt);
+    });
+  }).catch(()=>{});
+  // Set default dates
+  const hoy = new Date();
+  const man = new Date(hoy); man.setDate(man.getDate()+1);
+  document.getElementById('ef-entrada').value = hoy.toISOString().slice(0,10);
+  document.getElementById('ef-salida').value = man.toISOString().slice(0,10);
+  calcularFactura();
+}
+function cerrarEmitirFactura() {
+  document.getElementById('modal-emitir').style.display = 'none';
+}
+function calcularFactura() {
+  const entrada = new Date(document.getElementById('ef-entrada').value);
+  const salida  = new Date(document.getElementById('ef-salida').value);
+  const noches  = Math.max(1, Math.round((salida - entrada) / 86400000));
+  const hab     = parseFloat(document.getElementById('ef-hab').value) || 1;
+  const precio  = parseFloat(document.getElementById('ef-precio').value) || 0;
+  const fb      = parseFloat(document.getElementById('ef-fb').value) || 0;
+  const subHab  = noches * hab * precio;
+  const iva     = (subHab + fb) * 0.10;
+  const total   = subHab + fb + iva;
+  const fmt = v => '€' + v.toLocaleString('es-ES', {minimumFractionDigits:2});
+  document.getElementById('ef-sub-hab').textContent = fmt(subHab) + ' (' + noches + ' noche' + (noches!==1?'s':'') + ')';
+  document.getElementById('ef-sub-fb').textContent  = fmt(fb);
+  document.getElementById('ef-iva').textContent     = fmt(iva);
+  document.getElementById('ef-total').textContent   = fmt(total);
+}
+async function emitirFactura() {
+  const cliente = document.getElementById('ef-cliente').value;
+  if (!cliente) { alert('Selecciona un cliente'); return; }
+  const entrada = document.getElementById('ef-entrada').value;
+  const salida  = document.getElementById('ef-salida').value;
+  const hab     = parseFloat(document.getElementById('ef-hab').value) || 1;
+  const precio  = parseFloat(document.getElementById('ef-precio').value) || 0;
+  const fb      = parseFloat(document.getElementById('ef-fb').value) || 0;
+  const noches  = Math.max(1, Math.round((new Date(salida)-new Date(entrada))/86400000));
+  const subHab  = noches*hab*precio;
+  const total   = Math.round((subHab+fb)*1.10*100)/100;
+  const msg = document.getElementById('ef-msg');
+  msg.style.display='block';msg.style.color='var(--mut)';msg.textContent='Emitiendo factura...';
+  try {
+    const resp = await fetch('/api/ar_real/emitir_factura', {
+      method:'POST', headers:{'Content-Type':'application/json'},
+      body:JSON.stringify({cliente,fecha_entrada:entrada,fecha_salida:salida,habitaciones:hab,precio_noche:precio,fb_extras:fb,total})
+    });
+    const d = await resp.json();
+    if (d.ok) {
+      msg.style.color='var(--grn)';msg.textContent='✓ Factura '+d.numero+' emitida — €'+total.toLocaleString('es-ES');
+      setTimeout(()=>{ cerrarEmitirFactura(); cargarARRealData(); },1500);
+    } else {
+      msg.style.color='var(--red)';msg.textContent=d.error||'Error emitiendo factura';
+    }
+  } catch(e) { msg.style.color='var(--red)';msg.textContent='Error de conexión'; }
+}
+
 function procesarARReal() {
   const logCard = document.getElementById('ar-log-card');
   const logDiv  = document.getElementById('ar-real-log');

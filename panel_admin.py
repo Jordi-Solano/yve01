@@ -210,8 +210,23 @@ input,select{width:100%;background:var(--bg);border:1px solid var(--s2);color:va
   </div>
   <div>
     <div class="card">
-      <div class="ct">Hoteles</div>
-      <table class="ut"><thead><tr><th>Hotel</th><th>Ciudad</th><th>Hab</th><th></th></tr></thead>
+      <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:12px">
+        <div class="ct" style="margin:0">Hoteles</div>
+        <button class="btn bsm" onclick="document.getElementById('nuevo-hotel-form').style.display=document.getElementById('nuevo-hotel-form').style.display==='none'?'block':'none'" style="font-size:11px;padding:5px 12px">+ Añadir hotel</button>
+      </div>
+      <div id="nuevo-hotel-form" style="display:none;background:#0f172a;border-radius:10px;padding:14px;margin-bottom:14px">
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:8px">
+          <input id="hn-nombre" placeholder="Nombre del hotel" style="background:#1e293b;border:1px solid #334155;color:#f1f5f9;padding:8px;border-radius:7px;font-size:12px">
+          <input id="hn-ciudad" placeholder="Ciudad" style="background:#1e293b;border:1px solid #334155;color:#f1f5f9;padding:8px;border-radius:7px;font-size:12px">
+          <input id="hn-hab" placeholder="Habitaciones" type="number" value="100" style="background:#1e293b;border:1px solid #334155;color:#f1f5f9;padding:8px;border-radius:7px;font-size:12px">
+          <select id="hn-cat" style="background:#1e293b;border:1px solid #334155;color:#f1f5f9;padding:8px;border-radius:7px;font-size:12px">
+            <option>3★</option><option selected>4★</option><option>5★</option>
+          </select>
+        </div>
+        <button onclick="crearHotel()" class="btn bsm" style="font-size:12px;padding:6px 14px">Registrar hotel</button>
+        <span id="hotel-msg" style="font-size:12px;margin-left:10px"></span>
+      </div>
+      <table class="ut"><thead><tr><th>Hotel</th><th>Ciudad</th><th>Hab</th><th>Cat.</th><th></th></tr></thead>
       <tbody id="htb"></tbody></table>
     </div>
     <div class="card" style="border-color:rgba(239,68,68,.2)">
@@ -224,12 +239,54 @@ input,select{width:100%;background:var(--bg);border:1px solid var(--s2);color:va
 <script>
 async function ls(){const r=await fetch('/admin/api/stats'),d=await r.json();['u','a','h','r','up','v'].forEach((k,i)=>{const el=document.getElementById('s'+k);if(el)el.textContent=[d.usuarios,d.usuarios_activos,d.hoteles,d.reportes_generados,d.uptime,d.version][i];});}
 async function lu(){const r=await fetch('/admin/api/usuarios'),us=await r.json();document.getElementById('utb').innerHTML=us.map(u=>'<tr><td><b>'+u.username+'</b></td><td>'+(u.nombre||'-')+'</td><td style="color:#60a5fa">'+u.rol+'</td><td><span class="'+(u.activo!==false?'ok':'off')+'">'+(u.activo!==false?'Activo':'Inactivo')+'</span></td><td><button class="btn bd bsm" onclick="tU(\''+u.username+'\')">Toggle</button></td></tr>').join('');}
-async function lh(){const r=await fetch('/admin/api/hoteles'),d=await r.json();if(!d.ok)return;document.getElementById('htb').innerHTML=d.hoteles.map(h=>'<tr><td><b>'+h.nombre+'</b></td><td style="color:#94a3b8">'+(h.ciudad||'-')+'</td><td>'+(h.habitaciones||'-')+'</td><td><button class="btn bd bsm" onclick="dH(\''+h.id+'\')">x</button></td></tr>').join('');}
+async function lh(){const r=await fetch('/admin/api/hoteles'),d=await r.json();if(!d.ok)return;document.getElementById('htb').innerHTML=d.hoteles.map(h=>'<tr><td><b>'+h.nombre+'</b></td><td style="color:#94a3b8">'+(h.ciudad||'-')+'</td><td>'+(h.habitaciones||'-')+'</td><td style="color:#94a3b8">'+(h.categoria||'-')+'</td><td><button class="btn bd bsm" onclick="dH(\''+h.id+'\')">×</button></td></tr>').join('');}
 async function tU(u){await fetch('/admin/api/toggle_usuario',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({username:u})});lu();ls();}
 async function dH(id){if(!confirm('Eliminar '+id+'?'))return;await fetch('/admin/api/hoteles/eliminar',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({id})});lh();ls();}
 async function crearU(){const d={username:document.getElementById('nu').value.trim(),password:document.getElementById('np').value,nombre:document.getElementById('nn').value.trim(),email:document.getElementById('ne').value.trim(),rol:document.getElementById('nr').value};const m=document.getElementById('mu');if(!d.username||!d.password){m.style.color='#ef4444';m.textContent='Faltan campos.';return;}const r=await fetch('/admin/api/crear_usuario',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(d)});const res=await r.json();m.style.color=res.ok?'#22c55e':'#ef4444';m.textContent=res.ok?'Creado: '+d.username:(res.error||'Error');if(res.ok){lu();ls();}}
+async function crearHotel(){
+  const d={nombre:document.getElementById('hn-nombre').value.trim(),ciudad:document.getElementById('hn-ciudad').value.trim(),
+    habitaciones:document.getElementById('hn-hab').value,categoria:document.getElementById('hn-cat').value};
+  const m=document.getElementById('hotel-msg');
+  if(!d.nombre){m.style.color='#ef4444';m.textContent='El nombre es obligatorio';return;}
+  const r=await fetch('/admin/api/hoteles/crear',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(d)});
+  const res=await r.json();m.style.color=res.ok?'#22c55e':'#ef4444';
+  m.textContent=res.ok?'✓ Hotel '+res.nombre+' registrado':(res.error||'Error');
+  if(res.ok){lh();ls();document.getElementById('nuevo-hotel-form').style.display='none';
+    document.getElementById('hn-nombre').value='';document.getElementById('hn-ciudad').value='';}
+}
 async function cleanCache(){const d=document.getElementById('md');d.textContent='Cache limpiado';d.style.color='#22c55e';}
 ls();lu();lh();
 </script>
 </body>
 </html>"""
+
+@bp.route("/api/hoteles/crear", methods=["POST"])
+@_admin_required
+def api_crear_hotel():
+    """Registra un nuevo hotel en el grupo."""
+    data = request.get_json(force=True, silent=True) or {}
+    nombre    = data.get("nombre", "").strip()
+    ciudad    = data.get("ciudad", "").strip()
+    categoria = data.get("categoria", "4★")
+    hab       = int(data.get("habitaciones", 100))
+    grupo     = data.get("grupo", "Principal")
+
+    if not nombre:
+        return jsonify({"ok": False, "error": "El nombre es obligatorio"}), 400
+
+    ruta = BASE_DIR / "datos-referencia" / "hoteles.json"
+    hotels = json.loads(ruta.read_text()) if ruta.exists() else []
+
+    import hashlib, time
+    hid = "H" + hashlib.md5((nombre + str(time.time())).encode()).hexdigest()[:6].upper()
+    hotels.append({
+        "id": hid, "nombre": nombre, "ciudad": ciudad,
+        "categoria": categoria, "habitaciones": hab,
+        "grupo": grupo, "activo": True,
+        "modulos": ["ar", "ap", "drr", "banco", "fb"],
+        "creado": __import__("datetime").datetime.now().strftime("%Y-%m-%d"),
+    })
+    ruta.write_text(json.dumps(hotels, ensure_ascii=False, indent=2))
+    return jsonify({"ok": True, "id": hid, "nombre": nombre})
+
+

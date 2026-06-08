@@ -168,3 +168,58 @@ def api_ar_real_data():
     except Exception as e:
         return _jsonify({'error': str(e)}), 500
 
+
+
+@ar_real_bp.route('/api/ar_real/emitir_factura', methods=['POST'])
+def api_emitir_factura():
+    """Emite una nueva factura corporativa y la registra en reservas_credito.xlsx."""
+    import json as _json
+    from datetime import datetime
+    data = request.get_json(force=True, silent=True) or {}
+
+    cliente       = data.get('cliente', '').strip()
+    fecha_entrada = data.get('fecha_entrada', '')
+    fecha_salida  = data.get('fecha_salida', '')
+    habitaciones  = int(data.get('habitaciones', 1))
+    precio_noche  = float(data.get('precio_noche', 0))
+    fb_extras     = float(data.get('fb_extras', 0))
+    total         = float(data.get('total', 0))
+
+    if not cliente or not fecha_entrada or not fecha_salida:
+        return jsonify({'ok': False, 'error': 'Faltan datos obligatorios'}), 400
+
+    try:
+        ruta = BASE_DIR / 'datos-referencia' / 'reservas_credito.xlsx'
+        if ruta.exists():
+            df = pd.read_excel(ruta)
+        else:
+            df = pd.DataFrame(columns=['numero_reserva','cliente','fecha_entrada','fecha_salida',
+                                       'habitaciones','importe_habitaciones','importe_fb',
+                                       'importe_extras','total','estado','fecha_emision'])
+
+        # Generate invoice number
+        year = datetime.now().year
+        last_num = len(df) + 1
+        numero = f'FAC-{year}-CORP-{last_num:04d}'
+
+        noches    = max(1, (pd.to_datetime(fecha_salida) - pd.to_datetime(fecha_entrada)).days)
+        importe_h = round(habitaciones * noches * precio_noche, 2)
+
+        new_row = {
+            'numero_reserva':     numero,
+            'cliente':            cliente,
+            'fecha_entrada':      fecha_entrada,
+            'fecha_salida':       fecha_salida,
+            'habitaciones':       habitaciones,
+            'importe_habitaciones': importe_h,
+            'importe_fb':         round(fb_extras, 2),
+            'importe_extras':     0.0,
+            'total':              round(total, 2),
+            'estado':             'EMITIDA',
+            'fecha_emision':      datetime.now().strftime('%Y-%m-%d'),
+        }
+        df = pd.concat([df, pd.DataFrame([new_row])], ignore_index=True)
+        df.to_excel(ruta, index=False)
+        return jsonify({'ok': True, 'numero': numero, 'total': total})
+    except Exception as e:
+        return jsonify({'ok': False, 'error': str(e)}), 500
