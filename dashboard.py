@@ -291,6 +291,49 @@ def health():
         "uptime":    open("/proc/uptime").read().split()[0] + "s" if os.path.exists("/proc/uptime") else "n/a",
     })
 
+@app.route("/api/test_smtp", methods=["POST"])
+@login_required
+def api_test_smtp():
+    """Test SMTP configuration."""
+    from notificaciones import test_smtp
+    result = test_smtp()
+    return jsonify(result)
+
+@app.route("/api/test_oracle", methods=["POST"])
+@login_required
+def api_test_oracle():
+    """Test Oracle connection using oracle_auth.test_connection()."""
+    try:
+        from oracle_auth import test_connection
+        result = test_connection()
+        return jsonify({
+            "ok":      result["ok"],
+            "message": result["message"],
+            "mode":    result.get("mode", ""),
+            "ledgers": result.get("ledgers", []),
+        })
+    except Exception as e:
+        return jsonify({"ok": False, "error": str(e)[:200]})
+
+@app.route("/api/test_stripe", methods=["POST"])
+@login_required
+def api_test_stripe():
+    """Test Stripe configuration."""
+    import os as _os
+    key = _os.environ.get("STRIPE_SECRET_KEY", "")
+    if not key:
+        return jsonify({"ok": False, "message": "STRIPE_SECRET_KEY no configurado"})
+    try:
+        import stripe as _stripe
+        _stripe.api_key = key
+        acct = _stripe.Account.retrieve()
+        mode = "🧪 TEST" if key.startswith("sk_test_") else "🔴 LIVE"
+        return jsonify({"ok": True, "message": f"Stripe {mode} conectado — cuenta: {acct.get('email', acct['id'])}"})
+    except ImportError:
+        return jsonify({"ok": False, "error": "stripe no instalado (pip install stripe)"})
+    except Exception as e:
+        return jsonify({"ok": False, "error": str(e)[:200]})
+
 @app.route("/api/stats")
 def api_stats():
     df, meta = cargar_datos()

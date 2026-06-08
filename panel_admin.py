@@ -234,6 +234,23 @@ input,select{width:100%;background:var(--bg);border:1px solid var(--s2);color:va
       <button class="btn bd bsm" onclick="cleanCache()">Limpiar cache</button>
       <div class="msg" id="md"></div>
     </div>
+    <div class="card" style="border-color:rgba(59,130,246,.2)">
+      <div class="ct" style="color:#60a5fa">Conexiones</div>
+      <div style="display:flex;flex-direction:column;gap:8px">
+        <div style="display:flex;align-items:center;gap:8px">
+          <button class="btn bsm" onclick="testConn('smtp')" style="min-width:120px;font-size:11px">📧 Test SMTP</button>
+          <span id="smtp-status" style="font-size:11px;color:#64748b"></span>
+        </div>
+        <div style="display:flex;align-items:center;gap:8px">
+          <button class="btn bsm" onclick="testConn('oracle')" style="min-width:120px;font-size:11px">🔴 Test Oracle</button>
+          <span id="oracle-status" style="font-size:11px;color:#64748b"></span>
+        </div>
+        <div style="display:flex;align-items:center;gap:8px">
+          <button class="btn bsm" onclick="testConn('stripe')" style="min-width:120px;font-size:11px">💳 Test Stripe</button>
+          <span id="stripe-status" style="font-size:11px;color:#64748b"></span>
+        </div>
+      </div>
+    </div>
   </div>
 </div>
 <script>
@@ -253,6 +270,16 @@ async function crearHotel(){
   m.textContent=res.ok?'✓ Hotel '+res.nombre+' registrado':(res.error||'Error');
   if(res.ok){lh();ls();document.getElementById('nuevo-hotel-form').style.display='none';
     document.getElementById('hn-nombre').value='';document.getElementById('hn-ciudad').value='';}
+}
+async function testConn(type) {
+  const el = document.getElementById(type + '-status');
+  el.style.color = '#64748b'; el.textContent = '⏳ Probando...';
+  try {
+    const r = await fetch('/api/test_' + type, {method:'POST'});
+    const d = await r.json();
+    el.style.color = d.ok ? '#22c55e' : '#ef4444';
+    el.textContent = (d.ok ? '✓ ' : '✗ ') + (d.message || d.error || 'Error');
+  } catch(e) { el.style.color = '#ef4444'; el.textContent = '✗ Error de red'; }
 }
 async function cleanCache(){const d=document.getElementById('md');d.textContent='Cache limpiado';d.style.color='#22c55e';}
 ls();lu();lh();

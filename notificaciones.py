@@ -106,7 +106,8 @@ def enviar_email(destinatario, asunto, cuerpo_html, tipo="general"):
         return False
 
     msg = MIMEMultipart("alternative")
-    msg["From"]    = smtp_user
+    nombre_hotel = env.get("HOTEL_NOMBRE", "Hotel")
+    msg["From"]    = f"Yve.01 · {nombre_hotel} <{smtp_user}>"
     msg["To"]      = destinatario
     msg["Subject"] = asunto
     msg.attach(MIMEText(cuerpo_html, "html", "utf-8"))
@@ -123,6 +124,38 @@ def enviar_email(destinatario, asunto, cuerpo_html, tipo="general"):
     except Exception as e:
         _registrar(tipo, asunto, destinatario, "error", str(e)[:200])
         return False
+
+def test_smtp():
+    """Verifica la configuración SMTP enviando un email de prueba."""
+    env = _load_env()
+    smtp_server = env.get("SMTP_SERVER", "smtp.gmail.com")
+    smtp_port   = int(env.get("SMTP_PORT", "587"))
+    smtp_user   = env.get("SMTP_USER", "")
+    smtp_pass   = env.get("SMTP_PASSWORD", "")
+    dest        = env.get("NOTIF_EMAIL", smtp_user)
+
+    if not smtp_user or not smtp_pass:
+        return {"ok": False, "error": "SMTP_USER o SMTP_PASSWORD no configurados en variables de entorno"}
+
+    try:
+        import smtplib as _s
+        with _s.SMTP(smtp_server, smtp_port, timeout=10) as server:
+            server.ehlo()
+            server.starttls()
+            server.login(smtp_user, smtp_pass)
+        return {"ok": True, "message": f"Conexión SMTP correcta con {smtp_user} en {smtp_server}:{smtp_port}"}
+    except Exception as e:
+        err = str(e)
+        hint = ""
+        if "534" in err or "Username and Password not accepted" in err:
+            hint = " → Usa una Contraseña de Aplicación de Gmail (no tu contraseña normal)"
+        elif "535" in err:
+            hint = " → Credenciales incorrectas. Verifica SMTP_USER y SMTP_PASSWORD"
+        elif "Connection refused" in err or "timed out" in err:
+            hint = f" → No se puede conectar a {smtp_server}:{smtp_port}"
+        elif "STARTTLS" in err:
+            hint = " → El servidor no soporta STARTTLS. Prueba puerto 465 con SSL"
+        return {"ok": False, "error": err[:200] + hint}
 
 # ── Plantilla email ───────────────────────────────────────────────────────
 
