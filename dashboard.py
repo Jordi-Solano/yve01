@@ -2820,6 +2820,55 @@ setTimeout(async () => {
   preloads.forEach(url => fetch(url).catch(() => {}));
 }, 3000);
 
+const _i18nCache = {};
+const _i18nOriginal = {}; // textos ES originales — para restaurar al volver a español
+let _i18nData = {};
+let _i18nLang = localStorage.getItem('yve_lang') || 'es';
+
+function _saveOriginals() {
+  document.querySelectorAll('[data-i18n]').forEach(el => {
+    const k = el.getAttribute('data-i18n');
+    if (!_i18nOriginal[k]) _i18nOriginal[k] = el.textContent;
+  });
+}
+
+async function loadI18n(lang) {
+  _saveOriginals();
+  if (lang === 'es') {
+    _i18nData = {}; _i18nLang = 'es';
+    applyI18n(_i18nOriginal); // restaura textos originales
+    localStorage.setItem('yve_lang', 'es'); return;
+  }
+  if (_i18nCache[lang]) {
+    _i18nData = _i18nCache[lang]; _i18nLang = lang;
+    applyI18n(_i18nData); localStorage.setItem('yve_lang', lang); return;
+  }
+  try {
+    const r = await fetch('/static/i18n/' + lang + '.json');
+    const data = await r.json();
+    _i18nCache[lang] = data; _i18nData = data; _i18nLang = lang;
+    applyI18n(data); localStorage.setItem('yve_lang', lang);
+  } catch(e) { console.warn('i18n error:', e); }
+}
+
+function t(key) { return _i18nData[key] || _i18nOriginal[key] || key; }
+
+function applyI18n(data) {
+  document.querySelectorAll('[data-i18n]').forEach(el => {
+    const k = el.getAttribute('data-i18n');
+    if (data[k] !== undefined) el.textContent = data[k];
+  });
+}
+
+async function cambiarIdioma(lang) {
+  fetch('/api/set_lang/' + lang);   // fire-and-forget, no await
+  await loadI18n(lang);
+  document.querySelectorAll('.lang-btn').forEach(b => {
+    b.style.fontWeight = b.dataset.lang === lang ? '700' : '400';
+    b.style.color = b.dataset.lang === lang ? 'var(--acc2)' : 'var(--tx)';
+  });
+}
+
 loadAll();
 setInterval(loadAll, 60000);
 
@@ -4404,55 +4453,6 @@ function closeHotelModal() {
 // ═══════════════════════════════
 // I18N — Sistema de traducción
 // ═══════════════════════════════
-const _i18nCache = {};
-const _i18nOriginal = {}; // textos ES originales — para restaurar al volver a español
-let _i18nData = {};
-let _i18nLang = localStorage.getItem('yve_lang') || 'es';
-
-function _saveOriginals() {
-  document.querySelectorAll('[data-i18n]').forEach(el => {
-    const k = el.getAttribute('data-i18n');
-    if (!_i18nOriginal[k]) _i18nOriginal[k] = el.textContent;
-  });
-}
-
-async function loadI18n(lang) {
-  _saveOriginals();
-  if (lang === 'es') {
-    _i18nData = {}; _i18nLang = 'es';
-    applyI18n(_i18nOriginal); // restaura textos originales
-    localStorage.setItem('yve_lang', 'es'); return;
-  }
-  if (_i18nCache[lang]) {
-    _i18nData = _i18nCache[lang]; _i18nLang = lang;
-    applyI18n(_i18nData); localStorage.setItem('yve_lang', lang); return;
-  }
-  try {
-    const r = await fetch('/static/i18n/' + lang + '.json');
-    const data = await r.json();
-    _i18nCache[lang] = data; _i18nData = data; _i18nLang = lang;
-    applyI18n(data); localStorage.setItem('yve_lang', lang);
-  } catch(e) { console.warn('i18n error:', e); }
-}
-
-function t(key) { return _i18nData[key] || _i18nOriginal[key] || key; }
-
-function applyI18n(data) {
-  document.querySelectorAll('[data-i18n]').forEach(el => {
-    const k = el.getAttribute('data-i18n');
-    if (data[k] !== undefined) el.textContent = data[k];
-  });
-}
-
-async function cambiarIdioma(lang) {
-  fetch('/api/set_lang/' + lang);   // fire-and-forget, no await
-  await loadI18n(lang);
-  document.querySelectorAll('.lang-btn').forEach(b => {
-    b.style.fontWeight = b.dataset.lang === lang ? '700' : '400';
-    b.style.color = b.dataset.lang === lang ? 'var(--acc2)' : 'var(--tx)';
-  });
-}
-
 // Cargar idioma actual al inicio
 loadI18n(_i18nLang);
 // Precargar todos los demás idiomas en segundo plano (2s delay)
