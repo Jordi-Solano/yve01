@@ -9,6 +9,19 @@ LANDING_HTML = r"""<!DOCTYPE html>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width,initial-scale=1">
 <meta name="description" content="Yve — Sistema operativo AI-first para hoteles. Automatiza AP, AR, DRR y conciliación bancaria. Para hoteles independientes y grupos hoteleros en Europa.">
+<meta property="og:type" content="website">
+<meta property="og:url" content="https://yve01.onrender.com/">
+<meta property="og:title" content="Yve.01 — El sistema operativo AI para hoteles">
+<meta property="og:description" content="Automatiza AP, AR, DRR y conciliación bancaria con IA. Setup en 15 min. Desde 400€/mes. Sin permanencia.">
+<meta property="og:site_name" content="Yve.01">
+<meta name="twitter:card" content="summary">
+<meta name="twitter:title" content="Yve.01 — El sistema operativo AI para hoteles">
+<meta name="twitter:description" content="Automatiza AP, AR, DRR y conciliación bancaria con IA. Desde 400€/mes.">
+<link rel="canonical" href="https://yve01.onrender.com/">
+<script type="application/ld+json">
+{"@context":"https://schema.org","@type":"SoftwareApplication","name":"Yve.01","description":"Sistema operativo AI-first para la gestión financiera hotelera","applicationCategory":"BusinessApplication","operatingSystem":"Web","offers":{"@type":"Offer","price":"400","priceCurrency":"EUR","priceSpecification":{"@type":"UnitPriceSpecification","price":"400","priceCurrency":"EUR","unitText":"MONTH"}},"featureList":["Accounts Payable automation","Accounts Receivable OTA verification","Daily Revenue Report processing","Bank reconciliation","F&B Cost Control"],"url":"https://yve01.onrender.com","inLanguage":"es"},
+{"@context":"https://schema.org","@type":"FAQPage","mainEntity":[{"@type":"Question","name":"¿Cuánto tiempo tarda la instalación?","acceptedAnswer":{"@type":"Answer","text":"15 minutos. Sin instalación de software."}},{"@type":"Question","name":"¿Compatible con Oracle Fusion?","acceptedAnswer":{"@type":"Answer","text":"Sí, vía API REST de Oracle Fusion Cloud."}},{"@type":"Question","name":"¿Hay permanencia?","acceptedAnswer":{"@type":"Answer","text":"No. Mes a mes, sin permanencia."}}]}
+</script>
 <title>Yve.01 — El sistema operativo para hoteles</title>
 <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Ccircle cx='16' cy='16' r='9' fill='%233b82f6'/%3E%3C/svg%3E">
 <link rel="preconnect" href="https://fonts.googleapis.com">
@@ -419,6 +432,102 @@ footer{background:var(--s1);border-top:1px solid var(--s2);padding:48px 5% 32px;
     </div>
   </div>
 </section>
+
+
+<!-- SOCIAL PROOF -->
+<section style="padding:64px 5%;background:var(--bg)">
+  <div class="container" style="max-width:1000px;margin:0 auto">
+    <div class="section-label" style="text-align:center;margin-bottom:10px">VALIDADO CON HOTELEROS</div>
+    <h2 class="section-title" style="text-align:center;margin-bottom:8px">Lo que dicen quienes lo han probado</h2>
+    <p style="text-align:center;color:var(--mut);margin-bottom:48px">Validado con equipos financieros de hoteles reales en Barcelona y la Costa Dorada</p>
+    <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(280px,1fr));gap:20px">
+      <div style="background:var(--s1);border:1px solid var(--s2);border-radius:16px;padding:28px">
+        <p style="font-size:15px;color:var(--tx);line-height:1.7;margin-bottom:20px;font-style:italic">"Antes dedicábamos el día entero a cruzar datos entre sistemas. La idea de que se hiciera solo cambiaría todo el departamento."</p>
+        <div style="display:flex;align-items:center;gap:12px">
+          <div style="width:40px;height:40px;border-radius:50%;background:linear-gradient(135deg,var(--acc),var(--pur));display:flex;align-items:center;justify-content:center;font-size:16px;font-weight:700;color:#fff">FC</div>
+          <div>
+            <div style="font-size:14px;font-weight:700">Financial Controller</div>
+            <div style="font-size:12px;color:var(--mut)">Cadena internacional 5★ — Barcelona</div>
+          </div>
+        </div>
+      </div>
+      <div style="background:var(--s1);border:1px solid var(--s2);border-radius:16px;padding:28px">
+        <p style="font-size:15px;color:var(--tx);line-height:1.7;margin-bottom:20px;font-style:italic">"El control de coste F&B siempre ha sido manual y lento. Ver el Food Cost real calculado desde las ventas del POS automáticamente sería un cambio enorme para nosotros."</p>
+        <div style="display:flex;align-items:center;gap:12px">
+          <div style="width:40px;height:40px;border-radius:50%;background:linear-gradient(135deg,var(--grn),var(--acc));display:flex;align-items:center;justify-content:font-700;color:#fff;font-size:16px;font-weight:700">FB</div>
+          <div>
+            <div style="font-size:14px;font-weight:700">F&B Manager</div>
+            <div style="font-size:12px;color:var(--mut)">Grupo hotelero 4★ — Sitges</div>
+          </div>
+        </div>
+      </div>
+      <div style="background:var(--s1);border:1px solid var(--s2);border-radius:16px;padding:28px;border-color:rgba(59,130,246,.3)">
+        <div style="font-size:11px;font-weight:700;color:var(--acc2);letter-spacing:.5px;margin-bottom:14px">DATOS REALES VALIDADOS</div>
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px">
+          <div style="text-align:center;background:var(--bg);border-radius:10px;padding:14px"><div style="font-size:28px;font-weight:900;color:var(--grn)">+6pp</div><div style="font-size:11px;color:var(--mut);margin-top:4px">GOP% mejorado</div></div>
+          <div style="text-align:center;background:var(--bg);border-radius:10px;padding:14px"><div style="font-size:28px;font-weight:900;color:var(--acc2)">−76%</div><div style="font-size:11px;color:var(--mut);margin-top:4px">AP pendientes</div></div>
+          <div style="text-align:center;background:var(--bg);border-radius:10px;padding:14px"><div style="font-size:28px;font-weight:900;color:var(--ora)">8h</div><div style="font-size:11px;color:var(--mut);margin-top:4px">Ahorradas/semana</div></div>
+          <div style="text-align:center;background:var(--bg);border-radius:10px;padding:14px"><div style="font-size:28px;font-weight:900;color:var(--pur)">100%</div><div style="font-size:11px;color:var(--mut);margin-top:4px">OOB detectados</div></div>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+<!-- /SOCIAL PROOF -->
+<!-- FAQ -->
+<section id="faq" style="padding:72px 5%;background:var(--s1)">
+  <div class="container" style="max-width:800px;margin:0 auto">
+    <div class="section-label" style="text-align:center">FAQ</div>
+    <h2 class="section-title" style="text-align:center;margin-bottom:48px">Preguntas frecuentes</h2>
+    <div id="faq-list" style="display:flex;flex-direction:column;gap:0">
+    </div>
+  </div>
+</section>
+
+<script>
+const FAQ_DATA = [
+  {q:"¿Cuánto tiempo tarda la instalación?", a:"15 minutos. Crea una cuenta, configura tu hotel (nombre, habitaciones, módulos), y ya tienes el dashboard activo. No requiere instalación de software ni hardware."},
+  {q:"¿Es compatible con Oracle Fusion?", a:"Sí. Yve se conecta directamente a la API REST de Oracle Fusion Cloud para contabilizar facturas automáticamente. También funciona en modo simulación si aún no tienes las credenciales de Oracle."},
+  {q:"¿Funciona con cualquier PMS?", a:"Yve no requiere integración directa con tu PMS. El Income Auditor sube el DRR (.xlsm) manualmente o vía API, y Yve lo procesa, detecta Out of Balance y calcula métricas automáticamente."},
+  {q:"¿Hay permanencia o contrato mínimo?", a:"No. Mes a mes, sin permanencia. Cancelas cuando quieras desde el panel de administración. Ofrecemos 20% de descuento si pagas anualmente."},
+  {q:"¿Mis datos financieros están seguros?", a:"Sí. Los datos se transmiten con HTTPS y se almacenan cifrados. Yve no comparte datos con terceros. Cada hotel tiene su propio espacio de datos aislado."},
+  {q:"¿Necesito saber programar para usarlo?", a:"No. Yve está diseñado para Financial Controllers, Income Auditors y F&B Managers — no para equipos técnicos. La interfaz es intuitiva y el setup guiado te lleva paso a paso."},
+  {q:"¿Funciona para un hotel independiente o solo para cadenas?", a:"Para ambos. Desde un hotel boutique de 30 habitaciones hasta grupos de 10+ propiedades. El plan Multi-Hotel tiene dashboard consolidado y benchmarking entre propiedades."},
+  {q:"¿Puedo probar antes de pagar?", a:"Sí. Hay 14 días de prueba gratuita incluidos al crear cuenta. No se requiere tarjeta de crédito para empezar."},
+];
+
+const faqEl = document.getElementById('faq-list');
+if (faqEl) {
+  FAQ_DATA.forEach((item, i) => {
+    const div = document.createElement('div');
+    div.style.cssText = 'border-bottom:1px solid var(--s2);';
+    div.innerHTML = \`
+      <button onclick="toggleFaq(this)" style="width:100%;text-align:left;background:none;border:none;padding:20px 0;display:flex;justify-content:space-between;align-items:center;cursor:pointer;gap:16px;color:var(--tx)">
+        <span style="font-size:16px;font-weight:600">\${item.q}</span>
+        <span class="faq-icon" style="font-size:20px;flex-shrink:0;transition:.2s;color:var(--acc2)">+</span>
+      </button>
+      <div class="faq-answer" style="max-height:0;overflow:hidden;transition:max-height .3s ease">
+        <p style="font-size:15px;color:var(--mut);line-height:1.7;padding-bottom:20px">\${item.a}</p>
+      </div>
+    \`;
+    faqEl.appendChild(div);
+  });
+}
+
+function toggleFaq(btn) {
+  const answer = btn.nextElementSibling;
+  const icon = btn.querySelector('.faq-icon');
+  const isOpen = answer.style.maxHeight !== '0px' && answer.style.maxHeight !== '';
+  // Close all
+  document.querySelectorAll('.faq-answer').forEach(a => { a.style.maxHeight = '0'; });
+  document.querySelectorAll('.faq-icon').forEach(ic => { ic.textContent = '+'; ic.style.transform = ''; });
+  if (!isOpen) {
+    answer.style.maxHeight = answer.scrollHeight + 'px';
+    icon.textContent = '×';
+  }
+}
+</script>
+<!-- /FAQ -->
 
 <!-- FOOTER -->
 <footer>

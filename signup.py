@@ -75,6 +75,11 @@ SIGNUP_HTML = r"""<!DOCTYPE html>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width,initial-scale=1">
 <title>Crea tu cuenta — Yve.01</title>
+<meta property="og:type" content="website">
+<meta property="og:url" content="https://yve01.onrender.com/signup">
+<meta property="og:title" content="Crear cuenta gratis | Yve.01">
+<meta property="og:description" content="Empieza tu prueba gratuita de 14 días. Setup en 15 minutos. Sin tarjeta de crédito.">
+<link rel="canonical" href="https://yve01.onrender.com/signup">
 <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Ccircle cx='16' cy='16' r='9' fill='%233b82f6'/%3E%3C/svg%3E">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&display=swap" rel="stylesheet">
