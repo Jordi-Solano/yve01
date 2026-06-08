@@ -276,6 +276,21 @@ def api_debug():
     info["columnas"] = list(df.columns) if df is not None else []
     return jsonify(info)
 
+@app.route("/health")
+@app.route("/api/health")
+def health():
+    """Health check — keeps Render awake and provides system status."""
+    from datetime import datetime
+    import glob as _glob
+    return jsonify({
+        "status":    "ok",
+        "app":       "Yve.01",
+        "version":   "1.0.0-beta",
+        "timestamp": datetime.now().isoformat(),
+        "reports":   len(_glob.glob(os.path.join(REPORTES_DIR, "*.xlsx"))),
+        "uptime":    open("/proc/uptime").read().split()[0] + "s" if os.path.exists("/proc/uptime") else "n/a",
+    })
+
 @app.route("/api/stats")
 def api_stats():
     df, meta = cargar_datos()
@@ -3772,8 +3787,11 @@ function autoResize(el) {
 async function uploadDRR(input) {
   const file = input.files[0];
   if (!file) return;
-  const status = document.getElementById('drr-status');
-  status.textContent = 'Procesando ' + file.name + '...';
+  const status  = document.getElementById('drr-status');
+  const label   = input.previousElementSibling;
+  const origLbl = label ? label.textContent : '';
+  status.textContent = '⏳ Procesando ' + file.name + '...';
+  if (label) label.textContent = '⏳ Procesando...';
 
   const form = new FormData();
   form.append('file', file);
@@ -3781,16 +3799,34 @@ async function uploadDRR(input) {
   try {
     const resp = await fetch('/api/upload_drr', { method: 'POST', body: form });
     const data = await resp.json();
-    if (data.ok) {
-      status.textContent = '✓ ' + file.name + ' procesado';
+    if (data.ok && data.stats) {
+      const diasStr = data.stats.total_dias || '?';
+      const oob     = data.stats.dias_oob   || 0;
+      status.textContent = '✓ ' + file.name + ' · ' + diasStr + ' ' + (t('drr.diasLabel')||'días');
+      const badge = document.getElementById('drr-oob-badge');
+      if (badge) {
+        if (oob > 0) { badge.style.display='block'; badge.textContent='⚠ ' + oob + ' OOB'; }
+        else           badge.style.display='none';
+      }
       renderDRR(data.stats);
+      // Also reload daily chart
+      const chartResp = await fetch('/api/drr_daily_chart');
+      const chartData = await chartResp.json();
+      if (chartData && window._drrChartInstance) {
+        window._drrChartInstance.data.labels   = chartData.labels;
+        window._drrChartInstance.data.datasets[0].data = chartData.revenue;
+        window._drrChartInstance.update();
+      }
+      showNotification('✓ DRR procesado — ' + diasStr + ' días · ' + oob + ' OOB', 'success');
     } else {
       status.textContent = '✗ Error: ' + (data.error || 'desconocido');
+      showNotification('✗ Error procesando DRR: ' + (data.error || ''), 'error');
     }
   } catch(e) {
-    status.textContent = '✗ Error de conexión';
+    status.textContent = '✗ Error de conexión al procesar';
   }
   input.value = '';
+  if (label) label.textContent = origLbl;
 }
 
 function renderDRR(s) {

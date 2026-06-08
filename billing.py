@@ -168,27 +168,49 @@ body::before{content:"";position:fixed;inset:0;z-index:0;pointer-events:none;bac
 </style></head>"""
 
 def _sim_html(plan):
-    p = PLANS[plan]
+    """Simulación visual del checkout cuando Stripe no está configurado."""
+    p    = PLANS[plan]
     test = _is_test_mode()
-    features = ''.join(f'<li>{f}</li>' for f in p['features'])
-    mail_subject = f"Quiero%20el%20plan%20{p['name']}"
-    mail_body = f"Hola%2C%20quiero%20contratar%20Yve%20plan%20{p['name']}%20(€{p['price_eur']}%2Fmes)."
+    features = ''.join(f'<li style="padding:6px 0;border-bottom:1px solid rgba(51,65,85,.4);font-size:14px;color:#cbd5e1"><span style="color:#22c55e;margin-right:8px">✓</span>{f}</li>' for f in p['features'])
     return _HEAD + f"""
-<body><div class="card">
-  <div class="logo"><div class="dot"></div><span class="name">Yve<span>.01</span></span></div>
-  {"<div class='test-badge'>🧪 Test Mode</div>" if test else ""}
-  <div class="plan-name">Plan {p['name']}</div>
-  <div class="price">€{p['price_eur']}</div>
-  <div class="period">/mes · sin permanencia</div>
-  <div class="desc">{p['desc']}</div>
-  <ul class="features">{features}</ul>
-  <div class="notice">
-    <strong>Pago en vivo próximamente.</strong><br>
-    Para activar tu cuenta ahora, escríbenos a <strong>jordi@yve01.com</strong> — te respondemos en 24h.
+<body style="background:#0f172a;font-family:-apple-system,'Inter',sans-serif;color:#f1f5f9;display:flex;align-items:center;justify-content:center;min-height:100vh;padding:20px">
+<div style="max-width:420px;width:100%">
+  <div style="text-align:center;margin-bottom:24px">
+    <div style="display:inline-flex;align-items:center;gap:8px">
+      <div style="width:10px;height:10px;border-radius:50%;background:#3b82f6;box-shadow:0 0 10px #3b82f6"></div>
+      <span style="font-size:20px;font-weight:800">Yve<span style="color:#60a5fa">.01</span></span>
+    </div>
+    {"<div style='margin-top:8px;background:rgba(245,158,11,.1);border:1px solid rgba(245,158,11,.3);color:#f59e0b;border-radius:8px;padding:4px 12px;font-size:11px;font-weight:700;display:inline-block'>🧪 Modo Test — Sin cargo real</div>" if test else ""}
   </div>
-  <a href="mailto:jordi@yve01.com?subject={mail_subject}&body={mail_body}" class="btn btn-primary">Contactar para activar →</a>
-  <a href="/#pricing" class="btn btn-outline">← Ver todos los planes</a>
-</div></body></html>"""
+  <div style="background:#1e293b;border:1px solid #334155;border-radius:16px;overflow:hidden">
+    <div style="background:linear-gradient(135deg,#1e40af,#1d4ed8);padding:24px">
+      <div style="font-size:13px;color:#93c5fd;font-weight:600;letter-spacing:.5px;text-transform:uppercase">Plan seleccionado</div>
+      <div style="font-size:28px;font-weight:800;margin-top:4px">Plan {p['name']}</div>
+      <div style="margin-top:8px">
+        <span style="font-size:36px;font-weight:900">€{p['price_eur']}</span>
+        <span style="font-size:14px;color:#93c5fd">/mes · sin permanencia</span>
+      </div>
+    </div>
+    <div style="padding:20px">
+      <ul style="list-style:none;padding:0;margin:0 0 20px 0">{features}</ul>
+      <div style="background:rgba(59,130,246,.08);border:1px solid rgba(59,130,246,.2);border-radius:10px;padding:14px;margin-bottom:20px;font-size:13px;color:#93c5fd">
+        <strong style="color:#f1f5f9">💳 Activación inmediata</strong><br>
+        Escríbenos a <strong style="color:#60a5fa">jordi@yve01.com</strong> indicando tu hotel.<br>
+        Te enviamos acceso y configuramos tu cuenta en menos de 24h.
+      </div>
+      <a href="mailto:jordi@yve01.com?subject=Activar%20Plan%20{p['name']}%20-%20Yve.01&body=Hola%2C%20quiero%20activar%20el%20Plan%20{p['name']}%20(%E2%82%AC{p['price_eur']}%2Fmes).%0A%0ANombre%20del%20hotel%3A%20%0ANombre%20de%20contacto%3A%20%0ATel%C3%A9fono%3A%20"
+         style="display:block;background:linear-gradient(135deg,#3b82f6,#2563eb);color:#fff;text-align:center;padding:14px;border-radius:11px;font-weight:700;font-size:15px;text-decoration:none;margin-bottom:10px">
+        Activar Plan {p['name']} →
+      </a>
+      <a href="/#pricing" style="display:block;text-align:center;color:#64748b;font-size:13px;padding:8px;text-decoration:none">← Volver al pricing</a>
+    </div>
+  </div>
+  <div style="text-align:center;margin-top:16px;font-size:11px;color:#475569">
+    🔒 Comunicación segura · Cancela cuando quieras
+  </div>
+</div>
+</body></html>"""
+
 
 def _success_html(email=''):
     greeting = f'Bienvenido, <strong>{email}</strong>.' if email else 'Tu suscripción está activa.'
