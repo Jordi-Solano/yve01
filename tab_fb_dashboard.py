@@ -190,6 +190,8 @@ def api_mermas():
     try:
         df = _xlsx("mermas.xlsx")
         df['coste_merma'] = pd.to_numeric(df['coste_merma'], errors='coerce').fillna(0)
+        total_coste  = float(df['coste_merma'].sum())
+        por_categoria = df.groupby('categoria')['coste_merma'].sum().sort_values(ascending=False).to_dict() if 'categoria' in df.columns else {}
         mermas = []
         for _, row in df.iterrows():
             mermas.append({
@@ -205,7 +207,7 @@ def api_mermas():
         por_causa = {}
         for m in mermas:
             por_causa[m['causa']] = round(por_causa.get(m['causa'], 0) + m['coste'], 2)
-        return jsonify({'ok': True, 'mermas': mermas, 'total': total, 'por_causa': por_causa})
+        return jsonify({'ok': True, 'mermas': mermas, 'total_coste': total_coste, 'por_categoria': por_categoria, 'total': total, 'por_causa': por_causa})
     except Exception as e:
         return jsonify({'ok': False, 'error': str(e)}), 500
 

@@ -87,10 +87,11 @@ from demo_completo import generar_hoteles_demo, generar_facturas_demo_ar, genera
 from landing import LANDING_HTML as LANDING_PAGE
 from blog import blog_bp
 from billing import billing_bp
+from legal import legal_bp
 from signup import signup_bp
 from about import about_bp
 from exportador_pdf import pdf_bp
-for _bp in (auth_bp, config_bp, admin_bp, aprob_ar_bp, aprob_ap_bp, concil_bp, fb_bp, ar_real_bp, multi_hotel_bp, exportador_bp, calipolis_bp, demo_bp, demo_sim_bp, calipolis_analisis_bp, reportes_pdf_bp, blog_bp, billing_bp, signup_bp, about_bp, pdf_bp):
+for _bp in (auth_bp, config_bp, admin_bp, aprob_ar_bp, aprob_ap_bp, concil_bp, fb_bp, ar_real_bp, multi_hotel_bp, exportador_bp, calipolis_bp, demo_bp, demo_sim_bp, calipolis_analisis_bp, reportes_pdf_bp, blog_bp, billing_bp, signup_bp, about_bp, pdf_bp, legal_bp):
     app.register_blueprint(_bp)
 
 _pipeline_running = False
@@ -275,6 +276,61 @@ def api_debug():
     info["filas_cargadas"] = len(df) if df is not None else 0
     info["columnas"] = list(df.columns) if df is not None else []
     return jsonify(info)
+
+def _audit(accion, detalle="", usuario=None):
+    """Registra una acción en el audit log."""
+    import json as _json
+    from datetime import datetime as _dt
+    try:
+        ruta = os.path.join(os.path.dirname(__file__), "datos-referencia", "audit_log.json")
+        entries = []
+        if os.path.exists(ruta):
+            with open(ruta) as f: entries = _json.load(f)
+        entries.append({
+            "ts":      _dt.now().isoformat(timespec="seconds"),
+            "accion":  accion,
+            "detalle": detalle[:200],
+            "usuario": usuario or "sistema",
+        })
+        entries = entries[-500:]  # Keep last 500
+        with open(ruta, "w") as f: _json.dump(entries, f, ensure_ascii=False)
+    except Exception:
+        pass
+
+@app.route("/robots.txt")
+def robots_txt():
+    return Response("""User-agent: *
+Allow: /
+Allow: /blog
+Allow: /about
+Allow: /casos
+Allow: /terminos
+Allow: /privacidad
+Disallow: /api/
+Disallow: /admin/
+Disallow: /onboarding
+Sitemap: https://yve01.onrender.com/sitemap.xml
+""", mimetype="text/plain")
+
+@app.route("/sitemap.xml")
+def sitemap_xml():
+    from datetime import date
+    today = date.today().isoformat()
+    urls = [
+        ("https://yve01.onrender.com/",          "1.0",  "daily"),
+        ("https://yve01.onrender.com/about",      "0.8",  "monthly"),
+        ("https://yve01.onrender.com/casos",      "0.8",  "monthly"),
+        ("https://yve01.onrender.com/blog",       "0.9",  "weekly"),
+        ("https://yve01.onrender.com/signup",     "0.9",  "monthly"),
+        ("https://yve01.onrender.com/terminos",   "0.3",  "yearly"),
+        ("https://yve01.onrender.com/privacidad", "0.3",  "yearly"),
+    ]
+    xml_parts = ['<?xml version="1.0" encoding="UTF-8"?>', '<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">']
+    for url, pri, freq in urls:
+        xml_parts.append('  <url><loc>' + url + '</loc><lastmod>' + today + '</lastmod><changefreq>' + freq + '</changefreq><priority>' + pri + '</priority></url>')
+    xml_parts.append('</urlset>')
+    xml = chr(10).join(xml_parts)
+    return Response(xml, mimetype="application/xml")
 
 @app.route("/health")
 @app.route("/api/health")
@@ -867,12 +923,15 @@ def api_drr_daily_chart():
                       for _, row in df.drop_duplicates("Día").iterrows()
                       if pd.notna(row["Fecha"])}
         dias = sorted([int(d) for d in daily_rev.index.tolist()])
+        labels = [fechas_map.get(d, str(d))[-5:] for d in dias]  # MM-DD
         return jsonify({
-            "dias": dias,
-            "fechas": [fechas_map.get(d, str(d)) for d in dias],
-            "revenue": [round(float(daily_rev.get(d, 0)), 0) for d in dias],
+            "dias":     dias,
+            "labels":   labels,
+            "fechas":   [fechas_map.get(d, str(d)) for d in dias],
+            "revenue":  [round(float(daily_rev.get(d, 0)), 0) for d in dias],
             "expenses": [round(float(daily_exp.get(d, 0)), 0) for d in dias],
-            "oob": [d in oob_dias for d in dias],
+            "oob":      [d in oob_dias for d in dias],
+            "oob_count": len(oob_dias),
         })
     except Exception as e:
         return jsonify({"error": str(e)}), 500
@@ -1624,6 +1683,11 @@ tr:hover td{background:rgba(255,255,255,.025)}
 .rol-sub .menu-item{font-size:12px;color:var(--mut);padding:7px 11px}
 .rol-sub .menu-item:hover{color:var(--tx)}
 
+/* Tooltips */
+[data-tip]{position:relative}
+[data-tip]::after{content:attr(data-tip);position:absolute;bottom:calc(100% + 8px);left:50%;transform:translateX(-50%);background:#1e293b;color:#f1f5f9;padding:7px 12px;border-radius:8px;font-size:11px;line-height:1.4;max-width:240px;white-space:normal;text-align:center;border:1px solid #334155;pointer-events:none;opacity:0;transition:opacity .15s;z-index:5000;box-shadow:0 4px 12px rgba(0,0,0,.3)}
+[data-tip]:hover::after{opacity:1}
+
 </style>
 </head>
 <body>
@@ -1641,6 +1705,7 @@ tr:hover td{background:rgba(255,255,255,.025)}
   </div>
   <div class="nav-right">
     <span class="pill" id="date-pill">—</span>
+  <button id="kbd-hint" onclick="showNotification('⌨ Atajos: 1-9 cambian pestaña · R recarga · ? muestra ayuda','info');this.style.display=\'none\';localStorage.setItem(\'kbd_shown\',\'1\')" style="display:none;background:rgba(59,130,246,.1);border:1px solid rgba(59,130,246,.2);color:#60a5fa;padding:4px 10px;border-radius:8px;font-size:11px;cursor:pointer">⌨ Atajos</button>
     <span class="pill" style="color:var(--acc2)">👤 __USER_NAME__</span>
 
     <div class="dropdown">
@@ -1803,10 +1868,10 @@ tr:hover td{background:rgba(255,255,255,.025)}
   <div id="panel-ap" class="panel">
   <div style="display:flex;justify-content:flex-end;gap:12px;margin-bottom:14px"><a href="/api/exportar/ap" style="background:#1a73e8;color:white;padding:8px 16px;border-radius:8px;text-decoration:none;font-weight:600;font-size:13px" data-i18n="btn.downloadExcel" data-i18n="btn.downloadExcel">⬇️ Descargar Excel</a><a href="/aprobaciones-ap/" class="btn-ref" style="text-decoration:none" title="Abrir panel de aprobaciones AP" data-i18n="btn.aprobarAP">📲 Aprobar facturas AP</a></div>
     <div class="stats" id="stats-ap-grid">
-      <div class="sc hl c-blu"><div class="sc-lbl" data-i18n="ap.totalLabel">Total Facturas AP</div><div class="sc-val" id="ap-total">—</div><div class="sc-sub" data-i18n="ap.proveedores">proveedores</div></div>
-      <div class="sc"><div class="sc-lbl" data-i18n="ap.importe">Importe Total</div><div class="sc-val" id="ap-importe" style="font-size:18px;letter-spacing:-.5px">—</div><div class="sc-sub">EUR</div></div>
-      <div class="sc c-grn"><div class="sc-lbl" data-i18n="ap.matchOk">Matches OK</div><div class="sc-val" id="ap-matches">—</div><div class="sc-sub" data-i18n="ap.fbOtras">F&B + OTRAS</div></div>
-      <div class="sc c-red"><div class="sc-lbl" data-i18n="sc.discrepancias">Discrepancias</div><div class="sc-val" id="ap-disc">—</div><div class="sc-sub" data-i18n="ap.vsPo">vs PO</div></div>
+      <div class="sc hl c-blu"><div class="sc-lbl" data-i18n="ap.totalLabel">Total Facturas AP</div><div class="sc-val" id="ap-total" data-tip="Facturas AP registradas este ciclo">—</div><div class="sc-sub" data-i18n="ap.proveedores">proveedores</div></div>
+      <div class="sc"><div class="sc-lbl" data-i18n="ap.importe">Importe Total</div><div class="sc-val" id="ap-importe" data-tip="Importe bruto total de facturas AP" style="font-size:18px;letter-spacing:-.5px">—</div><div class="sc-sub">EUR</div></div>
+      <div class="sc c-grn"><div class="sc-lbl" data-i18n="ap.matchOk">Matches OK</div><div class="sc-val" id="ap-matches" data-tip="Facturas con 3-way match correcto">—</div><div class="sc-sub" data-i18n="ap.fbOtras">F&B + OTRAS</div></div>
+      <div class="sc c-red"><div class="sc-lbl" data-i18n="sc.discrepancias">Discrepancias</div><div class="sc-val" id="ap-disc" data-tip="Facturas con discrepancia vs PO">—</div><div class="sc-sub" data-i18n="ap.vsPo">vs PO</div></div>
       <div class="sc c-ora"><div class="sc-lbl" data-i18n="ap.sinPO">Sin PO</div><div class="sc-val" id="ap-sinpo">—</div><div class="sc-sub" data-i18n="ap.sinOrden">sin orden compra</div></div>
       <div class="sc c-pur"><div class="sc-lbl" data-i18n="ap.aprobadas">Aprobadas</div><div class="sc-val" id="ap-aprobadas">—</div><div class="sc-sub" data-i18n="ap.firmadas">firmadas</div></div>
     </div>
@@ -1867,9 +1932,9 @@ tr:hover td{background:rgba(255,255,255,.025)}
   <!-- PANEL BANCO -->
   <div id="panel-banco" class="panel">
     <div class="stats" id="banco-stats">
-      <div class="sc hl c-blu"><div class="sc-lbl" data-i18n="sc.movimientos">Movimientos</div><div class="sc-val" id="bk-total">—</div><div class="sc-sub" data-i18n="sc.delExtracto">del extracto</div></div>
-      <div class="sc c-grn"><div class="sc-lbl" data-i18n="sc.conciliados">Conciliados</div><div class="sc-val" id="bk-conc">—</div><div class="sc-sub" data-i18n="sc.conFactura">con factura</div></div>
-      <div class="sc c-ora"><div class="sc-lbl" data-i18n="sc.pendientes">Pendientes</div><div class="sc-val" id="bk-pend">—</div><div class="sc-sub" id="bk-imp-pend">—</div></div>
+      <div class="sc hl c-blu"><div class="sc-lbl" data-i18n="sc.movimientos">Movimientos</div><div class="sc-val" id="bk-total" data-tip="Movimientos totales en el extracto">—</div><div class="sc-sub" data-i18n="sc.delExtracto">del extracto</div></div>
+      <div class="sc c-grn"><div class="sc-lbl" data-i18n="sc.conciliados">Conciliados</div><div class="sc-val" id="bk-conc" data-tip="Cruzados con factura en el sistema">—</div><div class="sc-sub" data-i18n="sc.conFactura">con factura</div></div>
+      <div class="sc c-ora"><div class="sc-lbl" data-i18n="sc.pendientes">Pendientes</div><div class="sc-val" id="bk-pend" data-tip="Sin factura asociada — pendientes">—</div><div class="sc-sub" id="bk-imp-pend">—</div></div>
       <div class="sc c-red"><div class="sc-lbl" data-i18n="sc.diferencias">Diferencias</div><div class="sc-val" id="bk-diff">—</div><div class="sc-sub" data-i18n="sc.importeNoCuadra">importe no cuadra</div></div>
     </div>
     <div class="card">
@@ -3032,6 +3097,39 @@ async function cambiarIdioma(lang) {
 
 loadAll();
 setInterval(loadAll, 60000);
+// Show keyboard hint on first visit
+if (!localStorage.getItem('kbd_shown')) {
+  setTimeout(() => {
+    const btn = document.getElementById('kbd-hint');
+    if (btn) btn.style.display = 'block';
+  }, 5000);
+}
+
+// ── Keyboard shortcuts ────────────────────────────────────────────────────
+document.addEventListener('keydown', e => {
+  if (e.target.tagName === 'INPUT' || e.target.tagName === 'TEXTAREA' || e.metaKey || e.ctrlKey) return;
+  const tabKeys = {'1':'ar_otas','2':'ap','3':'drr','4':'banco','5':'notificaciones','6':'fb_cost','7':'ar_real','8':'calipolis','9':'multi_hotel'};
+  if (tabKeys[e.key]) {
+    const tabEl = document.getElementById('tab-' + tabKeys[e.key]);
+    if (tabEl) { switchTab(tabKeys[e.key], tabEl); }
+  }
+  if (e.key === '?' || e.key === 'h') {
+    showNotification('⌨ Atajos: 1-9 cambia de pestaña · R actualiza · ? muestra ayuda', 'info');
+  }
+  if (e.key === 'r' || e.key === 'R') { loadAll(); }
+});
+
+// ── Session timeout warning (45 min) ─────────────────────────────────────
+let _sessionTimer;
+function _resetSessionTimer() {
+  clearTimeout(_sessionTimer);
+  _sessionTimer = setTimeout(() => {
+    showNotification('⚠️ Tu sesión expirará en 5 minutos por inactividad. Haz clic para renovarla.', 'warning');
+    setTimeout(() => { if (confirm('Tu sesión va a expirar. ¿Quieres continuar?')) fetch('/api/health'); }, 4 * 60 * 1000);
+  }, 45 * 60 * 1000);
+}
+['click','keypress','scroll','mousemove'].forEach(ev => document.addEventListener(ev, _resetSessionTimer, {passive:true}));
+_resetSessionTimer();
 
 
 // ══════════════════════════════════════════════════════════════
@@ -3380,7 +3478,23 @@ async function loadFBMermas() {
     const data = await res.json();
     if (!data.ok) { cont.innerHTML = '<div class="empty"><p>Error mermas</p></div>'; return; }
 
-    let html = '<div style="display:grid;grid-template-columns:1fr 1fr;gap:16px;margin-bottom:20px">';
+    // Add summary KPI if total available
+    const totalCoste  = data.total_coste  || 0;
+    const porCategoria = data.por_categoria || {};
+    let html = '';
+    if (totalCoste > 0) {
+      const topCat = Object.keys(porCategoria)[0] || '—';
+      const topVal = Object.values(porCategoria)[0] || 0;
+      html += '<div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(140px,1fr));gap:12px;margin-bottom:20px">' +
+        '<div class="sc"><div class="sc-lbl" data-tip="Coste total de mermas registradas">COSTE TOTAL MERMAS</div><div class="sc-val" style="color:var(--ora)">€' + totalCoste.toLocaleString('es-ES',{minimumFractionDigits:2}) + '</div></div>' +
+        '<div class="sc"><div class="sc-lbl">CATEGORÍA CON MÁS MERMA</div><div class="sc-val" style="font-size:16px;font-weight:700">' + topCat + '</div><div class="sc-sub">€' + topVal.toLocaleString('es-ES',{minimumFractionDigits:2}) + '</div></div>' +
+        '<div class="sc"><div class="sc-lbl">REGISTROS</div><div class="sc-val">' + data.mermas.length + '</div></div>' +
+        '</div>';
+      if (totalCoste > 200) {
+        html += '<div style="background:rgba(245,158,11,.08);border:1px solid rgba(245,158,11,.25);border-radius:10px;padding:12px 16px;font-size:13px;color:var(--ora);margin-bottom:16px">⚠ Mermas altas: €' + totalCoste.toFixed(2) + ' este período. Revisar porcionado y almacenamiento.</div>';
+      }
+    }
+    html += '<div style="display:grid;grid-template-columns:1fr 1fr;gap:16px;margin-bottom:20px">';
     // Mermas por causa
     html += '<div class="card"><div class="card-title" data-i18n="card.mermasCausa">Mermas por Causa</div><div style="margin-top:8px">';
     const causas = Object.entries(data.por_causa).sort((a,b) => b[1]-a[1]);
@@ -3884,14 +3998,14 @@ function renderDRR(s) {
     {key:'Occupancy %', label:'Occupancy %', color:'var(--grn)'},
     {key:'ADR', label:'ADR', color:'var(--tx)'},
     {key:'Revenue PAR', label:'RevPAR', color:'var(--tx)'},
-    {key:'GOP', label:'GOP', color:'var(--ora)'},
-    {key:'GOP %', label:'GOP %', color:'var(--pur)'},
+    {key:'GOP', label:'GOP', color:'var(--ora)', tip:'Gross Operating Profit — beneficio bruto antes de deuda e impuestos'},
+    {key:'GOP %', label:'GOP %', color:'var(--pur)', tip:'GOP como porcentaje del Revenue Total. 30-45% es saludable en hoteles 4-5★'},
   ];
   const metricsEl = document.getElementById('drr-metrics');
   metricsEl.innerHTML = SHOW.map(m => {
     const d = s.metricas[m.key] || {};
     return '<div class="drr-mc">'
-      + '<div class="mc-name">' + m.label + '</div>'
+      + '<div class="mc-name" ' + (m.tip ? 'data-tip="' + m.tip + '"' : '') + '>' + m.label + '</div>'
       + '<div class="mc-row"><span class="mc-k">Today</span><span class="mc-v" style="color:' + m.color + '">' + (d.today || 'N/D') + '</span></div>'
       + '<div class="mc-row"><span class="mc-k">MTD</span><span class="mc-v">' + (d.mtd || 'N/D') + '</span></div>'
       + '<div class="mc-row"><span class="mc-k">Forecast</span><span class="mc-v">' + (d.forecast || 'N/D') + '</span></div>'
@@ -4611,6 +4725,7 @@ function renderCalipolisTrends(tendencias) {
   setTimeout(() => {
     const cv = document.getElementById('cal-gop-chart');
     if (!cv || !window.Chart) return;
+    window._drrChartInstance = window._drrChartInstance || null;
     new Chart(cv, {
       type:'line',
       data:{

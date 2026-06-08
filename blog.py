@@ -48,6 +48,65 @@ POSTS = [
 <h2>El Daily Revenue Report: tu brújula diaria</h2>
 <p>El DRR es el informe que resume todos los ingresos del día anterior por departamento. Automatizar su revisión y la detección de Out of Balance es el primer paso hacia un revenue management eficiente.</p>""",
   },
+  {
+    "slug": "food-cost-hotel-restaurante-como-calcularlo",
+    "title": "Food Cost en hoteles con restaurante: cómo calcularlo y reducirlo",
+    "desc": "El Food Cost real vs teórico es la métrica más importante para el F&B Manager. Te explicamos cómo calcularlo automáticamente desde los datos del POS.",
+    "date": "2026-06-03", "cat": "F&B Management", "read": "6 min",
+    "body": """<h2>¿Qué es el Food Cost y por qué importa?</h2>
+<p>El Food Cost es el porcentaje de los ingresos de F&B que se destina al coste de los ingredientes. Un FC del 18-25% es saludable para un restaurante de hotel; por encima del 30% hay un problema.</p>
+<p>La ecuación básica: <strong>Food Cost % = (Coste de ingredientes / Ingresos F&B) × 100</strong></p>
+<h2>FC Teórico vs FC Real: la diferencia que nadie mide</h2>
+<p>El <strong>FC Teórico</strong> es lo que debería costar producir lo que has vendido, según tus recetas. El <strong>FC Real</strong> es lo que realmente has gastado. La diferencia entre ambos revela mermas, robos, errores de porcionado o recetas incorrectas.</p>
+<p>Si tu FC Teórico es 20% y tu FC Real es 28%, estás perdiendo un 8% de tus ingresos en algún lugar de la cadena. En un restaurante de hotel con 60.000€/mes de ventas, eso son 4.800€/mes que se evaporan.</p>
+<h2>Cómo calcularlo automáticamente</h2>
+<p>El proceso manual requiere exportar datos del POS, cruzarlos con las recetas estándar, calcular el consumo teórico por ingrediente y compararlo con las compras reales. Son horas de trabajo en Excel.</p>
+<p>Con un sistema como Yve.01, este cálculo se actualiza diariamente de forma automática: los datos del POS alimentan el FC Real, las recetas calculan el FC Teórico, y las desviaciones se muestran por categoría y por plato.</p>
+<h2>Reducir el Food Cost: las 5 palancas</h2>
+<p><strong>1. Estandarizar recetas:</strong> El porcionado inconsistente puede añadir un 3-5% al FC Real.</p>
+<p><strong>2. Control de mermas:</strong> Registrar y analizar las mermas permite identificar qué ingredientes se pierden más y por qué.</p>
+<p><strong>3. Análisis por plato:</strong> No todos los platos tienen el mismo margen. Identificar los platos con FC% alto y rediseñarlos o retirarlos del menú.</p>
+<p><strong>4. Revisión periódica de precios de compra:</strong> Los precios de proveedores cambian. Si no actualizas tu tabla de costes, tu FC Teórico será incorrecto.</p>
+<p><strong>5. Gestión de inventario en tiempo real:</strong> Saber qué tienes en stock evita compras innecesarias y caducidades.</p>""",
+  },
+  {
+    "slug": "conciliacion-bancaria-hotel-guia-completa",
+    "title": "Conciliación bancaria en hoteles: guía completa para el Financial Controller",
+    "desc": "La conciliación bancaria es uno de los procesos más tediosos del departamento financiero hotelero. Automatizarla puede ahorrar medio día de trabajo a la semana.",
+    "date": "2026-06-05", "cat": "Contabilidad hotelera", "read": "7 min",
+    "body": """<h2>Qué es la conciliación bancaria en un hotel</h2>
+<p>La conciliación bancaria consiste en comparar los movimientos del extracto bancario con las facturas registradas en el sistema contable, identificando qué pagos han sido procesados y cuáles siguen pendientes.</p>
+<p>Para un hotel mediano, esto implica cruzar 150-300 movimientos mensuales: pagos a proveedores, liquidaciones de OTAs (Booking, Expedia), cargos TPV, transferencias de grupos corporativos y comisiones bancarias.</p>
+<h2>Los problemas típicos</h2>
+<p><strong>Facturas sin movimiento bancario:</strong> una factura está contabilizada pero el pago aún no ha aparecido en el extracto. ¿Es un error o simplemente tarda en procesarse?</p>
+<p><strong>Movimientos sin factura:</strong> hay un cargo en el banco que nadie reconoce. Puede ser una comisión oculta, un cargo duplicado o una factura que no ha llegado al sistema.</p>
+<p><strong>Diferencias de importe:</strong> el banco muestra 12.450€ pagados a Booking.com, pero en el sistema solo consta una factura de 12.200€. Los 250€ de diferencia hay que justificarlos.</p>
+<h2>El proceso manual vs automatizado</h2>
+<p>El proceso manual requiere exportar el extracto en Excel, ordenar por proveedor e importe, y cruzarlo manualmente con las facturas del sistema. Con 200 movimientos mensuales, esto son 3-4 horas semanales de trabajo.</p>
+<p>La automatización aplica algoritmos de matching: primero por importe exacto y referencia, luego por importe aproximado y proveedor, finalmente detecta los movimientos sin match como alertas. El proceso que tomaba horas se completa en segundos.</p>
+<h2>Integración con Oracle GL</h2>
+<p>Cuando la conciliación está integrada con Oracle Fusion, los movimientos conciliados se contabilizan automáticamente en el libro mayor. Los movimientos pendientes generan asientos provisionales que se cierran cuando el pago se confirma.</p>""",
+  },
+  {
+    "slug": "out-of-balance-drr-como-detectarlo",
+    "title": "Out of Balance en el DRR: qué es, por qué ocurre y cómo detectarlo automáticamente",
+    "desc": "El Out of Balance es el error más común en el Daily Revenue Report de los hoteles. Te explicamos sus causas y cómo detectarlo automáticamente cada mañana.",
+    "date": "2026-06-07", "cat": "Daily Revenue Report", "read": "5 min",
+    "body": """<h2>¿Qué es un Out of Balance?</h2>
+<p>Un Out of Balance (OOB) ocurre cuando la suma de todos los ingresos y cargos del día en el DRR no cuadra a cero. Es decir, hay una diferencia entre el debe y el haber del informe diario.</p>
+<p>Ejemplo real: el DRR reporta 59.600€ en ingresos de habitaciones, 8.400€ en F&B, 1.200€ en spa. Pero la suma de los departamentos da 69.350€ mientras el total consolidado marca 69.100€. La diferencia de 250€ es el Out of Balance.</p>
+<h2>Las causas más frecuentes</h2>
+<ul>
+<li><strong>Posting manual incorrecto:</strong> Un recepcionista ha introducido manualmente un cargo y se ha equivocado en 1 céntimo. Multiplicado por 200 reservas, puede sumar una diferencia significativa.</li>
+<li><strong>Rounding en tipos de cambio:</strong> Los hoteles que trabajan con monedas extranjeras tienen OOB frecuentes por el redondeo en la conversión.</li>
+<li><strong>Interfaces entre sistemas:</strong> Cuando el PMS y el POS no están perfectamente sincronizados, una venta en el restaurante puede no llegar al DRR.</li>
+<li><strong>Correcciones de días anteriores:</strong> Un ajuste contable de un día anterior puede crear un OOB en el día actual si no se procesa correctamente.</li>
+</ul>
+<h2>Cómo detectarlo cada mañana automáticamente</h2>
+<p>El Income Auditor dedica típicamente 30-60 minutos cada mañana a revisar el DRR y detectar OOB. Con Yve.01, el sistema lee el DRR automáticamente, calcula el balance de cada Trial Balance y genera una alerta inmediata si detecta una discrepancia.</p>
+<p>El sistema muestra exactamente en qué línea contable está la diferencia, en qué departamento y en qué momento del día ocurrió, acelerando la resolución de días que normalmente llevarían horas.</p>""",
+  },
+
 ]
 
 _CSS = """

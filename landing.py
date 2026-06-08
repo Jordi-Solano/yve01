@@ -558,7 +558,7 @@ function toggleFaq(btn) {
       </div>
     </div>
     <div class="footer-bottom">
-      <span>© 2026 Yve.01 — Barcelona, España</span>
+      <span>© 2026 Yve.01 &nbsp;·&nbsp; <a href="/terminos" style="color:inherit">Términos</a> &nbsp;·&nbsp; <a href="/privacidad" style="color:inherit">Privacidad</a> &nbsp;·&nbsp; <a href="/cookies" style="color:inherit">Cookies</a> — Barcelona, España</span>
       <span>Hecho con IA · Validado con hoteles reales</span>
     </div>
   </div>
@@ -591,4 +591,17 @@ document.querySelectorAll('.fade-up').forEach(el=>_obs.observe(el));
 calcROI();
 </script>
 </body>
+
+<script>
+// Cookie consent banner - GDPR
+(function(){
+  if (localStorage.getItem('yve_cookie_ok')) return;
+  const b = document.createElement('div');
+  b.style.cssText = 'position:fixed;bottom:20px;left:50%;transform:translateX(-50%);max-width:600px;width:calc(100% - 40px);background:#1e293b;border:1px solid #334155;border-radius:14px;padding:16px 20px;display:flex;align-items:center;gap:16px;z-index:9999;box-shadow:0 8px 32px rgba(0,0,0,.4);font-size:13px;flex-wrap:wrap';
+  b.innerHTML = '<span style="color:#94a3b8;flex:1;min-width:200px">Usamos cookies esenciales de sesión. No hay cookies de seguimiento ni publicidad. <a href="/cookies" style="color:#60a5fa">Más info</a></span>'
+    + '<div style="display:flex;gap:8px;flex-shrink:0"><a href="/cookies" style="padding:8px 14px;border:1px solid #475569;border-radius:8px;color:#94a3b8;text-decoration:none;font-size:12px">Configurar</a>'
+    + '<button onclick="localStorage.setItem('yve_cookie_ok','1');this.closest('div[style]').remove()" style="padding:8px 16px;background:#3b82f6;border:none;border-radius:8px;color:#fff;font-size:12px;font-weight:600;cursor:pointer">Aceptar</button></div>';
+  document.body.appendChild(b);
+})();
+</script>
 </html>"""

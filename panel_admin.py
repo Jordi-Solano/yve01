@@ -108,6 +108,19 @@ def api_admin_stats():
     })
 
 
+@bp.route("/api/audit")
+@_admin_required
+def api_audit():
+    """Returns recent audit log entries."""
+    ruta = BASE_DIR / "datos-referencia" / "audit_log.json"
+    if not ruta.exists():
+        return jsonify({"entries": []})
+    try:
+        entries = json.loads(ruta.read_text())
+        return jsonify({"entries": entries[-50:]})  # last 50
+    except Exception:
+        return jsonify({"entries": []})
+
 @bp.route("/api/hoteles")
 @_admin_required
 def api_hoteles():
