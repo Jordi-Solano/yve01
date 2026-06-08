@@ -166,5 +166,15 @@
   "fb.todoOk": "tot OK",
   "fb.thIngrediente": "Ingredient",
   "fb.thActual": "Actual",
-  "drr.dias": "dies"
+  "drr.dias": "dies",
+  "lbl.facturas": "factures",
+  "lbl.registros": "registres",
+  "lbl.dias": "dies",
+  "lbl.pendiente": "PENDENT",
+  "lbl.aprobado": "APROVAT",
+  "lbl.rechazado": "REBUTJAT",
+  "lbl.sinDatos2": "Sense dades",
+  "drr.subirDrr": "Pujar DRR (.xlsm)",
+  "drr.diasLabel": "dies",
+  "drr.oobLabel": "OOB"
 }

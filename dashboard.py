@@ -2105,9 +2105,9 @@ function bDI(e) {
 }
 
 function bApro(a) {
-  if (!a || a === '') return '<span class="badge b-pen">· Pendiente</span>';
-  if (a === 'APROBADA')  return '<span class="badge b-apr">✓ Aprobada</span>';
-  if (a === 'RECHAZADA') return '<span class="badge b-rec">✗ Rechazada</span>';
+  if (!a || a === '') return '<span class="badge b-pen">· ' + (t('lbl.pendiente')||'Pendiente') + '</span>';
+  if (a === 'APROBADA')  return '<span class="badge b-apr">✓ ' + (t(\'lbl.aprobado\')||'Aprobada') + '</span>';
+  if (a === 'RECHAZADA') return '<span class="badge b-rec">✗ ' + (t(\'lbl.rechazado\')||'Rechazada') + '</span>';
   return '<span class="badge b-na">—</span>';
 }
 
@@ -2223,7 +2223,7 @@ function renderChart(ch) {
 
 function renderTable(rows) {
   const tbody = document.getElementById('tbl-body');
-  document.getElementById('tbl-count').textContent = rows.length ? rows.length + ' registros' : '';
+  document.getElementById('tbl-count').textContent = rows.length ? rows.length + ' ' + (t('lbl.registros')||'registros') : '';
   if (!rows.length) {
     tbody.innerHTML = '<tr><td colspan="11" class="empty"><p>Sin facturas. Pulsa ⚡ Procesar Facturas.</p></td></tr>';
     return;
@@ -3324,7 +3324,7 @@ async function loadAP() {
 
     const tbody = el('ap-tbody');
     if (tbody) tbody.innerHTML = '';
-    document.getElementById('ap-count').textContent = facts.length + ' facturas';
+    document.getElementById('ap-count').textContent = facts.length + ' ' + (t('lbl.facturas')||'facturas');
 
     facts.forEach(f => {
       const tr = document.createElement('tr');
@@ -3829,7 +3829,7 @@ async function loadNotif() {
       count.textContent = '';
       return;
     }
-    count.textContent = data.length + ' registros';
+    count.textContent = data.length + ' ' + (t('lbl.registros')||'registros');
     // Mostrar en orden inverso (más reciente primero)
     const rows = data.slice().reverse();
     tbody.innerHTML = rows.map(function(n) {

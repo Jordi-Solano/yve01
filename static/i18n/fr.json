@@ -166,5 +166,15 @@
   "fb.todoOk": "tout OK",
   "fb.thIngrediente": "Ingrédient",
   "fb.thActual": "Actuel",
-  "drr.dias": "jours"
+  "drr.dias": "jours",
+  "lbl.facturas": "factures",
+  "lbl.registros": "enregistrements",
+  "lbl.dias": "jours",
+  "lbl.pendiente": "EN ATTENTE",
+  "lbl.aprobado": "APPROUVÉ",
+  "lbl.rechazado": "REJETÉ",
+  "lbl.sinDatos2": "Aucune donnée",
+  "drr.subirDrr": "Charger DRR (.xlsm)",
+  "drr.diasLabel": "jours",
+  "drr.oobLabel": "OOB"
 }
