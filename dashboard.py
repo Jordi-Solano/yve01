@@ -1760,6 +1760,7 @@ tr:hover td{background:rgba(255,255,255,.025)}
         <a href="/api/reportes/mensual" class="menu-item">📈 Mensual</a>
         <div class="menu-sep"></div>
         <button class="menu-item" onclick="showSetupChecklist()">✅ Checklist setup</button>
+        <button class="menu-item" onclick="showChangelog()">🆕 Novedades</button>
         <button class="menu-item" onclick="toggleLightMode()" id="btn-theme">🌙 Modo oscuro</button>
         <div class="menu-head">Ejecutivos</div>
         <a href="/api/reportes/ejecutivo.pdf" class="menu-item">🎯 Ejecutivo PDF</a>
@@ -1815,6 +1816,15 @@ tr:hover td{background:rgba(255,255,255,.025)}
   <div class="status-bar">
     <div class="status-dot"></div>
     <span id="status-txt" data-i18n="status.cargando">Cargando datos...</span>
+  </div>
+
+  <!-- Alertas del día panel -->
+  <div id="daily-alerts-panel" style="display:none;background:linear-gradient(135deg,rgba(239,68,68,.06),rgba(245,158,11,.04));border-bottom:1px solid rgba(239,68,68,.15);padding:10px 16px">
+    <div style="display:flex;align-items:center;justify-content:space-between">
+      <div style="font-size:12px;font-weight:700;color:var(--ora)">🔔 ALERTAS ACTIVAS</div>
+      <button onclick="document.getElementById('daily-alerts-panel').style.display='none'" style="background:none;border:none;color:var(--dim);font-size:14px;cursor:pointer">×</button>
+    </div>
+    <div id="daily-alerts-list" style="display:flex;gap:12px;margin-top:8px;flex-wrap:wrap"></div>
   </div>
 
   <!-- Executive summary bar (dynamic) -->
@@ -1919,7 +1929,15 @@ tr:hover td{background:rgba(255,255,255,.025)}
 
   <!-- PANEL AP -->
   <div id="panel-ap" class="panel">
-  <div style="display:flex;justify-content:flex-end;gap:12px;margin-bottom:14px"><a href="/api/exportar/ap" style="background:#1a73e8;color:white;padding:8px 16px;border-radius:8px;text-decoration:none;font-weight:600;font-size:13px" data-i18n="btn.downloadExcel" data-i18n="btn.downloadExcel">⬇️ Descargar Excel</a><a href="/aprobaciones-ap/" class="btn-ref" style="text-decoration:none" title="Abrir panel de aprobaciones AP" data-i18n="btn.aprobarAP">📲 Aprobar facturas AP</a></div>
+  <div style="display:flex;justify-content:flex-end;gap:12px;margin-bottom:14px"><a href="/api/exportar/ap" style="background:#1a73e8;color:white;padding:8px 16px;border-radius:8px;text-decoration:none;font-weight:600;font-size:13px" data-i18n="btn.downloadExcel" data-i18n="btn.downloadExcel">⬇️ Descargar Excel</a><a href="/aprobaciones-ap/" class="btn-ref" style="text-decoration:none" title="Abrir panel de aprobaciones AP" data-i18n="btn.aprobarAP">📲 Aprobar facturas AP</a>
+        <button class="btn-ref" onclick="filtrarAPPorEstado()" id="btn-filter-ap" style="font-size:12px">🔍 Filtrar</button>
+        <select id="ap-estado-filter" onchange="filtrarAPPorEstado(this.value)" style="background:var(--s1);border:1px solid var(--s2);color:var(--tx);padding:6px 10px;border-radius:8px;font-size:12px;cursor:pointer">
+          <option value="">Todos</option>
+          <option value="PENDIENTE">Pendientes</option>
+          <option value="MATCH_3WAY_OK">Match OK</option>
+          <option value="DISCREPANCIA_PO">Discrepancias</option>
+          <option value="ALERTA_CONSUMO">Alertas</option>
+        </select></div>
     <div class="stats" id="stats-ap-grid">
       <div class="sc hl c-blu"><div class="sc-lbl" data-i18n="ap.totalLabel">Total Facturas AP</div><div class="sc-val" id="ap-total" data-tip="Facturas AP registradas este ciclo">—</div><div class="sc-sub" data-i18n="ap.proveedores">proveedores</div></div>
       <div class="sc"><div class="sc-lbl" data-i18n="ap.importe">Importe Total</div><div class="sc-val" id="ap-importe" data-tip="Importe bruto total de facturas AP" style="font-size:18px;letter-spacing:-.5px">—</div><div class="sc-sub">EUR</div></div>
@@ -2431,6 +2449,21 @@ async function loadAll() {
 
     document.getElementById('status-txt').textContent =
       (t('status.actualizado') || 'Actualizado') + ' · ' + (stats.total || 0) + ' ' + (t('status.facturas') || 'facturas cargadas');
+  // Daily alerts panel
+  const alertsPanel = document.getElementById('daily-alerts-panel');
+  const alertsList  = document.getElementById('daily-alerts-list');
+  if (alertsPanel && alertsList) {
+    const alerts = [];
+    if (stats.discrepancias > 0)  alerts.push({type:'ar',    msg:'AR: ' + stats.discrepancias + ' discrepancia(s)', tab:'ar_otas'});
+    if (stats.di_pendientes > 0)  alerts.push({type:'di',    msg:'DI: ' + stats.di_pendientes + ' cert. pendiente(s)', tab:'ar_otas'});
+    if (stats.pendientes_firma > 0) alerts.push({type:'firma', msg:'Firma: ' + stats.pendientes_firma + ' factura(s)', tab:'ar_otas'});
+    if (alerts.length > 0) {
+      alertsPanel.style.display = 'block';
+      alertsList.innerHTML = alerts.map(a =>
+        '<div onclick="switchTab(\'' + a.tab + '\',document.getElementById(\'tab-' + a.tab + '\'))" style="background:rgba(239,68,68,.1);border:1px solid rgba(239,68,68,.2);border-radius:8px;padding:6px 12px;font-size:11px;font-weight:600;cursor:pointer;color:var(--red)" onmouseover="this.style.background=\'rgba(239,68,68,.2)\'" onmouseout="this.style.background=\'rgba(239,68,68,.1)\'">⚠ ' + a.msg + '</div>'
+      ).join('');
+    }
+  }
   // Executive summary
   const sumEl = document.getElementById('exec-summary');
   const sumTxt = document.getElementById('exec-txt');
@@ -4131,6 +4164,31 @@ function renderDRR(s) {
   renderDRRChart();
 }
 
+function exportarSeleccionados() {
+  const selected = [...document.querySelectorAll('.ar-row-cb:checked')]
+    .map(cb => cb.closest('tr'))
+    .map(row => {
+      const cells = row.cells;
+      return Array.from(cells).slice(1).map(c => c.textContent.trim()).join('	');
+    });
+  if (!selected.length) return;
+  const headers = ['Archivo','Nº Factura','OTA','Hotel','Fecha','Importe Bruto','% Com.','Estado','Estado DI','Discrepancia','Aprobación'].join('	');
+  const content = headers + '\n' + selected.join('\n');
+  const blob = new Blob([content], {type: 'text/plain;charset=utf-8'});
+  const a = document.createElement('a');
+  a.href = URL.createObjectURL(blob);
+  a.download = 'facturas_ar_seleccion_' + new Date().toISOString().slice(0,10) + '.tsv';
+  a.click();
+}
+function toggleSelectAll(master, cbClass) {
+  document.querySelectorAll('.' + cbClass).forEach(cb => cb.checked = master.checked);
+  updateSelectionCount();
+}
+function updateSelectionCount() {
+  const sel = document.querySelectorAll('.ar-row-cb:checked').length;
+  const btn = document.getElementById('btn-export-selected');
+  if (btn) { btn.style.display = sel > 0 ? 'inline-block' : 'none'; btn.textContent = '📤 Exportar ' + sel + ' selec.'; }
+}
 async function loadDRR() {
   try {
     const r = await fetch('/api/stats_drr');
@@ -5043,6 +5101,49 @@ document.addEventListener('keydown', e => {
 });
 </script>
 <!-- /Global Search -->
+<!-- Changelog Modal -->
+<div id="changelog-modal" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,.6);z-index:9000;align-items:center;justify-content:center;padding:20px" onclick="if(event.target===this)this.style.display='none'">
+  <div style="background:var(--s1);border:1px solid var(--s2);border-radius:16px;padding:28px;max-width:500px;width:100%;max-height:80vh;overflow-y:auto">
+    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:20px">
+      <h3 style="font-size:16px;font-weight:700">🆕 Novedades en Yve.01</h3>
+      <button onclick="document.getElementById('changelog-modal').style.display='none'" style="background:none;border:none;color:var(--mut);font-size:20px;cursor:pointer">×</button>
+    </div>
+    <div style="display:flex;flex-direction:column;gap:16px;font-size:13px">
+      <div>
+        <div style="color:#60a5fa;font-weight:700;font-size:11px;text-transform:uppercase;letter-spacing:.4px;margin-bottom:8px">Junio 2026</div>
+        <ul style="color:#94a3b8;padding-left:16px;line-height:1.8">
+          <li>🔍 Búsqueda global Ctrl+K en todas las secciones</li>
+          <li>⌨ Atajos de teclado (1-9 cambian pestaña, R recarga)</li>
+          <li>🌙 Modo claro/oscuro con persistencia</li>
+          <li>📊 Calipolis: sparklines GOP% en tarjetas de hotel</li>
+          <li>🏨 Multi-Hotel: datos reales Calipolis + barras comparativas</li>
+          <li>📄 AR Real: modal emitir factura corporativa</li>
+          <li>🔔 Alertas del día clickables sobre las pestañas</li>
+          <li>✅ Checklist de configuración para nuevos usuarios</li>
+          <li>🔴 DRR: días OOB resaltados en rojo en el gráfico</li>
+          <li>🔑 Admin: reset de contraseña por usuario</li>
+          <li>📝 Registro de auditoría de acciones</li>
+          <li>⚖️ Páginas legales: Términos, Privacidad, Cookies (RGPD)</li>
+          <li>🗺️ Sitemap.xml y robots.txt para SEO</li>
+          <li>✉️ Emails de alerta con diseño profesional Yve.01</li>
+          <li>🍽️ F&B: mermas con totales, alertas y categorías</li>
+        </ul>
+      </div>
+      <div>
+        <div style="color:#a78bfa;font-weight:700;font-size:11px;text-transform:uppercase;letter-spacing:.4px;margin-bottom:8px">Mayo 2026</div>
+        <ul style="color:#94a3b8;padding-left:16px;line-height:1.8">
+          <li>🌍 Multi-idioma: ES/EN/CA/FR/DE/IT/PT</li>
+          <li>🎭 Demo Mode con tour guiado Calipolis</li>
+          <li>💳 Integración Stripe (simulación)</li>
+          <li>📊 Blog SEO con 6 artículos</li>
+          <li>📱 Responsive móvil mejorado</li>
+        </ul>
+      </div>
+    </div>
+  </div>
+</div>
+<script>function showChangelog() { document.getElementById('changelog-modal').style.display='flex'; document.getElementById('main-menu').classList.remove('open'); }</script>
+
 <!-- Setup Checklist Modal -->
 <div id="checklist-modal" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,.6);z-index:9000;align-items:center;justify-content:center;padding:20px">
   <div style="background:var(--s1);border:1px solid var(--s2);border-radius:16px;padding:28px;max-width:460px;width:100%">

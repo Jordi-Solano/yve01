@@ -204,6 +204,24 @@ def enviar_whatsapp(numero_destino, mensaje, asunto="", tipo="general"):
         _registrar(tipo, asunto, "whatsapp", "error", str(e)[:200])
         return False
 
+def enviar_telegram(mensaje: str) -> bool:
+    """Envía un mensaje via Telegram Bot API."""
+    env = _load_env()
+    token  = env.get("TELEGRAM_BOT_TOKEN", "")
+    chat_id = env.get("TELEGRAM_CHAT_ID", "")
+    if not token or not chat_id:
+        return False
+    try:
+        import urllib.request, json as _json
+        url = f"https://api.telegram.org/bot{token}/sendMessage"
+        data = _json.dumps({"chat_id": chat_id, "text": f"🔔 Yve.01\n{mensaje}", "parse_mode": "HTML"}).encode()
+        req = urllib.request.Request(url, data=data, headers={"Content-Type": "application/json"})
+        urllib.request.urlopen(req, timeout=10)
+        return True
+    except Exception as e:
+        print(f"[Telegram] Error: {e}")
+        return False
+
 def enviar_por_canales(asunto, html, texto, tipo="general"):
     """Envia por todos los canales activos segun notif_config.json."""
     cfg = _load_config()
