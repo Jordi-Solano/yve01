@@ -179,8 +179,13 @@ def api_inventario():
                 'alerta': pct < 30,
                 'critico': pct < 15,
             })
+        alertas = [i for i in items if i['alerta']]
+        criticos = [i for i in items if i['critico']]
         return jsonify({'ok': True, 'items': items,
-                        'valor_total': round(sum(i['stock_actual']*i['coste_unitario'] for i in items), 2)})
+                        'valor_total': round(sum(i['stock_actual']*i['coste_unitario'] for i in items), 2),
+                        'alertas_count': len(alertas),
+                        'criticos_count': len(criticos),
+                        'top_alerts': [i['ingrediente'] for i in criticos[:3]]})
     except Exception as e:
         return jsonify({'ok': False, 'error': str(e)}), 500
 

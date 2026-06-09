@@ -88,11 +88,10 @@ from landing import LANDING_HTML as LANDING_PAGE
 from blog import blog_bp
 from billing import billing_bp
 from legal import legal_bp
-from casos import casos_bp
 from signup import signup_bp
 from about import about_bp
 from exportador_pdf import pdf_bp
-for _bp in (auth_bp, config_bp, admin_bp, aprob_ar_bp, aprob_ap_bp, concil_bp, fb_bp, ar_real_bp, multi_hotel_bp, exportador_bp, calipolis_bp, demo_bp, demo_sim_bp, calipolis_analisis_bp, reportes_pdf_bp, blog_bp, billing_bp, signup_bp, about_bp, pdf_bp, legal_bp, casos_bp):
+for _bp in (auth_bp, config_bp, admin_bp, aprob_ar_bp, aprob_ap_bp, concil_bp, fb_bp, ar_real_bp, multi_hotel_bp, exportador_bp, calipolis_bp, demo_bp, demo_sim_bp, calipolis_analisis_bp, reportes_pdf_bp, blog_bp, billing_bp, signup_bp, about_bp, pdf_bp, legal_bp):
     app.register_blueprint(_bp)
 
 _pipeline_running = False
@@ -297,6 +296,31 @@ def _audit(accion, detalle="", usuario=None):
         with open(ruta, "w") as f: _json.dump(entries, f, ensure_ascii=False)
     except Exception:
         pass
+
+# ── Simple rate limiting ─────────────────────────────────────────────────
+import time as _time
+_rate_buckets: dict = {}
+
+def _rate_limit(key: str, max_req: int = 30, window: int = 60) -> bool:
+    """Returns True if request should be blocked (rate limit exceeded)."""
+    now = _time.time()
+    bucket = _rate_buckets.get(key, [])
+    bucket = [t for t in bucket if now - t < window]
+    if len(bucket) >= max_req:
+        return True
+    bucket.append(now)
+    _rate_buckets[key] = bucket
+    return False
+
+@app.before_request
+def check_rate_limit():
+    """Apply rate limiting to API endpoints."""
+    from flask import request as _req
+    if _req.path.startswith('/api/procesar') or _req.path.startswith('/api/procesar_ap'):
+        ip = _req.headers.get('X-Forwarded-For', _req.remote_addr or 'unknown').split(',')[0].strip()
+        if _rate_limit(f"process:{ip}", max_req=10, window=60):
+            from flask import jsonify as _j
+            return _j({"error": "Rate limit exceeded. Wait 60 seconds."}), 429
 
 @app.route("/robots.txt")
 def robots_txt():
@@ -1279,6 +1303,7 @@ HTML = r"""<!DOCTYPE html>
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width,initial-scale=1">
+<meta id="csrf-token-meta" name="csrf-token" content="">
 <link rel="manifest" href="/static/manifest.json">
 <meta name="theme-color" content="#3b82f6">
 <meta name="apple-mobile-web-app-capable" content="yes">
@@ -3251,6 +3276,11 @@ async function cambiarIdioma(lang) {
 
 loadAll();
 setInterval(loadAll, 60000);
+// Changelog badge
+if (localStorage.getItem('changelog_seen') !== CHANGELOG_VER) {
+  const mb = document.getElementById('menu-badge');
+  if (mb) mb.style.display = 'inline-block';
+}
 // Show keyboard hint on first visit
 if (!localStorage.getItem('kbd_shown')) {
   setTimeout(() => {
@@ -3617,7 +3647,7 @@ async function loadFBInventario() {
     if (!data.ok) { cont.innerHTML = '<div class="empty"><p>Error inventario</p></div>'; return; }
 
     const alertas = data.items.filter(i => i.alerta);
-    let html = '<div style="display:grid;grid-template-columns:repeat(3,1fr);gap:14px;margin-bottom:20px">';
+    let html = '<div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(140px,1fr));gap:14px;margin-bottom:20px">';
     html += _fbKpi(t('fb.itemsStock')||'Items en Stock', data.items.length, t('fb.ingredientes')||'ingredientes', 'var(--acc2)');
     html += _fbKpi(t('fb.valorInv')||'Valor Inventario', '€' + data.valor_total.toLocaleString('es-ES'), t('fb.valorActual')||'valoración actual', 'var(--grn)');
     html += _fbKpi(t('fb.alertasStock')||'Alertas Stock Bajo', alertas.length, alertas.length > 0 ? 'revisar urgente' : t('fb.todoOk')||'todo OK', alertas.length > 0 ? 'var(--red)' : 'var(--grn)');
@@ -5223,7 +5253,12 @@ document.addEventListener('keydown', e => {
     </div>
   </div>
 </div>
-<script>function showChangelog() { document.getElementById('changelog-modal').style.display='flex'; document.getElementById('main-menu').classList.remove('open'); }</script>
+<script>const CHANGELOG_VER = '2026-06';
+function showChangelog() {
+  localStorage.setItem('changelog_seen', CHANGELOG_VER);
+  const badge = document.getElementById('menu-badge');
+  if (badge) badge.style.display = 'none';
+  document.getElementById('changelog-modal').style.display='flex'; document.getElementById('main-menu').classList.remove('open'); }</script>
 
 <!-- Setup Checklist Modal -->
 <div id="checklist-modal" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,.6);z-index:9000;align-items:center;justify-content:center;padding:20px">

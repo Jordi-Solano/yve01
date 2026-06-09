@@ -150,13 +150,12 @@ a{color:inherit;text-decoration:none}
 .cta-banner p{font-size:18px;color:var(--mut);margin-bottom:36px}
 /* FOOTER */
 footer{background:var(--s1);border-top:1px solid var(--s2);padding:48px 5% 32px;margin-top:96px}
-.footer-grid{display:grid;grid-template-columns:2fr 1fr 1fr;gap:40px;margin-bottom:40px}
+.footer-grid{display:grid;grid-template-columns:2fr 1fr 1fr 1fr;gap:32px;margin-bottom:40px}@media(max-width:768px){.footer-grid{grid-template-columns:1fr 1fr}}@media(max-width:480px){.footer-grid{grid-template-columns:1fr}}
 .footer-brand p{font-size:14px;color:var(--mut);margin-top:12px;max-width:300px;line-height:1.7}
 .footer-col h4{font-size:12px;font-weight:700;text-transform:uppercase;letter-spacing:.5px;color:var(--mut);margin-bottom:14px}
 .footer-col a{display:block;font-size:14px;color:var(--dim);margin-bottom:9px;transition:color .15s}
 .footer-col a:hover{color:var(--tx)}
 .footer-bottom{border-top:1px solid var(--s2);padding-top:24px;display:flex;justify-content:space-between;align-items:center;font-size:13px;color:var(--dim)}
-@media(max-width:768px){.footer-grid{grid-template-columns:1fr}}
 </style>
 </head>
 <body>
@@ -578,6 +577,14 @@ function toggleFaq(btn) {
         <a href="/casos">Casos de éxito</a>
         <a href="/about">Quiénes somos</a>
         <a href="/login">Demo</a>
+      </div>
+      <div class="footer-col">
+        <h4>Blog</h4>
+        <a href="/blog">Todos los artículos</a>
+        <a href="/blog/software-gestion-financiera-hoteles-espana">Software hotelero</a>
+        <a href="/blog/food-cost-hotel-restaurante-como-calcularlo">Food Cost</a>
+        <a href="/blog/out-of-balance-drr-como-detectarlo">Out of Balance DRR</a>
+        <a href="/blog/conciliacion-bancaria-hotel-guia-completa">Conciliación bancaria</a>
       </div>
       <div class="footer-col">
         <h4>Contacto</h4>
