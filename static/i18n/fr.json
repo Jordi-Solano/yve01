@@ -176,5 +176,6 @@
   "lbl.sinDatos2": "Aucune donnée",
   "drr.subirDrr": "Charger DRR (.xlsm)",
   "drr.diasLabel": "jours",
-  "drr.oobLabel": "OOB"
+  "drr.oobLabel": "OOB",
+  "nav.buscar": "Rechercher"
 }

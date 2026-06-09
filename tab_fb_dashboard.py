@@ -248,7 +248,13 @@ def api_recetas():
         df_rec = _xlsx("recetas.xlsx")
         df_inv = _xlsx("inventario.xlsx")
         recipes = _calc_recipe_costs(df_rec, df_inv)
-        return jsonify({'ok': True, 'recetas': recipes})
+        # Add ranking and margin info
+        for i, r in enumerate(sorted(recipes, key=lambda x: x.get('fc_pct', 0))):
+            r['rank'] = i + 1
+        avg_fc = round(sum(r.get('fc_pct',0) for r in recipes) / len(recipes), 1) if recipes else 0
+        return jsonify({'ok': True, 'recetas': recipes, 'avg_fc_pct': avg_fc,
+                       'best_margin': min(recipes, key=lambda x: x.get('fc_pct',100)).get('nombre','') if recipes else '',
+                       'worst_margin': max(recipes, key=lambda x: x.get('fc_pct',0)).get('nombre','') if recipes else ''})
     except Exception as e:
         return jsonify({'ok': False, 'error': str(e)}), 500
 

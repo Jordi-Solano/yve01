@@ -1245,6 +1245,11 @@ HTML = r"""<!DOCTYPE html>
 <title>Yve.01 — Dashboard</title>
 <script async src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
 <style>
+/* Light mode */
+body.light-mode{--bg:#f8fafc;--s1:#fff;--s2:#e2e8f0;--s3:#cbd5e1;--tx:#0f172a;--mut:#475569;--dim:#64748b;--acc:#2563eb;--acc2:#1d4ed8;--grn:#16a34a;--red:#dc2626;--ora:#ea580c;--pur:#7c3aed}
+body.light-mode .nav{background:rgba(248,250,252,.9);border-bottom-color:#e2e8f0}
+body.light-mode .tab-btn{color:#475569}
+body.light-mode .tab-btn.active{color:#2563eb}
 :root{
   --bg:#0f172a;--s1:#1e293b;--s2:#334155;--s3:#475569;
   --acc:#3b82f6;--acc2:#60a5fa;--acc3:#93c5fd;
@@ -1687,6 +1692,15 @@ tr:hover td{background:rgba(255,255,255,.025)}
 [data-tip]{position:relative}
 [data-tip]::after{content:attr(data-tip);position:absolute;bottom:calc(100% + 8px);left:50%;transform:translateX(-50%);background:#1e293b;color:#f1f5f9;padding:7px 12px;border-radius:8px;font-size:11px;line-height:1.4;max-width:240px;white-space:normal;text-align:center;border:1px solid #334155;pointer-events:none;opacity:0;transition:opacity .15s;z-index:5000;box-shadow:0 4px 12px rgba(0,0,0,.3)}
 [data-tip]:hover::after{opacity:1}
+.sr-item{padding:14px 18px;cursor:pointer;border-bottom:1px solid var(--s2);display:flex;align-items:center;gap:12px;transition:background .15s}.sr-item:hover{background:var(--s2)}
+@media print {
+  .nav, .tabs, .status-bar, #top-bar, .fab-ask, #search-overlay,
+  .btn-run, .btn-ref, .dropdown, #demo-banner { display: none !important; }
+  body { background: #fff !important; color: #000 !important; }
+  .panel { box-shadow: none !important; border: 1px solid #ccc !important; }
+  .drr-mc { break-inside: avoid; }
+}
+
 
 </style>
 </head>
@@ -1716,6 +1730,8 @@ tr:hover td{background:rgba(255,255,255,.025)}
         <a href="/api/reportes/semanal" class="menu-item">📊 Semanal</a>
         <a href="/api/reportes/mensual" class="menu-item">📈 Mensual</a>
         <div class="menu-sep"></div>
+        <button class="menu-item" onclick="showSetupChecklist()">✅ Checklist setup</button>
+        <button class="menu-item" onclick="toggleLightMode()" id="btn-theme">🌙 Modo oscuro</button>
         <div class="menu-head">Ejecutivos</div>
         <a href="/api/reportes/ejecutivo.pdf" class="menu-item">🎯 Ejecutivo PDF</a>
         <a href="/api/reportes/consolidado.xlsx" class="menu-item">📊 Consolidado Excel</a>
@@ -1762,6 +1778,9 @@ tr:hover td{background:rgba(255,255,255,.025)}
     <span style="font-size:16px">⚠️</span>
     <span id="alert-msg"></span>
   </div>
+
+  <!-- Top loading bar -->
+  <div id="top-bar" style="position:fixed;top:0;left:0;height:2px;background:linear-gradient(90deg,#3b82f6,#a78bfa);z-index:9999;transition:width .3s ease;width:0"></div>
 
   <!-- Barra estado -->
   <div class="status-bar">
@@ -2337,6 +2356,8 @@ function bApro(a) {
 
 // ── Carga datos ──────────────────────────────────────────────────────────
 async function loadAll() {
+  const topBar = document.getElementById('top-bar');
+  if (topBar) { topBar.style.width = '30%'; topBar.style.opacity = '1'; }
   document.getElementById('status-txt').textContent = t('status.actualizando') || 'Actualizando...';
   try {
     // 1. Cargar y renderizar stats primero (independiente de facturas)
@@ -2376,6 +2397,7 @@ async function loadAll() {
 
     document.getElementById('status-txt').textContent =
       (t('status.actualizado') || 'Actualizado') + ' · ' + (stats.total || 0) + ' ' + (t('status.facturas') || 'facturas cargadas');
+  if (topBar) { topBar.style.width = '100%'; setTimeout(() => { topBar.style.opacity = '0'; setTimeout(() => { topBar.style.width = '0'; topBar.style.opacity = '1'; }, 300); }, 400); }
   } catch(e) {
     console.error('Error en loadAll:', e);
     document.getElementById('status-txt').textContent = t('status.error') || 'Error al cargar datos';
@@ -3086,6 +3108,19 @@ function applyI18n(data) {
   });
 }
 
+function toggleLightMode() {
+  const isLight = document.body.classList.toggle('light-mode');
+  localStorage.setItem('yve_theme', isLight ? 'light' : 'dark');
+  const btn = document.getElementById('btn-theme');
+  if (btn) btn.textContent = isLight ? '🌙 Modo oscuro' : '☀️ Modo claro';
+}
+// Apply saved theme on load
+if (localStorage.getItem('yve_theme') === 'light') {
+  document.body.classList.add('light-mode');
+  const btn = document.getElementById('btn-theme');
+  if (btn) btn.textContent = '🌙 Modo oscuro';
+}
+
 async function cambiarIdioma(lang) {
   fetch('/api/set_lang/' + lang);   // fire-and-forget, no await
   await loadI18n(lang);
@@ -3580,7 +3615,9 @@ async function loadFBRecetas() {
 
     const avg = data.recetas.reduce((a,r)=>a+r.fc_pct,0)/data.recetas.length;
     let html = '<div style="display:grid;grid-template-columns:repeat(3,1fr);gap:14px;margin-bottom:20px">';
-    html += _fbKpi('Recetas activas', data.recetas.length, 'en carta', 'var(--acc2)');
+    html += _fbKpi((t('fb.recetas')||'Recetas activas'), data.recetas.length, (t('fb.recetas')||'recetas') + ' en carta', 'var(--acc2)');
+    if (data.avg_fc_pct) html += _fbKpi('FC% Medio', data.avg_fc_pct + '%', 'media del menú', data.avg_fc_pct <= 22 ? 'var(--grn)' : 'var(--ora)');
+    if (data.best_margin) html += _fbKpi('Mejor margen', data.best_margin.split(' ').slice(0,2).join(' '), 'menor FC%', 'var(--grn)');
     html += _fbKpi('FC% promedio', avg.toFixed(1) + '%', 'media ponderada', avg < 30 ? 'var(--grn)' : 'var(--ora)');
     html += _fbKpi('Alertas FC alto', data.recetas.filter(r=>r.alerta).length, '>35% FC', 'var(--red)');
     html += '</div>';
@@ -4576,23 +4613,23 @@ function renderMHTable(hoteles) {
 function renderMHRankings(top) {
   const cont = document.getElementById('mh-rankings');
   if (!cont) return;
-  cont.innerHTML = '';
-  top.forEach((h, i) => {
-    const medalColor = i === 0 ? '#FFD700' : i === 1 ? '#C0C0C0' : i === 2 ? '#CD7F32' : '#8892a4';
-    const div = document.createElement('div');
-    div.style.cssText = 'display:flex;justify-content:space-between;align-items:center;padding:10px 0;border-bottom:1px solid #2e3248;cursor:pointer;transition:background 0.2s';
-    div.addEventListener('mouseover', () => div.style.background = 'rgba(26,115,232,0.08)');
-    div.addEventListener('mouseout', () => div.style.background = 'transparent');
-    div.addEventListener('click', () => openHotelDetail(h.id));
-    div.innerHTML = 
-      '<div style="display:flex;align-items:center;gap:12px">' +
-        '<span style="font-size:18px;font-weight:700;color:' + medalColor + '">' + (i+1) + '</span>' +
-        '<div><div style="font-weight:600;font-size:13px">' + h.nombre + '</div>' +
-        '<div style="font-size:11px;color:#8892a4">' + h.ciudad + ', ' + h.pais + '</div></div>' +
-      '</div>' +
-      '<div style="font-weight:700;color:#1db954;font-size:15px">€' + (h.revenue_mtd/1000000).toFixed(2) + 'M</div>';
-    cont.appendChild(div);
-  });
+  if (!top || !top.length) { cont.innerHTML = '<div class="empty"><p>Sin datos</p></div>'; return; }
+  const maxRev = Math.max(...top.map(h => h.revenue_mtd || 0));
+  const maxGop = Math.max(...top.map(h => h.gop_pct || 0));
+  cont.innerHTML = '<div style="font-size:11px;color:var(--mut);font-weight:600;text-transform:uppercase;letter-spacing:.4px;margin-bottom:12px">GOP% comparativo</div>' +
+    top.map(h => {
+      const barW = maxGop > 0 ? Math.round((h.gop_pct / maxGop) * 100) : 0;
+      const col   = h.gop_pct >= 22 ? 'var(--grn)' : h.gop_pct >= 16 ? 'var(--ora)' : 'var(--red)';
+      const revK  = Math.round((h.revenue_mtd || 0) / 1000);
+      return '<div style="margin-bottom:14px">' +
+        '<div style="display:flex;justify-content:space-between;font-size:12px;margin-bottom:4px">' +
+          '<span style="font-weight:600">' + h.nombre + '</span>' +
+          '<span style="color:' + col + ';font-weight:800">' + h.gop_pct + '% &nbsp;<span style="color:var(--dim);font-weight:400">€' + revK + 'K</span></span>' +
+        '</div>' +
+        '<div style="background:var(--s2);border-radius:4px;height:8px;overflow:hidden">' +
+          '<div style="height:100%;border-radius:4px;background:' + col + ';width:' + barW + '%;transition:width .6s ease"></div>' +
+        '</div></div>';
+    }).join('');
 }
 
 function renderMHAlertas(alertas) {
@@ -4883,6 +4920,122 @@ setTimeout(() => {
   });
 }, 2000);
 
+</script>
+
+<!-- Global Search Overlay -->
+<div id="search-overlay" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,.7);z-index:9500;padding:80px 20px 20px;backdrop-filter:blur(4px)" onclick="if(event.target===this)closeSearch()">
+  <div style="max-width:600px;margin:0 auto">
+    <div style="display:flex;align-items:center;gap:12px;background:var(--s1);border:1px solid var(--acc);border-radius:14px;padding:14px 18px;margin-bottom:12px">
+      <span style="font-size:18px">🔍</span>
+      <input id="search-input" placeholder="Buscar facturas, proveedores, métricas..." 
+        style="flex:1;background:none;border:none;color:var(--tx);font-size:15px;outline:none"
+        oninput="runSearch(this.value)" onkeydown="if(event.key==='Escape')closeSearch()">
+      <kbd style="background:var(--s2);border:1px solid var(--s2);color:var(--dim);border-radius:5px;padding:2px 7px;font-size:11px">ESC</kbd>
+    </div>
+    <div id="search-results" style="background:var(--s1);border:1px solid var(--s2);border-radius:14px;overflow:hidden;max-height:400px;overflow-y:auto"></div>
+    <div style="font-size:11px;color:var(--dim);margin-top:8px;text-align:center">
+      Ctrl+K para abrir · ESC para cerrar · Enter para ir a la sección
+    </div>
+  </div>
+</div>
+
+<script>
+// Global search
+const SEARCH_INDEX = [
+  {q:['ar','ota','booking','expedia','comision','factura ar'],tab:'ar_otas',   label:'AR — OTAs',           desc:'Facturas y comisiones de agencias online'},
+  {q:['ap','proveedor','supplier','matching','pago','factura ap'],tab:'ap',    label:'AP — Proveedores',    desc:'Facturas de proveedores y 3-way matching'},
+  {q:['drr','revenue','ingresos','oob','out of balance','gop'],tab:'drr',     label:'DRR',                 desc:'Daily Revenue Report y métricas del hotel'},
+  {q:['banco','bank','conciliacion','extracto','pago'],tab:'banco',           label:'Banco',               desc:'Conciliación bancaria y movimientos'},
+  {q:['notif','alerta','email','slack','whatsapp'],tab:'notificaciones',       label:'Notificaciones',      desc:'Canales y configuración de alertas'},
+  {q:['fb','food cost','restaurante','merma','receta','inventario'],tab:'fb_cost', label:'F&B Cost',        desc:'Control de coste de alimentos y bebidas'},
+  {q:['ar real','grupo','corporativo','cliente','beo'],tab:'ar_real',         label:'AR Real',             desc:'Facturación a clientes corporativos'},
+  {q:['calipolis','sitges','multi','grupo hotelero'],tab:'calipolis',         label:'Calipolis',           desc:'Dashboard del Grupo Calipolis Hotels'},
+  {q:['multi','hotel','consolidado','grupo'],tab:'multi_hotel',              label:'Multi-Hotel',         desc:'Vista consolidada de todos los hoteles'},
+  {q:['admin','usuario','configuracion','cuenta'],link:'/admin/',            label:'Administración',      desc:'Panel de administración y usuarios'},
+  {q:['precio','plan','stripe','pago','billing'],link:'/checkout/starter',  label:'Planes y precios',    desc:'Contratar o cambiar el plan'},
+  {q:['terminos','privacidad','legal','gdpr'],link:'/terminos',             label:'Términos legales',    desc:'Términos de uso y política de privacidad'},
+];
+
+function openSearch() {
+  document.getElementById('search-overlay').style.display = 'block';
+  setTimeout(() => document.getElementById('search-input').focus(), 50);
+}
+function closeSearch() {
+  document.getElementById('search-overlay').style.display = 'none';
+  document.getElementById('search-input').value = '';
+  document.getElementById('search-results').innerHTML = '';
+}
+function runSearch(q) {
+  const results = document.getElementById('search-results');
+  if (!q.trim()) { results.innerHTML = ''; return; }
+  const ql = q.toLowerCase();
+  const matches = SEARCH_INDEX.filter(item => item.q.some(kw => kw.includes(ql) || ql.includes(kw)));
+  if (!matches.length) {
+    results.innerHTML = '<div style="padding:20px;text-align:center;color:var(--dim);font-size:13px">Sin resultados para "' + q + '"</div>';
+    return;
+  }
+  results.innerHTML = matches.map(m => {
+    const action = m.tab
+      ? "switchTab('" + m.tab + "',document.getElementById('tab-" + m.tab + "'));closeSearch()"
+      : "location.href='" + m.link + "'";
+    return '<div onclick="' + action + '" class="sr-item">' +
+      '<div style="font-size:20px">🔹</div>' +
+      '<div><div style="font-weight:600;font-size:14px">' + m.label + '</div>' +
+      '<div style="font-size:12px;color:var(--mut)">' + m.desc + '</div></div>' +
+      '</div>';
+  }).join('');
+}
+// Keyboard shortcut Ctrl+K
+document.addEventListener('keydown', e => {
+  if ((e.ctrlKey || e.metaKey) && e.key === 'k') { e.preventDefault(); openSearch(); }
+});
+</script>
+<!-- /Global Search -->
+<!-- Setup Checklist Modal -->
+<div id="checklist-modal" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,.6);z-index:9000;align-items:center;justify-content:center;padding:20px">
+  <div style="background:var(--s1);border:1px solid var(--s2);border-radius:16px;padding:28px;max-width:460px;width:100%">
+    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:20px">
+      <h3 style="font-size:16px;font-weight:700">✅ Checklist de configuración</h3>
+      <button onclick="document.getElementById('checklist-modal').style.display='none'" style="background:none;border:none;color:var(--mut);font-size:20px;cursor:pointer">×</button>
+    </div>
+    <div id="checklist-items" style="display:flex;flex-direction:column;gap:10px;font-size:13px"></div>
+    <p style="font-size:11px;color:var(--dim);margin-top:16px">Completa estos pasos para sacar el máximo partido a Yve.01</p>
+  </div>
+</div>
+<script>
+function showSetupChecklist() {
+  document.getElementById('checklist-modal').style.display = 'flex';
+  document.getElementById('main-menu').classList.remove('open');
+  const items = [
+    {label:'Configurar SMTP para notificaciones email', check: () => true, link:'/admin/', action:'Ir a Admin → Conexiones'},
+    {label:'Subir primer DRR (.xlsm)', check: () => document.getElementById('drr-status')?.textContent?.includes('días'), link:null, action:'Tab DRR → Subir DRR'},
+    {label:'Procesar facturas AR (⚡)', check: () => (parseInt(document.getElementById('sc-procesadas')?.textContent)||0) > 0, link:null, action:'Tab AR → Procesar Facturas'},
+    {label:'Revisar discrepancias AP', check: () => document.getElementById('tab-ap')?.classList?.contains('active'), link:null, action:'Tab AP'},
+    {label:'Configurar canal de notificaciones', check: () => localStorage.getItem('notif_configured'), link:null, action:'Tab Notificaciones'},
+    {label:'Probar el tour guiado', check: () => localStorage.getItem('tour_done'), link:null, action:'Menú ⋯ → Demo Mode → Tour'},
+  ];
+  document.getElementById('checklist-items').innerHTML = items.map(it => {
+    const done = it.check();
+    return '<div style="display:flex;align-items:center;gap:12px;padding:10px;background:var(--bg);border-radius:8px;border:1px solid ' + (done ? 'rgba(34,197,94,.2)' : 'var(--s2)') + '">' +
+      '<span style="font-size:18px">' + (done ? '✅' : '⬜') + '</span>' +
+      '<div style="flex:1"><div style="font-weight:' + (done ? '400' : '600') + ';color:' + (done ? 'var(--mut)' : 'var(--tx)') + '">' + it.label + '</div>' +
+      (done ? '' : '<div style="font-size:11px;color:var(--dim)">' + it.action + '</div>') +
+      '</div>' +
+      '</div>';
+  }).join('');
+}
+</script>
+
+<button id="back-top" onclick="window.scrollTo({top:0,behavior:'smooth'})" 
+  style="display:none;position:fixed;bottom:88px;right:20px;background:var(--s1);border:1px solid var(--s2);color:var(--mut);width:36px;height:36px;border-radius:50%;font-size:16px;cursor:pointer;z-index:500;transition:.2s;box-shadow:0 2px 8px rgba(0,0,0,.3)"
+  onmouseover="this.style.borderColor='var(--acc)';this.style.color='var(--acc)'"
+  onmouseout="this.style.borderColor='var(--s2)';this.style.color='var(--mut)'">↑</button>
+<script>
+window.addEventListener('scroll', () => {
+  const btn = document.getElementById('back-top');
+  if (btn) btn.style.display = window.scrollY > 300 ? 'flex' : 'none';
+  if (btn) btn.style.alignItems = 'center'; if (btn) btn.style.justifyContent = 'center';
+}, {passive: true});
 </script>
 </body>
 </html>"""

@@ -270,6 +270,13 @@ input,select{width:100%;background:var(--bg);border:1px solid var(--s2);color:va
 async function ls(){const r=await fetch('/admin/api/stats'),d=await r.json();['u','a','h','r','up','v'].forEach((k,i)=>{const el=document.getElementById('s'+k);if(el)el.textContent=[d.usuarios,d.usuarios_activos,d.hoteles,d.reportes_generados,d.uptime,d.version][i];});}
 async function lu(){const r=await fetch('/admin/api/usuarios'),us=await r.json();document.getElementById('utb').innerHTML=us.map(u=>'<tr><td><b>'+u.username+'</b></td><td>'+(u.nombre||'-')+'</td><td style="color:#60a5fa">'+u.rol+'</td><td><span class="'+(u.activo!==false?'ok':'off')+'">'+(u.activo!==false?'Activo':'Inactivo')+'</span></td><td><button class="btn bd bsm" onclick="tU(\''+u.username+'\')">Toggle</button></td></tr>').join('');}
 async function lh(){const r=await fetch('/admin/api/hoteles'),d=await r.json();if(!d.ok)return;document.getElementById('htb').innerHTML=d.hoteles.map(h=>'<tr><td><b>'+h.nombre+'</b></td><td style="color:#94a3b8">'+(h.ciudad||'-')+'</td><td>'+(h.habitaciones||'-')+'</td><td style="color:#94a3b8">'+(h.categoria||'-')+'</td><td><button class="btn bd bsm" onclick="dH(\''+h.id+'\')">×</button></td></tr>').join('');}
+async function resetPw(u) {
+  const pw = prompt('Nueva contraseña para ' + u + ' (mínimo 6 caracteres):');
+  if (!pw || pw.length < 6) { alert('Contraseña muy corta o cancelado'); return; }
+  const r = await fetch('/admin/api/cambiar_password', {method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({username:u,nueva_password:pw})});
+  const d = await r.json();
+  showMsg(d.ok ? '✓ Contraseña cambiada para ' + u : '✗ ' + (d.error||'Error'), d.ok);
+}
 async function tU(u){await fetch('/admin/api/toggle_usuario',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({username:u})});lu();ls();}
 async function dH(id){if(!confirm('Eliminar '+id+'?'))return;await fetch('/admin/api/hoteles/eliminar',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({id})});lh();ls();}
 async function crearU(){const d={username:document.getElementById('nu').value.trim(),password:document.getElementById('np').value,nombre:document.getElementById('nn').value.trim(),email:document.getElementById('ne').value.trim(),rol:document.getElementById('nr').value};const m=document.getElementById('mu');if(!d.username||!d.password){m.style.color='#ef4444';m.textContent='Faltan campos.';return;}const r=await fetch('/admin/api/crear_usuario',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(d)});const res=await r.json();m.style.color=res.ok?'#22c55e':'#ef4444';m.textContent=res.ok?'Creado: '+d.username:(res.error||'Error');if(res.ok){lu();ls();}}

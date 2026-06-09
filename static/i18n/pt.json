@@ -176,5 +176,6 @@
   "lbl.sinDatos2": "Sem dados",
   "drr.subirDrr": "Carregar DRR (.xlsm)",
   "drr.diasLabel": "dias",
-  "drr.oobLabel": "OOB"
+  "drr.oobLabel": "OOB",
+  "nav.buscar": "Pesquisar"
 }

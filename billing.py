@@ -21,19 +21,55 @@ billing_bp = Blueprint('billing', __name__)
 # Para simplificar el checkout usamos 3 tiers flat.
 # En el futuro: precio dinámico según habitaciones registradas en onboarding.
 PLANS = {
-    'starter': {'name':'Starter',     'price_eur':400, 'stripe_price_id':os.environ.get('STRIPE_PRICE_STARTER',''),
-                'desc':'Hasta 150 hab · AP + AR + DRR + Banco',
-                'features':['Módulo AP — Proveedores','Módulo AR — OTAs','DRR & Conciliación bancaria',
-                            'Hasta 150 habitaciones','Soporte por email']},
-    'pro':     {'name':'Pro',         'price_eur':600, 'stripe_price_id':os.environ.get('STRIPE_PRICE_PRO',''),
-                'desc':'Hasta 400 hab · Todo incluido + Oracle',
-                'features':['Todo lo de Starter','F&B Cost Control','Oracle GL API producción',
-                            'Hasta 400 habitaciones','Notificaciones WhatsApp/Slack','Soporte prioritario']},
-    'multi':   {'name':'Multi-Hotel', 'price_eur':400, 'stripe_price_id':os.environ.get('STRIPE_PRICE_MULTI',''),
-                'desc':'Por hotel · Mín. 2 hoteles · Dashboard consolidado',
-                'features':['Todo lo de Pro en cada hotel','Sin límite de habitaciones',
-                            'Dashboard Multi-Hotel','Benchmarking propiedades','Gestor de cuenta dedicado']},
+    'starter': {
+        'name': 'Starter', 'price_eur': 400,
+        'stripe_price_id': os.environ.get('STRIPE_PRICE_STARTER', ''),
+        'desc': 'Para hoteles independientes hasta 150 habitaciones',
+        'max_rooms': 150, 'max_hotels': 1,
+        'features': [
+            '✓ AR — Verificación OTA (Booking, Expedia)',
+            '✓ AP — 3-way matching F&B + OTRAS',
+            '✓ DRR — Daily Revenue Report + OOB',
+            '✓ Conciliación bancaria',
+            '✓ F&B Cost Control',
+            '✓ Notificaciones email',
+            '✓ Soporte por email',
+            '✓ 14 días de prueba gratuita',
+        ],
+    },
+    'pro': {
+        'name': 'Pro', 'price_eur': 600,
+        'stripe_price_id': os.environ.get('STRIPE_PRICE_PRO', ''),
+        'desc': 'Para hoteles de 150–400 habitaciones o alta operativa',
+        'max_rooms': 400, 'max_hotels': 1,
+        'features': [
+            '✓ Todo lo del plan Starter',
+            '✓ Integración Oracle Fusion GL',
+            '✓ Chat IA "Pregunta a Yve"',
+            '✓ Notificaciones WhatsApp + Slack',
+            '✓ Exportación PDF reportes',
+            '✓ AR Real — Grupos corporativos',
+            '✓ Soporte prioritario',
+            '✓ SLA 99.5% uptime',
+        ],
+    },
+    'multi': {
+        'name': 'Multi-Hotel', 'price_eur': 400,
+        'stripe_price_id': os.environ.get('STRIPE_PRICE_MULTI', ''),
+        'desc': 'Por propiedad — para grupos hoteleros',
+        'max_rooms': 9999, 'max_hotels': 99,
+        'features': [
+            '✓ Todo lo del plan Pro en cada hotel',
+            '✓ Dashboard consolidado multi-hotel',
+            '✓ KPIs comparativos entre propiedades',
+            '✓ Alertas centralizadas del grupo',
+            '✓ Benchmarking GOP% entre hoteles',
+            '✓ Facturación unificada del grupo',
+            '✓ Account manager dedicado',
+        ],
+    },
 }
+
 
 def _stripe():
     key = os.environ.get('STRIPE_SECRET_KEY','')
@@ -215,11 +251,21 @@ def _sim_html(plan):
 def _success_html(email=''):
     greeting = f'Bienvenido, <strong>{email}</strong>.' if email else 'Tu suscripción está activa.'
     return _HEAD + f"""
-<body><div class="card" style="text-align:center">
-  <div style="width:64px;height:64px;background:rgba(34,197,94,.15);border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:28px;margin:0 auto 22px">✓</div>
-  <h1 style="font-size:26px;font-weight:800;margin-bottom:10px;letter-spacing:-.5px">¡Suscripción activada!</h1>
-  <p style="color:var(--mut);font-size:15px;line-height:1.7;margin-bottom:28px">{greeting}<br>Recibirás un email de confirmación en breve.</p>
-  <a href="/login" class="btn btn-primary" style="margin-bottom:0">Acceder al panel →</a>
+<body style="background:#0f172a;font-family:-apple-system,'Inter',sans-serif;display:flex;align-items:center;justify-content:center;min-height:100vh;padding:20px">
+<div style="max-width:480px;width:100%;text-align:center">
+  <div style="width:72px;height:72px;background:rgba(34,197,94,.15);border:2px solid rgba(34,197,94,.3);border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:32px;margin:0 auto 24px">✓</div>
+  <h1 style="font-size:28px;font-weight:800;margin-bottom:10px;color:#f1f5f9">¡Suscripción activada!</h1>
+  <p style="color:#94a3b8;font-size:15px;line-height:1.7;margin-bottom:32px">{greeting}<br>Recibirás un email de confirmación en breve.</p>
+  <div style="background:#1e293b;border:1px solid #334155;border-radius:14px;padding:24px;margin-bottom:24px;text-align:left">
+    <div style="font-size:13px;font-weight:700;color:#60a5fa;margin-bottom:16px;text-transform:uppercase;letter-spacing:.4px">Próximos pasos</div>
+    <div style="display:flex;flex-direction:column;gap:12px">
+      <div style="display:flex;gap:12px;align-items:flex-start"><span style="background:#22c55e;color:#fff;border-radius:50%;width:22px;height:22px;display:flex;align-items:center;justify-content:center;font-size:11px;font-weight:700;flex-shrink:0">1</span><span style="font-size:13px;color:#cbd5e1">Accede al panel con tus credenciales</span></div>
+      <div style="display:flex;gap:12px;align-items:flex-start"><span style="background:#3b82f6;color:#fff;border-radius:50%;width:22px;height:22px;display:flex;align-items:center;justify-content:center;font-size:11px;font-weight:700;flex-shrink:0">2</span><span style="font-size:13px;color:#cbd5e1">Completa el wizard de configuración del hotel (5 min)</span></div>
+      <div style="display:flex;gap:12px;align-items:flex-start"><span style="background:#8b5cf6;color:#fff;border-radius:50%;width:22px;height:22px;display:flex;align-items:center;justify-content:center;font-size:11px;font-weight:700;flex-shrink:0">3</span><span style="font-size:13px;color:#cbd5e1">Sube tu primer DRR y empieza a detectar OOB automáticamente</span></div>
+    </div>
+  </div>
+  <a href="/login" style="display:block;background:linear-gradient(135deg,#22c55e,#16a34a);color:#fff;padding:14px 32px;border-radius:12px;font-size:15px;font-weight:700;text-decoration:none;margin-bottom:12px">Acceder al panel →</a>
+  <p style="font-size:12px;color:#475569">¿Necesitas ayuda? Escríbenos a <a href="mailto:jordi@yve01.com" style="color:#60a5fa">jordi@yve01.com</a></p>
 </div></body></html>"""
 
 def _err_html(msg):
