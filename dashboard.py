@@ -421,6 +421,31 @@ def api_test_smtp():
     result = test_smtp()
     return jsonify(result)
 
+@app.route("/api/ap/aprobar_lote", methods=["POST"])
+@login_required
+def api_ap_aprobar_lote():
+    """Aprueba en lote facturas AP con Match OK."""
+    data = request.get_json(force=True, silent=True) or {}
+    facturas_nums = data.get("facturas", [])
+    if not facturas_nums:
+        return jsonify({"ok": False, "error": "No se especificaron facturas"}), 400
+    try:
+        # Update matching reports
+        import glob as _g
+        hits = _g.glob(os.path.join(REPORTES_DIR, "matching_*.xlsx"))
+        aprobadas = 0
+        for ruta in hits:
+            df = pd.read_excel(ruta)
+            if "numero_factura" in df.columns and "aprobacion" in df.columns:
+                mask = (df["numero_factura"].astype(str).isin(facturas_nums)) &                        (df["estado"].astype(str).str.contains("MATCH_3WAY_OK", na=False))
+                aprobadas += int(mask.sum())
+                df.loc[mask, "aprobacion"] = "APROBADA"
+                df.to_excel(ruta, index=False)
+        _audit("AP_LOTE_APROBADO", f"{aprobadas} facturas aprobadas", session.get("username", "sistema"))
+        return jsonify({"ok": True, "aprobadas": aprobadas})
+    except Exception as e:
+        return jsonify({"ok": False, "error": str(e)[:200]}), 500
+
 @app.route("/api/test_oracle", methods=["POST"])
 @login_required
 def api_test_oracle():
@@ -1975,6 +2000,7 @@ tr:hover td{background:rgba(255,255,255,.025)}
   <!-- PANEL AP -->
   <div id="panel-ap" class="panel">
   <div style="display:flex;justify-content:flex-end;gap:12px;margin-bottom:14px"><a href="/api/exportar/ap" style="background:#1a73e8;color:white;padding:8px 16px;border-radius:8px;text-decoration:none;font-weight:600;font-size:13px" data-i18n="btn.downloadExcel" data-i18n="btn.downloadExcel">⬇️ Descargar Excel</a><a href="/aprobaciones-ap/" class="btn-ref" style="text-decoration:none" title="Abrir panel de aprobaciones AP" data-i18n="btn.aprobarAP">📲 Aprobar facturas AP</a>
+        <button class="btn-ref" onclick="aprobarMatchOK()" style="font-size:12px" title="Aprueba automáticamente todas las facturas con 3-way match correcto">✅ Aprobar Match OK</button>
         <button class="btn-ref" onclick="filtrarAPPorEstado()" id="btn-filter-ap" style="font-size:12px">🔍 Filtrar</button>
         <select id="ap-estado-filter" onchange="filtrarAPPorEstado(this.value)" style="background:var(--s1);border:1px solid var(--s2);color:var(--tx);padding:6px 10px;border-radius:8px;font-size:12px;cursor:pointer">
           <option value="">Todos</option>
@@ -2019,9 +2045,10 @@ tr:hover td{background:rgba(255,255,255,.025)}
     </div>
 
     <!-- KPI Metrics -->
-    <div class="drr-metrics" id="drr-metrics">
+    <div class="drr-metrics" id="drr-metrics" style="display:grid;grid-template-columns:repeat(auto-fit,minmax(180px,1fr));gap:12px;margin-bottom:12px">
       <div class="empty"><div class="ei">📊</div><p>Sube un archivo DRR para ver las métricas.</p></div>
     </div>
+    <div id="drr-budget-bar" style="display:none;background:rgba(15,23,42,.5);border-radius:10px;padding:10px 14px;margin-bottom:16px;border:1px solid var(--s2)"></div>
 
     <!-- Revenue Chart -->
     <div class="card" style="margin-bottom:22px" id="drr-chart-card" style="display:none">
@@ -2269,6 +2296,7 @@ tr:hover td{background:rgba(255,255,255,.025)}
 
   <!-- KPIs consolidados -->
   <div id="cal-kpis" style="display:grid;grid-template-columns:repeat(4,1fr);gap:12px;margin-bottom:22px"></div>
+  <div id="cal-insights"></div>
 
   <!-- Trend row: GOP y Facturas pendientes últimos 6 meses -->
   <div style="display:grid;grid-template-columns:1fr 1fr;gap:16px;margin-bottom:22px">
@@ -3305,6 +3333,36 @@ window.addEventListener('appinstalled', () => {
   if (btn) btn.style.display = 'none';
 });
 
+// ── Toast notifications ──────────────────────────────────────────────────
+let _toastTimeout;
+function showNotification(msg, type = 'info') {
+  let toast = document.getElementById('yve-toast');
+  if (!toast) {
+    toast = document.createElement('div');
+    toast.id = 'yve-toast';
+    toast.style.cssText = 'position:fixed;bottom:24px;left:50%;transform:translateX(-50%) translateY(20px);opacity:0;max-width:420px;width:calc(100% - 40px);padding:12px 18px;border-radius:12px;font-size:13px;font-weight:500;z-index:9999;transition:all .25s ease;pointer-events:none;text-align:center;box-shadow:0 4px 20px rgba(0,0,0,.4)';
+    document.body.appendChild(toast);
+  }
+  clearTimeout(_toastTimeout);
+  const colors = {
+    success: {bg:'rgba(34,197,94,.15)',border:'rgba(34,197,94,.4)',color:'#22c55e'},
+    error:   {bg:'rgba(239,68,68,.15)',border:'rgba(239,68,68,.4)',color:'#f87171'},
+    warning: {bg:'rgba(245,158,11,.15)',border:'rgba(245,158,11,.4)',color:'#f59e0b'},
+    info:    {bg:'rgba(59,130,246,.15)',border:'rgba(59,130,246,.3)',color:'#60a5fa'},
+  };
+  const c = colors[type] || colors.info;
+  toast.style.background  = c.bg;
+  toast.style.border      = '1px solid ' + c.border;
+  toast.style.color       = c.color;
+  toast.textContent       = msg;
+  toast.style.opacity     = '1';
+  toast.style.transform   = 'translateX(-50%) translateY(0)';
+  _toastTimeout = setTimeout(() => {
+    toast.style.opacity   = '0';
+    toast.style.transform = 'translateX(-50%) translateY(20px)';
+  }, type === 'error' ? 5000 : 3000);
+}
+
 // ── Copy to clipboard utility ────────────────────────────────────────────
 function copyToClip(text, label) {
   navigator.clipboard.writeText(text).then(() => {
@@ -4287,6 +4345,27 @@ function renderDRR(s) {
   }
 }
 
+async function aprobarMatchOK() {
+  const rows = document.querySelectorAll('#ap-tbody tr[data-estado="MATCH_3WAY_OK"]');
+  if (!rows.length) { showNotification('No hay facturas con Match OK pendientes', 'info'); return; }
+  // Collect invoice numbers
+  const nums = [...rows].map(r => r.cells[0]?.textContent?.trim()).filter(Boolean);
+  showNotification('⏳ Aprobando ' + nums.length + ' facturas con Match OK...', 'info');
+  try {
+    const resp = await fetch('/api/ap/aprobar_lote', {
+      method: 'POST',
+      headers: {'Content-Type':'application/json'},
+      body: JSON.stringify({facturas: nums})
+    });
+    const d = await resp.json();
+    if (d.ok) {
+      showNotification('✓ ' + (d.aprobadas || nums.length) + ' facturas aprobadas', 'success');
+      setTimeout(loadAP, 500);
+    } else {
+      showNotification('✗ Error: ' + (d.error || 'desconocido'), 'error');
+    }
+  } catch(e) { showNotification('✗ Error de conexión', 'error'); }
+}
 function filtrarAPPorEstado(estado) {
   const rows = document.querySelectorAll('#ap-tbody tr[data-estado]');
   rows.forEach(row => {
@@ -4983,6 +5062,7 @@ async function loadCalipolis() {
     const data = await res.json();
     renderCalipolisKpis(data.consolidado);
     renderCalipolisHoteles(data.hoteles);
+    addCalipolisInsights(data.hoteles);
     if (data.tendencias) renderCalipolisTrends(data.tendencias);
     const calUpd = document.getElementById('cal-updated');
     if (calUpd) calUpd.textContent = 'Actualizado ' + new Date().toLocaleTimeString('es-ES', {hour:'2-digit',minute:'2-digit'});
@@ -5094,6 +5174,21 @@ function renderCalipolisHoteles(hoteles) {
         '<circle cx="' + (w) + '" cy="' + (ht - ((vals[vals.length-1]-min)/(max-min+0.001))*(ht-4)) + '" r="3" fill="' + lastColor + '"/>' +
         '</svg>';
     }
+
+function addCalipolisInsights(hoteles) {
+  const el = document.getElementById('cal-insights');
+  if (!el || !hoteles || !hoteles.length) return;
+  const top = hoteles.reduce((a,b) => a.gop_pct > b.gop_pct ? a : b);
+  const avg = (hoteles.reduce((s,h) => s+h.gop_pct, 0)/hoteles.length).toFixed(1);
+  const rev = hoteles.reduce((s,h) => s+(h.total_ingresos||0), 0);
+  const alerts = hoteles.reduce((s,h) => s+(h.alertas||0), 0);
+  el.innerHTML = '<div style="display:flex;gap:10px;flex-wrap:wrap;margin-top:16px">' +
+    '<div style="flex:1;min-width:140px;background:rgba(34,197,94,.06);border:1px solid rgba(34,197,94,.15);border-radius:10px;padding:12px"><div style="font-size:10px;color:var(--grn);font-weight:700;text-transform:uppercase">Mejor GOP%</div><div style="font-size:13px;font-weight:600;margin-top:2px">' + top.nombre.split(' ').slice(-1)[0] + '</div><div style="font-size:20px;font-weight:900;color:var(--grn)">' + top.gop_pct + '%</div></div>' +
+    '<div style="flex:1;min-width:140px;background:rgba(59,130,246,.06);border:1px solid rgba(59,130,246,.15);border-radius:10px;padding:12px"><div style="font-size:10px;color:var(--acc2);font-weight:700;text-transform:uppercase">Revenue grupo</div><div style="font-size:13px;font-weight:600;margin-top:2px">Junio 2026</div><div style="font-size:20px;font-weight:900;color:var(--acc2)">€' + Math.round(rev/1000) + 'K</div></div>' +
+    '<div style="flex:1;min-width:140px;background:rgba(167,139,250,.06);border:1px solid rgba(167,139,250,.15);border-radius:10px;padding:12px"><div style="font-size:10px;color:var(--pur);font-weight:700;text-transform:uppercase">GOP% medio</div><div style="font-size:13px;font-weight:600;margin-top:2px">Grupo</div><div style="font-size:20px;font-weight:900;color:var(--pur)">' + avg + '%</div></div>' +
+    (alerts ? '<div style="flex:1;min-width:140px;background:rgba(245,158,11,.06);border:1px solid rgba(245,158,11,.15);border-radius:10px;padding:12px"><div style="font-size:10px;color:var(--ora);font-weight:700;text-transform:uppercase">Alertas</div><div style="font-size:13px;font-weight:600;margin-top:2px">Activas</div><div style="font-size:20px;font-weight:900;color:var(--ora)">' + alerts + '</div></div>' : '') +
+    '</div>';
+}
     const gopDelta = h.gop_trend && h.gop_trend.length > 1
       ? (h.gop_trend[h.gop_trend.length-1] - h.gop_trend[0]).toFixed(1)
       : null;
@@ -5237,6 +5332,7 @@ function runSearch(q) {
 // Keyboard shortcut Ctrl+K
 document.addEventListener('keydown', e => {
   if ((e.ctrlKey || e.metaKey) && e.key === 'k') { e.preventDefault(); openSearch(); }
+  if ((e.ctrlKey || e.metaKey) && e.key === '/') { e.preventDefault(); const co = document.getElementById('chat-overlay'); if (co) co.style.display = co.style.display === 'none' ? 'flex' : 'none'; }
 });
 </script>
 <!-- /Global Search -->
@@ -5322,6 +5418,12 @@ function showSetupChecklist() {
   }).join('');
 }
 </script>
+
+<!-- Floating Action Button - Ask Yve AI -->
+<button class="fab-ask" id="fab-yve" onclick="document.getElementById('chat-overlay').style.display='flex'"
+  style="position:fixed;bottom:80px;right:20px;width:52px;height:52px;border-radius:50%;background:linear-gradient(135deg,#3b82f6,#2563eb);border:none;color:#fff;font-size:22px;cursor:pointer;box-shadow:0 4px 20px rgba(59,130,246,.5);z-index:500;transition:.2s;display:flex;align-items:center;justify-content:center"
+  onmouseover="this.style.transform='scale(1.1)'" onmouseout="this.style.transform='scale(1)'"
+  title="Pregunta a Yve AI (Ctrl+/)">✨</button>
 
 <button id="back-top" onclick="window.scrollTo({top:0,behavior:'smooth'})" 
   style="display:none;position:fixed;bottom:88px;right:20px;background:var(--s1);border:1px solid var(--s2);color:var(--mut);width:36px;height:36px;border-radius:50%;font-size:16px;cursor:pointer;z-index:500;transition:.2s;box-shadow:0 2px 8px rgba(0,0,0,.3)"
