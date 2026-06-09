@@ -285,6 +285,35 @@ footer{background:var(--s1);border-top:1px solid var(--s2);padding:48px 5% 32px;
   </div>
 </section>
 
+<!-- HOW IT WORKS -->
+<section class="section section-alt" id="como-funciona">
+  <div class="container">
+    <div class="section-label">CÓMO FUNCIONA</div>
+    <h2 class="section-title">De cero a automatizado<br>en 15 minutos</h2>
+    <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(240px,1fr));gap:32px;margin-top:48px">
+      <div style="text-align:center">
+        <div style="width:60px;height:60px;background:rgba(59,130,246,.12);border:1px solid rgba(59,130,246,.3);border-radius:16px;display:flex;align-items:center;justify-content:center;font-size:24px;margin:0 auto 20px">1️⃣</div>
+        <h3 style="font-size:17px;font-weight:700;margin-bottom:10px">Crea tu cuenta</h3>
+        <p style="color:var(--mut);font-size:14px;line-height:1.6">Registro en 2 minutos. Sin tarjeta de crédito. El wizard de configuración te guía paso a paso.</p>
+      </div>
+      <div style="text-align:center">
+        <div style="width:60px;height:60px;background:rgba(34,197,94,.12);border:1px solid rgba(34,197,94,.3);border-radius:16px;display:flex;align-items:center;justify-content:center;font-size:24px;margin:0 auto 20px">2️⃣</div>
+        <h3 style="font-size:17px;font-weight:700;margin-bottom:10px">Sube tu primer DRR</h3>
+        <p style="color:var(--mut);font-size:14px;line-height:1.6">Arrastra el archivo .xlsm del DRR de hoy. Yve procesa las 45 hojas en segundos y detecta Out of Balance automáticamente.</p>
+      </div>
+      <div style="text-align:center">
+        <div style="width:60px;height:60px;background:rgba(167,139,250,.12);border:1px solid rgba(167,139,250,.3);border-radius:16px;display:flex;align-items:center;justify-content:center;font-size:24px;margin:0 auto 20px">3️⃣</div>
+        <h3 style="font-size:17px;font-weight:700;margin-bottom:10px">Automatización completa</h3>
+        <p style="color:var(--mut);font-size:14px;line-height:1.6">AP, AR, conciliación bancaria y F&B Cost funcionando. Recibes alertas en Slack o email cuando algo requiere tu atención.</p>
+      </div>
+    </div>
+    <div style="text-align:center;margin-top:40px">
+      <a href="/signup" style="display:inline-block;background:linear-gradient(135deg,var(--acc),#2563eb);color:#fff;padding:14px 32px;border-radius:12px;font-size:15px;font-weight:700;text-decoration:none;box-shadow:0 4px 20px rgba(59,130,246,.35)">Empezar gratis — 14 días →</a>
+    </div>
+  </div>
+</section>
+<!-- /HOW IT WORKS -->
+
 <!-- ROI CALCULATOR -->
 <section class="section" id="roi">
   <div class="container">

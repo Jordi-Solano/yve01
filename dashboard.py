@@ -88,10 +88,11 @@ from landing import LANDING_HTML as LANDING_PAGE
 from blog import blog_bp
 from billing import billing_bp
 from legal import legal_bp
+from casos import casos_bp
 from signup import signup_bp
 from about import about_bp
 from exportador_pdf import pdf_bp
-for _bp in (auth_bp, config_bp, admin_bp, aprob_ar_bp, aprob_ap_bp, concil_bp, fb_bp, ar_real_bp, multi_hotel_bp, exportador_bp, calipolis_bp, demo_bp, demo_sim_bp, calipolis_analisis_bp, reportes_pdf_bp, blog_bp, billing_bp, signup_bp, about_bp, pdf_bp, legal_bp):
+for _bp in (auth_bp, config_bp, admin_bp, aprob_ar_bp, aprob_ap_bp, concil_bp, fb_bp, ar_real_bp, multi_hotel_bp, exportador_bp, calipolis_bp, demo_bp, demo_sim_bp, calipolis_analisis_bp, reportes_pdf_bp, blog_bp, billing_bp, signup_bp, about_bp, pdf_bp, legal_bp, casos_bp):
     app.register_blueprint(_bp)
 
 _pipeline_running = False
@@ -2469,6 +2470,24 @@ async function loadAll() {
 
     document.getElementById('status-txt').textContent =
       (t('status.actualizado') || 'Actualizado') + ' · ' + (stats.total || 0) + ' ' + (t('status.facturas') || 'facturas cargadas');
+  // Tab notification badges
+  function _setTabBadge(tabId, count, color) {
+    const btn = document.getElementById('tab-' + tabId);
+    if (!btn) return;
+    let badge = btn.querySelector('.tab-badge');
+    if (!badge) {
+      badge = document.createElement('span');
+      badge.className = 'tab-badge';
+      badge.style.cssText = 'background:' + (color||'var(--red)') + ';color:#fff;border-radius:10px;font-size:9px;font-weight:700;padding:1px 5px;margin-left:4px;min-width:14px;text-align:center;display:inline-block';
+      btn.appendChild(badge);
+    }
+    if (count > 0) { badge.textContent = count; badge.style.display = 'inline-block'; }
+    else badge.style.display = 'none';
+  }
+  if (stats.discrepancias || stats.di_pendientes) {
+    _setTabBadge('ar_otas', (stats.discrepancias||0) + (stats.di_pendientes||0), 'var(--red)');
+  } else _setTabBadge('ar_otas', 0);
+
   // Daily alerts panel
   const alertsPanel = document.getElementById('daily-alerts-panel');
   const alertsList  = document.getElementById('daily-alerts-list');
@@ -2578,7 +2597,7 @@ function renderTable(rows) {
       '<tr>',
       '<td style="padding:6px 4px;text-align:center"><input type="checkbox" class="ar-row-cb" style="cursor:pointer;accent-color:var(--acc)" onchange="updateSelectionCount()"></td>',
       '<td class="td-dim">' + (r.archivo || '—') + '</td>',
-      '<td class="td-b">' + (r.numero_factura || '—') + '</td>',
+      '<td class="td-b" onclick="copyToClip(\'' + (r.numero_factura||'') + '\', \'Nº factura\')" style="cursor:pointer" title="Clic para copiar">' + (r.numero_factura || '—') + '</td>',
       '<td class="td-b" style="color:var(--acc3)">' + (r.nombre_ota || '—') + '</td>',
       '<td>' + (r.nombre_hotel || '—') + '</td>',
       '<td class="td-dim">' + (r.fecha || '—') + '</td>',
@@ -3255,6 +3274,20 @@ window.addEventListener('appinstalled', () => {
   const btn = document.getElementById('btn-install-pwa');
   if (btn) btn.style.display = 'none';
 });
+
+// ── Copy to clipboard utility ────────────────────────────────────────────
+function copyToClip(text, label) {
+  navigator.clipboard.writeText(text).then(() => {
+    showNotification('✓ Copiado: ' + (label || text.substring(0,30)), 'success');
+  }).catch(() => {
+    const ta = document.createElement('textarea');
+    ta.value = text; ta.style.cssText = 'position:fixed;opacity:0';
+    document.body.appendChild(ta); ta.select();
+    document.execCommand('copy');
+    document.body.removeChild(ta);
+    showNotification('✓ Copiado al portapapeles', 'success');
+  });
+}
 
 // ── Keyboard shortcuts ────────────────────────────────────────────────────
 document.addEventListener('keydown', e => {
