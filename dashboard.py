@@ -347,6 +347,35 @@ def health():
         "uptime":    open("/proc/uptime").read().split()[0] + "s" if os.path.exists("/proc/uptime") else "n/a",
     })
 
+@app.route("/api/ar/enviar_recordatorios_di", methods=["POST"])
+@login_required
+def api_enviar_recordatorios_di():
+    """Envía recordatorios de certificado DI a OTAs que lo tienen pendiente."""
+    try:
+        from tab_ar_real import get_ar_real_data
+    except ImportError:
+        pass
+    # Use existing notificaciones data
+    try:
+        from notificaciones import enviar_email, _email_html
+        from verificador_comisiones import verificar_ciclo
+        # Get pending DI invoices
+        facturas = _cargar_facturas_verificadas()
+        pendientes_di = [f for f in facturas if f.get('estado_di') == 'FALTA_CERTIFICADO_DI']
+        enviados = 0
+        notif_email = os.environ.get('NOTIF_EMAIL', '')
+        if notif_email and pendientes_di:
+            cuerpo = _email_html(
+                f'Certificados DI pendientes — {len(pendientes_di)} facturas',
+                [f"Factura {f.get('numero_factura','?')} — {f.get('ota','?')} — {f.get('importe_bruto','?')}€" for f in pendientes_di[:10]],
+                color='#f59e0b'
+            )
+            if enviar_email(notif_email, f'Yve.01 — {len(pendientes_di)} certificados DI pendientes', cuerpo, 'ar_di_reminder'):
+                enviados = len(pendientes_di)
+        return jsonify({'ok': True, 'enviados': enviados, 'pendientes': len(pendientes_di)})
+    except Exception as e:
+        return jsonify({'ok': False, 'error': str(e)[:200]})
+
 @app.route("/api/test_smtp", methods=["POST"])
 @login_required
 def api_test_smtp():
@@ -1788,6 +1817,11 @@ tr:hover td{background:rgba(255,255,255,.025)}
     <span id="status-txt" data-i18n="status.cargando">Cargando datos...</span>
   </div>
 
+  <!-- Executive summary bar (dynamic) -->
+  <div id="exec-summary" style="display:none;padding:8px 16px;background:rgba(59,130,246,.05);border-bottom:1px solid rgba(59,130,246,.1);font-size:12px;color:var(--mut);text-align:center">
+    <span id="exec-txt"></span>
+  </div>
+
   <!-- TABS -->
   <div class="tabs">
     <button class="tab active" onclick="switchTab('ar',this)" data-i18n="tab.ar">📥 AR — OTAs</button>
@@ -2397,6 +2431,17 @@ async function loadAll() {
 
     document.getElementById('status-txt').textContent =
       (t('status.actualizado') || 'Actualizado') + ' · ' + (stats.total || 0) + ' ' + (t('status.facturas') || 'facturas cargadas');
+  // Executive summary
+  const sumEl = document.getElementById('exec-summary');
+  const sumTxt = document.getElementById('exec-txt');
+  if (sumEl && sumTxt && stats.total > 0) {
+    const parts = [];
+    if (stats.discrepancias > 0) parts.push('⚠ ' + stats.discrepancias + ' discrepancia(s) AR por resolver');
+    if (stats.di_pendientes > 0) parts.push('📄 ' + stats.di_pendientes + ' cert. DI pendiente(s)');
+    if (stats.pendientes_firma > 0) parts.push('✍ ' + stats.pendientes_firma + ' factura(s) esperando firma');
+    if (parts.length > 0) { sumEl.style.display = 'block'; sumTxt.textContent = parts.join('  ·  '); }
+    else { sumEl.style.display = 'block'; sumTxt.textContent = '✓ Todo en orden — ' + stats.total + ' facturas procesadas sin incidencias'; sumEl.style.background = 'rgba(34,197,94,.05)'; sumEl.style.borderColor = 'rgba(34,197,94,.1)'; }
+  }
   if (topBar) { topBar.style.width = '100%'; setTimeout(() => { topBar.style.opacity = '0'; setTimeout(() => { topBar.style.width = '0'; topBar.style.opacity = '1'; }, 300); }, 400); }
   } catch(e) {
     console.error('Error en loadAll:', e);
@@ -2705,12 +2750,13 @@ async function renderDRRChart() {
     _drrChart = new Chart(canvas, {
       type: 'bar',
       data: {
-        labels: d.dias.map((dia, i) => {
+        labels: d.labels || d.dias.map((dia, i) => {
           const f = d.fechas[i] || '';
-          return f ? f.slice(8) + '/' + f.slice(5,7) : dia;
+          return f ? f.slice(8) + '/' + f.slice(5,7) : String(dia);
         }),
         datasets: [{
           label: 'Revenue',
+          backgroundColor: d.oob ? d.oob.map(isOob => isOob ? 'rgba(239,68,68,.7)' : 'rgba(59,130,246,.5)') : 'rgba(59,130,246,.5)',
           data: d.revenue,
           backgroundColor: oobColors,
           borderColor: oobColors,
@@ -4465,6 +4511,8 @@ async function cargarARRealData() {
     _s('arp-saldo',    fmt(k.saldo_total));
     if (k.saldo_total > 0) { const al = document.getElementById('ar-balance-alert'); if (al) { al.style.display='block'; const bt = document.getElementById('ar-balance-txt'); if(bt) bt.textContent = fmt(k.saldo_total); } }
     _s('arp-nclientes', k.num_clientes + ' clientes activos');
+    const diBtn = document.getElementById('btn-di-reminder');
+    if (diBtn && k.di_pendientes > 0) diBtn.style.display = 'inline-block';
     const kpisEl = document.getElementById('ar-real-kpis'); if (kpisEl) kpisEl.dataset.loaded = '1';
 
     // Clients table
@@ -4745,6 +4793,8 @@ async function loadCalipolis() {
     renderCalipolisKpis(data.consolidado);
     renderCalipolisHoteles(data.hoteles);
     if (data.tendencias) renderCalipolisTrends(data.tendencias);
+    const calUpd = document.getElementById('cal-updated');
+    if (calUpd) calUpd.textContent = 'Actualizado ' + new Date().toLocaleTimeString('es-ES', {hour:'2-digit',minute:'2-digit'});
   } catch(e) {
     console.error('Error Calipolis:', e);
   }
@@ -4794,25 +4844,27 @@ function renderCalipolisTrends(tendencias) {
 function renderCalipolisKpis(kpis) {
   const cont = document.getElementById('cal-kpis');
   if (!cont) return;
-  const totalRevM = (kpis.total_revenue_mtd/1000000).toFixed(2);
-  const totalGopK = (kpis.total_gop/1000).toFixed(0);
+  cont.dataset.loaded = '1';
+  const totalRevM = (kpis.total_revenue_mtd / 1000000).toFixed(2);
+  const totalGopK = Math.round((kpis.total_gop || 0) / 1000);
+  const gopColor  = kpis.avg_gop_pct >= 22 ? 'var(--grn)' : kpis.avg_gop_pct >= 18 ? 'var(--ora)' : 'var(--red)';
+  const occColor  = kpis.avg_ocupacion >= 80 ? 'var(--grn)' : kpis.avg_ocupacion >= 65 ? 'var(--ora)' : 'var(--red)';
   const cards = [
-    {label:'Revenue MTD',   value:'€'+totalRevM+'M', color:'var(--grn)',  sub:'grupo completo'},
-    {label:'Ocupación Avg', value:kpis.avg_ocupacion+'%', color:'var(--acc2)', sub:'3 propiedades'},
-    {label:'ADR Avg',       value:'€'+Math.round(kpis.avg_adr), color:'var(--ora)', sub:'precio medio'},
-    {label:'GOP% Avg',      value:kpis.avg_gop_pct+'%', color:'var(--grn)', sub:'beneficio bruto'},
-    {label:'RevPAR Avg',    value:'€'+Math.round(kpis.avg_revpar), color:'var(--ora)', sub:'revenue/hab'},
-    {label:'GOP Total',     value:'€'+totalGopK+'K', color:'var(--grn)', sub:'este mes'},
-    {label:'AP Pendientes', value:kpis.total_ap_pendientes||'—', color:'var(--red)', sub:'facturas'},
-    {label:'Alertas',       value:kpis.total_alertas||'0', color: kpis.total_alertas>0?'var(--yel)':'var(--grn)', sub:'activas'},
+    {label:'Revenue MTD',      value:'€' + totalRevM + 'M', sub:kpis.num_hoteles + ' propiedades · Grupo Calipolis', color:'var(--acc2)', tip:'Ingresos totales del mes del Grupo Calipolis Hotels'},
+    {label:'GOP Total',        value:'€' + totalGopK + 'K', sub:'GOP% medio: ' + kpis.avg_gop_pct + '%',           color: gopColor,     tip:'Gross Operating Profit total del grupo'},
+    {label:'Ocupación media',  value: kpis.avg_ocupacion + '%',  sub:'ADR €' + kpis.avg_adr,                       color: occColor,     tip:'Ocupación media ponderada por habitaciones'},
+    {label:'RevPAR medio',     value:'€' + kpis.avg_revpar,      sub:'Sobre ' + kpis.total_rooms + ' hab.',        color:'var(--tx)',   tip:'Revenue Per Available Room consolidado'},
   ];
-  cont.innerHTML = cards.map(c =>
-    '<div style="background:var(--s1);border:1px solid var(--s2);border-radius:13px;padding:18px 16px">' +
-    '<div style="font-size:10px;color:var(--mut);text-transform:uppercase;letter-spacing:.6px;margin-bottom:10px;font-weight:600">' + c.label + '</div>' +
-    '<div style="font-size:24px;font-weight:800;color:' + c.color + ';line-height:1;letter-spacing:-.5px">' + c.value + '</div>' +
-    '<div style="font-size:10px;color:var(--dim);margin-top:6px">' + c.sub + '</div>' +
-    '</div>'
-  ).join('');
+  cont.innerHTML = '<div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(160px,1fr));gap:12px">' +
+    cards.map(c =>
+      '<div class="sc" data-tip="' + (c.tip||'') + '">' +
+      '<div class="sc-lbl">' + c.label + '</div>' +
+      '<div class="sc-val" style="color:' + c.color + '">' + c.value + '</div>' +
+      '<div class="sc-sub">' + c.sub + '</div>' +
+      '</div>'
+    ).join('') + '</div>';
+  // Re-apply language
+  if (_i18nLang && _i18nLang !== 'es') applyI18n(_i18nData);
 }
 
 function renderCalipolisHoteles(hoteles) {
