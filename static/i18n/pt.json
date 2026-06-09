@@ -177,5 +177,19 @@
   "drr.subirDrr": "Carregar DRR (.xlsm)",
   "drr.diasLabel": "dias",
   "drr.oobLabel": "OOB",
-  "nav.buscar": "Pesquisar"
+  "nav.buscar": "Pesquisar",
+  "nav.novedades": "Novidades",
+  "alert.title": "Alertas ativos",
+  "alert.allOk": "Tudo OK — sem incidentes",
+  "checklist.title": "Lista de configuração",
+  "search.placeholder": "Pesquisar faturas, fornecedores...",
+  "btn.exportSelected": "Exportar seleção",
+  "btn.filterAP": "Filtrar",
+  "th.select": "Sel.",
+  "lbl.pendingDI": "Cert. DI pendente",
+  "notif.telegram": "Telegram",
+  "admin.audit": "Registro de atividade",
+  "billing.trialDays": "14 dias de avaliação gratuita",
+  "lbl.bestMargin": "Melhor margem",
+  "lbl.avgFC": "FC% médio"
 }

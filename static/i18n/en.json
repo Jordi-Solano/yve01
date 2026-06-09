@@ -177,5 +177,19 @@
   "drr.subirDrr": "Upload DRR (.xlsm)",
   "drr.diasLabel": "days",
   "drr.oobLabel": "OOB",
-  "nav.buscar": "Search"
+  "nav.buscar": "Search",
+  "nav.novedades": "What's new",
+  "alert.title": "Active alerts",
+  "alert.allOk": "All clear — no incidents",
+  "checklist.title": "Setup checklist",
+  "search.placeholder": "Search invoices, suppliers, metrics...",
+  "btn.exportSelected": "Export selected",
+  "btn.filterAP": "Filter",
+  "th.select": "Sel.",
+  "lbl.pendingDI": "Pending DI cert.",
+  "notif.telegram": "Telegram",
+  "admin.audit": "Activity log",
+  "billing.trialDays": "14-day free trial",
+  "lbl.bestMargin": "Best margin",
+  "lbl.avgFC": "Avg FC%"
 }

@@ -247,6 +247,13 @@ input,select{width:100%;background:var(--bg);border:1px solid var(--s2);color:va
       <button class="btn bd bsm" onclick="cleanCache()">Limpiar cache</button>
       <div class="msg" id="md"></div>
     </div>
+    <div class="card" style="border-color:rgba(148,163,184,.2)">
+      <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:12px">
+        <div class="ct" style="margin:0">Registro de actividad</div>
+        <button class="btn bsm" onclick="loadAudit()" style="font-size:11px">↺ Actualizar</button>
+      </div>
+      <div id="audit-log" style="max-height:200px;overflow-y:auto;font-size:11px;color:#94a3b8;font-family:monospace"></div>
+    </div>
     <div class="card" style="border-color:rgba(59,130,246,.2)">
       <div class="ct" style="color:#60a5fa">Conexiones</div>
       <div style="display:flex;flex-direction:column;gap:8px">
@@ -270,6 +277,26 @@ input,select{width:100%;background:var(--bg);border:1px solid var(--s2);color:va
 async function ls(){const r=await fetch('/admin/api/stats'),d=await r.json();['u','a','h','r','up','v'].forEach((k,i)=>{const el=document.getElementById('s'+k);if(el)el.textContent=[d.usuarios,d.usuarios_activos,d.hoteles,d.reportes_generados,d.uptime,d.version][i];});}
 async function lu(){const r=await fetch('/admin/api/usuarios'),us=await r.json();document.getElementById('utb').innerHTML=us.map(u=>'<tr><td><b>'+u.username+'</b></td><td>'+(u.nombre||'-')+'</td><td style="color:#60a5fa">'+u.rol+'</td><td><span class="'+(u.activo!==false?'ok':'off')+'">'+(u.activo!==false?'Activo':'Inactivo')+'</span></td><td><button class="btn bd bsm" onclick="tU(\''+u.username+'\')">Toggle</button></td></tr>').join('');}
 async function lh(){const r=await fetch('/admin/api/hoteles'),d=await r.json();if(!d.ok)return;document.getElementById('htb').innerHTML=d.hoteles.map(h=>'<tr><td><b>'+h.nombre+'</b></td><td style="color:#94a3b8">'+(h.ciudad||'-')+'</td><td>'+(h.habitaciones||'-')+'</td><td style="color:#94a3b8">'+(h.categoria||'-')+'</td><td><button class="btn bd bsm" onclick="dH(\''+h.id+'\')">×</button></td></tr>').join('');}
+async function loadAudit() {
+  const el = document.getElementById('audit-log');
+  if (!el) return;
+  try {
+    const r = await fetch('/admin/api/audit');
+    const d = await r.json();
+    const entries = d.entries || [];
+    if (!entries.length) { el.textContent = 'Sin registros aún.'; return; }
+    el.innerHTML = entries.slice().reverse().map(e =>
+      '<div style="padding:3px 0;border-bottom:1px solid #1e293b">' +
+      '<span style="color:#475569">' + e.ts + '</span> ' +
+      '<span style="color:#60a5fa">' + e.accion + '</span> ' +
+      '<span>' + e.detalle + '</span>' +
+      ' <span style="color:#334155">— ' + e.usuario + '</span>' +
+      '</div>'
+    ).join('');
+  } catch(e) { el.textContent = 'Error cargando audit log.'; }
+}
+// Load audit log on page load
+setTimeout(loadAudit, 1000);
 async function resetPw(u) {
   const pw = prompt('Nueva contraseña para ' + u + ' (mínimo 6 caracteres):');
   if (!pw || pw.length < 6) { alert('Contraseña muy corta o cancelado'); return; }

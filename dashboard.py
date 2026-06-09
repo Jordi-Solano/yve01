@@ -316,6 +316,18 @@ Sitemap: https://yve01.onrender.com/sitemap.xml
 def sitemap_xml():
     from datetime import date
     today = date.today().isoformat()
+    BLOG_SLUGS = [
+        "software-gestion-financiera-hoteles-espana",
+        "automatizar-cuentas-pagar-hotel",
+        "revenue-management-hoteles-independientes",
+        "food-cost-hotel-restaurante-como-calcularlo",
+        "conciliacion-bancaria-hotel-guia-completa",
+        "out-of-balance-drr-como-detectarlo",
+        "integracion-oracle-fusion-hotel",
+        "revenue-management-hoteles-pequenos",
+        "gestion-cuentas-cobrar-hotel-grupos",
+        "ap-proveedores-hotel-como-optimizar",
+    ]
     urls = [
         ("https://yve01.onrender.com/",          "1.0",  "daily"),
         ("https://yve01.onrender.com/about",      "0.8",  "monthly"),
@@ -324,7 +336,7 @@ def sitemap_xml():
         ("https://yve01.onrender.com/signup",     "0.9",  "monthly"),
         ("https://yve01.onrender.com/terminos",   "0.3",  "yearly"),
         ("https://yve01.onrender.com/privacidad", "0.3",  "yearly"),
-    ]
+    ] + [(f"https://yve01.onrender.com/blog/{s}", "0.7", "monthly") for s in BLOG_SLUGS]
     xml_parts = ['<?xml version="1.0" encoding="UTF-8"?>', '<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">']
     for url, pri, freq in urls:
         xml_parts.append('  <url><loc>' + url + '</loc><lastmod>' + today + '</lastmod><changefreq>' + freq + '</changefreq><priority>' + pri + '</priority></url>')
@@ -1266,6 +1278,11 @@ HTML = r"""<!DOCTYPE html>
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width,initial-scale=1">
+<link rel="manifest" href="/static/manifest.json">
+<meta name="theme-color" content="#3b82f6">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="Yve.01">
 <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect width='32' height='32' rx='8' fill='%230f172a'/%3E%3Crect width='32' height='32' rx='8' fill='url(%23g)'/%3E%3Cdefs%3E%3ClinearGradient id='g' x1='0' y1='0' x2='32' y2='32' gradientUnits='userSpaceOnUse'%3E%3Cstop offset='0' stop-color='%233b82f6' stop-opacity='.15'/%3E%3Cstop offset='1' stop-color='%23a78bfa' stop-opacity='.08'/%3E%3C/linearGradient%3E%3C/defs%3E%3Ccircle cx='16' cy='10' r='3' fill='%233b82f6'/%3E%3Cpath d='M10 6 L16 16 L22 6' stroke='%233b82f6' stroke-width='2.5' fill='none' stroke-linecap='round' stroke-linejoin='round'/%3E%3Cline x1='16' y1='16' x2='16' y2='26' stroke='%2360a5fa' stroke-width='2.5' stroke-linecap='round'/%3E%3C/svg%3E">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -1748,6 +1765,7 @@ tr:hover td{background:rgba(255,255,255,.025)}
   </div>
   <div class="nav-right">
     <span class="pill" id="date-pill">—</span>
+  <button id="btn-install-pwa" onclick="if(_deferredInstall){_deferredInstall.prompt();}" style="display:none;background:rgba(34,197,94,.1);border:1px solid rgba(34,197,94,.2);color:#22c55e;padding:4px 10px;border-radius:8px;font-size:11px;cursor:pointer">📲 Instalar</button>
   <button id="kbd-hint" onclick="showNotification('⌨ Atajos: 1-9 cambian pestaña · R recarga · ? muestra ayuda','info');this.style.display=\'none\';localStorage.setItem(\'kbd_shown\',\'1\')" style="display:none;background:rgba(59,130,246,.1);border:1px solid rgba(59,130,246,.2);color:#60a5fa;padding:4px 10px;border-radius:8px;font-size:11px;cursor:pointer">⌨ Atajos</button>
     <span class="pill" style="color:var(--acc2)">👤 __USER_NAME__</span>
 
@@ -1905,6 +1923,7 @@ tr:hover td{background:rgba(255,255,255,.025)}
       <table>
         <thead>
           <tr>
+            <th style="width:28px"><input type="checkbox" id="ar-select-all" onclick="toggleSelectAll(this,'ar-row-cb')" style="cursor:pointer;accent-color:var(--acc)"></th>
             <th data-i18n="th.archivo">Archivo</th>
             <th data-i18n="th.factura">Nº Factura</th>
             <th data-i18n="th.ota">OTA</th>
@@ -2013,6 +2032,7 @@ tr:hover td{background:rgba(255,255,255,.025)}
       <div id="bk-alertas"><div class="empty"><p>Cargando...</p></div></div>
     </div>
     <div style="margin-top:16px">
+      <a href="/api/exportar/banco" class="btn-ref" style="text-decoration:none;font-size:12px">⬇️ Excel</a>
       <a href="/conciliacion/" class="btn-run" style="text-decoration:none;display:inline-flex;font-size:13px;padding:10px 20px" data-i18n="btn.verConciliacion">🏦 Ver conciliación completa</a>
     </div>
   </div><!-- /panel-banco -->
@@ -2549,13 +2569,14 @@ function renderTable(rows) {
   const tbody = document.getElementById('tbl-body');
   document.getElementById('tbl-count').textContent = rows.length ? rows.length + ' ' + (t('lbl.registros')||'registros') : '';
   if (!rows.length) {
-    tbody.innerHTML = '<tr><td colspan="11" class="empty"><p>Sin facturas. Pulsa ⚡ Procesar Facturas.</p></td></tr>';
+    tbody.innerHTML = '<tr><td colspan="12" class="empty"><p>Sin facturas. Pulsa ⚡ Procesar Facturas.</p></td></tr>';
     return;
   }
   tbody.innerHTML = rows.map(r => {
     const hasDisc = r.discrepancia_euros && r.discrepancia_euros !== '';
     return [
       '<tr>',
+      '<td style="padding:6px 4px;text-align:center"><input type="checkbox" class="ar-row-cb" style="cursor:pointer;accent-color:var(--acc)" onchange="updateSelectionCount()"></td>',
       '<td class="td-dim">' + (r.archivo || '—') + '</td>',
       '<td class="td-b">' + (r.numero_factura || '—') + '</td>',
       '<td class="td-b" style="color:var(--acc3)">' + (r.nombre_ota || '—') + '</td>',
@@ -3219,6 +3240,22 @@ if (!localStorage.getItem('kbd_shown')) {
   }, 5000);
 }
 
+// ── PWA Service Worker ───────────────────────────────────────────────────
+if ('serviceWorker' in navigator) {
+  navigator.serviceWorker.register('/static/sw.js').catch(() => {});
+}
+// Install prompt
+let _deferredInstall;
+window.addEventListener('beforeinstallprompt', e => {
+  e.preventDefault(); _deferredInstall = e;
+  const btn = document.getElementById('btn-install-pwa');
+  if (btn) btn.style.display = 'inline-block';
+});
+window.addEventListener('appinstalled', () => {
+  const btn = document.getElementById('btn-install-pwa');
+  if (btn) btn.style.display = 'none';
+});
+
 // ── Keyboard shortcuts ────────────────────────────────────────────────────
 document.addEventListener('keydown', e => {
   if (e.target.tagName === 'INPUT' || e.target.tagName === 'TEXTAREA' || e.metaKey || e.ctrlKey) return;
@@ -3785,6 +3822,7 @@ async function loadAP() {
 
     facts.forEach(f => {
       const tr = document.createElement('tr');
+      tr.setAttribute('data-estado', f.estado || '');
       const tipoCls = f.tipo === 'FB' ? 'fb' : 'otras';
       const accionHtml = f.accion === 'APROBADA'
         ? '<span class="badge ok">✓ Aprobada</span>'
@@ -4164,6 +4202,16 @@ function renderDRR(s) {
   renderDRRChart();
 }
 
+function filtrarAPPorEstado(estado) {
+  const rows = document.querySelectorAll('#ap-tbody tr[data-estado]');
+  rows.forEach(row => {
+    const re = row.getAttribute('data-estado') || '';
+    row.style.display = (!estado || re === estado) ? '' : 'none';
+  });
+  const visible = [...rows].filter(r => r.style.display !== 'none').length;
+  const countEl = document.getElementById('ap-count');
+  if (countEl) countEl.textContent = visible + ' ' + (t('lbl.facturas')||'facturas');
+}
 function exportarSeleccionados() {
   const selected = [...document.querySelectorAll('.ar-row-cb:checked')]
     .map(cb => cb.closest('tr'))

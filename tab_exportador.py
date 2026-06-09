@@ -10,7 +10,7 @@ exportador_bp = Blueprint('exportador', __name__)
 @exportador_bp.route('/api/exportar/<tipo>')
 def api_exportar(tipo):
     """Descarga reporte en Excel"""
-    valid_tipos = ['ar', 'ap', 'drr', 'multihotel']
+    valid_tipos = ['ar', 'ap', 'drr', 'multihotel', 'banco', 'fb']
     
     if tipo not in valid_tipos and tipo != 'ar_real' and tipo != 'calipolis':
         return jsonify({"error": "Tipo de reporte inválido"}), 400
@@ -26,6 +26,23 @@ def api_exportar(tipo):
             import os
             filename = os.path.basename(output_file)
             result = (output, filename)
+        elif tipo == 'banco':
+            import glob as _g, os as _os
+            from datetime import datetime as _dt
+            REPORTES_DIR = _os.path.join(_os.path.dirname(__file__), 'reportes')
+            hits = _g.glob(_os.path.join(REPORTES_DIR, 'conciliacion_*.xlsx'))
+            if not hits: return jsonify({'error': 'No hay datos bancarios'}), 404
+            hits.sort(key=lambda p: _os.path.getmtime(p), reverse=True)
+            from io import BytesIO
+            result = (open(hits[0],'rb'), _os.path.basename(hits[0]))
+        elif tipo == 'fb':
+            import os as _os
+            ruta = _os.path.join(_os.path.dirname(__file__), 'datos-referencia', 'ventas_fb_diarias.xlsx')
+            if not _os.path.exists(ruta): return jsonify({'error': 'Sin datos F&B'}), 404
+            from io import BytesIO
+            with open(ruta,'rb') as fh: data = fh.read()
+            from datetime import datetime as _dt
+            result = (BytesIO(data), f'fb_ventas_{_dt.now().strftime("%Y%m%d")}.xlsx')
         elif tipo == 'calipolis':
             wb = crear_reporte_calipolis_excel()
             from io import BytesIO

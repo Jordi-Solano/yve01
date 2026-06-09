@@ -107,6 +107,67 @@ POSTS = [
 <p>El sistema muestra exactamente en qué línea contable está la diferencia, en qué departamento y en qué momento del día ocurrió, acelerando la resolución de días que normalmente llevarían horas.</p>""",
   },
 
+  {
+    "slug": "integracion-oracle-fusion-hotel",
+    "title": "Integración Oracle Fusion en hoteles: guía para el Financial Controller",
+    "desc": "Cómo conectar tu sistema hotelero con Oracle Fusion GL para automatizar la contabilización de facturas, asientos y cierres mensuales.",
+    "date": "2026-05-28", "cat": "Oracle & Contabilidad", "read": "8 min",
+    "body": """<h2>Por qué Oracle Fusion y no otro ERP</h2>
+<p>Oracle Fusion es el estándar en grandes cadenas hoteleras internacionales (Hilton, Marriott, IHG) y muchos hoteles independientes de 4 y 5 estrellas. Su potencia en gestión de libro mayor, activos fijos y forecasting financiero lo hace prácticamente insustituible en propiedades con más de 100 habitaciones.</p>
+<p>El problema: Oracle Fusion es poderoso pero rígido. Cualquier automatización requiere pasar por sus REST APIs, lo que históricamente ha requerido consultores y proyectos de integración de meses.</p>
+<h2>Las APIs de Oracle Fusion GL</h2>
+<p>Oracle Fusion expone APIs REST para sus módulos financieros. Las más relevantes para hoteles son la API de Journal Entry (para contabilizar facturas), la API de Ledger (para consultar balances) y la API de Subledger (para transacciones AP/AR).</p>
+<p>La autenticación usa OAuth 2.0 con Client Credentials. Necesitas: la URL base de tu instancia (algo como <code>https://xxxx.fa.em2.oraclecloud.com</code>), un Client ID y un Client Secret generados desde Oracle Identity Cloud.</p>
+<h2>El flujo de contabilización automática</h2>
+<p>Con la integración correcta, el flujo completo de una factura de proveedor se vuelve: recepción → OCR → verificación → aprobación → journal entry en Oracle. Sin entrada manual.</p>
+<p>Yve.01 implementa este flujo completo: lee la factura, extrae los datos, verifica el matching con el PO y el albarán, y si todo cuadra, crea el asiento en Oracle via API. El Income Auditor solo revisa las excepciones.</p>""",
+  },
+  {
+    "slug": "revenue-management-hoteles-pequenos",
+    "title": "Revenue Management para hoteles independientes: qué necesitas y qué no",
+    "desc": "El revenue management no es solo para grandes cadenas. Los hoteles independientes pueden implementar pricing dinámico con datos básicos del PMS y el DRR.",
+    "date": "2026-05-14", "cat": "Revenue Management", "read": "6 min",
+    "body": """<h2>El mito: revenue management es para grandes cadenas</h2>
+<p>Muchos propietarios de hoteles independientes creen que el revenue management requiere sistemas costosos y equipos dedicados. En realidad, los conceptos básicos son aplicables con los datos que ya tienes: histórico de ocupación, ADR por segmento y estacionalidad.</p>
+<h2>Los 3 indicadores que importan</h2>
+<p><strong>RevPAR (Revenue Per Available Room):</strong> el mejor indicador de rendimiento global. Combina ADR y ocupación. Si tu RevPAR crece, tu hotel va bien.</p>
+<p><strong>TRevPAR (Total Revenue PAR):</strong> incluye F&B, spa y otros ingresos. Un hotel con buen F&B puede tener un TRevPAR hasta 40% superior a su RevPAR.</p>
+<p><strong>GOP% (Gross Operating Profit %):</strong> el indicador que más le importa al Financial Controller e inversores. Un hotel bien gestionado de 4 estrellas debería estar por encima del 25%.</p>
+<h2>Qué puedes hacer con el DRR</h2>
+<p>El Daily Revenue Report contiene toda la información necesaria para revenue management básico: ingresos por departamento, comparativa Budget vs Real vs Last Year, y forecast del mes. Con estos datos, puedes detectar semanas de baja ocupación con antelación y activar descuentos o campañas.</p>""",
+  },
+  {
+    "slug": "gestion-cuentas-cobrar-hotel-grupos",
+    "title": "Gestión de cuentas a cobrar en hoteles: grupos corporativos y facturación BEO",
+    "desc": "Los grupos corporativos y los eventos BEO son las cuentas a cobrar más complejas de un hotel. Te explicamos el flujo completo de facturación.",
+    "date": "2026-05-07", "cat": "AR — Accounts Receivable", "read": "7 min",
+    "body": """<h2>La complejidad de los grupos corporativos</h2>
+<p>Un grupo corporativo en un hotel genera múltiples documentos: el contrato de grupo, el rooming list (lista de habitaciones por persona), el BEO (Banquet Event Order) para los eventos de sala, y finalmente la factura consolidada del grupo.</p>
+<p>El proceso de facturación es delicado: el cliente de crédito (normalmente la empresa que organiza el evento) espera recibir una factura única que agrupe todas las habitaciones y los eventos, con el IVA correctamente desglosado.</p>
+<h2>Errores frecuentes en la facturación de grupos</h2>
+<ul>
+<li><strong>Discrepancias entre el contrato y la factura:</strong> el precio acordado en el contrato no coincide con el que aparece en la factura final.</li>
+<li><strong>IVA incorrecto:</strong> el servicio de habitaciones tributa al 10% en España, pero los eventos pueden tener otros tipos aplicables.</li>
+<li><strong>Cargos no acordados:</strong> extras (minibar, llamadas, daños) que el cliente disputa.</li>
+</ul>
+<h2>Automatizar la facturación corporativa</h2>
+<p>Yve.01 permite emitir facturas corporativas directamente desde el módulo AR Real: seleccionas el cliente de crédito, las fechas de estancia, el número de habitaciones y el precio acordado. El sistema calcula el IVA automáticamente, genera el número de factura correlativo y registra la operación.</p>""",
+  },
+  {
+    "slug": "ap-proveedores-hotel-como-optimizar",
+    "title": "Cuentas a pagar en hoteles: cómo reducir el tiempo de procesamiento de facturas",
+    "desc": "El departamento de AP de un hotel procesa ~150 facturas al mes. Con los procesos adecuados, el tiempo puede reducirse de 40 horas a menos de 8.",
+    "date": "2026-04-30", "cat": "AP — Accounts Payable", "read": "7 min",
+    "body": """<h2>El problema con AP en los hoteles</h2>
+<p>Las facturas de proveedores llegan por tres canales distintos: email, correo físico, y portales propios del proveedor. El AP Manager tiene que ir revisando cada canal, descargando facturas y adjuntándolas manualmente al sistema contable.</p>
+<p>Para las facturas de F&B (alimentación y bebidas), el proceso es especialmente tedioso: hay que cruzar tres documentos — la factura del proveedor, el albarán firmado de recepción de mercancía, y el pedido de compra (PO). Si los tres no coinciden, hay que contactar al proveedor.</p>
+<h2>El 3-way matching automático</h2>
+<p>El 3-way matching es el proceso de verificar que la factura, el albarán y el PO son consistentes: mismo proveedor, misma referencia de producto, mismas cantidades y precio. Hacerlo manualmente en Excel para 50-60 facturas de F&B al mes son fácilmente 8-10 horas semanales.</p>
+<p>Con Yve.01, el proceso es automático: el sistema lee la factura con OCR, extrae los artículos y precios, y los cruza contra los albaranes y POs registrados. Las facturas con match perfecto se aprueban automáticamente. Solo las discrepancias llegan al AP Manager para revisión manual.</p>
+<h2>Impacto en días de pago</h2>
+<p>Cuando AP procesa facturas con retraso, los proveedores aplican recargos o retienen suministros. Reducir el tiempo de procesamiento de 5 días a 1 día mejora las relaciones con proveedores y puede negociar mejores condiciones de pago.</p>""",
+  },
+
 ]
 
 _CSS = """
@@ -158,7 +219,7 @@ _HEAD = lambda title,desc: f"""<!DOCTYPE html>
 <meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1">
 <meta name="description" content="{desc}">
 <meta property="og:title" content="{title}">
-<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Ccircle cx='16' cy='16' r='9' fill='%233b82f6'/%3E%3C/svg%3E">
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect width='32' height='32' rx='8' fill='%230f172a'/%3E%3Ccircle cx='16' cy='10' r='3' fill='%233b82f6'/%3E%3Cpath d='M10 6 L16 16 L22 6' stroke='%233b82f6' stroke-width='2.5' fill='none' stroke-linecap='round' stroke-linejoin='round'/%3E%3Cline x1='16' y1='16' x2='16' y2='26' stroke='%2360a5fa' stroke-width='2.5' stroke-linecap='round'/%3E%3C/svg%3E">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&display=swap" rel="stylesheet">
 <title>{title}</title><style>{{}}</style></head>"""
@@ -202,25 +263,57 @@ if(_p)document.addEventListener('scroll',()=>{const h=document.documentElement;_
 </script>"""
 
 def post_html(post):
+    related = [p for p in POSTS if p['slug'] != post['slug']][:3]
+    related_html = ''.join(
+        f'<a href="/blog/{p["slug"]}" style="background:var(--bg);border:1px solid var(--s2);border-radius:10px;padding:14px;display:block;text-decoration:none;transition:.15s" onmouseover="this.style.borderColor=\'rgba(59,130,246,.4)\'" onmouseout="this.style.borderColor=\'var(--s2)\'">'
+        f'<span style="font-size:10px;color:var(--acc2);font-weight:700;text-transform:uppercase">{p["cat"]}</span>'
+        f'<div style="font-size:13px;font-weight:600;margin-top:4px;color:var(--tx)">{p["title"][:60]}{"..." if len(p["title"])>60 else ""}</div>'
+        f'<div style="font-size:11px;color:var(--dim);margin-top:4px">{p["read"]}</div></a>'
+        for p in related
+    )
     return f"""<!DOCTYPE html>
 <html lang="es"><head>
 <meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1">
 <meta name="description" content="{post['desc']}">
 <meta property="og:title" content="{post['title']} | Yve Blog">
-<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Ccircle cx='16' cy='16' r='9' fill='%233b82f6'/%3E%3C/svg%3E">
+<meta property="og:description" content="{post['desc']}">
+<meta property="og:type" content="article">
+<meta property="og:url" content="https://yve01.onrender.com/blog/{post['slug']}">
+<meta property="article:published_time" content="{post['date']}">
+<meta property="article:section" content="{post['cat']}">
+<link rel="canonical" href="https://yve01.onrender.com/blog/{post['slug']}">
+<script type="application/ld+json">{{
+  "@context": "https://schema.org",
+  "@type": "BlogPosting",
+  "headline": "{post['title']}",
+  "description": "{post['desc']}",
+  "datePublished": "{post['date']}",
+  "author": {{"@type":"Person","name":"Jordi Solano"}},
+  "publisher": {{"@type":"Organization","name":"Yve.01","url":"https://yve01.onrender.com"}},
+  "url": "https://yve01.onrender.com/blog/{post['slug']}"
+}}</script>
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect width='32' height='32' rx='8' fill='%230f172a'/%3E%3Ccircle cx='16' cy='10' r='3' fill='%233b82f6'/%3E%3Cpath d='M10 6 L16 16 L22 6' stroke='%233b82f6' stroke-width='2.5' fill='none' stroke-linecap='round' stroke-linejoin='round'/%3E%3Cline x1='16' y1='16' x2='16' y2='26' stroke='%2360a5fa' stroke-width='2.5' stroke-linecap='round'/%3E%3C/svg%3E">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&display=swap" rel="stylesheet">
 <title>{post['title']} | Yve Blog</title>
 <style>{_CSS}</style></head>
 <body>
-<div id="read-progress"></div>
+<div id="read-progress" style="position:fixed;top:0;left:0;height:3px;background:linear-gradient(90deg,#3b82f6,#a78bfa);z-index:9999;width:0;transition:width .1s"></div>
 {_NAV}
 <div style="max-width:720px;margin:0 auto;padding:48px 5% 80px">
   <div class="fade-up" style="font-size:13px;color:var(--dim);margin-bottom:22px"><a href="/" style="color:var(--acc2)">Inicio</a> / <a href="/blog" style="color:var(--acc2)">Blog</a> / {post['cat']}</div>
   <span class="post-cat fade-up fade-up-delay-1">{post['cat']}</span>
   <h1 class="fade-up fade-up-delay-1" style="font-size:clamp(24px,4vw,40px);font-weight:900;letter-spacing:-1px;line-height:1.12;margin:12px 0">{post['title']}</h1>
-  <div class="fade-up fade-up-delay-2" style="font-size:13px;color:var(--dim);margin-bottom:36px;padding-bottom:26px;border-bottom:1px solid var(--s2)">{post['date']} &nbsp;·&nbsp; {post['read']} de lectura</div>
+  <div class="fade-up fade-up-delay-2" style="font-size:13px;color:var(--dim);margin-bottom:36px;padding-bottom:26px;border-bottom:1px solid var(--s2)">{post['date']} &nbsp;·&nbsp; {post['read']} de lectura &nbsp;·&nbsp; <span id='word-count'></span></div>
+  <script>const wc=document.querySelector('.article-content');if(wc)document.getElementById('word-count').textContent=Math.round(wc.textContent.split(/\\s+/).length)+' palabras';</script>
   <div class="article-content fade-up fade-up-delay-2">{post['body']}</div>
+  <!-- Related posts -->
+  <div class="fade-up" style="margin-top:40px">
+    <h3 style="font-size:16px;font-weight:700;margin-bottom:16px;color:var(--dim)">Artículos relacionados</h3>
+    <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(200px,1fr));gap:12px">
+      {related_html}
+    </div>
+  </div>
   <div class="fade-up" style="background:var(--s1);border:1px solid rgba(59,130,246,.2);border-radius:16px;padding:32px;text-align:center;margin-top:52px">
     <h3 style="font-size:21px;font-weight:700;margin-bottom:9px">¿Quieres automatizar tu hotel?</h3>
     <p style="color:var(--mut);margin-bottom:22px">14 días gratis · Sin tarjeta · Setup en 15 min</p>
@@ -229,6 +322,14 @@ def post_html(post):
 </div>
 {_FOOTER}
 {_SCROLL}
+<script>
+window.addEventListener('scroll',function(){{
+  var d=document.documentElement,b=document.body;
+  var pct=(d.scrollTop||b.scrollTop)/((d.scrollHeight||b.scrollHeight)-d.clientHeight)*100;
+  var el=document.getElementById('read-progress');
+  if(el)el.style.width=Math.min(100,pct)+'%';
+}},{{passive:true}});
+</script>
 </body></html>"""
 
 def index_html(posts):
@@ -240,7 +341,7 @@ def index_html(posts):
 <html lang="es"><head>
 <meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1">
 <meta name="description" content="Artículos sobre gestión financiera hotelera, automatización AP/AR y revenue management para hoteles en España.">
-<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Ccircle cx='16' cy='16' r='9' fill='%233b82f6'/%3E%3C/svg%3E">
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect width='32' height='32' rx='8' fill='%230f172a'/%3E%3Ccircle cx='16' cy='10' r='3' fill='%233b82f6'/%3E%3Cpath d='M10 6 L16 16 L22 6' stroke='%233b82f6' stroke-width='2.5' fill='none' stroke-linecap='round' stroke-linejoin='round'/%3E%3Cline x1='16' y1='16' x2='16' y2='26' stroke='%2360a5fa' stroke-width='2.5' stroke-linecap='round'/%3E%3C/svg%3E">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&display=swap" rel="stylesheet">
 <title>Blog | Yve.01</title><style>{_CSS}</style></head>

@@ -1,0 +1,20 @@
+{
+  "name": "Yve.01 — Hotel Finance",
+  "short_name": "Yve.01",
+  "description": "Sistema operativo AI-first para hoteles. Automatiza AP, AR, DRR y conciliación bancaria.",
+  "start_url": "/",
+  "display": "standalone",
+  "background_color": "#0f172a",
+  "theme_color": "#3b82f6",
+  "orientation": "any",
+  "icons": [
+    {
+      "src": "data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 192 192'%3E%3Crect width='192' height='192' rx='32' fill='%230f172a'/%3E%3Ccircle cx='96' cy='60' r='18' fill='%233b82f6'/%3E%3Cpath d='M60 36 L96 96 L132 36' stroke='%233b82f6' stroke-width='14' fill='none' stroke-linecap='round' stroke-linejoin='round'/%3E%3Cline x1='96' y1='96' x2='96' y2='156' stroke='%2360a5fa' stroke-width='14' stroke-linecap='round'/%3E%3C/svg%3E",
+      "sizes": "192x192",
+      "type": "image/svg+xml"
+    }
+  ],
+  "categories": ["finance", "business", "productivity"],
+  "lang": "es",
+  "screenshots": []
+}
