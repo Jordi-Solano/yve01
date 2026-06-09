@@ -14,6 +14,11 @@ def api_calipolis_kpis():
     hoteles = get_hoteles_calipolis()
     
     tendencias = get_tendencias()
+    # Map tendencias keys for chart compatibility
+    if tendencias:
+        tendencias['gop_mensual'] = tendencias.get('gop_pct_grupo', [])
+        tendencias['occ_mensual'] = tendencias.get('occ_media', tendencias.get('gop_pct_grupo', []))
+        tendencias['rev_mensual'] = tendencias.get('total_revenue', [])
     return jsonify({
         "consolidado": consolidado,
         "tendencias": tendencias,

@@ -4263,6 +4263,28 @@ function renderDRR(s) {
     s.archivo + ' · ' + s.total_dias + ' días · ' + s.dias_oob + ' OOB';
   // Render revenue chart
   renderDRRChart();
+
+  // Budget vs Real bar
+  const budgetBarEl = document.getElementById('drr-budget-bar');
+  if (budgetBarEl && s.metricas) {
+    const rev = s.metricas['Total Revenue'] || {};
+    if (rev.today && rev.budget && rev.today !== 'N/D' && rev.budget !== 'N/D') {
+      const todayNum = parseFloat(String(rev.today).replace(/[^0-9.]/g,'')) || 0;
+      const budgetNum = parseFloat(String(rev.budget).replace(/[^0-9.]/g,'')) || 0;
+      if (budgetNum > 0) {
+        const pct = Math.round(todayNum / budgetNum * 100);
+        const color = pct >= 100 ? 'var(--grn)' : pct >= 85 ? 'var(--ora)' : 'var(--red)';
+        budgetBarEl.innerHTML = '<div style="display:flex;align-items:center;gap:12px;font-size:12px">' +
+          '<span style="color:var(--mut);white-space:nowrap">Revenue hoy vs Budget:</span>' +
+          '<div style="flex:1;background:var(--s2);border-radius:4px;height:8px;overflow:hidden">' +
+            '<div style="height:100%;border-radius:4px;background:' + color + ';width:' + Math.min(100, pct) + '%;transition:width .6s ease"></div>' +
+          '</div>' +
+          '<span style="color:' + color + ';font-weight:700;min-width:36px">' + pct + '%</span>' +
+          '</div>';
+        budgetBarEl.style.display = 'block';
+      }
+    }
+  }
 }
 
 function filtrarAPPorEstado(estado) {
@@ -4314,8 +4336,8 @@ async function loadDRR() {
 
 const NOTIF_CHANNELS = [
   {key:'email',    icon:'📧', name:'Email'},
-  {key:'whatsapp', icon:'💬', name:'WhatsApp'},
-  {key:'telegram', icon:'✈️', name:'Telegram'},
+  {key:'whatsapp', icon:'💬', name:'WhatsApp', hint:'Requiere cuenta Twilio (TWILIO_ACCOUNT_SID, TWILIO_AUTH_TOKEN)'},
+  {key:'telegram', icon:'✈️', name:'Telegram', hint:'Requiere TELEGRAM_BOT_TOKEN y TELEGRAM_CHAT_ID en variables de entorno'},
   {key:'slack',    icon:'💼', name:'Slack'},
   {key:'push',     icon:'🔔', name:'Push'},
 ];
@@ -4973,41 +4995,47 @@ function renderCalipolisTrends(tendencias) {
   if (!tendencias || !tendencias.gop_mensual) return;
   const cont = document.getElementById('cal-tendencias');
   if (!cont) return;
-  const gop = tendencias.gop_mensual;
-  const meses = gop.map(d => d.mes.slice(5)); // MM
-  const vals  = gop.map(d => d.gop_pct);
-  cont.innerHTML = '<div class="card" style="margin-top:16px"><div class="card-title">Evolución GOP% — 6 meses</div>' +
-    '<div style="height:140px;position:relative;margin-top:8px"><canvas id="cal-gop-chart"></canvas></div></div>';
-  setTimeout(() => {
-    const cv = document.getElementById('cal-gop-chart');
-    if (!cv || !window.Chart) return;
-    window._drrChartInstance = window._drrChartInstance || null;
-    new Chart(cv, {
-      type:'line',
-      data:{
-        labels: meses,
-        datasets:[{
-          data: vals,
-          borderColor:'#22c55e',
-          backgroundColor:'rgba(34,197,94,.08)',
-          borderWidth:2.5,
-          pointRadius:4,
-          pointBackgroundColor:'#22c55e',
-          fill:true,
-          tension:.3
-        }]
+  const meses = tendencias.meses || [];
+  const gop   = tendencias.gop_mensual || [];
+  const occ   = tendencias.occ_mensual || [];
+  const rev   = (tendencias.rev_mensual || []).map(v => Math.round(v / 1000));
+
+  if (!window.Chart || !gop.length) return;
+  // Destroy existing
+  if (window._calChart) { try { window._calChart.destroy(); } catch(e) {} }
+
+  const ctx = document.createElement('canvas');
+  ctx.style.cssText = 'width:100%;height:220px';
+  cont.innerHTML = '';
+  cont.appendChild(ctx);
+
+  window._calChart = new Chart(ctx, {
+    data: {
+      labels: meses,
+      datasets: [
+        {type:'line', label:'GOP%', data: gop, borderColor:'#22c55e', backgroundColor:'rgba(34,197,94,.1)',
+         yAxisID:'y', tension:.4, pointRadius:4, pointBackgroundColor:'#22c55e', borderWidth:2.5, fill:true},
+        {type:'line', label:'Ocup%', data: occ, borderColor:'#60a5fa', backgroundColor:'transparent',
+         yAxisID:'y', tension:.4, pointRadius:3, borderWidth:1.5, borderDash:[4,3]},
+        {type:'bar', label:'Rev(k€)', data: rev, backgroundColor:'rgba(167,139,250,.2)',
+         borderColor:'rgba(167,139,250,.5)', borderWidth:1, yAxisID:'y2', borderRadius:4},
+      ]
+    },
+    options: {
+      responsive: true, maintainAspectRatio: false,
+      plugins: {
+        legend: {labels:{color:'#94a3b8',font:{size:11},boxWidth:12}},
+        tooltip: {backgroundColor:'#1e293b',titleColor:'#f1f5f9',bodyColor:'#94a3b8',borderColor:'#334155',borderWidth:1}
       },
-      options:{
-        responsive:true,maintainAspectRatio:false,
-        plugins:{legend:{display:false},tooltip:{callbacks:{label:ctx=>ctx.parsed.y.toFixed(1)+'%'}}},
-        scales:{
-          x:{grid:{color:'rgba(51,65,85,.3)'},ticks:{color:'#64748b',font:{size:10}}},
-          y:{grid:{color:'rgba(51,65,85,.3)'},ticks:{color:'#64748b',font:{size:10},callback:v=>v+'%'},
-             min: Math.max(0, Math.min(...vals)-3), max: Math.max(...vals)+3}
-        }
+      scales: {
+        x: {grid:{color:'rgba(51,65,85,.3)'},ticks:{color:'#64748b',font:{size:10}}},
+        y: {position:'left', grid:{color:'rgba(51,65,85,.3)'},ticks:{color:'#94a3b8',font:{size:10}},
+            title:{display:true,text:'%',color:'#64748b',font:{size:10}}},
+        y2:{position:'right',grid:{drawOnChartArea:false},ticks:{color:'#94a3b8',font:{size:10}},
+            title:{display:true,text:'k€',color:'#64748b',font:{size:10}}}
       }
-    });
-  }, 100);
+    }
+  });
 }
 
 function renderCalipolisKpis(kpis) {
