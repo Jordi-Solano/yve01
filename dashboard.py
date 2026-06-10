@@ -2443,7 +2443,7 @@ tr:hover td{background:rgba(255,255,255,.025)}
 <script>
 // ── Globals ─────────────────────────────────────────────────────────────
 const CHANGELOG_VER = '2026-06';
-let otaChart = null;
+var otaChart = null;
 
 // ── Formato ─────────────────────────────────────────────────────────────
 function eur(n) {
@@ -2864,7 +2864,7 @@ const AP_SPARKS = [
 // ══════════════════════════════════════════════════════════════
 // DRR REVENUE CHART
 // ══════════════════════════════════════════════════════════════
-let _drrChart = null;
+var _drrChart = null;
 
 async function renderDRRChart() {
   try {
@@ -3081,8 +3081,8 @@ const TOUR_STEPS = [
   },
 ];
 
-let _tourStep = 0;
-let _tourActive = false;
+var _tourStep = 0;
+var _tourActive = false;
 
 function tourStart() {
   _tourStep = 0;
@@ -3246,8 +3246,8 @@ setTimeout(async () => {
 
 const _i18nCache = {};
 const _i18nOriginal = {}; // textos ES originales — para restaurar al volver a español
-let _i18nData = {};
-let _i18nLang = localStorage.getItem('yve_lang') || 'es';
+var _i18nData = {};
+var _i18nLang = localStorage.getItem('yve_lang') || 'es';
 
 function _saveOriginals() {
   document.querySelectorAll('[data-i18n]').forEach(el => {
@@ -3326,7 +3326,7 @@ if ('serviceWorker' in navigator) {
   navigator.serviceWorker.register('/static/sw.js').catch(() => {});
 }
 // Install prompt
-let _deferredInstall;
+var _deferredInstall;
 window.addEventListener('beforeinstallprompt', e => {
   e.preventDefault(); _deferredInstall = e;
   const btn = document.getElementById('btn-install-pwa');
@@ -3338,7 +3338,7 @@ window.addEventListener('appinstalled', () => {
 });
 
 // ── Toast notifications ──────────────────────────────────────────────────
-let _toastTimeout;
+var _toastTimeout;
 function showNotification(msg, type = 'info') {
   let toast = document.getElementById('yve-toast');
   if (!toast) {
@@ -3396,7 +3396,7 @@ document.addEventListener('keydown', e => {
 });
 
 // ── Session timeout warning (45 min) ─────────────────────────────────────
-let _sessionTimer;
+var _sessionTimer;
 function _resetSessionTimer() {
   clearTimeout(_sessionTimer);
   _sessionTimer = setTimeout(() => {
@@ -3416,7 +3416,7 @@ _resetSessionTimer();
 // ═══════════════════════════════════════════════════════════════════
 // DEMO MODE
 // ═══════════════════════════════════════════════════════════════════
-let demoModeActive = false;
+var demoModeActive = false;
 
 async function toggleDemoMode() {
   try {
@@ -3461,7 +3461,7 @@ async function toggleDemoMode() {
 // ═══════════════════════════════════════════════════════════════════
 // SELECTOR DE ROL
 // ═══════════════════════════════════════════════════════════════════
-let rolActual = 'admin';
+var rolActual = 'admin';
 const rolLabels = {
   'admin': '🔑 Admin',
   'financial_controller': '💰 Controller',
@@ -4112,9 +4112,9 @@ function procesarOracle() {
 // CHAT AI — Yve Copilot
 // ══════════════════════════════════════════════════════════════
 
-let chatHistory  = [];
-let chatOpen     = false;
-let chatGreeted  = false;
+var chatHistory  = [];
+var chatOpen     = false;
+var chatGreeted  = false;
 
 function toggleChat() {
   chatOpen = !chatOpen;
@@ -5056,7 +5056,7 @@ async function openHotelDetail(hotelId) {
 // ═══════════════════════════════════════════════════════════════════
 // CALIPOLIS DASHBOARD
 // ═══════════════════════════════════════════════════════════════════
-let _calCharts = {};
+var _calCharts = {};
 
 async function loadCalipolis() {
   try {
