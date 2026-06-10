@@ -3532,8 +3532,8 @@ function switchTab(tab, el) {
   if (tab === 'multi_hotel') loadMultiHotel();
 }
 // ══ F&B COST CONTROL ══════════════════════════════════════════════════
-let _fbLoaded = {resumen:false, inventario:false, mermas:false, recetas:false};
-let _fbActive = 'resumen';
+var _fbLoaded = {resumen:false, inventario:false, mermas:false, recetas:false};
+var _fbActive = 'resumen';
 
 async function fbUploadPOS(input) {
   const file = input.files[0];
@@ -4432,7 +4432,7 @@ const NOTIF_ALERTAS = [
   {key:'banco_sin_conciliar',     labelKey:'notif.evBanco', label:'Movimientos bancarios sin conciliar'},
   {key:'factura_pendiente_firma', labelKey:'notif.evFirma', label:'Facturas pendientes de firma'},
 ];
-let _notifConfig = null;
+var _notifConfig = null;
 
 async function loadNotifConfig() {
   try {
@@ -4828,7 +4828,7 @@ async function cargarARRealData() {
 // ═══════════════════════════════════════════════════════════════════
 // MULTI-HOTEL DASHBOARD
 // ═══════════════════════════════════════════════════════════════════
-let _mh_loaded = false;
+var _mh_loaded = false;
 
 async function loadMultiHotel() {
   const grupoSelect = document.getElementById('grupo-filter');
