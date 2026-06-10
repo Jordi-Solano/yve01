@@ -3321,6 +3321,19 @@ if (!localStorage.getItem('kbd_shown')) {
   }, 5000);
 }
 
+// ── Global error capture ─────────────────────────────────────────────────
+window.onerror = function(msg, src, line, col, err) {
+  console.error('[Yve.01 Error]', msg, 'at', src+':'+line+':'+col);
+  // Don't show toast for errors during load — only after page is ready
+  if (document.readyState === 'complete') {
+    showNotification('⚠ Error JS: ' + String(msg).substring(0,80), 'error');
+  }
+  return false; // Don't suppress
+};
+window.addEventListener('unhandledrejection', function(e) {
+  console.error('[Yve.01 Unhandled Promise]', e.reason);
+});
+
 // ── PWA Service Worker ───────────────────────────────────────────────────
 if ('serviceWorker' in navigator) {
   navigator.serviceWorker.register('/static/sw.js').catch(() => {});
@@ -4858,6 +4871,8 @@ async function loadMultiHotel() {
     renderMHAlertas(alertas.lista);
   } catch(e) {
     console.error('Error Multi-Hotel:', e);
+    const mhEl = document.getElementById('mh-kpis');
+    if (mhEl) mhEl.innerHTML = '<div style="color:var(--red);font-size:12px;padding:10px">⚠ Error: ' + (e.message||e) + '</div>';
   }
 }
 
@@ -5074,6 +5089,8 @@ async function loadCalipolis() {
     if (calUpd) calUpd.textContent = 'Actualizado ' + new Date().toLocaleTimeString('es-ES', {hour:'2-digit',minute:'2-digit'});
   } catch(e) {
     console.error('Error Calipolis:', e);
+    const kpiEl = document.getElementById('cal-kpis');
+    if (kpiEl) kpiEl.innerHTML = '<div style="color:var(--red);font-size:12px;padding:10px">⚠ Error cargando datos: ' + (e.message||e) + '</div>';
   }
 }
 

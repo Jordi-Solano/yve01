@@ -65,6 +65,8 @@ a{color:inherit;text-decoration:none}
 @keyframes pulse{0%,100%{opacity:1}50%{opacity:.4}}
 .hero h1{font-size:clamp(36px,6vw,72px);font-weight:900;line-height:1.08;letter-spacing:-2px;margin-bottom:24px;max-width:900px;margin-left:auto;margin-right:auto}
 .hero h1 .accent{background:linear-gradient(135deg,var(--acc2),var(--pur));-webkit-background-clip:text;-webkit-text-fill-color:transparent;background-clip:text}
+#hero-typed::after{content:"|";-webkit-text-fill-color:var(--acc2);color:var(--acc2);animation:blink 1s step-end infinite}
+@keyframes blink{0%,100%{opacity:1}50%{opacity:0}}
 .hero-sub{font-size:clamp(16px,2vw,21px);color:var(--mut);max-width:620px;margin:0 auto 40px;line-height:1.7;font-weight:400}
 .hero-btns{display:flex;gap:14px;justify-content:center;flex-wrap:wrap}
 .btn-hero-primary{background:linear-gradient(135deg,var(--acc),#1d4ed8);color:#fff;padding:14px 32px;border-radius:12px;font-size:16px;font-weight:700;box-shadow:0 4px 24px rgba(59,130,246,.45);transition:.2s}
@@ -187,7 +189,7 @@ footer{background:var(--s1);border-top:1px solid var(--s2);padding:48px 5% 32px;
     <div class="dot"></div>
     🚀 En producción · 3 hoteles activos · Grupo Calipolis, Sitges
   </div>
-  <h1 class="fade-up fade-up-delay-1">El sistema operativo<br><span class="accent">AI-first para hoteles</span></h1>
+  <h1 class="fade-up fade-up-delay-1">El sistema operativo<br><span class="accent" id="hero-typed">AI-first para hoteles</span></h1>
   <p class="hero-sub fade-up fade-up-delay-2">Automatiza AR, AP, DRR y conciliación bancaria con IA.<br>Setup en 15 minutos · Sin consultores · Sin permanencia · Desde 400€/mes.</p>
   <div class="hero-btns fade-up fade-up-delay-3">
     <a href="/signup" class="btn-hero-primary">Empezar gratis 14 días</a>
@@ -197,8 +199,8 @@ footer{background:var(--s1);border-top:1px solid var(--s2);padding:48px 5% 32px;
 
 <!-- STATS BAR -->
 <div class="stats-bar">
-  <div class="stat-item"><div class="stat-val">150+</div><div class="stat-lbl">Facturas/mes automatizadas</div></div>
-  <div class="stat-item"><div class="stat-val">8h</div><div class="stat-lbl">Ahorradas a la semana</div></div>
+  <div class="stat-item"><div class="stat-val" data-target="150" data-suffix="+">0+</div><div class="stat-lbl">Facturas/mes automatizadas</div></div>
+  <div class="stat-item"><div class="stat-val" data-target="8" data-suffix="h">0h</div><div class="stat-lbl">Ahorradas a la semana</div></div>
   <div class="stat-item"><div class="stat-val">+6pp</div><div class="stat-lbl">Mejora media GOP%</div></div>
   <div class="stat-item"><div class="stat-val">15 min</div><div class="stat-lbl">Setup completo</div></div>
 </div>
@@ -625,6 +627,46 @@ function calcROI() {
 const _obs=new IntersectionObserver(e=>{e.forEach(x=>{if(x.isIntersecting){x.target.classList.add('visible');_obs.unobserve(x.target);}});},{threshold:.12});
 document.querySelectorAll('.fade-up').forEach(el=>_obs.observe(el));
 calcROI();
+</script>
+
+
+<script>
+(function(){
+  var words=['AR y AP automático','gestión F&B inteligente','DRR sin Out of Balance','AI-first para hoteles'];
+  var el=document.getElementById('hero-typed');
+  if(!el)return;
+  var wi=words.length-1,ci=words[wi].length,deleting=false;
+  function tick(){
+    var word=words[wi];
+    if(!deleting){
+      el.textContent=word.slice(0,ci);
+      if(ci>=word.length){deleting=true;setTimeout(tick,2000);return;}
+      ci++;setTimeout(tick,60);
+    } else {
+      el.textContent=word.slice(0,ci);
+      if(ci<=0){deleting=false;wi=(wi+1)%words.length;ci=0;setTimeout(tick,400);return;}
+      ci--;setTimeout(tick,35);
+    }
+  }
+  setTimeout(tick,1800);
+})();
+</script>
+<script>
+(function(){
+  function animateCounters(){
+    document.querySelectorAll('.stat-val[data-target]').forEach(function(el){
+      var target=parseInt(el.getAttribute('data-target'));
+      var suffix=el.getAttribute('data-suffix')||'';
+      var cur=0,step=Math.ceil(target/40);
+      var t=setInterval(function(){cur=Math.min(cur+step,target);el.textContent=cur+suffix;if(cur>=target)clearInterval(t);},30);
+    });
+  }
+  var sb=document.querySelector('.stats-bar');
+  if(sb&&'IntersectionObserver' in window){
+    var obs=new IntersectionObserver(function(ee){ee.forEach(function(e){if(e.isIntersecting){animateCounters();obs.disconnect();}});},{threshold:0.3});
+    obs.observe(sb);
+  }
+})();
 </script>
 </body>
 

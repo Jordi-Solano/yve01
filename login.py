@@ -158,6 +158,7 @@ input:focus{border-color:var(--acc);box-shadow:0 0 0 3px rgba(59,130,246,.18)}
     <div class="error" id="error"></div>
 
     <div style="text-align:center;margin-top:18px;font-size:13px;color:var(--dim)">¿No tienes cuenta? <a href="/signup" style="color:var(--acc2);text-decoration:none" data-i18n="login.crearCuenta">Crear cuenta gratis</a></div>
+    <div style="margin-top:18px;padding-top:14px;border-top:1px solid rgba(51,65,85,.4);text-align:center;font-size:11px;color:#475569">Usado en hoteles de Costa Dorada · Barcelona · Sitges<br><span style="color:#64748b">🔒 TLS · Sin anuncios · Sin rastreo</span></div>
     <div class="demo">
       <div class="demo-h" data-i18n="login.demo">Accesos de demostración — pulsa para rellenar</div>
       <div class="chips">
