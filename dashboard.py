@@ -4137,7 +4137,7 @@ function toggleChat() {
   fab.style.display = chatOpen ? 'none' : 'flex';
   if (chatOpen && !chatGreeted) {
     chatGreeted = true;
-    addMsg('bot', '¡Hola! Soy Yve, tu copiloto financiero 👋\\nTengo acceso en tiempo real a todos los datos del hotel. ¿En qué puedo ayudarte?');
+    addMsg('bot', '¡Hola! Soy Yve, tu copiloto financiero 👋 — Tengo acceso a todos los datos del hotel. ¿En qué puedo ayudarte?');
   }
   if (chatOpen) setTimeout(() => document.getElementById('chat-input').focus(), 300);
 }
@@ -5094,6 +5094,35 @@ async function loadCalipolis() {
   }
 }
 
+function addCalipolisInsights(hoteles) {
+  var el = document.getElementById('cal-insights');
+  if (!el || !hoteles || !hoteles.length) return;
+  var top    = hoteles.reduce(function(a,b){ return a.gop_pct > b.gop_pct ? a : b; });
+  var avg    = (hoteles.reduce(function(s,h){ return s+h.gop_pct; }, 0)/hoteles.length).toFixed(1);
+  var rev    = hoteles.reduce(function(s,h){ return s+(h.total_ingresos||0); }, 0);
+  var alerts = hoteles.reduce(function(s,h){ return s+(h.alertas||0); }, 0);
+  var gc = top.gop_pct >= 22 ? 'var(--grn)' : 'var(--ora)';
+  el.innerHTML =
+    '<div style="display:flex;gap:10px;flex-wrap:wrap;margin-top:16px">' +
+    '<div style="flex:1;min-width:130px;background:rgba(34,197,94,.06);border:1px solid rgba(34,197,94,.15);border-radius:10px;padding:12px">' +
+      '<div style="font-size:10px;color:var(--grn);font-weight:700;text-transform:uppercase">Mejor GOP%</div>' +
+      '<div style="font-size:13px;font-weight:600;margin-top:2px">' + top.nombre.split(' ').slice(-1)[0] + '</div>' +
+      '<div style="font-size:20px;font-weight:900;color:' + gc + '">' + top.gop_pct + '%</div>' +
+    '</div>' +
+    '<div style="flex:1;min-width:130px;background:rgba(59,130,246,.06);border:1px solid rgba(59,130,246,.15);border-radius:10px;padding:12px">' +
+      '<div style="font-size:10px;color:var(--acc2);font-weight:700;text-transform:uppercase">Revenue</div>' +
+      '<div style="font-size:13px;font-weight:600;margin-top:2px">Junio grupo</div>' +
+      '<div style="font-size:20px;font-weight:900;color:var(--acc2)">\u20AC' + Math.round(rev/1000) + 'K</div>' +
+    '</div>' +
+    '<div style="flex:1;min-width:130px;background:rgba(167,139,250,.06);border:1px solid rgba(167,139,250,.15);border-radius:10px;padding:12px">' +
+      '<div style="font-size:10px;color:var(--pur);font-weight:700;text-transform:uppercase">GOP% medio</div>' +
+      '<div style="font-size:13px;font-weight:600;margin-top:2px">Grupo</div>' +
+      '<div style="font-size:20px;font-weight:900;color:var(--pur)">' + avg + '%</div>' +
+    '</div>' +
+    (alerts > 0 ? '<div style="flex:1;min-width:130px;background:rgba(245,158,11,.06);border:1px solid rgba(245,158,11,.15);border-radius:10px;padding:12px"><div style="font-size:10px;color:var(--ora);font-weight:700;text-transform:uppercase">Alertas</div><div style="font-size:13px;font-weight:600;margin-top:2px">Activas</div><div style="font-size:20px;font-weight:900;color:var(--ora)">' + alerts + '</div></div>' : '') +
+    '</div>';
+}
+
 function renderCalipolisTrends(tendencias) {
   if (!tendencias || !tendencias.gop_mensual) return;
   const cont = document.getElementById('cal-tendencias');
@@ -5197,21 +5226,6 @@ function renderCalipolisHoteles(hoteles) {
         '<circle cx="' + (w) + '" cy="' + (ht - ((vals[vals.length-1]-min)/(max-min+0.001))*(ht-4)) + '" r="3" fill="' + lastColor + '"/>' +
         '</svg>';
     }
-
-function addCalipolisInsights(hoteles) {
-  const el = document.getElementById('cal-insights');
-  if (!el || !hoteles || !hoteles.length) return;
-  const top = hoteles.reduce((a,b) => a.gop_pct > b.gop_pct ? a : b);
-  const avg = (hoteles.reduce((s,h) => s+h.gop_pct, 0)/hoteles.length).toFixed(1);
-  const rev = hoteles.reduce((s,h) => s+(h.total_ingresos||0), 0);
-  const alerts = hoteles.reduce((s,h) => s+(h.alertas||0), 0);
-  el.innerHTML = '<div style="display:flex;gap:10px;flex-wrap:wrap;margin-top:16px">' +
-    '<div style="flex:1;min-width:140px;background:rgba(34,197,94,.06);border:1px solid rgba(34,197,94,.15);border-radius:10px;padding:12px"><div style="font-size:10px;color:var(--grn);font-weight:700;text-transform:uppercase">Mejor GOP%</div><div style="font-size:13px;font-weight:600;margin-top:2px">' + top.nombre.split(' ').slice(-1)[0] + '</div><div style="font-size:20px;font-weight:900;color:var(--grn)">' + top.gop_pct + '%</div></div>' +
-    '<div style="flex:1;min-width:140px;background:rgba(59,130,246,.06);border:1px solid rgba(59,130,246,.15);border-radius:10px;padding:12px"><div style="font-size:10px;color:var(--acc2);font-weight:700;text-transform:uppercase">Revenue grupo</div><div style="font-size:13px;font-weight:600;margin-top:2px">Junio 2026</div><div style="font-size:20px;font-weight:900;color:var(--acc2)">€' + Math.round(rev/1000) + 'K</div></div>' +
-    '<div style="flex:1;min-width:140px;background:rgba(167,139,250,.06);border:1px solid rgba(167,139,250,.15);border-radius:10px;padding:12px"><div style="font-size:10px;color:var(--pur);font-weight:700;text-transform:uppercase">GOP% medio</div><div style="font-size:13px;font-weight:600;margin-top:2px">Grupo</div><div style="font-size:20px;font-weight:900;color:var(--pur)">' + avg + '%</div></div>' +
-    (alerts ? '<div style="flex:1;min-width:140px;background:rgba(245,158,11,.06);border:1px solid rgba(245,158,11,.15);border-radius:10px;padding:12px"><div style="font-size:10px;color:var(--ora);font-weight:700;text-transform:uppercase">Alertas</div><div style="font-size:13px;font-weight:600;margin-top:2px">Activas</div><div style="font-size:20px;font-weight:900;color:var(--ora)">' + alerts + '</div></div>' : '') +
-    '</div>';
-}
     const gopDelta = h.gop_trend && h.gop_trend.length > 1
       ? (h.gop_trend[h.gop_trend.length-1] - h.gop_trend[0]).toFixed(1)
       : null;
@@ -5355,7 +5369,7 @@ function runSearch(q) {
 // Keyboard shortcut Ctrl+K
 document.addEventListener('keydown', e => {
   if ((e.ctrlKey || e.metaKey) && e.key === 'k') { e.preventDefault(); openSearch(); }
-  if ((e.ctrlKey || e.metaKey) && e.key === '/') { e.preventDefault(); const co = document.getElementById('chat-overlay'); if (co) co.style.display = co.style.display === 'none' ? 'flex' : 'none'; }
+  if ((e.ctrlKey || e.metaKey) && e.key === '/') { e.preventDefault(); toggleChat(); }
 });
 </script>
 <!-- /Global Search -->
@@ -5442,10 +5456,6 @@ function showSetupChecklist() {
 </script>
 
 <!-- Floating Action Button - Ask Yve AI -->
-<button class="fab-ask" id="fab-yve" onclick="document.getElementById('chat-overlay').style.display='flex'"
-  style="position:fixed;bottom:80px;right:20px;width:52px;height:52px;border-radius:50%;background:linear-gradient(135deg,#3b82f6,#2563eb);border:none;color:#fff;font-size:22px;cursor:pointer;box-shadow:0 4px 20px rgba(59,130,246,.5);z-index:500;transition:.2s;display:flex;align-items:center;justify-content:center"
-  onmouseover="this.style.transform='scale(1.1)'" onmouseout="this.style.transform='scale(1)'"
-  title="Pregunta a Yve AI (Ctrl+/)">✨</button>
 
 <button id="back-top" onclick="window.scrollTo({top:0,behavior:'smooth'})" 
   style="display:none;position:fixed;bottom:88px;right:20px;background:var(--s1);border:1px solid var(--s2);color:var(--mut);width:36px;height:36px;border-radius:50%;font-size:16px;cursor:pointer;z-index:500;transition:.2s;box-shadow:0 2px 8px rgba(0,0,0,.3)"

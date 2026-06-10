@@ -67,15 +67,26 @@ def _header(styles, title, subtitle=''):
 
 def _styles():
     s = getSampleStyleSheet()
+    # Remove existing 'h1' alias if present to avoid duplicate error
+    if 'h1' in s.byName: del s.byName['h1']
+    if 'h1' in s.byAlias: del s.byAlias['h1']
     s.add(ParagraphStyle('h1', parent=s['Normal'],
           fontSize=15, textColor=WHITE, fontName='Helvetica-Bold', leading=18))
+    if 'right' in s.byName: del s.byName['right']
+    if 'right' in s.byAlias: del s.byAlias['right']
     s.add(ParagraphStyle('right', parent=s['Normal'],
           fontSize=9, textColor=MUT, alignment=TA_RIGHT, leading=12))
+    if 'section' in s.byName: del s.byName['section']
+    if 'section' in s.byAlias: del s.byAlias['section']
     s.add(ParagraphStyle('section', parent=s['Normal'],
           fontSize=11, textColor=YVE_BLUE, fontName='Helvetica-Bold',
           spaceBefore=16, spaceAfter=8))
+    if 'body' in s.byName: del s.byName['body']
+    if 'body' in s.byAlias: del s.byAlias['body']
     s.add(ParagraphStyle('body', parent=s['Normal'],
           fontSize=9, textColor=LIGHT, leading=12))
+    if 'small' in s.byName: del s.byName['small']
+    if 'small' in s.byAlias: del s.byAlias['small']
     s.add(ParagraphStyle('small', parent=s['Normal'],
           fontSize=8, textColor=MUT, leading=10))
     return s
