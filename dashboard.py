@@ -2442,6 +2442,7 @@ tr:hover td{background:rgba(255,255,255,.025)}
 
 <script>
 // ── Globals ─────────────────────────────────────────────────────────────
+const CHANGELOG_VER = '2026-06';
 let otaChart = null;
 
 // ── Formato ─────────────────────────────────────────────────────────────
@@ -2683,7 +2684,10 @@ function renderActivity(rows) {
     { dot:'b', n: d.CERTIFICADO_OK       || 0, txt: 'con certificado DI OK',         key:'res.conDI' },
     { dot:'m', n: d.OTA_DESCONOCIDA      || 0, txt: 'OTA no reconocida',             key:'res.noReconocida' },
   ];
-  el.innerHTML = items.map(i =>
+  const totalAmount = rows.reduce((s, r) => s + parseFloat(String(r.importe_bruto||'0').replace(/[^0-9.]/g,'')) || 0, 0);
+  const totalStr = totalAmount > 0 ? '€' + totalAmount.toLocaleString('es-ES', {minimumFractionDigits:2}) : '';
+  el.innerHTML = (totalStr ? '<div style="background:var(--bg);border-radius:8px;padding:8px 12px;margin-bottom:10px;font-size:12px;color:var(--mut)">Total ciclo: <strong style="color:var(--tx)">' + totalStr + '</strong></div>' : '') +
+    items.map(i =>
     '<div class="act-item">' +
     '<div class="adot ' + i.dot + '"></div>' +
     '<div class="atxt"><b>' + i.n + '</b> factura' + (i.n !== 1 ? 's' : '') +
@@ -3305,7 +3309,7 @@ async function cambiarIdioma(lang) {
 loadAll();
 setInterval(loadAll, 60000);
 // Changelog badge
-if (localStorage.getItem('changelog_seen') !== CHANGELOG_VER) {
+if (localStorage.getItem('changelog_seen') !== '2026-06') {
   const mb = document.getElementById('menu-badge');
   if (mb) mb.style.display = 'inline-block';
 }
@@ -4859,26 +4863,28 @@ async function loadMultiHotel() {
 
 function renderMHKpis(kpis) {
   const cont = document.getElementById('mh-kpis');
-  if (!cont) return;
-  cont.dataset.loaded = '1';
+  if (!cont || !kpis) return;
+  const totalRev = kpis.total_revenue || 0;
+  const avgGop   = kpis.avg_gop_pct  || 0;
+  const totalHab = kpis.total_hab     || 0;
+  const nHotels  = kpis.n_hoteles     || 0;
+  const gopColor = avgGop >= 22 ? 'var(--grn)' : avgGop >= 16 ? 'var(--ora)' : 'var(--red)';
+  const revK     = Math.round(totalRev / 1000);
+
   const cards = [
-    {label:'Hoteles activos',    value: kpis.num_hoteles,    sub: kpis.total_rooms + ' hab. totales', color:'var(--acc2)'},
-    {label:'Revenue MTD',        value: '€' + (kpis.total_revenue_mtd/1000).toFixed(0) + 'K', sub: 'ingresos del mes', color:'var(--grn)'},
-    {label:'Ocupación media',    value: kpis.avg_occupancy + '%', sub: 'ADR €' + kpis.avg_adr, color:'var(--grn)'},
-    {label:'GOP% medio',         value: kpis.avg_gop_pct + '%',   sub: 'RevPAR €' + kpis.avg_revpar, color: kpis.avg_gop_pct >= 20 ? 'var(--grn)' : 'var(--ora)'},
-    {label:'Facturas pendientes',value: kpis.total_facturas_pendientes, sub: kpis.total_alertas + ' alertas activas', color: kpis.total_facturas_pendientes > 20 ? 'var(--ora)' : 'var(--mut)'},
-    {label:'Estado propiedades', value: kpis.hoteles_ok + '/' + kpis.num_hoteles, sub: kpis.hoteles_warning + ' avisos · ' + kpis.hoteles_criticos + ' críticos', color: kpis.hoteles_criticos > 0 ? 'var(--red)' : 'var(--grn)'},
+    {label:'Revenue Grupo',       val:'€'+revK+'K',      sub:nHotels+' propiedades',             color:'var(--acc2)',  tip:'Revenue total del grupo este mes'},
+    {label:'GOP% Medio',           val:avgGop+'%',        sub:'Media ponderada',                  color:gopColor,      tip:'Gross Operating Profit % medio. Objetivo: >22% en 4★'},
+    {label:'Habitaciones totales', val:totalHab,           sub:'Capacidad instalada',             color:'var(--tx)',   tip:'Total de habitaciones del grupo'},
+    {label:'RevPAR medio',         val:'€'+(kpis.avg_revpar||0), sub:'Revenue por habitación', color:'var(--pur)', tip:'Revenue Per Available Room consolidado'},
   ];
   cont.innerHTML = '<div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:12px">' +
     cards.map(c =>
-      '<div style="background:var(--s1);border:1px solid var(--s2);border-radius:13px;padding:16px">' +
-      '<div style="font-size:10px;color:var(--mut);text-transform:uppercase;letter-spacing:.5px;font-weight:600;margin-bottom:8px">' + c.label + '</div>' +
-      '<div style="font-size:26px;font-weight:800;color:' + c.color + ';letter-spacing:-1px;line-height:1">' + c.value + '</div>' +
-      '<div style="font-size:11px;color:var(--dim);margin-top:5px">' + c.sub + '</div>' +
+      '<div class="sc" data-tip="'+(c.tip||'')+'">' +
+        '<div class="sc-lbl">'+c.label+'</div>' +
+        '<div class="sc-val" style="color:'+c.color+'">'+c.val+'</div>' +
+        '<div class="sc-sub">'+c.sub+'</div>' +
       '</div>'
     ).join('') + '</div>';
-  // Re-apply language
-  if (_i18nLang && _i18nLang !== 'es') applyI18n(_i18nData);
 }
 
 function renderMHStatus(kpis) {
@@ -5377,9 +5383,8 @@ document.addEventListener('keydown', e => {
     </div>
   </div>
 </div>
-<script>const CHANGELOG_VER = '2026-06';
-function showChangelog() {
-  localStorage.setItem('changelog_seen', CHANGELOG_VER);
+<script>function showChangelog() {
+  localStorage.setItem('changelog_seen', '2026-06');
   const badge = document.getElementById('menu-badge');
   if (badge) badge.style.display = 'none';
   document.getElementById('changelog-modal').style.display='flex'; document.getElementById('main-menu').classList.remove('open'); }</script>
