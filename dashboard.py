@@ -1327,7 +1327,7 @@ HTML = r"""<!DOCTYPE html>
 <html lang="es">
 <head>
 <meta charset="UTF-8">
-<meta name="viewport" content="width=device-width,initial-scale=1">
+<meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=5,viewport-fit=cover">
 <meta id="csrf-token-meta" name="csrf-token" content="">
 <link rel="manifest" href="/static/manifest.json">
 <meta name="theme-color" content="#3b82f6">
@@ -1404,22 +1404,63 @@ body::before{
 /* ── STATS ── */
 .stats{display:grid;grid-template-columns:repeat(6,1fr);gap:12px;margin-bottom:22px}
 @media(max-width:1200px){.stats{grid-template-columns:repeat(3,1fr)}}
+@media(max-width:900px){
+  #ar-real-grid{grid-template-columns:1fr}
+  .metrics{grid-template-columns:repeat(2,1fr)}
+}
 @media(max-width:768px){
-  .tabs{gap:0;overflow-x:auto;-webkit-overflow-scrolling:touch;scrollbar-width:none}
-  .tabs::-webkit-scrollbar{display:none}
-  .tab-btn{white-space:nowrap;flex-shrink:0;font-size:11px;padding:8px 10px}
-  .nav{padding:0 12px;gap:6px}
-  .logo-name{font-size:16px}
+  /* Nav */
+  .nav{padding:0 10px;gap:4px;height:52px}
+  .logo-name{font-size:15px}
   .logo-tag{display:none}
-  .nav-right{gap:6px}
-  .btn-ref{font-size:11px;padding:6px 10px}
-  .btn-run{font-size:12px;padding:8px 14px}
-  .sc-lbl{font-size:9px}
-  .sc-val{font-size:20px}
-  .stats{grid-template-columns:repeat(2,1fr);gap:8px}
+  .nav-right{gap:4px}
+  .btn-ref{font-size:11px;padding:5px 8px}
+  .btn-run{font-size:12px;padding:7px 12px}
+  #btn-install-pwa{display:none}
+  /* Tabs */
+  .tabs{gap:0;overflow-x:auto;-webkit-overflow-scrolling:touch;scrollbar-width:none;padding:0 4px}
+  .tabs::-webkit-scrollbar{display:none}
+  .tab-btn{white-space:nowrap;flex-shrink:0;font-size:11px;padding:8px 10px;min-width:auto}
+  /* Panels */
   .panel{padding:14px 12px}
-  .card{padding:14px}
-  #demo-banner{font-size:11px;padding:5px 10px}
+  .card{padding:12px}
+  /* Stats */
+  .stats{grid-template-columns:repeat(2,1fr);gap:8px}
+  .sc-val{font-size:20px}
+  .sc-lbl{font-size:9px}
+  /* AR Real */
+  #ar-real-grid{grid-template-columns:1fr}
+  /* DRR metrics */
+  .drr-mc{padding:10px}
+  /* Tables: horizontal scroll */
+  .tbl-wrap{overflow-x:auto;-webkit-overflow-scrolling:touch}
+  table{min-width:500px}
+  /* Hide secondary columns on mobile */
+  .hide-mobile{display:none}
+  /* Calipolis cards */
+  #cal-grid{grid-template-columns:1fr!important}
+  /* Multi-hotel table */
+  #mh-kpis .sc-lbl{font-size:9px}
+  /* Status bar */
+  .status-bar{font-size:10px;padding:5px 10px}
+  /* Demo banner */
+  #demo-banner{font-size:10px;padding:4px 8px}
+  /* Back to top */
+  #back-top{bottom:70px;right:12px;width:32px;height:32px}
+}
+@media(max-width:600px){
+  .stats{grid-template-columns:repeat(2,1fr)}
+  /* Tabs: icon-only on very small screens */
+  .tab-btn .tab-txt{display:none}
+  .tab-btn{font-size:16px;padding:8px 10px}
+  /* Modal fix */
+  #modal-emitir > div, #checklist-modal > div, #changelog-modal > div{
+    max-width:100%;width:calc(100% - 20px);margin:10px;max-height:calc(100vh - 40px)
+  }
+  /* AR Real two-col → one col */
+  #ef-cliente{font-size:12px}
+  /* Grids to 1 col */
+  .metrics{grid-template-columns:1fr}
 }
 @media(max-width:600px){
   .stats{grid-template-columns:repeat(2,1fr)}
@@ -1798,6 +1839,8 @@ tr:hover td{background:rgba(255,255,255,.025)}
   .drr-mc { break-inside: avoid; }
 }
 
+* { -webkit-tap-highlight-color: transparent; }
+button, a { touch-action: manipulation; }
 
 </style>
 </head>
@@ -2155,132 +2198,124 @@ tr:hover td{background:rgba(255,255,255,.025)}
 
   <!-- PANEL AR REAL -->
   <div id="panel-ar_real" class="panel">
-    <!-- Header -->
-    <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:22px;flex-wrap:wrap;gap:12px">
+
+    <!-- Header AR Real -->
+    <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:20px;flex-wrap:wrap;gap:12px">
       <div>
-        <h2 style="font-size:18px;font-weight:700;margin:0">🏢 AR Real — Grupos Corporativos</h2>
-        <div style="font-size:12px;color:var(--mut);margin-top:4px">Clientes de crédito · Facturas corporativas · BEOs y grupos</div>
+        <h2 style="font-size:18px;font-weight:700;margin:0">🏢 AR Real — Grupos Corporativos
+          <span data-tip="Gestión completa del ciclo de cobro: facturas emitidas, antigüedad, recordatorios y cobros" style="font-size:12px;color:var(--dim);cursor:help">❓</span>
+        </h2>
+        <div style="font-size:12px;color:var(--mut);margin-top:4px">Clientes de crédito · Facturación corporativa · Control de cobros</div>
       </div>
-      <div style="display:flex;gap:8px">
-        <button class="btn-ref" onclick="abrirEmitirFactura()" style="font-size:12px">📄 Emitir factura</button>
-        <button class="btn-run" onclick="procesarARReal()" id="btn-ar-real" style="font-size:13px">
-        <div class="spin" id="spin-ar"></div>
-        <span id="lbl-ar">🔄 Cargar datos</span>
-      </button>
+      <div style="display:flex;gap:8px;flex-wrap:wrap">
+        <button class="btn-ref" onclick="abrirEmitirFactura()" style="font-size:12px">📄 Nueva factura</button>
+        <button class="btn-ref" onclick="loadARRealData()" style="font-size:12px">🔄 Actualizar</button>
+        <a href="/aprobaciones-ar/" class="btn-run" style="text-decoration:none;font-size:12px;padding:8px 14px" data-i18n="btn.aprobarAR">📲 Aprobar AR</a>
+      </div>
     </div>
 
-    <!-- KPI row -->
-    <div id="ar-real-kpis" class="stats" style="grid-template-columns:repeat(4,1fr);margin-bottom:22px">
-      <div class="sc hl c-ora"><div class="sc-lbl">PENDIENTE FACTURAR</div><div class="sc-val" id="arp-pend">—</div><div class="sc-sub">en reservas activas</div></div>
-      <div class="sc c-yel"><div class="sc-lbl">Facturado</div><div class="sc-val" id="arp-fact">—</div><div class="sc-sub">pendiente cobro</div></div>
-      <div class="sc c-grn"><div class="sc-lbl">Cobrado</div><div class="sc-val" id="arp-cobr">—</div><div class="sc-sub">este período</div></div>
-      <div class="sc c-red"><div class="sc-lbl">Saldo Total</div><div class="sc-val" id="arp-saldo">—</div><div class="sc-sub" id="arp-nclientes">— clientes</div></div>
+    <!-- Stats KPIs -->
+    <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(140px,1fr));gap:12px;margin-bottom:20px" id="ar-real-stats">
+      <div class="sc hl c-ora"><div class="sc-lbl" data-tip="Facturas emitidas aún no cobradas">PENDIENTE COBRO</div><div class="sc-val" id="arp-pendiente">—</div></div>
+      <div class="sc c-red"><div class="sc-lbl" data-tip="Facturas con más de 60 días sin cobrar">VENCIDO >60d</div><div class="sc-val" id="arp-vencido">—</div></div>
+      <div class="sc c-grn"><div class="sc-lbl" data-tip="Cobrado este mes">COBRADO MES</div><div class="sc-val" id="arp-cobrado">—</div></div>
+      <div class="sc"><div class="sc-lbl">CLIENTES ACTIVOS</div><div class="sc-val" id="arp-nclientes">—</div></div>
     </div>
 
-    <!-- Main grid: clients + reservations -->
-    <div style="display:grid;grid-template-columns:1fr 1fr;gap:16px;margin-bottom:20px">
-      <!-- Clients table -->
-      <div class="card">
-        <div class="card-title" data-i18n="card.clientesCredito">Clientes de Crédito</div>
-        <div class="tbl-wrap" style="min-width:0">
-          <table style="min-width:0;width:100%">
-            <thead><tr>
-              <th>Cliente</th><th style="text-align:right">Saldo</th><th style="text-align:center">Días</th><th style="text-align:center">Estado</th>
+    <!-- Two-column layout: clients + invoices -->
+    <div style="display:grid;grid-template-columns:1fr 1.6fr;gap:16px" id="ar-real-grid">
+
+      <!-- Client list -->
+      <div>
+        <div style="font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.5px;color:var(--mut);margin-bottom:10px">Clientes</div>
+        <div id="ar-clientes-list" style="display:flex;flex-direction:column;gap:8px"></div>
+      </div>
+
+      <!-- Invoices -->
+      <div>
+        <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:10px">
+          <div style="font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.5px;color:var(--mut)">Facturas <span id="ar-facturas-count" style="color:var(--dim)"></span></div>
+          <select id="ar-filter-estado" onchange="filtrarFacturasAR(this.value)" style="background:var(--s1);border:1px solid var(--s2);color:var(--tx);padding:5px 10px;border-radius:8px;font-size:11px">
+            <option value="">Todas</option>
+            <option value="PENDIENTE_FACTURA">Pendiente emitir</option>
+            <option value="FACTURADO">Facturadas</option>
+            <option value="COBRADO">Cobradas</option>
+          </select>
+        </div>
+        <!-- Aging bar -->
+        <div id="ar-aging-bar" style="display:none;margin-bottom:12px"></div>
+        <!-- Invoice table -->
+        <div style="overflow-x:auto">
+          <table style="width:100%;border-collapse:collapse;font-size:12px">
+            <thead><tr style="border-bottom:2px solid var(--s2)">
+              <th style="text-align:left;padding:6px 8px;color:var(--mut);font-weight:600">Nº / Cliente</th>
+              <th style="text-align:right;padding:6px 8px;color:var(--mut);font-weight:600">Importe</th>
+              <th style="text-align:left;padding:6px 8px;color:var(--mut);font-weight:600">Estado</th>
+              <th style="padding:6px 4px;color:var(--mut);font-weight:600">Acciones</th>
             </tr></thead>
-            <tbody id="ar-clients-tbody"></tbody>
+            <tbody id="ar-facturas-tbody"></tbody>
           </table>
         </div>
       </div>
-      <!-- Reservations table -->
-      <div class="card">
-        <div class="card-title" data-i18n="card.reservasCorp">Reservas Corporativas</div>
-        <div class="tbl-wrap" style="min-width:0">
-          <table style="min-width:0;width:100%">
-            <thead><tr>
-              <th>Reserva</th><th>Entrada</th><th style="text-align:right">Total</th><th style="text-align:center">Estado</th>
-            </tr></thead>
-            <tbody id="ar-reservas-tbody"></tbody>
-          </table>
-        </div>
-      </div>
     </div>
 
-    <!-- Process log (collapsed by default) -->
-    <div class="card" id="ar-log-card" style="display:none">
-      <div class="card-title" data-i18n="card.logProcesamiento">Log de Procesamiento</div>
-      <div id="ar-real-log" style="background:#060c1a;border:1px solid var(--s2);border-radius:10px;padding:14px;max-height:220px;overflow-y:auto;font-family:'JetBrains Mono',monospace;font-size:11px;line-height:1.8;color:var(--tx)"></div>
-    </div>
-    <!-- Modal: Emitir Factura Corporativa -->
+    <!-- Emit invoice modal -->
     <div id="modal-emitir" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,.7);z-index:9000;align-items:center;justify-content:center">
       <div style="background:var(--s1);border:1px solid var(--s2);border-radius:16px;padding:28px;max-width:480px;width:90%;max-height:85vh;overflow-y:auto">
         <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:20px">
-          <h3 style="font-size:16px;font-weight:700;margin:0">📄 Emitir Factura Corporativa</h3>
+          <h3 style="font-size:16px;font-weight:700;margin:0">📄 Nueva Factura Corporativa</h3>
           <button onclick="cerrarEmitirFactura()" style="background:none;border:none;color:var(--mut);font-size:20px;cursor:pointer">×</button>
         </div>
         <div style="display:flex;flex-direction:column;gap:12px">
           <div>
-            <label style="font-size:11px;color:var(--mut);font-weight:600;text-transform:uppercase;letter-spacing:.4px">Cliente</label>
+            <label style="font-size:11px;color:var(--mut);font-weight:600;text-transform:uppercase">Cliente</label>
             <select id="ef-cliente" style="width:100%;background:var(--bg);border:1px solid var(--s2);color:var(--tx);padding:9px;border-radius:8px;font-size:13px;margin-top:4px">
               <option value="">Seleccionar cliente...</option>
             </select>
           </div>
           <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px">
             <div>
-              <label style="font-size:11px;color:var(--mut);font-weight:600;text-transform:uppercase;letter-spacing:.4px">Fecha entrada</label>
+              <label style="font-size:11px;color:var(--mut);font-weight:600;text-transform:uppercase">Entrada</label>
               <input type="date" id="ef-entrada" style="width:100%;background:var(--bg);border:1px solid var(--s2);color:var(--tx);padding:9px;border-radius:8px;font-size:13px;margin-top:4px">
             </div>
             <div>
-              <label style="font-size:11px;color:var(--mut);font-weight:600;text-transform:uppercase;letter-spacing:.4px">Fecha salida</label>
+              <label style="font-size:11px;color:var(--mut);font-weight:600;text-transform:uppercase">Salida</label>
               <input type="date" id="ef-salida" style="width:100%;background:var(--bg);border:1px solid var(--s2);color:var(--tx);padding:9px;border-radius:8px;font-size:13px;margin-top:4px">
             </div>
           </div>
           <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:10px">
             <div>
-              <label style="font-size:11px;color:var(--mut);font-weight:600;text-transform:uppercase;letter-spacing:.4px">Habitaciones</label>
-              <input type="number" id="ef-hab" value="1" min="1" style="width:100%;background:var(--bg);border:1px solid var(--s2);color:var(--tx);padding:9px;border-radius:8px;font-size:13px;margin-top:4px">
+              <label style="font-size:11px;color:var(--mut);font-weight:600;text-transform:uppercase">Habitaciones</label>
+              <input type="number" id="ef-hab" value="1" min="1" style="width:100%;background:var(--bg);border:1px solid var(--s2);color:var(--tx);padding:9px;border-radius:8px;font-size:13px;margin-top:4px" oninput="calcularFactura()">
             </div>
             <div>
-              <label style="font-size:11px;color:var(--mut);font-weight:600;text-transform:uppercase;letter-spacing:.4px">€/noche</label>
-              <input type="number" id="ef-precio" value="186" min="0" step="0.01" style="width:100%;background:var(--bg);border:1px solid var(--s2);color:var(--tx);padding:9px;border-radius:8px;font-size:13px;margin-top:4px">
+              <label style="font-size:11px;color:var(--mut);font-weight:600;text-transform:uppercase">€/noche</label>
+              <input type="number" id="ef-precio" value="186" step="0.01" style="width:100%;background:var(--bg);border:1px solid var(--s2);color:var(--tx);padding:9px;border-radius:8px;font-size:13px;margin-top:4px" oninput="calcularFactura()">
             </div>
             <div>
-              <label style="font-size:11px;color:var(--mut);font-weight:600;text-transform:uppercase;letter-spacing:.4px">F&B extras</label>
-              <input type="number" id="ef-fb" value="0" min="0" step="0.01" style="width:100%;background:var(--bg);border:1px solid var(--s2);color:var(--tx);padding:9px;border-radius:8px;font-size:13px;margin-top:4px">
+              <label style="font-size:11px;color:var(--mut);font-weight:600;text-transform:uppercase">F&B</label>
+              <input type="number" id="ef-fb" value="0" step="0.01" style="width:100%;background:var(--bg);border:1px solid var(--s2);color:var(--tx);padding:9px;border-radius:8px;font-size:13px;margin-top:4px" oninput="calcularFactura()">
             </div>
           </div>
           <div style="background:var(--bg);border-radius:10px;padding:12px;font-size:13px">
-            <div style="display:flex;justify-content:space-between;color:var(--mut);margin-bottom:4px">
-              <span>Subtotal habitaciones:</span><span id="ef-sub-hab">—</span>
-            </div>
-            <div style="display:flex;justify-content:space-between;color:var(--mut);margin-bottom:4px">
-              <span>F&B:</span><span id="ef-sub-fb">—</span>
-            </div>
-            <div style="display:flex;justify-content:space-between;color:var(--mut);margin-bottom:6px">
-              <span>IVA (10%):</span><span id="ef-iva">—</span>
-            </div>
-            <div style="display:flex;justify-content:space-between;font-weight:800;font-size:16px;color:var(--tx);border-top:1px solid var(--s2);padding-top:8px">
-              <span>TOTAL:</span><span id="ef-total" style="color:var(--acc2)">—</span>
-            </div>
+            <div style="display:flex;justify-content:space-between;color:var(--mut);margin-bottom:3px"><span>Habitaciones:</span><span id="ef-sub-hab">—</span></div>
+            <div style="display:flex;justify-content:space-between;color:var(--mut);margin-bottom:3px"><span>F&B:</span><span id="ef-sub-fb">—</span></div>
+            <div style="display:flex;justify-content:space-between;color:var(--mut);margin-bottom:6px"><span>IVA 10%:</span><span id="ef-iva">—</span></div>
+            <div style="display:flex;justify-content:space-between;font-weight:800;font-size:16px;border-top:1px solid var(--s2);padding-top:8px"><span>TOTAL:</span><span id="ef-total" style="color:var(--acc2)">—</span></div>
           </div>
           <div id="ef-msg" style="font-size:12px;display:none"></div>
           <div style="display:flex;gap:10px">
             <button onclick="calcularFactura()" class="btn-ref" style="flex:1;font-size:13px">Calcular</button>
-            <button onclick="emitirFactura()" class="btn-run" style="flex:2;font-size:13px">📄 Emitir y guardar</button>
+            <button onclick="emitirFactura()" class="btn-run" style="flex:2;font-size:13px">📄 Emitir</button>
           </div>
         </div>
       </div>
     </div>
-    <!-- /Modal emitir factura -->
 
-    <!-- Alert: pending balance -->
-    <div id="ar-balance-alert" style="display:none;background:rgba(245,158,11,.08);border:1px solid rgba(245,158,11,.25);border-radius:12px;padding:14px 18px;font-size:13px;color:var(--ora);margin-top:12px">
-      <strong>💰 Saldo pendiente de cobro:</strong> <span id="ar-balance-txt">—</span>
-      — Contactar clientes para gestionar cobro.
-    </div>
     <div id="ar-real-status" style="display:none"></div>
   </div><!-- /panel-ar_real -->
 
-  <!-- PANEL MULTI-HOTEL -->
+
   <div id="panel-calipolis" class="panel">
   <!-- Header -->
   <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:22px;flex-wrap:wrap;gap:12px">
@@ -4779,212 +4814,160 @@ function procesarARReal() {
 
 async function cargarStatusARReal() { await cargarARRealData(); }
 
+async function loadARRealData() {
+  cargarARRealData();
+}
 async function cargarARRealData() {
   try {
-    // Skeleton while loading
-    const kpis = document.getElementById('ar-real-kpis');
-    if (kpis && !kpis.dataset.loaded) kpis.innerHTML = skelCards(4, 'grid-template-columns:repeat(4,1fr)');
-    const r = await fetch('/api/ar_real_data');
-    const d = await r.json();
-    if (d.error) return;
-    const k = d.kpis;
-    const fmt = v => '€' + Math.round(v).toLocaleString('es-ES');
+    // Load clients and invoices in parallel
+    const [rClientes, rFacturas] = await Promise.all([
+      fetch('/api/ar_real/clientes'),
+      fetch('/api/ar_real/facturas'),
+    ]);
+    const dc = await rClientes.json();
+    const df = await rFacturas.json();
 
-    // KPIs
-    const _s = (id, v) => { const el = document.getElementById(id); if (el) el.textContent = v; };
-    _s('arp-pend',     fmt(k.pendiente_facturar));
-    _s('arp-fact',     fmt(k.facturado));
-    _s('arp-cobr',     fmt(k.cobrado));
-    _s('arp-saldo',    fmt(k.saldo_total));
-    if (k.saldo_total > 0) { const al = document.getElementById('ar-balance-alert'); if (al) { al.style.display='block'; const bt = document.getElementById('ar-balance-txt'); if(bt) bt.textContent = fmt(k.saldo_total); } }
-    _s('arp-nclientes', k.num_clientes + ' clientes activos');
-    const diBtn = document.getElementById('btn-di-reminder');
-    if (diBtn && k.di_pendientes > 0) diBtn.style.display = 'inline-block';
-    const kpisEl = document.getElementById('ar-real-kpis'); if (kpisEl) kpisEl.dataset.loaded = '1';
+    // Render stats
+    if (df.ok && df.stats) {
+      const s = df.stats;
+      const fmt = v => '\u20AC' + (v||0).toLocaleString('es-ES',{minimumFractionDigits:2});
+      _setText('arp-pendiente', fmt(s.pendiente));
+      _setText('arp-vencido',   fmt(s.vencido));
+      _setText('arp-cobrado',   fmt(s.cobrado_mes));
+      _setText('arp-nclientes', dc.ok ? dc.clientes.length + ' activos' : '—');
 
-    // Clients table
-    const ctbody = document.getElementById('ar-clients-tbody');
-    if (ctbody) {
-      ctbody.innerHTML = d.clientes.map(c => {
-        const sc = c.status === 'critical' ? 'var(--red)' : c.status === 'warning' ? 'var(--ora)' : 'var(--grn)';
-        const dot = '<span style="display:inline-block;width:7px;height:7px;border-radius:50%;background:' + sc + '"></span>';
-        const pct = c.limite_credito > 0 ? Math.round(c.saldo_pendiente/c.limite_credito*100) : 0;
-        return '<tr>' +
-          '<td style="max-width:160px;overflow:hidden;text-overflow:ellipsis" title="' + c.nombre + '">' + c.nombre.split(' ').slice(0,3).join(' ') + '</td>' +
-          '<td style="text-align:right;font-weight:700;color:' + (c.saldo_pendiente>0?'var(--ora)':'var(--grn)') + '">€' + c.saldo_pendiente.toLocaleString('es-ES') + '</td>' +
-          '<td style="text-align:center;color:var(--mut)">' + c.dias_pago + 'd</td>' +
-          '<td style="text-align:center">' + dot + '</td>' +
-          '</tr>';
-      }).join('');
+      // Aging bar
+      const agingEl = document.getElementById('ar-aging-bar');
+      if (agingEl && s.aging) {
+        const total = Object.values(s.aging).reduce((a,b) => a+b, 0) || 1;
+        const colors = {'0-30 días':'var(--grn)','31-60 días':'var(--ora)','61-90 días':'var(--red)','>90 días (VENCIDA)':'#7f1d1d'};
+        agingEl.style.display = 'block';
+        agingEl.innerHTML = '<div style="font-size:10px;color:var(--mut);font-weight:600;text-transform:uppercase;letter-spacing:.4px;margin-bottom:6px">Antigüedad de saldo</div>' +
+          '<div style="display:flex;height:8px;border-radius:4px;overflow:hidden;gap:2px">' +
+          Object.entries(s.aging).filter(([k,v]) => v > 0).map(([k,v]) =>
+            '<div style="flex:' + v + ';background:' + (colors[k]||'var(--mut)') + ';border-radius:3px" title="' + k + ': \u20AC' + v.toLocaleString('es-ES',{minimumFractionDigits:0}) + '"></div>'
+          ).join('') + '</div>' +
+          '<div style="display:flex;gap:12px;margin-top:5px;flex-wrap:wrap">' +
+          Object.entries(s.aging).filter(([k,v]) => v > 0).map(([k,v]) =>
+            '<span style="font-size:10px;color:var(--dim)"><span style="display:inline-block;width:8px;height:8px;border-radius:2px;background:' + (colors[k]||'var(--mut)') + ';margin-right:3px"></span>' + k + '</span>'
+          ).join('') + '</div>';
+      }
     }
 
-    // Reservations table
-    const rtbody = document.getElementById('ar-reservas-tbody');
-    if (rtbody) {
-      rtbody.innerHTML = d.reservas.map(r => {
-        const badge = r.estado === 'PENDIENTE_FACTURA' ? '<span class="badge b-unk">Pend.</span>' :
-                      r.estado === 'FACTURADO'         ? '<span class="badge b-cok">Fact.</span>' :
-                                                          '<span class="badge b-ok">Cobr.</span>';
-        return '<tr>' +
-          '<td style="font-weight:600">' + r.numero + '</td>' +
-          '<td style="color:var(--mut);font-size:11px">' + r.fecha_entrada + '</td>' +
-          '<td style="text-align:right;font-weight:700">€' + r.total.toLocaleString('es-ES') + '</td>' +
-          '<td style="text-align:center">' + badge + '</td>' +
-          '</tr>';
-      }).join('');
+    // Render client cards
+    if (dc.ok && dc.clientes.length) {
+      const listEl = document.getElementById('ar-clientes-list');
+      if (listEl) {
+        listEl.innerHTML = dc.clientes.map(c => {
+          const uso = c.uso_credito_pct || 0;
+          const usoPct = Math.min(100, uso);
+          const usoColor = uso >= 90 ? 'var(--red)' : uso >= 70 ? 'var(--ora)' : 'var(--grn)';
+          return '<div class="card" style="padding:12px;cursor:pointer;transition:.15s" ' +
+            'onclick="filtrarClienteAR(\'' + c.nombre.replace(/'/g,"\\'") + '\')" ' +
+            'onmouseover="this.style.borderColor=\'var(--acc)\'" onmouseout="this.style.borderColor=\'\'"><div style="display:flex;justify-content:space-between;align-items:flex-start">' +
+            '<div style="flex:1;min-width:0"><div style="font-weight:600;font-size:13px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">' + c.nombre.split(' ').slice(0,3).join(' ') + '</div>' +
+            '<div style="font-size:10px;color:var(--dim);margin-top:2px">' + c.dias_pago + 'd pago · ' + c.facturas_pendientes + ' fact.</div></div>' +
+            '<div style="text-align:right;flex-shrink:0;margin-left:8px">' +
+            '<div style="font-size:13px;font-weight:700;color:' + usoColor + '">\u20AC' + (c.saldo_pendiente||0).toLocaleString('es-ES',{minimumFractionDigits:0}) + '</div>' +
+            (c.tiene_vencidas ? '<div style="font-size:10px;color:var(--red)">⚠ Vencida</div>' : '') +
+            '</div></div>' +
+            '<div style="background:var(--s2);border-radius:3px;height:4px;margin-top:8px;overflow:hidden"><div style="height:100%;border-radius:3px;background:' + usoColor + ';width:' + usoPct + '%"></div></div>' +
+            '<div style="font-size:9px;color:var(--dim);margin-top:2px">' + uso + '% crédito usado (límite \u20AC' + (c.limite_credito||0).toLocaleString('es-ES') + ')</div>' +
+            '</div>';
+        }).join('');
+      }
     }
-  } catch(e) { console.warn('AR Real data:', e); }
-}
 
-
-
-// ═══════════════════════════════════════════════════════════════════
-// MULTI-HOTEL DASHBOARD
-// ═══════════════════════════════════════════════════════════════════
-var _mh_loaded = false;
-
-async function loadMultiHotel() {
-  const grupoSelect = document.getElementById('grupo-filter');
-  const grupo = grupoSelect ? grupoSelect.value : '';
-  const mhk = document.getElementById('mh-kpis');
-  if (mhk && !mhk.dataset.loaded) mhk.innerHTML = skelCards(8, 'grid-template-columns:repeat(4,1fr)');
-  try {
-    const overviewRes = await fetch('/api/multi_hotel/overview' + (grupo ? '?grupo=' + encodeURIComponent(grupo) : ''));
-    const overview = await overviewRes.json();
-    if (!_mh_loaded && grupoSelect) {
-      overview.grupos.forEach(g => {
-        const opt = document.createElement('option');
-        opt.value = g;
-        opt.textContent = g;
-        grupoSelect.appendChild(opt);
-      });
-      _mh_loaded = true;
+    // Render invoice table
+    if (df.ok) {
+      _renderFacturasAR(df.facturas || [], df.stats);
     }
-    renderMHKpis(overview.kpis);
-    renderMHStatus(overview.kpis);
-    renderMHTable(overview.hoteles);
-    const rankingsRes = await fetch('/api/multi_hotel/rankings' + (grupo ? '?grupo=' + encodeURIComponent(grupo) : ''));
-    const rankings = await rankingsRes.json();
-    renderMHRankings(rankings.top_revenue);
-    const alertasRes = await fetch('/api/multi_hotel/alertas' + (grupo ? '?grupo=' + encodeURIComponent(grupo) : ''));
-    const alertas = await alertasRes.json();
-    renderMHAlertas(alertas.lista);
+
+    if (_i18nLang && _i18nLang !== 'es') applyI18n(_i18nData);
   } catch(e) {
-    console.error('Error Multi-Hotel:', e);
-    const mhEl = document.getElementById('mh-kpis');
-    if (mhEl) mhEl.innerHTML = '<div style="color:var(--red);font-size:12px;padding:10px">⚠ Error: ' + (e.message||e) + '</div>';
+    console.error('Error AR Real:', e);
+    showNotification('✗ Error cargando AR Real: ' + e.message, 'error');
   }
 }
 
-function renderMHKpis(kpis) {
-  const cont = document.getElementById('mh-kpis');
-  if (!cont || !kpis) return;
-  const totalRev = kpis.total_revenue || 0;
-  const avgGop   = kpis.avg_gop_pct  || 0;
-  const totalHab = kpis.total_hab     || 0;
-  const nHotels  = kpis.n_hoteles     || 0;
-  const gopColor = avgGop >= 22 ? 'var(--grn)' : avgGop >= 16 ? 'var(--ora)' : 'var(--red)';
-  const revK     = Math.round(totalRev / 1000);
-
-  const cards = [
-    {label:'Revenue Grupo',       val:'€'+revK+'K',      sub:nHotels+' propiedades',             color:'var(--acc2)',  tip:'Revenue total del grupo este mes'},
-    {label:'GOP% Medio',           val:avgGop+'%',        sub:'Media ponderada',                  color:gopColor,      tip:'Gross Operating Profit % medio. Objetivo: >22% en 4★'},
-    {label:'Habitaciones totales', val:totalHab,           sub:'Capacidad instalada',             color:'var(--tx)',   tip:'Total de habitaciones del grupo'},
-    {label:'RevPAR medio',         val:'€'+(kpis.avg_revpar||0), sub:'Revenue por habitación', color:'var(--pur)', tip:'Revenue Per Available Room consolidado'},
-  ];
-  cont.innerHTML = '<div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:12px">' +
-    cards.map(c =>
-      '<div class="sc" data-tip="'+(c.tip||'')+'">' +
-        '<div class="sc-lbl">'+c.label+'</div>' +
-        '<div class="sc-val" style="color:'+c.color+'">'+c.val+'</div>' +
-        '<div class="sc-sub">'+c.sub+'</div>' +
-      '</div>'
-    ).join('') + '</div>';
+function _setText(id, val) {
+  const el = document.getElementById(id);
+  if (el) el.textContent = val;
 }
 
-function renderMHStatus(kpis) {
-  const cont = document.getElementById('mh-status');
-  if (!cont) return;
-  const _st = (n, col, icon, lbl, bg) =>
-    '<div style="background:' + bg + ';border:1px solid ' + col + '55;border-radius:13px;padding:18px 16px;' +
-    'display:flex;align-items:center;gap:14px;border-left:3px solid ' + col + '">' +
-    '<div style="width:36px;height:36px;border-radius:9px;background:' + col + '22;' +
-    'display:flex;align-items:center;justify-content:center;font-size:15px;font-weight:900;color:' + col + ';flex-shrink:0">' + icon + '</div>' +
-    '<div><div style="font-size:30px;font-weight:800;color:' + col + ';line-height:1;letter-spacing:-1.5px">' + n + '</div>' +
-    '<div style="font-size:11px;color:var(--mut);margin-top:5px;text-transform:uppercase;letter-spacing:.5px">' + lbl + '</div></div></div>';
-  cont.innerHTML =
-    _st(kpis.hoteles_ok,       '#22c55e', '✓', 'Hoteles OK',  'var(--s1)') +
-    _st(kpis.hoteles_warning,  '#f97316', '!', 'Con alertas', 'var(--s1)') +
-    _st(kpis.hoteles_criticos, '#ef4444', '✕', 'Críticos',    'var(--s1)');
-}
-
-function renderMHTable(hoteles) {
-  const tbody = document.getElementById('mh-tbody');
+var _arAllFacturas = [];
+function _renderFacturasAR(facturas, stats) {
+  _arAllFacturas = facturas;
+  const tbody = document.getElementById('ar-facturas-tbody');
+  const countEl = document.getElementById('ar-facturas-count');
   if (!tbody) return;
-  if (!hoteles || !hoteles.length) {
-    tbody.innerHTML = '<tr><td colspan="10" style="text-align:center;padding:24px;color:var(--dim)">Sin datos de hoteles</td></tr>';
+  if (countEl) countEl.textContent = '(' + facturas.length + ')';
+
+  const estado_filter = (document.getElementById('ar-filter-estado') || {}).value || '';
+  const display = estado_filter ? facturas.filter(f => f.estado === estado_filter) : facturas;
+
+  if (!display.length) {
+    tbody.innerHTML = '<tr><td colspan="4" class="empty" style="padding:20px;text-align:center;color:var(--dim)">Sin facturas</td></tr>';
     return;
   }
-  tbody.innerHTML = hoteles.map(h => {
-    const gopColor = h.gop_pct >= 22 ? 'var(--grn)' : h.gop_pct >= 16 ? 'var(--ora)' : 'var(--red)';
-    const occColor = h.ocupacion_pct >= 80 ? 'var(--grn)' : h.ocupacion_pct >= 65 ? 'var(--ora)' : 'var(--red)';
-    const statusBadge = h.status === 'ok' ? '<span class="badge b-ok">OK</span>' :
-                        h.status === 'warning' ? '<span class="badge b-unk">Aviso</span>' :
-                        '<span class="badge b-disc">Crítico</span>';
-    const revMTD = h.revenue_mtd >= 1000000
-      ? '€' + (h.revenue_mtd/1000000).toFixed(2) + 'M'
-      : '€' + Math.round(h.revenue_mtd/1000) + 'K';
-    return '<tr style="border-bottom:1px solid var(--s2)">' +
-      '<td style="padding:10px;font-weight:600">' + h.nombre + '</td>' +
-      '<td style="padding:10px;color:var(--mut)">' + (h.ciudad||'—') + '</td>' +
-      '<td style="padding:10px;text-align:right">' + h.habitaciones + '</td>' +
-      '<td style="padding:10px;text-align:right;color:' + occColor + ';font-weight:700">' + h.ocupacion_pct + '%</td>' +
-      '<td style="padding:10px;text-align:right">€' + h.adr + '</td>' +
-      '<td style="padding:10px;text-align:right">€' + h.revpar + '</td>' +
-      '<td style="padding:10px;text-align:right;font-weight:600">' + revMTD + '</td>' +
-      '<td style="padding:10px;text-align:right;font-weight:800;color:' + gopColor + '">' + h.gop_pct + '%</td>' +
-      '<td style="padding:10px;text-align:right;color:' + (h.facturas_pendientes > 10 ? 'var(--ora)' : 'var(--mut)') + '">' + (h.facturas_pendientes||0) + '</td>' +
-      '<td style="padding:10px;text-align:center">' + statusBadge + '</td>' +
-      '</tr>';
+
+  tbody.innerHTML = display.map(f => {
+    const isVenc = f.days_pending > 60;
+    const isOk   = f.estado === 'COBRADO';
+    const rowColor = isVenc ? 'rgba(239,68,68,.04)' : '';
+    const stateColor = isVenc ? 'var(--red)' : isOk ? 'var(--grn)' : f.estado === 'FACTURADO' ? 'var(--ora)' : 'var(--mut)';
+    const stateLabel = {'FACTURADO':'Emitida','COBRADO':'Cobrada','PENDIENTE_FACTURA':'Pendiente'}[f.estado] || f.estado;
+
+    return '<tr style="border-bottom:1px solid var(--s2);background:' + rowColor + '">' +
+      '<td style="padding:8px"><div style="font-weight:600;font-size:12px;cursor:pointer;color:var(--acc2)" onclick="copyToClip(\'' + f.numero + '\')">' + f.numero + '</div>' +
+        '<div style="font-size:11px;color:var(--mut);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:140px">' + f.cliente.split(' ').slice(0,2).join(' ') + '</div>' +
+        (f.aging_bucket && f.aging_bucket !== 'N/A' ? '<div style="font-size:10px;color:' + (f.days_pending > 60 ? 'var(--red)' : 'var(--dim)') + '">' + f.aging_bucket + '</div>' : '') +
+      '</td>' +
+      '<td style="text-align:right;padding:8px;font-weight:700">\u20AC' + (f.total||0).toLocaleString('es-ES',{minimumFractionDigits:2}) + '</td>' +
+      '<td style="padding:8px"><span style="background:' + stateColor + '20;color:' + stateColor + ';padding:2px 8px;border-radius:6px;font-size:10px;font-weight:700">' + stateLabel + '</span></td>' +
+      '<td style="padding:8px;white-space:nowrap">' +
+        (f.estado === 'FACTURADO' ? '<button onclick="cobrarFacturaAR(\'' + f.numero + '\')" class="btn bsm" style="font-size:10px;margin-right:4px;background:rgba(34,197,94,.1);color:var(--grn);border-color:rgba(34,197,94,.3)" title="Marcar como cobrada">💰</button>' : '') +
+        (f.estado === 'FACTURADO' ? '<button onclick="recordatorioAR(\'' + f.numero + '\')" class="btn bsm" style="font-size:10px;background:rgba(245,158,11,.1);color:var(--ora);border-color:rgba(245,158,11,.3)" title="Enviar recordatorio email">📧</button>' : '') +
+      '</td>' +
+    '</tr>';
   }).join('');
 }
 
-function renderMHRankings(top) {
-  const cont = document.getElementById('mh-rankings');
-  if (!cont) return;
-  if (!top || !top.length) { cont.innerHTML = '<div class="empty"><p>Sin datos</p></div>'; return; }
-  const maxRev = Math.max(...top.map(h => h.revenue_mtd || 0));
-  const maxGop = Math.max(...top.map(h => h.gop_pct || 0));
-  cont.innerHTML = '<div style="font-size:11px;color:var(--mut);font-weight:600;text-transform:uppercase;letter-spacing:.4px;margin-bottom:12px">GOP% comparativo</div>' +
-    top.map(h => {
-      const barW = maxGop > 0 ? Math.round((h.gop_pct / maxGop) * 100) : 0;
-      const col   = h.gop_pct >= 22 ? 'var(--grn)' : h.gop_pct >= 16 ? 'var(--ora)' : 'var(--red)';
-      const revK  = Math.round((h.revenue_mtd || 0) / 1000);
-      return '<div style="margin-bottom:14px">' +
-        '<div style="display:flex;justify-content:space-between;font-size:12px;margin-bottom:4px">' +
-          '<span style="font-weight:600">' + h.nombre + '</span>' +
-          '<span style="color:' + col + ';font-weight:800">' + h.gop_pct + '% &nbsp;<span style="color:var(--dim);font-weight:400">€' + revK + 'K</span></span>' +
-        '</div>' +
-        '<div style="background:var(--s2);border-radius:4px;height:8px;overflow:hidden">' +
-          '<div style="height:100%;border-radius:4px;background:' + col + ';width:' + barW + '%;transition:width .6s ease"></div>' +
-        '</div></div>';
-    }).join('');
+function filtrarClienteAR(nombre) {
+  // Filter invoices by client
+  const sel = document.getElementById('ar-filter-estado');
+  if (sel) sel.value = '';
+  const filtered = _arAllFacturas.filter(f => f.cliente === nombre);
+  _renderFacturasAR(filtered, null);
+  showNotification(nombre.split(' ').slice(0,2).join(' ') + ' — ' + filtered.length + ' facturas', 'info');
 }
 
-function renderMHAlertas(alertas) {
-  const cont = document.getElementById('mh-alertas');
-  if (!cont) return;
-  if (alertas.length === 0) {
-    cont.innerHTML = '<div style="color:#1db954;text-align:center;padding:20px">Sin alertas activas</div>';
-    return;
-  }
-  cont.innerHTML = alertas.map(a => {
-    const color = a.severity === 'critical' ? '#e05252' : '#ff9800';
-    return '<div style="padding:10px 12px;border-left:3px solid ' + color + ';background:rgba(255,255,255,0.02);border-radius:4px;margin-bottom:8px">' +
-      '<div style="font-size:13px;color:#cdd6f4">' + a.alerta + '</div>' +
-      '<div style="font-size:11px;color:#8892a4;margin-top:4px">' + a.hotel + ' &bull; ' + a.ciudad + '</div></div>';
-  }).join('');
+function filtrarFacturasAR(estado) {
+  _renderFacturasAR(_arAllFacturas, null);
 }
+
+async function cobrarFacturaAR(numero) {
+  if (!confirm('¿Marcar factura ' + numero + ' como COBRADA?')) return;
+  try {
+    const r = await fetch('/api/ar_real/cobrar', {method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({numero})});
+    const d = await r.json();
+    if (d.ok) { showNotification('✓ ' + d.message, 'success'); cargarARRealData(); }
+    else showNotification('✗ ' + (d.error||'Error'), 'error');
+  } catch(e) { showNotification('✗ Error de conexión', 'error'); }
+}
+
+async function recordatorioAR(numero) {
+  try {
+    const r = await fetch('/api/ar_real/recordatorio', {method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({numero})});
+    const d = await r.json();
+    showNotification(d.ok ? '✓ ' + d.message : '✗ ' + (d.error||'Error'), d.ok ? 'success' : 'error');
+  } catch(e) { showNotification('✗ Error de conexión', 'error'); }
+}
+
+async function procesarARReal() {
+  cargarARRealData();
+}
+
 
 async function openHotelDetail(hotelId) {
   try {

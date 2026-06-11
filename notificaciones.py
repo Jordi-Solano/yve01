@@ -235,7 +235,7 @@ def enviar_por_canales(asunto, html, texto, tipo="general"):
         res["whatsapp"] = enviar_whatsapp(cfg["whatsapp"], texto, asunto, tipo)
     return res
 
-def _email_html(titulo, items, color="#3b82f6"):
+def _email_html(titulo, items, color="#3b82f6", footer_note=None):
     """Genera HTML profesional para un email de alerta Yve.01."""
     from datetime import datetime
     date_str = datetime.now().strftime("%d/%m/%Y %H:%M")

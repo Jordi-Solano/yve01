@@ -7,7 +7,7 @@ LANDING_HTML = r"""<!DOCTYPE html>
 <html lang="es">
 <head>
 <meta charset="UTF-8">
-<meta name="viewport" content="width=device-width,initial-scale=1">
+<meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=5,viewport-fit=cover">
 <meta name="description" content="Yve — Sistema operativo AI-first para hoteles. Automatiza AP, AR, DRR y conciliación bancaria. Para hoteles independientes y grupos hoteleros en Europa.">
 <meta property="og:type" content="website">
 <meta property="og:url" content="https://yve01.onrender.com/">
