@@ -115,6 +115,12 @@ def conciliar(extracto, facturas, tolerancia_dias=3, tolerancia_importe=0.02):
         mejor_match = None
         mejor_diff = float("inf")
 
+        # Fuzzy proveedor name matching helper
+        def _nombre_match(concepto, proveedor):
+            c = str(concepto).upper()
+            p = str(proveedor).upper().split()[:2]
+            return any(word in c for word in p if len(word) > 3)
+
         for i, fac in enumerate(facturas):
             if i in usadas:
                 continue

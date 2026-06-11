@@ -2088,7 +2088,7 @@ button, a { touch-action: manipulation; }
     </div>
 
     <!-- KPI Metrics -->
-    <div class="drr-metrics" id="drr-metrics" style="display:grid;grid-template-columns:repeat(auto-fit,minmax(180px,1fr));gap:12px;margin-bottom:12px">
+    <div class="drr-metrics" id="drr-metrics" style="display:grid;grid-template-columns:repeat(auto-fit,minmax(140px,1fr));gap:10px;margin-bottom:12px">
       <div class="empty"><div class="ei">📊</div><p>Sube un archivo DRR para ver las métricas.</p></div>
     </div>
     <div id="drr-budget-bar" style="display:none;background:rgba(15,23,42,.5);border-radius:10px;padding:10px 14px;margin-bottom:16px;border:1px solid var(--s2)"></div>
@@ -2478,6 +2478,7 @@ button, a { touch-action: manipulation; }
 <script>
 // ── Globals ─────────────────────────────────────────────────────────────
 const CHANGELOG_VER = '2026-06';
+const IS_MOBILE = window.innerWidth <= 768;
 var otaChart = null;
 
 // ── Formato ─────────────────────────────────────────────────────────────
@@ -5439,6 +5440,37 @@ function showSetupChecklist() {
 </script>
 
 <!-- Floating Action Button - Ask Yve AI -->
+
+<!-- Mobile bottom nav -->
+<div id="mobile-bottom-nav" style="display:none;position:fixed;bottom:0;left:0;right:0;background:var(--s1);border-top:1px solid var(--s2);z-index:600;padding:6px 0 env(safe-area-inset-bottom,0)">
+  <div style="display:flex;justify-content:space-around;max-width:500px;margin:0 auto">
+    <button onclick="switchTab('ar_otas',document.getElementById('tab-ar_otas'))" style="background:none;border:none;color:var(--mut);padding:6px 12px;cursor:pointer;flex:1;text-align:center;font-size:10px">
+      <div style="font-size:18px">💳</div><div>AR</div>
+    </button>
+    <button onclick="switchTab('ap',document.getElementById('tab-ap'))" style="background:none;border:none;color:var(--mut);padding:6px 12px;cursor:pointer;flex:1;text-align:center;font-size:10px">
+      <div style="font-size:18px">📦</div><div>AP</div>
+    </button>
+    <button onclick="switchTab('drr',document.getElementById('tab-drr'))" style="background:none;border:none;color:var(--mut);padding:6px 12px;cursor:pointer;flex:1;text-align:center;font-size:10px">
+      <div style="font-size:18px">📊</div><div>DRR</div>
+    </button>
+    <button onclick="switchTab('calipolis',document.getElementById('tab-calipolis'))" style="background:none;border:none;color:var(--mut);padding:6px 12px;cursor:pointer;flex:1;text-align:center;font-size:10px">
+      <div style="font-size:18px">🏨</div><div>Grupo</div>
+    </button>
+    <button onclick="toggleChat()" style="background:none;border:none;color:var(--mut);padding:6px 12px;cursor:pointer;flex:1;text-align:center;font-size:10px">
+      <div style="font-size:18px">💬</div><div>Yve</div>
+    </button>
+  </div>
+</div>
+<script>
+// Show mobile nav on small screens
+if (window.innerWidth <= 768) {
+  var mbn = document.getElementById('mobile-bottom-nav');
+  if (mbn) mbn.style.display = 'block';
+  // Add padding to main content to avoid overlap
+  var mainContent = document.querySelector('.tabs');
+  document.body.style.paddingBottom = '60px';
+}
+</script>
 
 <button id="back-top" onclick="window.scrollTo({top:0,behavior:'smooth'})" 
   style="display:none;position:fixed;bottom:88px;right:20px;background:var(--s1);border:1px solid var(--s2);color:var(--mut);width:36px;height:36px;border-radius:50%;font-size:16px;cursor:pointer;z-index:500;transition:.2s;box-shadow:0 2px 8px rgba(0,0,0,.3)"
