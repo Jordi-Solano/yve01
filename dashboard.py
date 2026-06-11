@@ -1887,6 +1887,7 @@ button, a { touch-action: manipulation; }
         <a href="/api/reportes/semanal" class="menu-item">📊 Semanal</a>
         <a href="/api/reportes/mensual" class="menu-item">📈 Mensual</a>
         <div class="menu-sep"></div>
+        <button class="menu-item" onclick="startTour()">🎯 Tour guiado</button>
         <button class="menu-item" onclick="showSetupChecklist()">✅ Checklist setup</button>
         <button class="menu-item" onclick="showChangelog()">🆕 Novedades</button>
         <button class="menu-item" onclick="toggleLightMode()" id="btn-theme">🌙 Modo oscuro</button>
@@ -3440,6 +3441,16 @@ if (!localStorage.getItem('kbd_shown')) {
     if (btn) btn.style.display = 'block';
   }, 5000);
 }
+// Show tour offer on first login
+if (!localStorage.getItem('tour_done') && !localStorage.getItem('tour_skipped')) {
+  setTimeout(() => {
+    if (confirm('¡Bienvenido a Yve.01! ¿Quieres un tour rápido de 2 minutos para conocer el sistema?')) {
+      startTour();
+    } else {
+      localStorage.setItem('tour_skipped', '1');
+    }
+  }, 2000);
+}
 
 // ── Global error capture ─────────────────────────────────────────────────
 window.onerror = function(msg, src, line, col, err) {
@@ -3498,6 +3509,90 @@ function showNotification(msg, type = 'info') {
     toast.style.opacity   = '0';
     toast.style.transform = 'translateX(-50%) translateY(20px)';
   }, type === 'error' ? 5000 : 3000);
+}
+
+// ── Guided tour ─────────────────────────────────────────────────────────
+var _tourActive = false, _tourStep = 0;
+var _tourSteps = [
+  {el:'#tab-ar_otas',    title:'💳 AR — OTAs',           text:'Verifica automáticamente las comisiones de Booking y Expedia. Detecta discrepancias y certificados DI pendientes.'},
+  {el:'#sc-procesadas',  title:'Estadísticas en tiempo real', text:'KPIs actualizados en cada ciclo de procesamiento. Haz clic en las tarjetas para ver más detalle.'},
+  {el:'#tab-ap',         title:'📦 AP — Proveedores',    text:'3-way matching automático: cruza cada factura con su PO y albarán. Aprueba en lote con un clic.'},
+  {el:'#tab-drr',        title:'📊 Daily Revenue Report', text:'Sube tu DRR (.xlsm) arrastrándolo aquí. Yve detecta Out of Balance automáticamente y alerta al instante.'},
+  {el:'#tab-ar_real',    title:'🏢 AR Real',              text:'Gestión completa de clientes corporativos: factura, controla antigüedad y envía recordatorios de cobro.'},
+  {el:'#tab-calipolis',  title:'🏨 Dashboard Grupo',      text:'Vista consolidada de las 3 propiedades Calipolis con GOP%, occupancy y tendencias 6 meses.'},
+];
+
+function startTour() {
+  _tourActive = true; _tourStep = 0;
+  document.getElementById('main-menu').classList.remove('open');
+  _showTourStep();
+}
+
+function _showTourStep() {
+  var overlay = document.getElementById('tour-overlay');
+  if (!overlay) {
+    overlay = document.createElement('div');
+    overlay.id = 'tour-overlay';
+    overlay.innerHTML = '<div id="tour-box" style="position:fixed;background:var(--s1);border:1px solid var(--acc);border-radius:14px;padding:20px;max-width:320px;z-index:9999;box-shadow:0 8px 32px rgba(0,0,0,.5)">' +
+      '<div id="tour-title" style="font-weight:700;font-size:14px;margin-bottom:8px;color:var(--acc2)"></div>' +
+      '<div id="tour-text" style="font-size:13px;color:var(--mut);line-height:1.6;margin-bottom:16px"></div>' +
+      '<div style="display:flex;justify-content:space-between;align-items:center">' +
+        '<span id="tour-counter" style="font-size:11px;color:var(--dim)"></span>' +
+        '<div style="display:flex;gap:8px">' +
+          '<button onclick="endTour()" style="background:none;border:1px solid var(--s3);color:var(--mut);padding:6px 12px;border-radius:8px;font-size:12px;cursor:pointer">Saltar</button>' +
+          '<button onclick="nextTourStep()" id="tour-next-btn" style="background:var(--acc);border:none;color:#fff;padding:6px 14px;border-radius:8px;font-size:12px;font-weight:600;cursor:pointer">Siguiente →</button>' +
+        '</div>' +
+      '</div>' +
+    '</div>';
+    document.body.appendChild(overlay);
+  }
+  if (_tourStep >= _tourSteps.length) { endTour(); return; }
+  var step = _tourSteps[_tourStep];
+  document.getElementById('tour-title').textContent = step.title;
+  document.getElementById('tour-text').textContent  = step.text;
+  document.getElementById('tour-counter').textContent = (_tourStep+1) + ' de ' + _tourSteps.length;
+  var nextBtn = document.getElementById('tour-next-btn');
+  if (nextBtn) nextBtn.textContent = _tourStep === _tourSteps.length-1 ? '✓ Finalizar' : 'Siguiente →';
+  overlay.style.display = 'block';
+  // Position tooltip near target element
+  var target = document.querySelector(step.el);
+  var box = document.getElementById('tour-box');
+  if (target && box) {
+    target.style.outline = '2px solid var(--acc)';
+    target.style.outlineOffset = '3px';
+    var rect = target.getBoundingClientRect();
+    var top = rect.bottom + 12;
+    var left = Math.min(rect.left, window.innerWidth - 340);
+    if (top + 200 > window.innerHeight) top = rect.top - 200;
+    box.style.top = Math.max(10, top) + 'px';
+    box.style.left = Math.max(10, left) + 'px';
+    target.scrollIntoView({behavior:'smooth', block:'nearest'});
+  }
+  // Clear previous outlines
+  document.querySelectorAll('[style*="outline"]').forEach(function(el) {
+    if (el !== target) { el.style.outline = ''; el.style.outlineOffset = ''; }
+  });
+}
+
+function nextTourStep() {
+  // Clear current highlight
+  var step = _tourSteps[_tourStep];
+  var target = document.querySelector(step.el);
+  if (target) { target.style.outline = ''; target.style.outlineOffset = ''; }
+  _tourStep++;
+  if (_tourStep >= _tourSteps.length) endTour();
+  else _showTourStep();
+}
+
+function endTour() {
+  _tourActive = false;
+  var overlay = document.getElementById('tour-overlay');
+  if (overlay) overlay.style.display = 'none';
+  document.querySelectorAll('[style*="outline: 2px"]').forEach(function(el) {
+    el.style.outline = ''; el.style.outlineOffset = '';
+  });
+  localStorage.setItem('tour_done', '1');
+  showNotification('✓ Tour completado — ¡Ya conoces Yve.01!', 'success');
 }
 
 // ── Copy to clipboard utility ────────────────────────────────────────────
