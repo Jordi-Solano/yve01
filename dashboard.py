@@ -462,6 +462,22 @@ def api_test_oracle():
     except Exception as e:
         return jsonify({"ok": False, "error": str(e)[:200]})
 
+@app.route("/api/test_telegram", methods=["POST"])
+@login_required
+def api_test_telegram():
+    """Test Telegram Bot connection."""
+    import os as _os
+    token = _os.environ.get("TELEGRAM_BOT_TOKEN", "")
+    chat_id = _os.environ.get("TELEGRAM_CHAT_ID", "")
+    if not token or not chat_id:
+        return jsonify({"ok": False, "message": "TELEGRAM_BOT_TOKEN o TELEGRAM_CHAT_ID no configurados en Render"})
+    try:
+        from notificaciones import enviar_telegram
+        ok = enviar_telegram("✅ Test de conexión desde Yve.01 — funcionando correctamente")
+        return jsonify({"ok": ok, "message": "✓ Telegram Bot conectado y mensaje enviado" if ok else "✗ Error enviando mensaje"})
+    except Exception as e:
+        return jsonify({"ok": False, "error": str(e)[:200]})
+
 @app.route("/api/test_stripe", methods=["POST"])
 @login_required
 def api_test_stripe():
@@ -2090,7 +2106,7 @@ button, a { touch-action: manipulation; }
   <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:18px;flex-wrap:wrap;gap:12px">
       <div class="drr-upload">
         <label for="drr-file-input" class="btn-run" style="cursor:pointer;font-size:13px" data-i18n="btn.uploadDrr">📂 Subir DRR (.xlsm)</label>
-        <input type="file" id="drr-file-input" accept=".xlsm" style="display:none" onchange="uploadDRR(this)">
+        <input type="file" id="drr-file-input" accept=".xlsm,.xlsx" style="display:none" onchange="uploadDRR(this)">
         <span class="drr-status" id="drr-status" style="font-size:12px;color:var(--mut);margin-left:10px">Sin archivo cargado</span>
       </div>
       <div style="display:flex;gap:8px">
@@ -2102,7 +2118,16 @@ button, a { touch-action: manipulation; }
 
     <!-- KPI Metrics -->
     <div class="drr-metrics" id="drr-metrics" style="display:grid;grid-template-columns:repeat(auto-fit,minmax(140px,1fr));gap:10px;margin-bottom:12px">
-      <div class="empty"><div class="ei">📊</div><p>Sube un archivo DRR para ver las métricas.</p></div>
+      <div class="empty" id="drr-drop-zone" 
+    style="border:2px dashed var(--s3);border-radius:12px;padding:32px;cursor:pointer;transition:.2s"
+    ondragover="event.preventDefault();this.style.borderColor='var(--acc)';this.style.background='rgba(59,130,246,.05)'"
+    ondragleave="this.style.borderColor='var(--s3)';this.style.background=''"
+    ondrop="event.preventDefault();this.style.borderColor='var(--s3)';this.style.background='';uploadDRR({files:event.dataTransfer.files})"
+    onclick="document.getElementById('drr-file-input').click()">
+  <div class="ei">📊</div>
+  <p style="margin-bottom:6px">Arrastra tu DRR aquí o</p>
+  <p style="font-size:12px;color:var(--acc2);font-weight:600">haz clic para seleccionar (.xlsm/.xlsx)</p>
+</div>
     </div>
     <div id="drr-budget-bar" style="display:none;background:rgba(15,23,42,.5);border-radius:10px;padding:10px 14px;margin-bottom:16px;border:1px solid var(--s2)"></div>
 
@@ -2223,12 +2248,13 @@ button, a { touch-action: manipulation; }
       <div style="display:flex;gap:8px;flex-wrap:wrap">
         <button class="btn-ref" onclick="abrirEmitirFactura()" style="font-size:12px">📄 Nueva factura</button>
         <button class="btn-ref" onclick="loadARRealData()" style="font-size:12px">🔄 Actualizar</button>
+        <a href="/api/exportar/ar_real" class="btn-ref" style="text-decoration:none;font-size:12px">⬇️ Excel</a>
         <a href="/aprobaciones-ar/" class="btn-run" style="text-decoration:none;font-size:12px;padding:8px 14px" data-i18n="btn.aprobarAR">📲 Aprobar AR</a>
       </div>
     </div>
 
     <!-- Stats KPIs -->
-    <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(140px,1fr));gap:12px;margin-bottom:20px" id="ar-real-stats">
+    <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(120px,1fr));gap:10px;margin-bottom:16px" id="ar-real-stats">
       <div class="sc hl c-ora"><div class="sc-lbl" data-tip="Facturas emitidas aún no cobradas">PENDIENTE COBRO</div><div class="sc-val" id="arp-pendiente">—</div></div>
       <div class="sc c-red"><div class="sc-lbl" data-tip="Facturas con más de 60 días sin cobrar">VENCIDO >60d</div><div class="sc-val" id="arp-vencido">—</div></div>
       <div class="sc c-grn"><div class="sc-lbl" data-tip="Cobrado este mes">COBRADO MES</div><div class="sc-val" id="arp-cobrado">—</div></div>
@@ -2531,6 +2557,30 @@ function bApro(a) {
 }
 
 // ── Carga datos ──────────────────────────────────────────────────────────
+function generateBriefing(stats) {
+  // Build a "morning briefing" summary message
+  var issues = [];
+  var good = [];
+  if (stats.discrepancias > 0)  issues.push(stats.discrepancias + ' discrepancia(s) AR por resolver');
+  if (stats.di_pendientes > 0)  issues.push(stats.di_pendientes + ' cert. DI pendiente(s)');
+  if (stats.pendientes_firma > 0) issues.push(stats.pendientes_firma + ' factura(s) esperando firma');
+  if (stats.rechazadas > 0)    issues.push(stats.rechazadas + ' factura(s) rechazada(s)');
+  if (stats.correctas > 0)     good.push(stats.correctas + ' facturas AR correctas');
+  if (stats.total > 0 && issues.length === 0) {
+    good.push('Ciclo AR limpio — ' + stats.total + ' facturas sin problemas');
+  }
+  var statusBar = document.getElementById('status-txt');
+  if (statusBar) {
+    if (issues.length > 0) {
+      statusBar.style.color = 'var(--ora)';
+      statusBar.textContent = '⚠ ' + issues[0] + (issues.length > 1 ? ' (+' + (issues.length-1) + ' más)' : '');
+    } else if (good.length > 0) {
+      statusBar.style.color = 'var(--grn)';
+      statusBar.textContent = '✓ ' + good[0];
+    }
+  }
+}
+
 async function loadAll() {
   const topBar = document.getElementById('top-bar');
   if (topBar) { topBar.style.width = '30%'; topBar.style.opacity = '1'; }
@@ -3674,6 +3724,14 @@ function switchTab(tab, el) {
   el.classList.add('active');
   var panel = document.getElementById('panel-' + tab);
   if (panel) panel.classList.add('active');
+  // Mobile: scroll tab into view + highlight bottom nav
+  if (IS_MOBILE) {
+    if (el) setTimeout(function(){ el.scrollIntoView({behavior:'smooth',block:'nearest',inline:'center'}); }, 50);
+    var bnBtns = document.querySelectorAll('#mobile-bottom-nav button');
+    bnBtns.forEach(function(b){ b.style.color = ''; });
+    var bnMap = {'ar_otas':0,'ap':1,'drr':2,'calipolis':3};
+    if (bnMap[tab] !== undefined && bnBtns[bnMap[tab]]) bnBtns[bnMap[tab]].style.color = 'var(--acc2)';
+  }
   if (tab === 'fb') loadFBTab();
   if (tab === 'ar_real') cargarARRealData();
   if (tab === 'drr') loadDRR();
@@ -3917,7 +3975,8 @@ async function loadFBMermas() {
         '<div class="sc"><div class="sc-lbl">CATEGORÍA CON MÁS MERMA</div><div class="sc-val" style="font-size:16px;font-weight:700">' + topCat + '</div><div class="sc-sub">€' + topVal.toLocaleString('es-ES',{minimumFractionDigits:2}) + '</div></div>' +
         '<div class="sc"><div class="sc-lbl">REGISTROS</div><div class="sc-val">' + data.mermas.length + '</div></div>' +
         '</div>';
-      if (totalCoste > 200) {
+      window._fbCriticalAlerts = data.criticos_count || 0;
+    if (totalCoste > 200) {
         html += '<div style="background:rgba(245,158,11,.08);border:1px solid rgba(245,158,11,.25);border-radius:10px;padding:12px 16px;font-size:13px;color:var(--ora);margin-bottom:16px">⚠ Mermas altas: €' + totalCoste.toFixed(2) + ' este período. Revisar porcionado y almacenamiento.</div>';
       }
     }
@@ -5010,7 +5069,7 @@ function _renderFacturasAR(facturas, stats) {
   const display = estado_filter ? facturas.filter(f => f.estado === estado_filter) : facturas;
 
   if (!display.length) {
-    tbody.innerHTML = '<tr><td colspan="4" class="empty" style="padding:20px;text-align:center;color:var(--dim)">Sin facturas</td></tr>';
+    tbody.innerHTML = '<tr><td colspan="4" style="padding:32px;text-align:center"><div style="font-size:32px;margin-bottom:8px">📋</div><div style="color:var(--mut);font-size:13px">No hay facturas con este filtro</div></td></tr>';
     return;
   }
 

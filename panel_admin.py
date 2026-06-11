@@ -266,6 +266,10 @@ input,select{width:100%;background:var(--bg);border:1px solid var(--s2);color:va
           <span id="oracle-status" style="font-size:11px;color:#64748b"></span>
         </div>
         <div style="display:flex;align-items:center;gap:8px">
+          <button class="btn bsm" onclick="testConn('telegram')" style="min-width:120px;font-size:11px">✈️ Test Telegram</button>
+          <span id="telegram-status" style="font-size:11px;color:#64748b"></span>
+        </div>
+        <div style="display:flex;align-items:center;gap:8px">
           <button class="btn bsm" onclick="testConn('stripe')" style="min-width:120px;font-size:11px">💳 Test Stripe</button>
           <span id="stripe-status" style="font-size:11px;color:#64748b"></span>
         </div>

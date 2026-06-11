@@ -10,7 +10,7 @@ exportador_bp = Blueprint('exportador', __name__)
 @exportador_bp.route('/api/exportar/<tipo>')
 def api_exportar(tipo):
     """Descarga reporte en Excel"""
-    valid_tipos = ['ar', 'ap', 'drr', 'multihotel', 'banco', 'fb']
+    valid_tipos = ['ar', 'ap', 'drr', 'multihotel', 'banco', 'fb', 'ar_real']
     
     if tipo not in valid_tipos and tipo != 'ar_real' and tipo != 'calipolis':
         return jsonify({"error": "Tipo de reporte inválido"}), 400
@@ -35,6 +35,14 @@ def api_exportar(tipo):
             hits.sort(key=lambda p: _os.path.getmtime(p), reverse=True)
             from io import BytesIO
             result = (open(hits[0],'rb'), _os.path.basename(hits[0]))
+        elif tipo == 'ar_real':
+            import os as _os
+            ruta = _os.path.join(_os.path.dirname(__file__), 'datos-referencia', 'reservas_credito.xlsx')
+            if not _os.path.exists(ruta): return jsonify({'error': 'Sin datos AR Real'}), 404
+            from io import BytesIO as _BIO
+            with open(ruta,'rb') as fh: data = fh.read()
+            from datetime import datetime as _dt
+            result = (_BIO(data), f'ar_real_facturas_{_dt.now().strftime("%Y%m%d")}.xlsx')
         elif tipo == 'fb':
             import os as _os
             ruta = _os.path.join(_os.path.dirname(__file__), 'datos-referencia', 'ventas_fb_diarias.xlsx')
