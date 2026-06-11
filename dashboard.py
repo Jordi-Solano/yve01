@@ -1939,6 +1939,19 @@ button, a { touch-action: manipulation; }
     <div id="daily-alerts-list" style="display:flex;gap:12px;margin-top:8px;flex-wrap:wrap"></div>
   </div>
 
+  <!-- Mobile KPI Quick-View -->
+  <div id="mobile-kpi-bar" style="display:none;padding:10px 14px;background:var(--s1);border-bottom:1px solid var(--s2);overflow-x:auto;-webkit-overflow-scrolling:touch;scrollbar-width:none">
+    <div style="display:flex;gap:12px;min-width:max-content">
+      <div style="text-align:center;min-width:70px"><div style="font-size:18px;font-weight:800;color:var(--acc2)" id="mkpi-ar">—</div><div style="font-size:9px;color:var(--mut);text-transform:uppercase">AR disc</div></div>
+      <div style="width:1px;background:var(--s2)"></div>
+      <div style="text-align:center;min-width:70px"><div style="font-size:18px;font-weight:800;color:var(--ora)" id="mkpi-ap">—</div><div style="font-size:9px;color:var(--mut);text-transform:uppercase">AP pend</div></div>
+      <div style="width:1px;background:var(--s2)"></div>
+      <div style="text-align:center;min-width:70px"><div style="font-size:18px;font-weight:800;color:var(--grn)" id="mkpi-occ">—</div><div style="font-size:9px;color:var(--mut);text-transform:uppercase">Ocupación</div></div>
+      <div style="width:1px;background:var(--s2)"></div>
+      <div style="text-align:center;min-width:70px"><div style="font-size:18px;font-weight:800;color:var(--pur)" id="mkpi-gop">—</div><div style="font-size:9px;color:var(--mut);text-transform:uppercase">GOP%</div></div>
+    </div>
+  </div>
+
   <!-- Executive summary bar (dynamic) -->
   <div id="exec-summary" style="display:none;padding:8px 16px;background:rgba(59,130,246,.05);border-bottom:1px solid rgba(59,130,246,.1);font-size:12px;color:var(--mut);text-align:center">
     <span id="exec-txt"></span>
@@ -2560,6 +2573,27 @@ async function loadAll() {
 
     document.getElementById('status-txt').textContent =
       (t('status.actualizado') || 'Actualizado') + ' · ' + (stats.total || 0) + ' ' + (t('status.facturas') || 'facturas cargadas');
+  // Mobile KPI quick-view bar
+  if (IS_MOBILE) {
+    var mBar = document.getElementById('mobile-kpi-bar');
+    if (mBar) mBar.style.display = 'block';
+    var mkAR = document.getElementById('mkpi-ar');
+    var mkAP = document.getElementById('mkpi-ap');
+    if (mkAR) mkAR.textContent = (stats.discrepancias||0) + (stats.di_pendientes||0);
+    if (mkAP) mkAP.textContent = stats.pendientes_firma || '0';
+    // GOP% from DRR if loaded
+    fetch('/api/stats_drr').then(r=>r.json()).then(d=>{
+      if (d && d.metricas) {
+        var occ = d.metricas['Occupancy %'];
+        var gop = d.metricas['GOP %'];
+        var mkO = document.getElementById('mkpi-occ');
+        var mkG = document.getElementById('mkpi-gop');
+        if (mkO && occ) mkO.textContent = occ.today || '—';
+        if (mkG && gop) mkG.textContent = gop.today || '—';
+      }
+    }).catch(()=>{});
+  }
+
   // Tab notification badges
   function _setTabBadge(tabId, count, color) {
     const btn = document.getElementById('tab-' + tabId);
@@ -3443,6 +3477,74 @@ document.addEventListener('keydown', e => {
   }
   if (e.key === 'r' || e.key === 'R') { loadAll(); }
 });
+
+// ── Swipe gestures for mobile ────────────────────────────────────────────
+(function() {
+  var touchStartX = 0, touchStartY = 0;
+  var TABS_ORDER = ['ar_otas','ap','drr','banco','notificaciones','fb_cost','ar_real','calipolis','multi_hotel'];
+  var currentTabIdx = 0;
+
+  document.addEventListener('touchstart', function(e) {
+    touchStartX = e.touches[0].clientX;
+    touchStartY = e.touches[0].clientY;
+  }, {passive: true});
+
+  document.addEventListener('touchend', function(e) {
+    if (!IS_MOBILE) return;
+    var dx = e.changedTouches[0].clientX - touchStartX;
+    var dy = e.changedTouches[0].clientY - touchStartY;
+    // Only horizontal swipes that are more horizontal than vertical
+    if (Math.abs(dx) < 60 || Math.abs(dx) < Math.abs(dy) * 1.5) return;
+    // Don't swipe if touching a scrollable element
+    var el = e.target;
+    while (el && el !== document.body) {
+      if (el.scrollWidth > el.clientWidth + 10) return;
+      el = el.parentElement;
+    }
+    var activeBtn = document.querySelector('.tab-btn.active');
+    if (!activeBtn) return;
+    var activeId = activeBtn.id.replace('tab-','');
+    var idx = TABS_ORDER.indexOf(activeId);
+    if (idx < 0) return;
+    var nextIdx = dx < 0 ? Math.min(idx+1, TABS_ORDER.length-1) : Math.max(idx-1, 0);
+    if (nextIdx === idx) return;
+    var nextTab = TABS_ORDER[nextIdx];
+    var nextBtn = document.getElementById('tab-' + nextTab);
+    if (nextBtn) switchTab(nextTab, nextBtn);
+  }, {passive: true});
+})();
+
+// ── Pull-to-refresh on mobile ───────────────────────────────────────────
+(function() {
+  if (!IS_MOBILE) return;
+  var startY = 0, pulling = false;
+  var indicator = document.createElement('div');
+  indicator.style.cssText = 'position:fixed;top:0;left:50%;transform:translateX(-50%);background:var(--acc);color:#fff;padding:6px 16px;border-radius:0 0 12px 12px;font-size:12px;font-weight:600;z-index:9999;display:none;transition:.2s';
+  indicator.textContent = '↓ Suelta para actualizar';
+  document.body.appendChild(indicator);
+
+  document.addEventListener('touchstart', function(e) {
+    if (window.scrollY === 0) startY = e.touches[0].pageY;
+  }, {passive: true});
+
+  document.addEventListener('touchmove', function(e) {
+    if (!startY) return;
+    var diff = e.touches[0].pageY - startY;
+    if (diff > 60) {
+      indicator.style.display = 'block';
+      pulling = true;
+    }
+  }, {passive: true});
+
+  document.addEventListener('touchend', function() {
+    if (pulling) {
+      loadAll();
+      showNotification('↺ Actualizando...', 'info');
+    }
+    pulling = false; startY = 0;
+    setTimeout(function() { indicator.style.display = 'none'; }, 500);
+  }, {passive: true});
+})();
 
 // ── Session timeout warning (45 min) ─────────────────────────────────────
 var _sessionTimer;
