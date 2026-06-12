@@ -515,12 +515,43 @@ def api_test_stripe():
     except Exception as e:
         return jsonify({"ok": False, "error": str(e)[:200]})
 
+@app.route("/api/demo_stats")
+def api_demo_stats():
+    """Returns curated demo statistics for the demo mode."""
+    return jsonify({
+        "total": 20,
+        "importe_total": 109440.05,
+        "importe_reclamable": 3847.50,
+        "correctas": 16,
+        "discrepancias": 3,
+        "di_pendientes": 1,
+        "sin_accion": 0,
+        "aprobadas": 12,
+        "rechazadas": 4,
+        "pendientes_firma": 6,
+        "chart": {
+            "labels": ["Booking.com", "Expedia", "HotelBeds", "Hotusa"],
+            "data": [45230, 38670, 15890, 9650],
+        }
+    })
+
 @app.route("/api/stats")
 def api_stats():
     df, meta = cargar_datos()
     stats = calcular_stats(df)
     stats["chart"] = calcular_chart(df)
     stats["meta"]  = meta
+    # Enrich with AP pending count
+    try:
+        import glob as _g
+        ap_hits = _g.glob(os.path.join(REPORTES_DIR, "matching_*.xlsx"))
+        ap_pend = 0
+        for ruta in ap_hits:
+            df_ap = pd.read_excel(ruta)
+            if "aprobacion" in df_ap.columns:
+                ap_pend += int((df_ap["aprobacion"].astype(str) == "PENDIENTE").sum())
+        stats["pendientes_firma"] = ap_pend
+    except: pass
     return jsonify(stats)
 
 @app.route("/api/facturas")
@@ -2479,7 +2510,7 @@ button, a { touch-action: manipulation; }
     <!-- Tabla de hoteles -->
     <div style="background:var(--s1);border:1px solid var(--s2);border-radius:14px;padding:20px;margin-bottom:20px;overflow-x:auto">
       <h3 style="font-size:14px;margin-bottom:16px;color:var(--mut)">Performance por Hotel</h3>
-      <table id="mh-table" style="width:100%;border-collapse:collapse;font-size:13px;min-width:900px">
+      <div class="tbl-wrap"><table id="mh-table" style="width:100%;border-collapse:collapse;font-size:13px;min-width:600px">
         <thead>
           <tr style="border-bottom:1px solid var(--s2);color:var(--mut)">
             <th style="text-align:left;padding:10px;font-weight:600">Hotel</th>
@@ -2502,7 +2533,8 @@ button, a { touch-action: manipulation; }
     <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(400px,1fr));gap:16px">
       <div style="background:var(--s1);border:1px solid var(--s2);border-radius:14px;padding:20px">
         <h3 style="font-size:14px;margin-bottom:16px;color:var(--mut)">🏆 Top Performers (Revenue MTD)</h3>
-        <div id="mh-rankings"></div>
+        <div id="mh-trend-chart" style="margin-bottom:20px"></div>
+      <div id="mh-rankings"></div>
       </div>
       <div style="background:var(--s1);border:1px solid var(--s2);border-radius:14px;padding:20px">
         <h3 style="font-size:14px;margin-bottom:16px;color:var(--mut)">⚠️ Alertas Activas</h3>
@@ -4044,7 +4076,7 @@ async function loadFBResumen() {
     html += '<div class="card"><div class="card-title" data-i18n="card.fcCategoria">Food Cost por Categoría</div>';
     html += '<div class="tbl-wrap"><table style="min-width:0;width:100%"><thead><tr>';
     html += '<th>' + (t('fb.thCategoria')||'Categoría') + '</th><th style="text-align:right">' + (t('fb.thVentas')||'Ventas') + '</th><th style="text-align:right">FC%</th><th style="text-align:center">' + (t('fb.thEstado')||'Estado') + '</th>';
-    html += '</tr></thead><tbody>';
+    html += '</tr></thead><tbody id="mh-tbody">';
     data.categorias.forEach(c => {
       const cC = c.alerta ? 'var(--red)' : 'var(--grn)';
       const badge = c.alerta ? '<span class="badge b-disc">Alerta</span>' : '<span class="badge b-ok">OK</span>';
@@ -5060,6 +5092,79 @@ async function enviarNotificaciones() {
 // ══════════════════════════════════════════════════════════════
 // BANCO — JavaScript
 // ══════════════════════════════════════════════════════════════
+
+// ══ MULTI-HOTEL ══════════════════════════════════
+
+async function loadMultiHotel() {
+  try {
+    const r = await fetch('/api/multi_hotel/overview');
+    const data = await r.json();
+    if (!data.ok) throw new Error(data.error || 'Sin datos');
+    const k = data.consolidado || {};
+    const fmtK = v => '\u20AC' + Math.round((v||0)/1000) + 'K';
+    const fmtN = v => '\u20AC' + (v||0).toLocaleString('es-ES',{minimumFractionDigits:0});
+    // KPI Cards
+    const mhKpis = document.getElementById('mh-kpis');
+    if (mhKpis) {
+      mhKpis.innerHTML = '<div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(130px,1fr));gap:10px">' + [
+        {l:'Revenue grupo',  v:fmtK(k.total_revenue),   c:'var(--acc2)'},
+        {l:'GOP% medio',     v:(k.avg_gop_pct||0)+'%',  c:k.avg_gop_pct>=22?'var(--grn)':'var(--ora)'},
+        {l:'RevPAR medio',   v:fmtN(k.avg_revpar),      c:'var(--pur)'},
+        {l:'Habitaciones',   v:k.total_habitaciones||0,  c:'var(--tx)'},
+      ].map(i => '<div class="sc"><div class="sc-lbl">'+i.l+'</div><div class="sc-val" style="color:'+i.c+'">'+i.v+'</div></div>').join('') + '</div>';
+    }
+    // Hotel table
+    const tbody = document.getElementById('mh-tbody');
+    if (tbody && data.hoteles) {
+      tbody.innerHTML = data.hoteles.map(h => {
+        const gopC = h.gop_pct>=22?'var(--grn)':h.gop_pct>=16?'var(--ora)':'var(--red)';
+        const d = h.rev_delta_pct||0;
+        return '<tr style="border-bottom:1px solid var(--s2)">' +
+          '<td style="padding:10px 8px;font-weight:600">' + h.nombre.split(' ').slice(-1)[0] +
+            '<div style="font-size:10px;color:var(--dim)">' + h.habitaciones + ' hab.</div></td>' +
+          '<td style="text-align:right;padding:10px 8px"><div style="font-weight:700">\u20AC'+Math.round(h.total_ingresos/1000)+'K</div>' +
+            '<div style="font-size:10px;color:'+(d>=0?'var(--grn)':'var(--red)')+'">'+(d>0?'+':'')+d+'%</div></td>' +
+          '<td style="text-align:right;padding:10px 8px"><span style="color:'+gopC+';font-weight:700">'+h.gop_pct+'%</span></td>' +
+          '<td style="text-align:right;padding:10px 8px">'+h.ocupacion_pct+'%</td>' +
+          '<td style="text-align:right;padding:10px 8px">\u20AC'+h.adr_eur+'</td>' +
+          '<td style="padding:10px 4px">'+(h.alertas>0?'<span style="color:var(--red);font-size:10px;font-weight:700">⚠ '+h.alertas+'</span>':'<span style="color:var(--grn);font-size:11px">✓</span>')+'</td>' +
+        '</tr>';
+      }).join('');
+    }
+    // Trend chart
+    if (data.rev_trend && window.Chart) {
+      var tEl = document.getElementById('mh-trend-chart');
+      if (tEl) {
+        if (window._mhChart) { try { window._mhChart.destroy(); } catch(e){} }
+        var ctx2 = document.createElement('canvas'); ctx2.style.cssText='width:100%;height:200px';
+        tEl.innerHTML=''; tEl.appendChild(ctx2);
+        window._mhChart = new Chart(ctx2, {
+          data:{
+            labels:data.rev_trend.map(r=>r.mes.slice(5)),
+            datasets:[
+              {type:'bar',label:'Revenue (k\u20AC)',data:data.rev_trend.map(r=>Math.round(r.revenue/1000)),backgroundColor:'rgba(59,130,246,.2)',borderColor:'rgba(59,130,246,.5)',borderWidth:1,yAxisID:'y2',borderRadius:4},
+              {type:'line',label:'GOP%',data:data.rev_trend.map(r=>r.gop),borderColor:'#22c55e',backgroundColor:'rgba(34,197,94,.1)',tension:.4,yAxisID:'y',pointRadius:3,borderWidth:2},
+              {type:'line',label:'Occ%',data:data.rev_trend.map(r=>r.occ),borderColor:'#60a5fa',backgroundColor:'transparent',tension:.4,yAxisID:'y',pointRadius:3,borderWidth:1.5,borderDash:[4,3]},
+            ]
+          },
+          options:{responsive:true,maintainAspectRatio:false,
+            plugins:{legend:{labels:{color:'#94a3b8',font:{size:10},boxWidth:10}}},
+            scales:{
+              x:{grid:{color:'rgba(51,65,85,.3)'},ticks:{color:'#64748b',font:{size:10}}},
+              y:{position:'left',grid:{color:'rgba(51,65,85,.3)'},ticks:{color:'#94a3b8',font:{size:10}},title:{display:true,text:'%',color:'#64748b',font:{size:9}}},
+              y2:{position:'right',grid:{drawOnChartArea:false},ticks:{color:'#94a3b8',font:{size:10}},title:{display:true,text:'k\u20AC',color:'#64748b',font:{size:9}}}
+            }}
+        });
+      }
+    }
+    _mh_loaded = true;
+    if (_i18nLang && _i18nLang!=='es') applyI18n(_i18nData);
+  } catch(e) {
+    console.error('Error Multi-Hotel:', e);
+    var el = document.getElementById('mh-kpis');
+    if (el) el.innerHTML='<div style="color:var(--red);font-size:12px;padding:16px">\u26a0 Error: '+(e.message||e)+'</div>';
+  }
+}
 
 async function loadBanco() {
   try {
