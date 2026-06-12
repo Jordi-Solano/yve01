@@ -68,7 +68,7 @@ inicializar_usuarios()
 
 # Registrar cada módulo como blueprint (login, configuración, admin, aprobaciones, conciliación)
 from login import bp as auth_bp
-from onboarding import bp as config_bp
+from onboarding import onboarding_bp as config_bp
 from panel_admin import bp as admin_bp
 from app_aprobacion import bp as aprob_ar_bp
 from app_aprobacion_ap import bp as aprob_ap_bp
