@@ -75,6 +75,8 @@ from app_aprobacion_ap import bp as aprob_ap_bp
 from app_conciliacion import bp as concil_bp
 from tab_fb_dashboard import fb_bp
 from tab_ar_real import ar_real_bp
+from oracle_export_dryrun import oracle_export_bp
+from pricing import pricing_bp
 from tab_multi_hotel import multi_hotel_bp
 from tab_exportador import exportador_bp
 from tab_calipolis import calipolis_bp
@@ -4823,6 +4825,16 @@ function updateSelectionCount() {
   if (btn) { btn.style.display = sel > 0 ? 'inline-block' : 'none'; btn.textContent = '📤 Exportar ' + sel + ' selec.'; }
 }
 async function loadDRR() {
+  // Check Oracle mode
+  fetch('/api/oracle/status').then(r=>r.json()).then(d=>{
+    var badge = document.getElementById('oracle-mode-badge');
+    if (badge) {
+      badge.style.display = 'inline';
+      badge.textContent = d.mode === 'real' ? '🟢 Oracle Live' : '🟡 Sim';
+      badge.style.background = d.mode === 'real' ? 'rgba(34,197,94,.15)' : 'rgba(245,158,11,.15)';
+      badge.style.color = d.mode === 'real' ? 'var(--grn)' : 'var(--ora)';
+    }
+  }).catch(()=>{});
   try {
     const r = await fetch('/api/stats_drr');
     const data = await r.json();

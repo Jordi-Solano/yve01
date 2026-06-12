@@ -175,7 +175,7 @@ footer{background:var(--s1);border-top:1px solid var(--s2);padding:48px 5% 32px;
   <div class="nav-links">
     <a href="#features">Funciones</a>
     <a href="#roi">ROI</a>
-    <a href="#pricing">Precios</a>
+    <a href="/precios">Precios</a>
     <a href="/blog">Blog</a>
     <a href="/casos">Casos</a>
     <a href="/about">Nosotros</a>

@@ -1,0 +1,26 @@
+{
+  "hotel_nombre": "Grupo Calipolis Hotels",
+  "hotel_tag": "Calipolis",
+  "hotel_habitaciones": 307,
+  "hotel_estrellas": 4,
+  "hotel_ciudad": "Sitges",
+  "hotel_pais": "España",
+  "hotel_email": "finanzas@calipolis.com",
+  "hotel_telefono": "+34 93 811 0000",
+  "hotel_nif": "A08123456",
+  "hotel_direccion": "Avinguda de Sofía, 2-16, 08870 Sitges, Barcelona",
+  "moneda": "EUR",
+  "idioma": "es",
+  "timezone": "Europe/Madrid",
+  "otas_activas": [
+    "Booking.com",
+    "Expedia",
+    "HotelBeds",
+    "Hotusa"
+  ],
+  "dias_pago_proveedor": 30,
+  "iva_tipo": 10,
+  "plan": "pro",
+  "configurado": true,
+  "fecha_setup": "2026-06-01"
+}

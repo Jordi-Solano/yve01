@@ -263,6 +263,8 @@ input,select{width:100%;background:var(--bg);border:1px solid var(--s2);color:va
         </div>
         <div style="display:flex;align-items:center;gap:8px">
           <button class="btn bsm" onclick="testConn('oracle')" style="min-width:120px;font-size:11px">🔴 Test Oracle</button>
+          <a href="/api/oracle/export_excel" class="btn bsm" style="text-decoration:none;font-size:11px">⬇ GL Excel</a>
+          <a href="/api/oracle/dryrun" target="_blank" class="btn bsm" style="text-decoration:none;font-size:11px">👁 Preview</a>
           <span id="oracle-status" style="font-size:11px;color:#64748b"></span>
         </div>
         <div style="display:flex;align-items:center;gap:8px">
