@@ -1090,6 +1090,49 @@ def api_upload_drr():
 
 # ── Notificaciones ────────────────────────────────────────────────────
 
+@app.route("/api/conciliar", methods=["POST"])
+@login_required
+def api_run_conciliacion():
+    """Ejecuta la conciliación bancaria automática."""
+    try:
+        from conciliacion_bancaria import conciliar
+        import glob as _g
+        # Load extracto bancario
+        extracto_ruta = os.path.join(BASE_DIR, "datos-referencia", "extracto_banco.xlsx")
+        if not os.path.exists(extracto_ruta):
+            return jsonify({"ok": False, "error": "No se encontró extracto_banco.xlsx"}), 404
+        df_extracto = pd.read_excel(extracto_ruta)
+        extracto = df_extracto.to_dict('records')
+        # Load facturas AP para matching
+        facturas = []
+        hits = _g.glob(os.path.join(REPORTES_DIR, "matching_*.xlsx"))
+        for ruta in hits:
+            df_f = pd.read_excel(ruta)
+            if "numero_factura" in df_f.columns:
+                for _, row in df_f.iterrows():
+                    facturas.append({
+                        "numero": str(row.get("numero_factura","")),
+                        "importe": abs(float(row.get("importe_con_iva", 0) or 0)),
+                        "tipo_mov": "CARGO",
+                        "proveedor": str(row.get("proveedor",""))[:30],
+                    })
+        # Run reconciliation
+        result = conciliar(extracto, facturas)
+        # Save result
+        if result:
+            df_result = pd.DataFrame(result)
+            from datetime import date
+            out_ruta = os.path.join(REPORTES_DIR, f"conciliacion_{date.today().strftime('%Y%m%d')}.xlsx")
+            df_result.to_excel(out_ruta, index=False)
+            conciliados = sum(1 for r in result if r.get("estado") == "CONCILIADO")
+            pendientes  = sum(1 for r in result if r.get("estado") != "CONCILIADO")
+            _audit("CONCILIACION_RUN", f"{conciliados} conciliados, {pendientes} pendientes")
+            return jsonify({"ok": True, "total": len(result), "conciliados": conciliados,
+                           "pendientes": pendientes, "archivo": os.path.basename(out_ruta)})
+        return jsonify({"ok": False, "error": "Sin resultados de conciliación"})
+    except Exception as e:
+        return jsonify({"ok": False, "error": str(e)[:300]}), 500
+
 @app.route("/api/stats_banco")
 def api_stats_banco():
     """Resumen de conciliacion bancaria para el dashboard."""
@@ -2168,6 +2211,7 @@ button, a { touch-action: manipulation; }
     </div>
     <div style="margin-top:16px">
       <a href="/api/exportar/banco" class="btn-ref" style="text-decoration:none;font-size:12px">⬇️ Excel</a>
+        <button class="btn-run" onclick="runConciliacion()" style="font-size:12px">⚡ Conciliar</button>
       <a href="/conciliacion/" class="btn-run" style="text-decoration:none;display:inline-flex;font-size:13px;padding:10px 20px" data-i18n="btn.verConciliacion">🏦 Ver conciliación completa</a>
     </div>
   </div><!-- /panel-banco -->
@@ -2197,9 +2241,12 @@ button, a { touch-action: manipulation; }
         <span style="font-size:1.1rem;font-weight:700" data-i18n="notif.historial">Historial de Notificaciones</span>
         <span id="notif-count" style="font-size:.8rem;color:var(--dim);margin-left:8px"></span>
       </div>
-      <button class="btn-run" id="btn-send-notif" onclick="enviarNotificaciones()" style="font-size:12px;padding:8px 16px">
+      <div style="display:flex;gap:8px">
+        <button class="btn-ref" onclick="testNotification()" style="font-size:12px">🧪 Test</button>
+        <button class="btn-run" id="btn-send-notif" onclick="enviarNotificaciones()" style="font-size:12px;padding:8px 16px">
         <span data-i18n="notif.enviar">🔔 Enviar notificaciones pendientes</span>
       </button>
+      </div>
     </div>
     <div class="card">
       <div class="tbl-wrap">
@@ -4654,6 +4701,21 @@ function renderDRR(s) {
   }
 }
 
+async function runConciliacion() {
+  const btn = document.querySelector('button[onclick="runConciliacion()"]');
+  if (btn) { btn.disabled = true; btn.textContent = '⏳ Conciliando...'; }
+  try {
+    const r = await fetch('/api/conciliar', {method:'POST'});
+    const d = await r.json();
+    if (d.ok) {
+      showNotification(`✓ Conciliación completada: ${d.conciliados} conciliados, ${d.pendientes} pendientes`, 'success');
+      loadBanco();
+    } else {
+      showNotification('✗ Error conciliación: ' + (d.error||''), 'error');
+    }
+  } catch(e) { showNotification('✗ Error de conexión', 'error'); }
+  if (btn) { btn.disabled = false; btn.textContent = '⚡ Conciliar'; }
+}
 async function aprobarMatchOK() {
   const rows = document.querySelectorAll('#ap-tbody tr[data-estado="MATCH_3WAY_OK"]');
   if (!rows.length) { showNotification('No hay facturas con Match OK pendientes', 'info'); return; }
@@ -4877,6 +4939,13 @@ async function loadNotif() {
   }
 }
 
+async function testNotification() {
+  try {
+    const r = await fetch('/api/test_smtp', {method:'POST'});
+    const d = await r.json();
+    showNotification(d.ok ? '✓ SMTP funcionando: ' + (d.message||'OK') : '✗ SMTP: ' + (d.error||'Error'), d.ok ? 'success' : 'error');
+  } catch(e) { showNotification('✗ Error probando SMTP', 'error'); }
+}
 async function enviarNotificaciones() {
   const btn = document.getElementById('btn-send-notif');
   btn.disabled = true;
