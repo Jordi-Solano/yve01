@@ -242,3 +242,31 @@ def api_emitir_factura():
         return jsonify({'ok': True, 'numero': numero, 'total': total})
     except Exception as e:
         return jsonify({'ok': False, 'error': str(e)}), 500
+
+@ar_real_bp.route('/api/ar_real/stats')
+def api_ar_real_stats():
+    """Quick stats for mobile KPI bar."""
+    try:
+        df_r = _get_reservas()
+        df_c = _get_clientes()
+        if df_r.empty:
+            return jsonify({'ok': True, 'pendiente': 0, 'vencido': 0, 'n_clientes': len(df_c)})
+        
+        pendiente = vencido = 0
+        for _, row in df_r.iterrows():
+            if str(row.get('estado','')) == 'FACTURADO':
+                total = float(row.get('total', 0) or 0)
+                fem = row.get('fecha_emision')
+                if pd.notna(fem):
+                    days = (date.today() - pd.Timestamp(fem).date()).days
+                    if days > 60: vencido += total
+                    else: pendiente += total
+        
+        return jsonify({
+            'ok': True,
+            'pendiente': round(pendiente, 2),
+            'vencido':   round(vencido, 2),
+            'n_clientes': len(df_c),
+        })
+    except Exception as e:
+        return jsonify({'ok': False, 'error': str(e)}), 500

@@ -297,3 +297,138 @@ def export_drr_pdf():
         return _build_pdf(elements, f'yve_drr_{datetime.now().strftime("%Y%m%d")}.pdf')
     except Exception as e:
         return Response(f'Error: {e}', status=500)
+
+
+def export_invoice_pdf(numero_factura):
+    """Genera PDF de una factura corporativa."""
+    import os as _os
+    import pandas as pd
+    from io import BytesIO
+    from datetime import datetime
+
+    ruta = _os.path.join(_os.path.dirname(__file__), 'datos-referencia', 'reservas_credito.xlsx')
+    ruta_c = _os.path.join(_os.path.dirname(__file__), 'datos-referencia', 'clientes_credito.xlsx')
+    
+    df_r = pd.read_excel(ruta)
+    df_c = pd.read_excel(ruta_c)
+    
+    row = df_r[df_r['numero_reserva'].astype(str) == str(numero_factura)]
+    if row.empty:
+        return None, f"Factura {numero_factura} no encontrada"
+    
+    row = row.iloc[0]
+    cliente = str(row.get('cliente', ''))
+    c_data = df_c[df_c['nombre_cliente'] == cliente]
+    nif = str(c_data.iloc[0].get('NIF','')) if len(c_data) else '—'
+    
+    total = float(row.get('total', 0))
+    base = round(total / 1.10, 2)
+    iva = round(total - base, 2)
+    
+    buf = BytesIO()
+    try:
+        from reportlab.lib.pagesizes import A4
+        from reportlab.lib import colors
+        from reportlab.lib.styles import getSampleStyleSheet, ParagraphStyle
+        from reportlab.platypus import SimpleDocTemplate, Paragraph, Spacer, Table, TableStyle, HRFlowable
+        from reportlab.lib.units import cm
+        
+        doc = SimpleDocTemplate(buf, pagesize=A4,
+            topMargin=2*cm, bottomMargin=2*cm,
+            leftMargin=2.5*cm, rightMargin=2.5*cm)
+        
+        s = getSampleStyleSheet()
+        story = []
+        
+        # Header
+        header_data = [
+            [Paragraph('<font size="22" color="#3b82f6"><b>Yve.01</b></font>', s['Normal']),
+             Paragraph(f'<font size="9" color="#64748b">FACTURA<br/><font size="18" color="#0f172a"><b>{numero_factura}</b></font></font>', s['Normal'])]
+        ]
+        ht = Table(header_data, colWidths=[10*cm, 5.5*cm])
+        ht.setStyle(TableStyle([('ALIGN',(1,0),'RIGHT'),('VALIGN',(0,0),'TOP'),('VALIGN',(1,0),'TOP')]))
+        story.append(ht)
+        story.append(HRFlowable(width="100%", thickness=1, color=colors.HexColor("#3b82f6")))
+        story.append(Spacer(1, 0.5*cm))
+        
+        # Dates and parties
+        fecha_em = str(row.get('fecha_emision',''))[:10]
+        fecha_venc = fecha_em  # simplify
+        
+        parties = [
+            [Paragraph('<b><font color="#64748b" size="8">DE</font></b>', s['Normal']),
+             Paragraph('<b><font color="#64748b" size="8">PARA</font></b>', s['Normal'])],
+            [Paragraph('<b>Hotel / Yve.01 Demo</b><br/><font size="8" color="#64748b">Barcelona, España</font>', s['Normal']),
+             Paragraph(f'<b>{cliente}</b><br/><font size="8" color="#64748b">NIF: {nif}</font>', s['Normal'])],
+        ]
+        pt = Table(parties, colWidths=[7.75*cm, 7.75*cm])
+        pt.setStyle(TableStyle([('VALIGN',(0,0),'TOP'),('VALIGN',(1,0),'TOP'),('BOTTOMPADDING',(0,0),(-1,-1),4)]))
+        story.append(pt)
+        story.append(Spacer(1, 0.5*cm))
+        
+        # Dates info
+        info_data = [
+            ['Fecha emisión:', fecha_em, 'Entrada:', str(row.get('fecha_entrada',''))[:10]],
+            ['Habitaciones:', str(row.get('habitaciones',1)), 'Salida:', str(row.get('fecha_salida',''))[:10]],
+        ]
+        it = Table(info_data, colWidths=[3.5*cm, 3.5*cm, 3*cm, 5.5*cm])
+        it.setStyle(TableStyle([
+            ('FONTSIZE',(0,0),(-1,-1),9),
+            ('TEXTCOLOR',(0,0),(0,-1),colors.HexColor("#64748b")),
+            ('TEXTCOLOR',(2,0),(2,-1),colors.HexColor("#64748b")),
+            ('FONTNAME',(1,0),(1,-1),'Helvetica-Bold'),
+            ('FONTNAME',(3,0),(3,-1),'Helvetica-Bold'),
+        ]))
+        story.append(it)
+        story.append(Spacer(1, 0.5*cm))
+        story.append(HRFlowable(width="100%", thickness=0.5, color=colors.HexColor("#e2e8f0")))
+        story.append(Spacer(1, 0.3*cm))
+        
+        # Line items
+        items_header = [['Descripción', 'Importe']]
+        items = []
+        hab = float(row.get('importe_habitaciones', 0))
+        fb  = float(row.get('importe_fb', 0))
+        ext = float(row.get('importe_extras', 0))
+        if hab > 0: items.append([f"Habitaciones ({row.get('habitaciones',1)} hab.)", f"€{hab:,.2f}"])
+        if fb > 0:  items.append(["F&B y restauración", f"€{fb:,.2f}"])
+        if ext > 0: items.append(["Extras y servicios", f"€{ext:,.2f}"])
+        
+        items_data = items_header + items + [
+            ['', ''],
+            ['Base imponible:', f"€{base:,.2f}"],
+            ['IVA (10%):', f"€{iva:,.2f}"],
+            ['', ''],
+            [Paragraph('<b>TOTAL</b>', s['Normal']), Paragraph(f'<b>€{total:,.2f}</b>', s['Normal'])],
+        ]
+        lw = Table(items_data, colWidths=[12*cm, 3.5*cm])
+        lw.setStyle(TableStyle([
+            ('FONTSIZE',(0,0),(-1,-1),10),
+            ('BACKGROUND',(0,0),(-1,0),colors.HexColor("#0f172a")),
+            ('TEXTCOLOR',(0,0),(-1,0),colors.white),
+            ('FONTNAME',(0,0),(-1,0),'Helvetica-Bold'),
+            ('ALIGN',(1,0),(1,-1),'RIGHT'),
+            ('LINEBELOW',(0,-1),(-1,-1),1,colors.HexColor("#3b82f6")),
+            ('LINEBELOW',(0,0),(-1,0),0.5,colors.HexColor("#1e293b")),
+            ('BACKGROUND',(0,-1),(-1,-1),colors.HexColor("#eff6ff")),
+            ('FONTNAME',(0,-1),(-1,-1),'Helvetica-Bold'),
+            ('FONTSIZE',(0,-1),(-1,-1),12),
+            ('ROWBACKGROUNDS',(0,1),(-1,-5),[colors.white, colors.HexColor("#f8fafc")]),
+            ('TOPPADDING',(0,0),(-1,-1),6), ('BOTTOMPADDING',(0,0),(-1,-1),6),
+        ]))
+        story.append(lw)
+        story.append(Spacer(1, 1*cm))
+        
+        # Footer
+        story.append(Paragraph(
+            '<font size="8" color="#64748b">Factura emitida por Yve.01 — Sistema de gestión financiera hotelera · yve01.onrender.com<br/>'
+            'Condiciones: Pago según términos contractuales · En caso de discrepancia contacte a jordi@yve01.com</font>',
+            s['Normal']))
+        
+        doc.build(story)
+        buf.seek(0)
+        return buf, None
+    except ImportError:
+        return None, "reportlab no instalado"
+    except Exception as e:
+        return None, str(e)

@@ -462,6 +462,22 @@ def api_test_oracle():
     except Exception as e:
         return jsonify({"ok": False, "error": str(e)[:200]})
 
+@app.route("/api/ar_real/pdf/<numero>")
+@login_required
+def api_invoice_pdf(numero):
+    """Descarga PDF de una factura corporativa."""
+    try:
+        from exportador_pdf import export_invoice_pdf
+        buf, err = export_invoice_pdf(numero)
+        if err:
+            return jsonify({"error": err}), 404
+        from flask import send_file
+        return send_file(buf, mimetype="application/pdf",
+                        as_attachment=True,
+                        download_name=f"factura_{numero}.pdf")
+    except Exception as e:
+        return jsonify({"error": str(e)}), 500
+
 @app.route("/api/test_telegram", methods=["POST"])
 @login_required
 def api_test_telegram():
@@ -1899,6 +1915,7 @@ tr:hover td{background:rgba(255,255,255,.025)}
 }
 
 * { -webkit-tap-highlight-color: transparent; }
+@keyframes pulse { 0%,100%{opacity:1} 50%{opacity:.6} }
 button, a { touch-action: manipulation; }
 
 </style>
@@ -2564,7 +2581,7 @@ button, a { touch-action: manipulation; }
 
 <script>
 // ── Globals ─────────────────────────────────────────────────────────────
-const CHANGELOG_VER = '2026-06';
+const CHANGELOG_VER = '2026-06-v2';
 const IS_MOBILE = window.innerWidth <= 768;
 var otaChart = null;
 
@@ -2625,6 +2642,14 @@ function generateBriefing(stats) {
     } else if (good.length > 0) {
       statusBar.style.color = 'var(--grn)';
       statusBar.textContent = '✓ ' + good[0];
+      // First all-clear celebration
+      if (!sessionStorage.getItem('all_clear_shown')) { sessionStorage.setItem('all_clear_shown','1'); setTimeout(()=>showNotification('🎉 ¡Todo en orden! Ciclo AR limpio.','success'),500); }
+    }
+    // Pulse animation on issues
+    if (issues.length > 0) {
+      statusBar.style.animation = 'pulse 2s infinite';
+    } else {
+      statusBar.style.animation = '';
     }
   }
 }
@@ -2679,6 +2704,16 @@ async function loadAll() {
     var mkAP = document.getElementById('mkpi-ap');
     if (mkAR) mkAR.textContent = (stats.discrepancias||0) + (stats.di_pendientes||0);
     if (mkAP) mkAP.textContent = stats.pendientes_firma || '0';
+    // AR Real pending from quick stats
+    fetch('/api/ar_real/stats').then(r=>r.json()).then(ar=>{
+      if (ar.ok) {
+        var pendEl = document.getElementById('mkpi-ar');
+        if (pendEl && ar.pendiente > 0) {
+          pendEl.textContent = '\u20AC' + Math.round(ar.pendiente/1000) + 'K';
+          pendEl.parentElement.querySelector('.mkpi-lbl') && (document.querySelector('#mkpi-ar').nextSibling.textContent = 'AR pend');
+        }
+      }
+    }).catch(()=>{});
     // GOP% from DRR if loaded
     fetch('/api/stats_drr').then(r=>r.json()).then(d=>{
       if (d && d.metricas) {
@@ -2810,7 +2845,7 @@ function renderTable(rows) {
   const tbody = document.getElementById('tbl-body');
   document.getElementById('tbl-count').textContent = rows.length ? rows.length + ' ' + (t('lbl.registros')||'registros') : '';
   if (!rows.length) {
-    tbody.innerHTML = '<tr><td colspan="12" class="empty"><p>Sin facturas. Pulsa ⚡ Procesar Facturas.</p></td></tr>';
+    tbody.innerHTML = '<tr><td colspan="12" style="padding:32px;text-align:center"><div style="font-size:32px;margin-bottom:8px">📦</div><div style="font-weight:600;color:var(--mut);margin-bottom:4px">Sin facturas AP</div><div style="font-size:12px;color:var(--dim)">Pulsa ⚡ Procesar Facturas AP</div></td></tr>';
     return;
   }
   tbody.innerHTML = rows.map(r => {
@@ -3477,7 +3512,7 @@ async function cambiarIdioma(lang) {
 loadAll();
 setInterval(loadAll, 60000);
 // Changelog badge
-if (localStorage.getItem('changelog_seen') !== '2026-06') {
+if (localStorage.getItem('changelog_seen') !== '2026-06-v2') {
   const mb = document.getElementById('menu-badge');
   if (mb) mb.style.display = 'inline-block';
 }
@@ -5253,6 +5288,7 @@ function _renderFacturasAR(facturas, stats) {
       '<td style="padding:8px"><span style="background:' + stateColor + '20;color:' + stateColor + ';padding:2px 8px;border-radius:6px;font-size:10px;font-weight:700">' + stateLabel + '</span></td>' +
       '<td style="padding:8px;white-space:nowrap">' +
         (f.estado === 'FACTURADO' ? '<button onclick="cobrarFacturaAR(\'' + f.numero + '\')" class="btn bsm" style="font-size:10px;margin-right:4px;background:rgba(34,197,94,.1);color:var(--grn);border-color:rgba(34,197,94,.3)" title="Marcar como cobrada">💰</button>' : '') +
+        (f.estado === 'FACTURADO' ? '<a href="/api/ar_real/pdf/' + encodeURIComponent(f.numero) + '" target="_blank" class="btn bsm" style="font-size:10px;text-decoration:none;background:rgba(59,130,246,.1);color:var(--acc2);border-color:rgba(59,130,246,.3)" title="Descargar PDF">📄</a>' : '') +
         (f.estado === 'FACTURADO' ? '<button onclick="recordatorioAR(\'' + f.numero + '\')" class="btn bsm" style="font-size:10px;background:rgba(245,158,11,.1);color:var(--ora);border-color:rgba(245,158,11,.3)" title="Enviar recordatorio email">📧</button>' : '') +
       '</td>' +
     '</tr>';
@@ -5693,21 +5729,19 @@ document.addEventListener('keydown', e => {
       <div>
         <div style="color:#60a5fa;font-weight:700;font-size:11px;text-transform:uppercase;letter-spacing:.4px;margin-bottom:8px">Junio 2026</div>
         <ul style="color:#94a3b8;padding-left:16px;line-height:1.8">
-          <li>🔍 Búsqueda global Ctrl+K en todas las secciones</li>
-          <li>⌨ Atajos de teclado (1-9 cambian pestaña, R recarga)</li>
-          <li>🌙 Modo claro/oscuro con persistencia</li>
-          <li>📊 Calipolis: sparklines GOP% en tarjetas de hotel</li>
-          <li>🏨 Multi-Hotel: datos reales Calipolis + barras comparativas</li>
-          <li>📄 AR Real: modal emitir factura corporativa</li>
-          <li>🔔 Alertas del día clickables sobre las pestañas</li>
-          <li>✅ Checklist de configuración para nuevos usuarios</li>
-          <li>🔴 DRR: días OOB resaltados en rojo en el gráfico</li>
-          <li>🔑 Admin: reset de contraseña por usuario</li>
-          <li>📝 Registro de auditoría de acciones</li>
-          <li>⚖️ Páginas legales: Términos, Privacidad, Cookies (RGPD)</li>
-          <li>🗺️ Sitemap.xml y robots.txt para SEO</li>
-          <li>✉️ Emails de alerta con diseño profesional Yve.01</li>
-          <li>🍽️ F&B: mermas con totales, alertas y categorías</li>
+          <li>🏢 AR Real: flujo completo — clientes, aging, cobro, recordatorios</li>
+          <li>📄 AR Real: generación de PDF por factura</li>
+          <li>📱 Mobile: barra de navegación inferior, swipe de pestañas</li>
+          <li>🔄 Mobile: pull-to-refresh y KPI quick-view</li>
+          <li>⚡ Banco: botón conciliación automática</li>
+          <li>🎯 Tour guiado de 6 pasos (menú ⋯)</li>
+          <li>📊 Calipolis: gráfico multi-métrica (GOP%+Occ+Revenue)</li>
+          <li>💡 Smart Insights en panel Calipolis</li>
+          <li>🔔 Status bar con briefing matutino y animación</li>
+          <li>🔍 Búsqueda global Ctrl+K</li>
+          <li>⌨ Atajos de teclado 1-9 + swipe</li>
+          <li>⚖️ Páginas legales RGPD completas</li>
+          <li>📝 Blog SEO con 10 artículos</li>
         </ul>
       </div>
       <div>
@@ -5724,7 +5758,7 @@ document.addEventListener('keydown', e => {
   </div>
 </div>
 <script>function showChangelog() {
-  localStorage.setItem('changelog_seen', '2026-06');
+  localStorage.setItem('changelog_seen', '2026-06-v2');
   const badge = document.getElementById('menu-badge');
   if (badge) badge.style.display = 'none';
   document.getElementById('changelog-modal').style.display='flex'; document.getElementById('main-menu').classList.remove('open'); }</script>
