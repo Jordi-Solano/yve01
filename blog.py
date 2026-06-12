@@ -168,6 +168,27 @@ POSTS = [
 <p>Cuando AP procesa facturas con retraso, los proveedores aplican recargos o retienen suministros. Reducir el tiempo de procesamiento de 5 días a 1 día mejora las relaciones con proveedores y puede negociar mejores condiciones de pago.</p>""",
   },
 
+    {
+    "slug": "kpis-hotel-revpar-goppar-trevpar-guia",
+    "title": "RevPAR, GOPPAR y TRevPAR: los KPIs financieros clave",
+    "description": "Guia completa sobre los indicadores financieros en hoteleria: RevPAR, GOPPAR, TRevPAR. Como calcularlos y mejorarlos.",
+    "date": "2026-06-10",
+    "read_min": 9,
+    "category": "KPIs",
+    "related": ["drr-kpis-hotel", "software-gestion-financiera-hoteles-espana"],
+    "content": (
+      "<h2>RevPAR, GOPPAR y TRevPAR: indicadores clave</h2>"
+      "<p>Los hoteles modernos necesitan mas que ocupacion. Los KPIs financieros permiten tomar decisiones basadas en datos.</p>"
+      "<h2>RevPAR: Revenue Per Available Room</h2>"
+      "<p>RevPAR = Occupancy% x ADR. Mide el ingreso por habitacion disponible. Es el KPI de revenue management mas usado.</p>"
+      "<h2>GOPPAR: GOP per Available Room</h2>"
+      "<p>GOPPAR = GOP / Habitaciones disponibles. Incluye los costes operativos. Es el KPI que mas importa al CFO.</p>"
+      "<h2>TRevPAR: Total Revenue PAR</h2>"
+      "<p>Incluye todos los ingresos (habitaciones, FB, spa). Clave para hoteles resort o con grandes instalaciones.</p>"
+      "<h2>Como los automatiza Yve.01</h2>"
+      "<p>El modulo DRR rastrea RevPAR, ADR, OCC%, GOP% y GOPPAR en tiempo real, comparando con presupuesto y ano anterior.</p>"
+    )
+  },
 ]
 
 _CSS = """

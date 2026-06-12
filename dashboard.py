@@ -4617,8 +4617,13 @@ function autoResize(el) {
 // ══════════════════════════════════════════════════════════════
 
 async function uploadDRR(input) {
-  const file = input.files[0];
+  // Accept both file input and DataTransfer (drag-drop)
+  const file = (input.files || input)[0];
   if (!file) return;
+  
+  // Hide drag-drop zone, show loading
+  const dropZone = document.getElementById('drr-drop-zone');
+  if (dropZone) dropZone.style.display = 'none';
   const status  = document.getElementById('drr-status');
   const label   = input.previousElementSibling;
   const origLbl = label ? label.textContent : '';
@@ -4649,6 +4654,7 @@ async function uploadDRR(input) {
         window._drrChartInstance.data.datasets[0].data = chartData.revenue;
         window._drrChartInstance.update();
       }
+      if (dropZone) dropZone.style.display = 'none';
       showNotification('✓ DRR procesado — ' + diasStr + ' días · ' + oob + ' OOB', 'success');
     } else {
       status.textContent = '✗ Error: ' + (data.error || 'desconocido');
