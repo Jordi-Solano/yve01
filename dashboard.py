@@ -1927,6 +1927,7 @@ button, a { touch-action: manipulation; }
     <div class="logo-dot"></div>
     <span class="logo-name">Yve<span style="color:var(--acc2)">.01</span></span>
     <span class="logo-tag">__HOTEL_TAG__</span>
+  <span style="font-size:9px;color:#334155;margin-left:4px;font-weight:500">v1.0</span>
   </div>
   <div class="nav-mid"></div>
   <div id="demo-banner" style="display:none;position:fixed;top:0;left:0;right:0;z-index:8000;background:linear-gradient(90deg,#f59e0b,#d97706);color:#000;text-align:center;padding:6px 16px;font-size:13px;font-weight:700;letter-spacing:.3px">
@@ -2768,7 +2769,15 @@ async function loadAll() {
     if (stats.discrepancias > 0) parts.push('⚠ ' + stats.discrepancias + ' discrepancia(s) AR por resolver');
     if (stats.di_pendientes > 0) parts.push('📄 ' + stats.di_pendientes + ' cert. DI pendiente(s)');
     if (stats.pendientes_firma > 0) parts.push('✍ ' + stats.pendientes_firma + ' factura(s) esperando firma');
-    if (parts.length > 0) { sumEl.style.display = 'block'; sumTxt.textContent = parts.join('  ·  '); }
+    if (parts.length > 0) {
+      sumEl.style.display = 'block';
+      sumTxt.textContent = parts.join('  ·  ');
+      var lnk = document.createElement('a');
+      lnk.href = '#'; lnk.style.cssText = 'color:var(--acc2);font-size:11px;margin-left:8px;text-decoration:none';
+      lnk.textContent = 'Ver AR →';
+      lnk.onclick = function(e){ e.preventDefault(); switchTab('ar_otas',document.getElementById('tab-ar_otas')); };
+      sumTxt.appendChild(lnk);
+    }
     else { sumEl.style.display = 'block'; sumTxt.textContent = '✓ Todo en orden — ' + stats.total + ' facturas procesadas sin incidencias'; sumEl.style.background = 'rgba(34,197,94,.05)'; sumEl.style.borderColor = 'rgba(34,197,94,.1)'; }
   }
   if (topBar) { topBar.style.width = '100%'; setTimeout(() => { topBar.style.opacity = '0'; setTimeout(() => { topBar.style.width = '0'; topBar.style.opacity = '1'; }, 300); }, 400); }
