@@ -3687,32 +3687,33 @@ function _showTourStep() {
   }
   overlay.style.display = 'block';
 
-  // Get or create tooltip box
+  // Get or create tooltip box — simple explicit version
   var box = document.getElementById('tour-box');
-  if (!box) {
-    box = document.createElement('div');
-    box.id = 'tour-box';
-    box.style.cssText = 'position:fixed;background:var(--s1);border:1px solid var(--acc);border-radius:14px;padding:20px 22px;max-width:300px;width:calc(100vw - 40px);z-index:9999;box-shadow:0 8px 40px rgba(0,0,0,.6);pointer-events:all;transition:top .25s,left .25s';
-    box.innerHTML =
-      '<div id="tour-close" onclick="endTour()" style="position:absolute;top:10px;right:12px;cursor:pointer;color:var(--dim);font-size:18px;line-height:1">×</div>' +
-      '<div id="tour-title" style="font-weight:700;font-size:14px;margin-bottom:8px;color:var(--acc2);padding-right:16px"></div>' +
-      '<div id="tour-text"  style="font-size:13px;color:var(--mut);line-height:1.6;margin-bottom:16px"></div>' +
-      '<div style="display:flex;justify-content:space-between;align-items:center">' +
-        '<div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:14px">' +'<span id="tour-counter" style="font-size:10px;color:var(--dim);font-weight:600"></span>' +'<div style="display:flex;gap:4px" id="tour-dots"></div></div>' +
-        '<div style="display:flex;gap:8px">' +
-          '<button id="tour-prev-btn" onclick="prevTourStep()" style="background:none;border:1px solid var(--s3);color:var(--mut);padding:6px 12px;border-radius:8px;font-size:12px;cursor:pointer;display:none">←</button>' +
-          '<button id="tour-next-btn" onclick="nextTourStep()" style="background:var(--acc);border:none;color:#fff;padding:6px 14px;border-radius:8px;font-size:12px;font-weight:600;cursor:pointer">Siguiente →</button>' +
-        '</div>' +
-      '</div>';
-    document.body.appendChild(box);
-  }
+  if (!box) { box = document.createElement('div'); box.id = 'tour-box'; document.body.appendChild(box); }
+  // Always rebuild innerHTML for reliability (no stale state)
+  box.setAttribute('style',
+    'position:fixed;background:#0f172a;border:2px solid #3b82f6;border-radius:14px;padding:18px 20px 14px 20px;' +
+    'max-width:300px;width:calc(100vw - 40px);z-index:10000;box-shadow:0 8px 40px rgba(0,0,0,.7);pointer-events:all;' +
+    'font-family:Inter,system-ui,sans-serif;color:#f1f5f9;top:100px;left:20px');
+  box.innerHTML =
+    '<button onclick="endTour()" style="position:absolute;top:8px;right:10px;background:none;border:none;color:#64748b;font-size:20px;cursor:pointer;line-height:1;padding:0" title="Cerrar tour">&#x00D7;</button>' +
+    '<div id="tour-step-counter" style="font-size:10px;color:#64748b;font-weight:700;margin-bottom:6px;text-transform:uppercase;letter-spacing:.5px;padding-right:20px">PASO 1 DE 7</div>' +
+    '<div id="tour-title" style="font-weight:700;font-size:15px;margin-bottom:8px;color:#60a5fa;padding-right:20px">Cargando...</div>' +
+    '<div id="tour-text" style="font-size:13px;color:#94a3b8;line-height:1.65;margin-bottom:16px">...</div>' +
+    '<div style="display:flex;align-items:center;justify-content:space-between;margin-top:4px">' +
+      '<div id="tour-dots" style="display:flex;gap:5px"></div>' +
+      '<div style="display:flex;gap:8px">' +
+        '<button id="tour-prev-btn" onclick="prevTourStep()" style="display:none;background:none;border:1px solid #334155;color:#94a3b8;padding:6px 12px;border-radius:8px;font-size:12px;cursor:pointer">&#x2190; Atrás</button>' +
+        '<button id="tour-next-btn" onclick="nextTourStep()" style="background:#3b82f6;border:none;color:#fff;padding:7px 16px;border-radius:8px;font-size:12px;font-weight:600;cursor:pointer">Siguiente &#x2192;</button>' +
+      '</div>' +
+    '</div>'
 
   // Update content
   document.getElementById('tour-title').textContent = step.title;
   document.getElementById('tour-text').textContent  = step.text;
 
   // Step counter
-  var counterEl = document.getElementById('tour-counter');
+  var counterEl = document.getElementById('tour-step-counter');
   if (counterEl) counterEl.textContent = 'Paso ' + (_tourStep + 1) + ' de ' + _tourSteps.length;
 
   // Dots
