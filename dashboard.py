@@ -6074,136 +6074,33 @@ function _calSparkline(data, color) {
 function addCalipolisInsights(hoteles) {
   var el = document.getElementById('cal-insights');
   if (!el || !hoteles || !hoteles.length) return;
-  var top    = hoteles.reduce(function(a,b){ return a.gop_pct > b.gop_pct ? a : b; });
-  var avg    = (hoteles.reduce(function(s,h){ return s+h.gop_pct; }, 0)/hoteles.length).toFixed(1);
-  var rev    = hoteles.reduce(function(s,h){ return s+(h.total_ingresos||0); }, 0);
-  var alerts = hoteles.reduce(function(s,h){ return s+(h.alertas||0); }, 0);
-  var gc = top.gop_pct >= 22 ? 'var(--grn)' : 'var(--ora)';
+  var top = hoteles.reduce(function(a,b){ return a.gop_pct > b.gop_pct ? a : b; });
+  var avg = Math.round((hoteles.reduce(function(s,h){ return s+h.gop_pct; },0) / hoteles.length) * 10) / 10;
+  var totalRev = hoteles.reduce(function(s,h){ return s + (h.total_ingresos||0); }, 0);
+
   el.innerHTML =
-    '<div style="display:flex;gap:10px;flex-wrap:wrap;margin-top:16px">' +
-    '<div style="flex:1;min-width:130px;background:rgba(34,197,94,.06);border:1px solid rgba(34,197,94,.15);border-radius:10px;padding:12px">' +
-      '<div style="font-size:10px;color:var(--grn);font-weight:700;text-transform:uppercase">Mejor GOP%</div>' +
-      '<div style="font-size:13px;font-weight:600;margin-top:2px">' + top.nombre.split(' ').slice(-1)[0] + '</div>' +
-      '<div style="font-size:20px;font-weight:900;color:' + gc + '">' + top.gop_pct + '%</div>' +
+    '<div style="display:grid;grid-template-columns:repeat(3,1fr);gap:12px;margin-bottom:20px">' +
+    // Panel 1: Mejor GOP%
+    '<div class="card" style="border-left:3px solid #22c55e;padding:16px 18px">' +
+      '<div style="font-size:9px;font-weight:700;letter-spacing:.6px;color:#22c55e;text-transform:uppercase;margin-bottom:8px">MEJOR GOP%</div>' +
+      '<div style="font-size:14px;font-weight:700;color:var(--tx);margin-bottom:6px">' + (top.nombre||'').split(' ').slice(-1)[0] + '</div>' +
+      '<div style="font-size:26px;font-weight:900;color:#22c55e">' + top.gop_pct + '%</div>' +
     '</div>' +
-    '<div style="flex:1;min-width:130px;background:rgba(59,130,246,.06);border:1px solid rgba(59,130,246,.15);border-radius:10px;padding:12px">' +
-      '<div style="font-size:10px;color:var(--acc2);font-weight:700;text-transform:uppercase">Revenue</div>' +
-      '<div style="font-size:13px;font-weight:600;margin-top:2px">Junio grupo</div>' +
-      '<div style="font-size:20px;font-weight:900;color:var(--acc2)">\u20AC' + Math.round(rev/1000) + 'K</div>' +
+    // Panel 2: Revenue
+    '<div class="card" style="border-left:3px solid #60a5fa;padding:16px 18px">' +
+      '<div style="font-size:9px;font-weight:700;letter-spacing:.6px;color:#60a5fa;text-transform:uppercase;margin-bottom:8px">REVENUE</div>' +
+      '<div style="font-size:14px;font-weight:700;color:var(--tx);margin-bottom:6px">Junio grupo</div>' +
+      '<div style="font-size:26px;font-weight:900;color:#60a5fa">€' + Math.round(totalRev/1000) + 'K</div>' +
     '</div>' +
-    '<div style="flex:1;min-width:130px;background:rgba(167,139,250,.06);border:1px solid rgba(167,139,250,.15);border-radius:10px;padding:12px">' +
-      '<div style="font-size:10px;color:var(--pur);font-weight:700;text-transform:uppercase">GOP% medio</div>' +
-      '<div style="font-size:13px;font-weight:600;margin-top:2px">Grupo</div>' +
-      '<div style="font-size:20px;font-weight:900;color:var(--pur)">' + avg + '%</div>' +
+    // Panel 3: GOP% medio
+    '<div class="card" style="border-left:3px solid #a78bfa;padding:16px 18px">' +
+      '<div style="font-size:9px;font-weight:700;letter-spacing:.6px;color:#a78bfa;text-transform:uppercase;margin-bottom:8px">GOP% MEDIO</div>' +
+      '<div style="font-size:14px;font-weight:700;color:var(--tx);margin-bottom:6px">Grupo</div>' +
+      '<div style="font-size:26px;font-weight:900;color:#a78bfa">' + avg + '%</div>' +
     '</div>' +
-    (alerts > 0 ? '<div style="flex:1;min-width:130px;background:rgba(245,158,11,.06);border:1px solid rgba(245,158,11,.15);border-radius:10px;padding:12px"><div style="font-size:10px;color:var(--ora);font-weight:700;text-transform:uppercase">Alertas</div><div style="font-size:13px;font-weight:600;margin-top:2px">Activas</div><div style="font-size:20px;font-weight:900;color:var(--ora)">' + alerts + '</div></div>' : '') +
     '</div>';
 }
 
-function renderCalipolisTrends(tendencias) {
-  if (!tendencias || !tendencias.gop_mensual) return;
-  const cont = document.getElementById('cal-tendencias');
-  if (!cont) return;
-  const meses = tendencias.meses || [];
-  const gop   = tendencias.gop_mensual || [];
-  const occ   = tendencias.occ_mensual || [];
-  const rev   = (tendencias.rev_mensual || []).map(v => Math.round(v / 1000));
-
-  if (!window.Chart || !gop.length) return;
-  // Destroy existing
-  if (window._calChart) { try { window._calChart.destroy(); } catch(e) {} }
-
-  const ctx = document.createElement('canvas');
-  ctx.style.cssText = 'width:100%;height:220px';
-  cont.innerHTML = '';
-  cont.appendChild(ctx);
-
-  window._calChart = new Chart(ctx, {
-    data: {
-      labels: meses,
-      datasets: [
-        {type:'line', label:'GOP%', data: gop, borderColor:'#22c55e', backgroundColor:'rgba(34,197,94,.08)',
-         yAxisID:'y', tension:.4, pointRadius:4, pointBackgroundColor:'#22c55e', borderWidth:2.5, fill:true},
-        {type:'line', label:'Ocup%', data: occ, borderColor:'#60a5fa', backgroundColor:'transparent',
-         yAxisID:'y', tension:.4, pointRadius:3, borderWidth:1.5, borderDash:[4,3]},
-        {type:'bar', label:'Rev(k€)', data: rev, backgroundColor:'rgba(167,139,250,.15)',
-         borderColor:'rgba(167,139,250,.4)', borderWidth:1, yAxisID:'y2', borderRadius:4},
-      ]
-    },
-    options: {
-      responsive: true, maintainAspectRatio: false,
-      plugins: {
-        legend: {labels:{color:'#94a3b8',font:{size:11},boxWidth:10}},
-        tooltip: {backgroundColor:'#1e293b',titleColor:'#f1f5f9',bodyColor:'#94a3b8',borderColor:'#334155',borderWidth:1}
-      },
-      scales: {
-        x: {grid:{color:'rgba(51,65,85,.2)'},ticks:{color:'#64748b',font:{size:9}}},
-        y: {position:'left',grid:{color:'rgba(51,65,85,.2)'},ticks:{color:'#94a3b8',font:{size:9}},
-            title:{display:true,text:'%',color:'#64748b',font:{size:9}}},
-        y2:{position:'right',grid:{drawOnChartArea:false},ticks:{color:'#94a3b8',font:{size:9}},
-            title:{display:true,text:'k€',color:'#64748b',font:{size:9}}}
-      }
-    }
-  });
-
-  // Also render AP trend chart
-  var apData = tendencias.ap_pendientes || [];
-  var apEl = document.getElementById('cal-ap-chart');
-  if (apEl && apData.length && window.Chart) {
-    if (window._calApChart) { try { window._calApChart.destroy(); } catch(e){} }
-    var apCtx = document.createElement('canvas');
-    apCtx.style.cssText = 'width:100%;height:140px';
-    apEl.innerHTML = ''; apEl.appendChild(apCtx);
-    window._calApChart = new Chart(apCtx, {
-      type: 'bar',
-      data: {
-        labels: meses,
-        datasets: [{
-          label: 'AP pendientes',
-          data: apData,
-          backgroundColor: 'rgba(245,158,11,.2)',
-          borderColor: '#f59e0b',
-          borderWidth: 1.5,
-          borderRadius: 4,
-        }]
-      },
-      options: {
-        responsive: true, maintainAspectRatio: false,
-        plugins: { legend: {display:false}, tooltip: {backgroundColor:'#1e293b',bodyColor:'#94a3b8',borderColor:'#334155',borderWidth:1} },
-        scales: {
-          x: {grid:{color:'rgba(51,65,85,.2)'},ticks:{color:'#64748b',font:{size:9}}},
-          y: {grid:{color:'rgba(51,65,85,.2)'},ticks:{color:'#94a3b8',font:{size:9}},beginAtZero:true}
-        }
-      }
-    });
-  }
-}
-
-function renderCalipolisKpis(kpis) {
-  const cont = document.getElementById('cal-kpis');
-  if (!cont) return;
-  cont.dataset.loaded = '1';
-  const totalRevM = (kpis.total_revenue_mtd / 1000000).toFixed(2);
-  const totalGopK = Math.round((kpis.total_gop || 0) / 1000);
-  const gopColor  = kpis.avg_gop_pct >= 22 ? 'var(--grn)' : kpis.avg_gop_pct >= 18 ? 'var(--ora)' : 'var(--red)';
-  const occColor  = kpis.avg_ocupacion >= 80 ? 'var(--grn)' : kpis.avg_ocupacion >= 65 ? 'var(--ora)' : 'var(--red)';
-  const cards = [
-    {label:'Revenue MTD',      value:'€' + totalRevM + 'M', sub:kpis.num_hoteles + ' propiedades · Grupo Calipolis', color:'var(--acc2)', tip:'Ingresos totales del mes del Grupo Calipolis Hotels'},
-    {label:'GOP Total',        value:'€' + totalGopK + 'K', sub:'GOP% medio: ' + kpis.avg_gop_pct + '%',           color: gopColor,     tip:'Gross Operating Profit total del grupo'},
-    {label:'Ocupación media',  value: kpis.avg_ocupacion + '%',  sub:'ADR €' + kpis.avg_adr,                       color: occColor,     tip:'Ocupación media ponderada por habitaciones'},
-    {label:'RevPAR medio',     value:'€' + kpis.avg_revpar,      sub:'Sobre ' + kpis.total_rooms + ' hab.',        color:'var(--tx)',   tip:'Revenue Per Available Room consolidado'},
-  ];
-  // Put cards directly into cont (which already has 1fr 1fr grid)
-  cont.innerHTML = cards.map(c =>
-    '<div class="sc" data-tip="' + (c.tip||'') + '">' +
-    '<div class="sc-lbl" style="font-size:9px;text-transform:uppercase;letter-spacing:.5px">' + c.label.toUpperCase() + '</div>' +
-    '<div class="sc-val" style="color:' + c.color + ';font-size:clamp(22px,3.5vw,36px);font-weight:900;line-height:1.1;margin:5px 0">' + c.value + '</div>' +
-    '<div class="sc-sub" style="font-size:10px;color:var(--dim)">' + c.sub + '</div>' +
-    '</div>'
-  ).join('');
-  // Re-apply language
-  if (_i18nLang && _i18nLang !== 'es') applyI18n(_i18nData);
-}
 
 function renderCalipolisHoteles(hoteles) {
   const cont = document.getElementById('cal-hoteles');
