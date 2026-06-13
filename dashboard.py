@@ -1575,6 +1575,7 @@ body.mobile-lite #ap-chart-wrap,
 body.mobile-lite #banco-alerts-card,
 body.mobile-lite .hide-lite { display: none !important; }
 body.mobile-lite .mobile-lite-hint { display: block !important; }
+body.mobile-lite #mobile-kpi-bar { display: block !important; }
 body.mobile-lite .panel > .stats { grid-template-columns: repeat(2,1fr) !important; gap: 8px !important; }
 body.mobile-lite .sc-val { font-size: 22px !important; }
 body.mobile-lite .panel { padding: 12px !important; }
@@ -2129,16 +2130,30 @@ button, a { touch-action: manipulation; }
   </div>
 
   <!-- Mobile KPI Quick-View -->
-  <div id="mobile-kpi-bar" style="display:none;padding:10px 14px;background:var(--s1);border-bottom:1px solid var(--s2);overflow-x:auto;-webkit-overflow-scrolling:touch;scrollbar-width:none">
-    <div style="display:flex;gap:12px;min-width:max-content">
-      <div style="text-align:center;min-width:70px"><div style="font-size:18px;font-weight:800;color:var(--acc2)" id="mkpi-ar">—</div><div style="font-size:9px;color:var(--mut);text-transform:uppercase">AR disc</div></div>
-      <div style="width:1px;background:var(--s2)"></div>
-      <div style="text-align:center;min-width:70px"><div style="font-size:18px;font-weight:800;color:var(--ora)" id="mkpi-ap">—</div><div style="font-size:9px;color:var(--mut);text-transform:uppercase">AP pend</div></div>
-      <div style="width:1px;background:var(--s2)"></div>
-      <div style="text-align:center;min-width:70px"><div style="font-size:18px;font-weight:800;color:var(--grn)" id="mkpi-occ">—</div><div style="font-size:9px;color:var(--mut);text-transform:uppercase">Ocupación</div></div>
-      <div style="width:1px;background:var(--s2)"></div>
-      <div style="text-align:center;min-width:70px"><div style="font-size:18px;font-weight:800;color:var(--pur)" id="mkpi-gop">—</div><div style="font-size:9px;color:var(--mut);text-transform:uppercase">GOP%</div></div>
+  <div id="mobile-kpi-bar" style="display:none;background:var(--s1);border-bottom:1px solid var(--s2)">
+    <!-- KPI scroll row -->
+    <div style="overflow-x:auto;-webkit-overflow-scrolling:touch;scrollbar-width:none;padding:10px 14px">
+      <div style="display:flex;gap:0;min-width:max-content;align-items:stretch">
+        <div style="text-align:center;min-width:80px;padding:0 12px;border-right:1px solid var(--s2)">
+          <div style="font-size:20px;font-weight:900;color:var(--acc2);line-height:1.2" id="mkpi-ar">—</div>
+          <div style="font-size:9px;color:var(--mut);text-transform:uppercase;letter-spacing:.5px;margin-top:3px">AR pend</div>
+        </div>
+        <div style="text-align:center;min-width:80px;padding:0 12px;border-right:1px solid var(--s2)">
+          <div style="font-size:20px;font-weight:900;color:var(--ora);line-height:1.2" id="mkpi-ap">—</div>
+          <div style="font-size:9px;color:var(--mut);text-transform:uppercase;letter-spacing:.5px;margin-top:3px">AP firma</div>
+        </div>
+        <div style="text-align:center;min-width:80px;padding:0 12px;border-right:1px solid var(--s2)">
+          <div style="font-size:20px;font-weight:900;color:var(--grn);line-height:1.2" id="mkpi-occ">—</div>
+          <div style="font-size:9px;color:var(--mut);text-transform:uppercase;letter-spacing:.5px;margin-top:3px">Ocup%</div>
+        </div>
+        <div style="text-align:center;min-width:80px;padding:0 12px">
+          <div style="font-size:20px;font-weight:900;color:var(--pur);line-height:1.2" id="mkpi-gop">—</div>
+          <div style="font-size:9px;color:var(--mut);text-transform:uppercase;letter-spacing:.5px;margin-top:3px">GOP%</div>
+        </div>
+      </div>
     </div>
+    <!-- Last update timestamp -->
+    <div id="mkpi-updated" style="font-size:9px;color:var(--dim);text-align:right;padding:3px 14px 6px;display:none"></div>
   </div>
 
   <!-- Executive summary bar (dynamic) -->
@@ -2847,6 +2862,9 @@ async function loadAll() {
         if (mkG && gop) mkG.textContent = gop.today || '—';
       }
     }).catch(()=>{});
+    // Timestamp
+    var updEl = document.getElementById('mkpi-updated');
+    if (updEl) { updEl.textContent = 'Actualizado ' + new Date().toLocaleTimeString('es-ES',{hour:'2-digit',minute:'2-digit'}); updEl.style.display='block'; }
   }
 
   // Tab notification badges
