@@ -372,6 +372,11 @@ def sitemap_xml():
     return Response(xml, mimetype="application/xml")
 
 @app.route("/health")
+@app.route('/api/oracle/status')
+def api_oracle_status():
+    mode='real' if os.environ.get('ORACLE_BASE_URL') else 'simulation'
+    return jsonify({'mode':mode,'ok':True})
+
 @app.route("/api/health")
 def health():
     """Health check — keeps Render awake and provides system status."""
@@ -2185,7 +2190,7 @@ button, a { touch-action: manipulation; }
     <div class="mobile-lite-hint" style="display:none;background:rgba(59,130,246,.08);border:1px solid rgba(59,130,246,.2);border-radius:8px;padding:8px 12px;margin-bottom:12px;font-size:12px;color:var(--acc2)">📱 Vista resumida · <button onclick="toggleMobileLite()" style="background:none;border:none;color:var(--acc2);text-decoration:underline;cursor:pointer;font-size:12px">Ver tabla completa →</button></div>
   <div style="display:flex;justify-content:flex-end;gap:12px;margin-bottom:14px"><a href="/api/exportar/ar" class="btn-ref" style="text-decoration:none">⬇️ Excel</a><a href="/api/exportar/ar/pdf" class="btn-ref" style="text-decoration:none">📄 PDF</a><a href="/aprobaciones-ar/" class="btn-ref" style="text-decoration:none" title="Abrir panel de aprobaciones AR">📲 Aprobar facturas AR</a></div>
   <!-- STATS -->
-  <div class="stats">
+  <div class="stats" id="ap-stats-section" id="ar-stats-section">
     <div class="sc hl c-blu">
       <div class="sc-lbl" data-i18n="sc.procesadas">Facturas procesadas</div>
       <div class="sc-val" id="s-tot">—</div>
@@ -3736,63 +3741,103 @@ var _calLoaded = false;
 var _drrLoaded = false;
 var _fbLoaded = false;
 var _arRealLoaded = false;
-var _TOUR_VER = '2';  // increment to re-offer after updates
+var _TOUR_VER = '3';  // increment to re-offer after updates
 var _tourSteps = [
   {
-    el:'#app-header',
-    tab:null,
-    title:'👋 Bienvenido a Yve.01',
-    text:'Yve.01 es el sistema de finanzas hoteleras que automatiza AR, AP, DRR y reporting para el Grupo Calipolis. Este tour de 8 pasos te lleva por cada módulo en 3 minutos.',
+    el: '#app-header',
+    tab: null,
+    title: '👋 Bienvenido a Yve.01',
+    text: 'El sistema de finanzas hoteleras que automatiza AR, AP, DRR y reporting para el Grupo Calipolis. Este tour te lleva por cada módulo — 3 minutos y ya lo dominas todo.'
+  },
+  {
+    el: '#ar-stats-section',
+    tab: 'ar',
+    title: '💳 AR — Comisiones OTA',
+    text: 'Verifica automáticamente las comisiones de Booking.com y Expedia. De un vistazo: facturas procesadas, importe total, discrepancias reclamables y certificados de Doble Imposición pendientes. El número rojo son euros que puedes recuperar.'
+  },
+  {
+    el: '#ap-stats-section',
+    tab: 'ap',
+    title: '📦 AP — 3-way Matching',
+    text: 'Para cada factura de proveedor, Yve cruza 3 documentos: la factura, el pedido (PO) y el albarán. Si cuadra todo → Match OK automático. Si hay diferencia → alerta y email al proveedor generado con IA.'
+  },
+  {
+    el: '#drr-metrics',
+    tab: 'drr',
+    title: '📊 DRR — Daily Revenue Report',
+    text: 'Arrastra tu archivo .xlsm aquí. Yve extrae RevPAR, ADR, GOP%, ocupación y las 7.000+ líneas del Trial Balance en segundos. Detecta Out of Balance automáticamente y te avisa al instante.'
+  },
+  {
+    el: '#ar-real-stats',
+    tab: 'ar_real',
+    title: '🏢 AR Real — Grupos Corporativos',
+    text: 'Gestión completa de clientes como Telefónica o Accenture: emite facturas, controla el aging (0-30 / 31-60 / +90 días), cobra con un clic y envía recordatorios automáticos por email.'
+  },
+  {
+    el: '#cal-kpis',
+    tab: 'calipolis',
+    title: '🏨 Grupo Calipolis',
+    text: 'Dashboard consolidado de las 3 propiedades: Sitges, Mar y Boutique. GOP%, RevPAR, ocupación y tendencias de 6 meses. €2M de revenue gestionados desde aquí.',
     action: function() {
-      var h = document.getElementById('app-header');
-      if (!h) { var h2 = document.querySelector('nav, header, .navbar, #nav-bar');
-        if (h2) h2.id = 'app-header'; }
+      if (typeof loadCalipolis === 'function' && !document.getElementById('cal-kpis').dataset.loaded) {
+        loadCalipolis();
+      }
     }
   },
   {
-    el:'#tab-ar', tab:null,
-    title:'💳 AR — Comisiones OTA',
-    text:'El corazón del módulo AR. Yve verifica automáticamente cada factura de Booking.com, Expedia y otras OTAs contra las comisiones pactadas. Detecta discrepancias y facturas sin certificado DI.',
+    el: '#mh-kpis',
+    tab: 'multi_hotel',
+    title: '🌍 Multi-Hotel — Vista de Grupo',
+    text: 'Para el Financial Controller del grupo: KPIs consolidados, ranking de performance por hotel, tendencia de 6 meses y alertas centralizadas. Una pantalla, todo el grupo.',
     action: function() {
-      var btn = document.getElementById('tab-ar');
-      if (btn) btn.scrollIntoView({behavior:'smooth',block:'nearest',inline:'center'});
+      if (typeof loadMultiHotel === 'function') {
+        _mh_loaded = false;
+        loadMultiHotel();
+      }
     }
-  },
-  {
-    el:'#s-disc', tab:'ar',
-    title:'📊 KPIs del ciclo AR',
-    text:'De un vistazo: facturas procesadas, importe total, discrepancias reclamables y certificados de Doble Imposición pendientes. El número rojo son euros que puedes recuperar de las OTAs.',
-  },
-  {
-    el:'#tab-ap', tab:null,
-    title:'📦 AP — 3-way Matching',
-    text:'Para cada factura de proveedor, Yve cruza 3 documentos: la factura, el pedido (PO) y el albarán. Si cuadra todo → Match OK. Si hay diferencia → alerta automática y email al proveedor.',
-    action: function() {
-      var aprobar = document.querySelector('.btn-run[onclick*="aprobarMatchOK"]');
-      if (aprobar) aprobar.style.outline = '2px solid var(--grn)';
-    }
-  },
-  {
-    el:'#drr-drop-zone', tab:'drr',
-    title:'📊 DRR — Revenue Diario',
-    text:'Arrastra aquí tu archivo .xlsm del DRR. Yve extrae automáticamente RevPAR, ADR, GOP%, ocupación y las 7.000+ líneas del Trial Balance. Detecta Out of Balance al instante.',
-  },
-  {
-    el:'#ar-real-stats', tab:'ar_real',
-    title:'🏢 AR Real — Grupos Corporativos',
-    text:'Para grupos como Telefónica o Accenture: emite facturas, controla el aging (0-30 / 31-60 / 61-90 / >90 días), cobra y envía recordatorios automáticos por email con un clic.',
-  },
-  {
-    el:'#cal-kpis', tab:'calipolis',
-    title:'🏨 Dashboard Grupo Calipolis',
-    text:'Vista consolidada de las 3 propiedades con GOP%, RevPAR y tendencias de 6 meses. Detecta qué hotel rinde mejor y dónde hay alertas. €' + '€' + '2M de revenue gestionados aquí.',
-  },
-  {
-    el:'#mh-kpis', tab:'multi_hotel',
-    title:'🌍 Multi-Hotel — Vista de Grupo',
-    text:'Para grupos con múltiples propiedades: KPIs consolidados, ranking de performance por hotel, tendencia de 6 meses y alertas centralizadas. El FC de grupo lo ve todo desde una pantalla.',
-  },
+  }
 ];
+
+function _launchConfetti() {
+  var canvas = document.createElement('canvas');
+  canvas.id = 'confetti-canvas';
+  canvas.style.cssText = 'position:fixed;inset:0;width:100%;height:100%;z-index:9998;pointer-events:none';
+  document.body.appendChild(canvas);
+  canvas.width = window.innerWidth;
+  canvas.height = window.innerHeight;
+  var ctx = canvas.getContext('2d');
+  var pieces = [];
+  var colors = ['#3b82f6','#22c55e','#f59e0b','#ec4899','#a78bfa','#06b6d4','#f97316','#ef4444'];
+  for (var i = 0; i < 180; i++) {
+    pieces.push({
+      x: Math.random() * canvas.width, y: -20 - Math.random() * canvas.height * 0.4,
+      w: Math.random() * 12 + 5, h: Math.random() * 7 + 3,
+      r: Math.random() * Math.PI * 2, vx: (Math.random() - 0.5) * 4,
+      vy: Math.random() * 5 + 2, vr: (Math.random() - 0.5) * 0.18,
+      color: colors[Math.floor(Math.random() * colors.length)], opacity: 1
+    });
+  }
+  var frame = 0;
+  (function draw() {
+    ctx.clearRect(0, 0, canvas.width, canvas.height);
+    var alive = false;
+    pieces.forEach(function(p) {
+      p.x += p.vx; p.y += p.vy; p.r += p.vr;
+      if (frame > 70) p.opacity -= 0.012;
+      if (p.opacity > 0 && p.y < canvas.height + 30) {
+        alive = true;
+        ctx.save(); ctx.globalAlpha = Math.max(0, p.opacity);
+        ctx.translate(p.x, p.y); ctx.rotate(p.r);
+        ctx.fillStyle = p.color;
+        ctx.fillRect(-p.w/2, -p.h/2, p.w, p.h);
+        ctx.restore();
+      }
+    });
+    frame++;
+    if (alive && frame < 200) requestAnimationFrame(draw);
+    else canvas.remove();
+  })();
+}
 
 function startTour() {
   _tourActive = true; _tourStep = 0;
@@ -3811,13 +3856,13 @@ function _showTourStep() {
   if (_tourStep >= _tourSteps.length) { endTour(); return; }
   var step = _tourSteps[_tourStep];
 
-  // ── 1. Execute step action / switch tab ────────────────────────────
-  if (step.action && typeof step.action === 'function') {
-    try { step.action(); } catch(e) {}
-  }
+  // ── 1. Switch tab first, then action ─────────────────────────────────
   if (step.tab) {
     var tabEl = document.getElementById('tab-' + step.tab);
     if (tabEl) switchTab(step.tab, tabEl);
+  }
+  if (step.action && typeof step.action === 'function') {
+    setTimeout(function() { try { step.action(); } catch(e) {} }, 300);
   }
 
   // ── 2. Clear previous highlight ────────────────────────────────────
@@ -3835,7 +3880,7 @@ function _showTourStep() {
     setTimeout(function() {
       target = document.querySelector(step.el);
       _positionTour(target, step);
-    }, step.tab ? 350 : 0);
+    }, step.tab ? 500 : 0);
   } else {
     _positionTour(null, step);
   }
@@ -3879,9 +3924,10 @@ function _positionTour(target, step) {
       var w = rect.width + pad*2, h = rect.height + pad*2;
 
       // Dark overlay with hole
-      ctx.fillStyle = 'rgba(0,0,0,0.72)';
+      var extraPad = (step && step.el && (step.el.includes('stats') || step.el.includes('panel') || step.el.includes('metrics'))) ? 16 : 0;
+      ctx.fillStyle = 'rgba(0,0,0,0.78)';
       ctx.fillRect(0, 0, canvas.width, canvas.height);
-      ctx.clearRect(x, y, w, h);
+      ctx.clearRect(x - extraPad, y - extraPad, w + extraPad*2, h + extraPad*2);
 
       // Blue glow around hole
       ctx.shadowColor = '#3b82f6';
@@ -3894,7 +3940,7 @@ function _positionTour(target, step) {
       ctx.shadowBlur = 0;
 
       _placeTourBox(rect, pad);
-    }, step.tab ? 380 : 80);
+    }, step.tab ? 520 : 100);
   } else {
     // No target → full dim, box centered
     ctx.fillStyle = 'rgba(0,0,0,0.72)';
@@ -3923,15 +3969,17 @@ function _positionTour(target, step) {
       'color:#475569;font-size:22px;cursor:pointer;line-height:1;padding:0;transition:.15s" ' +
       'onmouseover="this.style.color=\'#94a3b8\'" onmouseout="this.style.color=\'#475569\'">×</button>' +
     // Title  
-    '<div style="font-size:19px;font-weight:900;color:#f1f5f9;padding-right:24px;margin-bottom:12px;line-height:1.25;letter-spacing:-.3px">' + step.title + '</div>' +
+    '<div style="font-size:17px;font-weight:800;color:#f1f5f9;padding-right:24px;margin-bottom:10px;line-height:1.3">' + step.title + '</div>' +
     // Body text
-    '<div style="font-size:14px;color:#cbd5e1;line-height:1.75;margin-bottom:20px">' + step.text + '</div>' +
+    '<div style="font-size:14px;color:#94a3b8;line-height:1.7;margin-bottom:20px">' + step.text + '</div>' +
     // Dots + buttons row
     '<div style="display:flex;align-items:center;justify-content:space-between">' +
       '<div style="display:flex;gap:6px;align-items:center">' +
         _tourSteps.map(function(_,i) {
-          var active = i === _tourStep;
-          return '<div style="width:'+(active?'22px':'8px')+';height:8px;border-radius:'+(active?'4px':'50%')+';background:'+(active?'#3b82f6':'rgba(59,130,246,.2)')+';transition:all .3s cubic-bezier(.34,1.56,.64,1);flex-shrink:0"></div>';
+          return '<div style="transition:.2s;border-radius:50%;background:' +
+            (i === _tourStep ? '#3b82f6' : 'rgba(59,130,246,.25)') +
+            ';width:' + (i === _tourStep ? '20px' : '8px') +
+            ';height:8px;border-radius:' + (i === _tourStep ? '4px' : '50%') + '"></div>';
         }).join('') +
       '</div>' +
       '<div style="display:flex;gap:8px">' +
@@ -3998,21 +4046,33 @@ function endTour() {
     el.style.zIndex = '';
     el.removeAttribute('data-tour-active');
   });
-  // Show completion screen in box
+  // Launch confetti + show completion screen
+  _launchConfetti();
   var box = document.getElementById('tour-box');
   if (box) {
+    box.setAttribute('style',
+      'position:fixed;background:#0f172a;border:2px solid #22c55e;border-radius:20px;' +
+      'padding:30px 28px 24px;max-width:340px;width:calc(100vw - 32px);z-index:10000;' +
+      'box-shadow:0 24px 60px rgba(0,0,0,.85),0 0 0 1px rgba(34,197,94,.25),0 0 40px rgba(34,197,94,.1);' +
+      'pointer-events:all;font-family:Inter,system-ui,sans-serif;color:#f1f5f9;' +
+      'top:50%;left:50%;transform:translate(-50%,-50%);text-align:center;' +
+      'animation:tourBoxIn .4s cubic-bezier(.34,1.56,.64,1)');
     box.innerHTML =
-      '<div style="text-align:center;padding:8px 0">' +
-        '<div style="font-size:40px;margin-bottom:10px">🎉</div>' +
-        '<div style="font-size:16px;font-weight:700;color:#f1f5f9;margin-bottom:8px">¡Tour completado!</div>' +
-        '<div style="font-size:13px;color:#94a3b8;line-height:1.6;margin-bottom:16px">Ya conoces los 7 módulos de Yve.01. Ahora prueba a procesar tus primeras facturas reales.</div>' +
-        '<div style="display:flex;gap:8px;justify-content:center">' +
-          '<button onclick="closeTourBox()" style="background:#1e293b;border:1px solid #334155;color:#94a3b8;padding:8px 14px;border-radius:8px;font-size:12px;cursor:pointer">Cerrar</button>' +
-          '<button onclick="goToARPanel()" style="background:#3b82f6;border:none;color:#fff;padding:8px 14px;border-radius:8px;font-size:12px;font-weight:600;cursor:pointer">Empezar con AR &#8594;</button>' +
-        '</div>' +
+      '<div style="font-size:56px;margin-bottom:12px;line-height:1">🎉</div>' +
+      '<div style="font-size:22px;font-weight:900;color:#f1f5f9;margin-bottom:10px;letter-spacing:-.3px">\u00A1Tour completado!</div>' +
+      '<div style="font-size:14px;color:#94a3b8;line-height:1.7;margin-bottom:24px">' +
+        'Ya conoces los 7 m\u00F3dulos de Yve.01.<br>Empieza procesando tus primeras facturas.' +
+      '</div>' +
+      '<div style="display:flex;gap:10px;justify-content:center">' +
+        '<button onclick="closeTourBox()" style="background:rgba(255,255,255,.07);border:1px solid rgba(255,255,255,.12);' +
+          'color:#94a3b8;padding:11px 20px;border-radius:10px;font-size:13px;cursor:pointer;font-weight:500">Cerrar</button>' +
+        '<button onclick="goToARPanel()" style="background:#22c55e;border:none;color:#fff;' +
+          'padding:11px 24px;border-radius:10px;font-size:13px;font-weight:700;cursor:pointer;' +
+          'box-shadow:0 4px 20px rgba(34,197,94,.4);transition:.15s">' +
+          'Empezar con AR \u2192' +
+        '</button>' +
       '</div>';
-    box.style.top = '50%'; box.style.left = '50%'; box.style.transform = 'translate(-50%,-50%)';
-    setTimeout(function(){ closeTourBox(); }, 6000);
+    setTimeout(function(){ closeTourBox(); }, 9000);
   }
   localStorage.setItem('tour_done', _TOUR_VER);
 }
@@ -6137,6 +6197,60 @@ function _calSparkline(data, color) {
     return x.toFixed(1)+','+y.toFixed(1);
   }).join(' ');
   return '<svg width="80" height="40" style="overflow:visible"><polyline points="'+pts+'" fill="none" stroke="'+color+'" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>';
+}
+
+function renderCalipolisTrends(tendencias) {
+  if (!tendencias) return;
+  var meses  = tendencias.meses || [];
+  var gop    = tendencias.gop_mensual  || tendencias.gop_pct_grupo || [];
+  var occ    = tendencias.occ_mensual  || [];
+  var rev    = (tendencias.rev_mensual || tendencias.total_revenue || []).map(function(v){ return Math.round(v/1000); });
+  var apData = tendencias.ap_pendientes || tendencias.ap_pendientes_total || [];
+  var gopEl = document.getElementById('cal-tendencias');
+  if (gopEl && meses.length && window.Chart) {
+    if (window._calChart) { try { window._calChart.destroy(); } catch(e){} }
+    var ctx1 = document.createElement('canvas');
+    ctx1.style.cssText = 'width:100%;height:140px';
+    gopEl.innerHTML = ''; gopEl.appendChild(ctx1);
+    window._calChart = new Chart(ctx1, {
+      data: {
+        labels: meses,
+        datasets: [
+          {type:'line', label:'GOP%', data:gop, borderColor:'#22c55e', backgroundColor:'rgba(34,197,94,.08)',
+           yAxisID:'y', tension:.4, pointRadius:4, borderWidth:2.5, fill:true},
+          {type:'line', label:'Occ%', data:occ, borderColor:'#60a5fa', backgroundColor:'transparent',
+           yAxisID:'y', tension:.4, pointRadius:3, borderWidth:1.5, borderDash:[4,3]},
+          {type:'bar', label:'Rev(k€)', data:rev, backgroundColor:'rgba(167,139,250,.15)',
+           borderColor:'rgba(167,139,250,.4)', borderWidth:1, yAxisID:'y2', borderRadius:4},
+        ]
+      },
+      options: {
+        responsive:true, maintainAspectRatio:false,
+        plugins:{legend:{labels:{color:'#94a3b8',font:{size:10},boxWidth:10}},
+          tooltip:{backgroundColor:'#1e293b',titleColor:'#f1f5f9',bodyColor:'#94a3b8',borderColor:'#334155',borderWidth:1}},
+        scales:{
+          x:{grid:{color:'rgba(51,65,85,.2)'},ticks:{color:'#64748b',font:{size:9}}},
+          y:{position:'left',grid:{color:'rgba(51,65,85,.2)'},ticks:{color:'#94a3b8',font:{size:9}},
+             title:{display:true,text:'%',color:'#64748b',font:{size:9}}},
+          y2:{position:'right',grid:{drawOnChartArea:false},ticks:{color:'#94a3b8',font:{size:9}},
+              title:{display:true,text:'k€',color:'#64748b',font:{size:9}}}
+        }
+      }
+    });
+  }
+  var apEl = document.getElementById('cal-ap-chart');
+  if (apEl && apData.length && window.Chart) {
+    if (window._calApChart) { try { window._calApChart.destroy(); } catch(e){} }
+    var ctx2 = document.createElement('canvas');
+    ctx2.style.cssText = 'width:100%;height:140px';
+    apEl.innerHTML = ''; apEl.appendChild(ctx2);
+    window._calApChart = new Chart(ctx2, {
+      type:'bar',
+      data:{labels:meses,datasets:[{label:'AP pendientes',data:apData,backgroundColor:'rgba(245,158,11,.2)',borderColor:'#f59e0b',borderWidth:1.5,borderRadius:4}]},
+      options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{display:false}},
+        scales:{x:{grid:{color:'rgba(51,65,85,.2)'},ticks:{color:'#64748b',font:{size:9}}},y:{grid:{color:'rgba(51,65,85,.2)'},ticks:{color:'#94a3b8',font:{size:9}},beginAtZero:true}}}
+    });
+  }
 }
 
 function addCalipolisInsights(hoteles) {
