@@ -3954,8 +3954,8 @@ function _showTourStep() {
 
 function nextTourStep() {
   _tourStep++;
-  if (_tourStep >= _tourSteps.length) endTour();
-  else _showTourStep();
+  if (_tourStep >= _tourSteps.length) { endTour(); return; }
+  _showTourStep();
 }
 
 function prevTourStep() {
@@ -3964,17 +3964,39 @@ function prevTourStep() {
 
 function endTour() {
   _tourActive = false; _tourStep = 0;
+  // Clear all highlights
+  document.querySelectorAll('[data-tour-active]').forEach(function(el) {
+    el.style.outline = '';
+    el.style.outlineOffset = '';
+    el.style.boxShadow = '';
+    el.style.zIndex = '';
+    el.removeAttribute('data-tour-active');
+  });
+  // Show completion screen in box
+  var box = document.getElementById('tour-box');
+  if (box) {
+    box.innerHTML =
+      '<div style="text-align:center;padding:8px 0">' +
+        '<div style="font-size:40px;margin-bottom:10px">🎉</div>' +
+        '<div style="font-size:16px;font-weight:700;color:#f1f5f9;margin-bottom:8px">¡Tour completado!</div>' +
+        '<div style="font-size:13px;color:#94a3b8;line-height:1.6;margin-bottom:16px">Ya conoces los 7 módulos de Yve.01. Ahora prueba a procesar tus primeras facturas reales.</div>' +
+        '<div style="display:flex;gap:8px;justify-content:center">' +
+          '<button onclick="closeTourBox()" style="background:#1e293b;border:1px solid #334155;color:#94a3b8;padding:8px 14px;border-radius:8px;font-size:12px;cursor:pointer">Cerrar</button>' +
+          '<button onclick="goToARPanel()" style="background:#3b82f6;border:none;color:#fff;padding:8px 14px;border-radius:8px;font-size:12px;font-weight:600;cursor:pointer">Empezar con AR &#8594;</button>' +
+        '</div>' +
+      '</div>';
+    box.style.top = '50%'; box.style.left = '50%'; box.style.transform = 'translate(-50%,-50%)';
+    setTimeout(function(){ closeTourBox(); }, 6000);
+  }
+  localStorage.setItem('tour_done', _TOUR_VER);
+}
+
+function goToARPanel(){ closeTourBox(); switchTab('ar', document.getElementById('tab-ar')); }
+function closeTourBox() {
   var overlay = document.getElementById('tour-overlay');
   if (overlay) overlay.style.display = 'none';
   var box = document.getElementById('tour-box');
-  if (box) box.style.display = 'none';
-  // Clear all highlights
-  document.querySelectorAll('[data-tour-active]').forEach(function(el) {
-    el.style.outline = ''; el.style.outlineOffset = '';
-    el.removeAttribute('data-tour-active');
-  });
-  localStorage.setItem('tour_done', _TOUR_VER);
-  showNotification('✓ Tour completado — ¡Ya conoces Yve.01!', 'success');
+  if (box) { box.style.display = 'none'; box.style.transform = ''; }
 }
 
 // ── Invoice detail modal ─────────────────────────────────────────────────
@@ -4030,6 +4052,8 @@ document.addEventListener('keydown', function(e) {
     if (am) am.style.display = 'none';
     var tm = document.getElementById('modal-emitir');
     if (tm) tm.style.display = 'none';
+    if (_tourActive) endTour();
+    else closeTourBox();
   }
 });
 
@@ -6374,6 +6398,10 @@ document.addEventListener('keydown', e => {
   if ((e.ctrlKey || e.metaKey) && e.key === 'k') { e.preventDefault(); openSearch(); }
   if ((e.ctrlKey || e.metaKey) && e.key === '/') { e.preventDefault(); toggleChat(); }
   if (e.key === 'F1' || (e.shiftKey && e.key === 'T')) { e.preventDefault(); startTour(); }
+  if (_tourActive) {
+    if (e.key === 'ArrowRight' || e.key === 'ArrowDown') { e.preventDefault(); nextTourStep(); }
+    if (e.key === 'ArrowLeft'  || e.key === 'ArrowUp')   { e.preventDefault(); prevTourStep(); }
+  }
 });
 </script>
 <!-- /Global Search -->
