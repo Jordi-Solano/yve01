@@ -2947,17 +2947,19 @@ function renderChart(ch) {
   });
 }
 
+var _arRows = [];
 function renderTable(rows) {
+  _arRows = rows;
   const tbody = document.getElementById('tbl-body');
   document.getElementById('tbl-count').textContent = rows.length ? rows.length + ' ' + (t('lbl.registros')||'registros') : '';
   if (!rows.length) {
     tbody.innerHTML = '<tr><td colspan="12" style="padding:32px;text-align:center"><div style="font-size:32px;margin-bottom:8px">📦</div><div style="font-weight:600;color:var(--mut);margin-bottom:4px">Sin facturas AP</div><div style="font-size:12px;color:var(--dim)">Pulsa ⚡ Procesar Facturas AP</div></td></tr>';
     return;
   }
-  tbody.innerHTML = rows.map(r => {
+  tbody.innerHTML = rows.map((r, i) => {
     const hasDisc = r.discrepancia_euros && r.discrepancia_euros !== '';
     return [
-      '<tr>',
+      '<tr style="cursor:pointer" data-idx="' + i + '" onclick="showInvoiceDetail(_arRows[parseInt(this.getAttribute(\'data-idx\'))])" onmouseover="this.style.background=\'rgba(59,130,246,.04)\'" onmouseout="this.style.background=\'\'">',
       '<td style="padding:6px 4px;text-align:center"><input type="checkbox" class="ar-row-cb" style="cursor:pointer;accent-color:var(--acc)" onchange="updateSelectionCount()"></td>',
       '<td class="td-dim">' + (r.archivo || '—') + '</td>',
       '<td class="td-b" onclick="copyToClip(\'' + (r.numero_factura||'') + '\', \'Nº factura\')" style="cursor:pointer" title="Clic para copiar">' + (r.numero_factura || '—') + '</td>',
@@ -3861,6 +3863,64 @@ function endTour() {
   showNotification('✓ Tour completado — ¡Ya conoces Yve.01!', 'success');
 }
 
+// ── Invoice detail modal ─────────────────────────────────────────────────
+function closeInvoiceModal() {
+  var m = document.getElementById('invoice-modal');
+  if (m) m.style.display = 'none';
+}
+
+function showInvoiceDetail(row) {
+  if (!row) return;
+  const modal = document.getElementById('invoice-modal');
+  const body  = document.getElementById('inv-modal-body');
+  const title = document.getElementById('inv-modal-title');
+  if (!modal || !body) return;
+
+  title.textContent = row.numero_factura || 'Factura';
+  const statusColor = row.estado === 'CORRECTA' ? 'var(--grn)' :
+                      row.estado === 'DISCREPANCIA' ? 'var(--red)' : 'var(--ora)';
+
+  const fields = [
+    ['OTA / Canal',           row.nombre_ota || '—'],
+    ['Hotel',                 row.nombre_hotel || '—'],
+    ['Fecha',                 row.fecha || '—'],
+    ['Mercado',               row.mercado || '—'],
+    ['Importe bruto',         row.importe_bruto ? '€' + row.importe_bruto : '—'],
+    ['Comisión pactada %',    row.porcentaje_pactado ? row.porcentaje_pactado + '%' : '—'],
+    ['Comisión facturada %',  row.porcentaje_factura ? row.porcentaje_factura + '%' : '—'],
+    ['Diferencia €',          row.discrepancia_euros || '0'],
+    ['Estado',                row.estado || '—'],
+    ['Estado DI',             row.estado_di || '—'],
+    ['Período',               (row.periodo_inicio || '—') + ' → ' + (row.periodo_fin || '—')],
+  ];
+
+  body.innerHTML =
+    '<div style="background:' + statusColor + '20;border:1px solid ' + statusColor + '40;border-radius:10px;padding:10px 14px;margin-bottom:16px;display:flex;align-items:center;gap:8px">' +
+      '<span style="font-size:18px">' + (row.estado === 'CORRECTA' ? '✅' : row.estado === 'DISCREPANCIA' ? '⚠️' : '📋') + '</span>' +
+      '<span style="color:' + statusColor + ';font-weight:700">' + (row.estado || 'Sin estado') + '</span>' +
+    '</div>' +
+    '<div style="display:grid;grid-template-columns:1fr 1fr;gap:8px">' +
+    fields.map(([k, v]) =>
+      '<div style="background:var(--bg);border-radius:8px;padding:10px">' +
+        '<div style="font-size:10px;color:var(--dim);font-weight:600;text-transform:uppercase;margin-bottom:3px">' + k + '</div>' +
+        '<div style="font-size:13px;font-weight:600">' + v + '</div>' +
+      '</div>'
+    ).join('') +
+    '</div>' +
+    (row.discrepancia_euros && parseFloat(row.discrepancia_euros) !== 0 ?
+      '<div style="margin-top:16px;background:rgba(239,68,68,.08);border:1px solid rgba(239,68,68,.2);border-radius:10px;padding:12px">' +
+        '<div style="font-size:12px;font-weight:700;color:var(--red);margin-bottom:6px">⚠ Discrepancia detectada</div>' +
+        '<div style="font-size:12px;color:var(--mut)">Diferencia: €' + row.discrepancia_euros + ' · Acción recomendada: solicitar factura rectificativa</div>' +
+      '</div>'
+    : '') +
+    '<div style="display:flex;gap:10px;margin-top:16px">' +
+      '<button onclick="closeInvoiceModal()" class="btn-ref" style="flex:1">Cerrar</button>' +
+      '<button onclick="generarEmailAR(this.getAttribute(\'data-num\'))" data-num="' + (row.numero_factura||'') + '" class="btn-run" style="flex:1;font-size:12px">&#x1F4E7; Generar email</button>' +
+    '</div>';
+
+  modal.style.display = 'flex';
+}
+
 // ── Copy to clipboard utility ────────────────────────────────────────────
 function copyToClip(text, label) {
   navigator.clipboard.writeText(text).then(() => {
@@ -4519,6 +4579,17 @@ async function loadAP() {
     facts.forEach(f => {
       const tr = document.createElement('tr');
       tr.setAttribute('data-estado', f.estado || '');
+      tr.style.cursor = 'pointer';
+      tr.addEventListener('mouseover', function(){ this.style.background='rgba(59,130,246,.04)'; });
+      tr.addEventListener('mouseout',  function(){ this.style.background=''; });
+      tr.addEventListener('click', function(){ showAPDetail({
+        numero_factura: f.numero_factura, proveedor: f.proveedor,
+        fecha_factura: f.fecha, base_imponible: f.total_sin_iva || '',
+        iva_pct: f.iva_pct || '', importe_con_iva: f.total,
+        cuenta_contable: f.cuenta_contable, tipo: f.tipo,
+        estado: f.estado, aprobacion: f.accion,
+        tiene_po: f.tiene_po, tiene_alb: f.tiene_albarán
+      }); });
       const tipoCls = f.tipo === 'FB' ? 'fb' : 'otras';
       const accionHtml = f.accion === 'APROBADA'
         ? '<span class="badge ok">✓ Aprobada</span>'
@@ -5932,6 +6003,17 @@ setTimeout(() => {
 }, 2000);
 
 </script>
+
+<!-- Invoice Detail Modal -->
+<div id="invoice-modal" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,.7);z-index:9000;align-items:center;justify-content:center">
+  <div style="background:var(--s1);border:1px solid var(--s2);border-radius:16px;padding:28px;max-width:500px;width:90%;max-height:85vh;overflow-y:auto">
+    <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:20px">
+      <h3 id="inv-modal-title" style="font-size:16px;font-weight:700;margin:0">Detalle factura</h3>
+      <button onclick="document.getElementById('invoice-modal').style.display='none'" style="background:none;border:none;color:var(--mut);font-size:22px;cursor:pointer">×</button>
+    </div>
+    <div id="inv-modal-body"></div>
+  </div>
+</div>
 
 <!-- Global Search Overlay -->
 <div id="search-overlay" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,.7);z-index:9500;padding:80px 20px 20px;backdrop-filter:blur(4px)" onclick="if(event.target===this)closeSearch()">
