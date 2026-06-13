@@ -3960,6 +3960,23 @@ document.addEventListener('keydown', function(e) {
   }
 });
 
+async function generarEmailAR(numero) {
+  if (!numero) return;
+  try {
+    showNotification('⏳ Generando email...', 'info');
+    const r = await fetch('/api/ar_real/recordatorio', {
+      method: 'POST',
+      headers: {'Content-Type':'application/json'},
+      body: JSON.stringify({numero})
+    });
+    const d = await r.json();
+    showNotification(d.ok ? '✓ Email enviado a ' + (d.email||'') : '✗ ' + (d.error||'Error'), d.ok ? 'success' : 'error');
+    if (d.ok) closeInvoiceModal();
+  } catch(e) {
+    showNotification('✗ Error de conexión', 'error');
+  }
+}
+
 function closeInvoiceModal() {
   var m = document.getElementById('invoice-modal');
   if (m) m.style.display = 'none';

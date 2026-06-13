@@ -562,6 +562,20 @@ function toggleFaq(btn) {
 </script>
 <!-- /FAQ -->
 
+<!-- LIVE DEMO CTA -->
+<section style="padding:80px 5%;background:linear-gradient(135deg,rgba(59,130,246,.1),rgba(167,139,250,.08));border-top:1px solid rgba(59,130,246,.15);border-bottom:1px solid rgba(59,130,246,.15);text-align:center">
+  <div style="max-width:600px;margin:0 auto">
+    <div style="font-size:13px;font-weight:700;text-transform:uppercase;letter-spacing:.8px;color:var(--acc2);margin-bottom:12px">ACCESO DEMO GRATUITO</div>
+    <h2 style="font-size:32px;font-weight:900;margin-bottom:16px;line-height:1.2">Pruébalo ahora.<br><span style="color:var(--acc2)">Sin tarjeta de crédito.</span></h2>
+    <p style="font-size:16px;color:var(--mut);margin-bottom:28px;line-height:1.6">Accede al dashboard con datos de un hotel real de Sitges y comprueba cómo Yve gestiona AR, AP y DRR en segundos.</p>
+    <div style="display:flex;gap:12px;justify-content:center;flex-wrap:wrap">
+      <a href="/signup" style="background:var(--acc);color:#fff;padding:15px 32px;border-radius:12px;font-size:16px;font-weight:700;text-decoration:none;transition:.2s">Crear cuenta gratis →</a>
+      <a href="/login" style="background:var(--s1);color:var(--tx);padding:15px 32px;border-radius:12px;font-size:16px;font-weight:600;text-decoration:none;border:1px solid var(--s2)">Ver demo · admin/admin123</a>
+    </div>
+    <p style="font-size:12px;color:var(--dim);margin-top:16px">Sin contratos · Cancela cuando quieras · Soporte por email incluido</p>
+  </div>
+</section>
+
 <!-- FOOTER -->
 <footer>
   <div class="container">
