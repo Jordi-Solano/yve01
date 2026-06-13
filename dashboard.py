@@ -2049,7 +2049,7 @@ button, a { touch-action: manipulation; }
 </head>
 <body>
 
-<nav class="nav">
+<nav class="nav" id="app-header">
   <div class="logo">
     <div class="logo-dot"></div>
     <span class="logo-name">Yve<span style="color:var(--acc2)">.01</span></span>
@@ -3741,6 +3741,17 @@ function showNotification(msg, type = 'info') {
 var _tourActive = false, _tourStep = 0;
 var _TOUR_VER = '2';  // increment to re-offer after updates
 var _tourSteps = [
+  {
+    el:'#app-header',
+    tab:null,
+    title:'👋 Bienvenido a Yve.01',
+    text:'Yve.01 es el sistema de finanzas hoteleras que automatiza AR, AP, DRR y reporting para el Grupo Calipolis. Este tour de 8 pasos te lleva por cada módulo en 3 minutos.',
+    action: function() {
+      var h = document.getElementById('app-header');
+      if (!h) { var h2 = document.querySelector('nav, header, .navbar, #nav-bar');
+        if (h2) h2.id = 'app-header'; }
+    }
+  },
   {
     el:'#tab-ar', tab:null,
     title:'💳 AR — Comisiones OTA',
