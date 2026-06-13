@@ -244,6 +244,7 @@ def api_emitir_factura():
         return jsonify({'ok': False, 'error': str(e)}), 500
 
 @ar_real_bp.route('/api/ar_real/stats')
+@ar_real_bp.route('/api/ar_real/data')
 def api_ar_real_stats():
     """Quick stats for mobile KPI bar."""
     try:

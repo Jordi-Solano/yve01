@@ -2025,23 +2025,15 @@ tr:hover td{background:rgba(255,255,255,.025)}
 
 * { -webkit-tap-highlight-color: transparent; }
 [data-tour-active] {
-  outline: 2px solid #3b82f6 !important;
-  outline-offset: 6px !important;
-  border-radius: 8px;
-  box-shadow: 0 0 0 6px rgba(59,130,246,.15) !important;
-  animation: tourPulse 2s ease-in-out infinite;
-  position: relative;
-  z-index: 9999 !important;
+  position: relative !important;
+  z-index: 9950 !important;
 }
-@keyframes tourPulse {
-  0%,100%{ outline-color:#3b82f6; box-shadow:0 0 0 6px rgba(59,130,246,.15); }
-  50%{ outline-color:#60a5fa; box-shadow:0 0 0 10px rgba(59,130,246,.08); }
+#tour-box { font-family: Inter, system-ui, sans-serif; }
+@keyframes tourBoxIn {
+  from { opacity:0; transform:scale(.95) translateY(10px); }
+  to   { opacity:1; transform:scale(1)  translateY(0); }
 }
-#tour-box {
-  font-family: Inter, system-ui, sans-serif;
-  animation: tourBoxIn .2s ease-out;
-}
-@keyframes tourBoxIn { from{opacity:0;transform:translateY(8px)} to{opacity:1;transform:translateY(0)} }
+#tour-spotlight-canvas { pointer-events: none; }
 @keyframes pulse { 0%,100%{opacity:1} 50%{opacity:.6} }
 button, a { touch-action: manipulation; }
 
@@ -3802,9 +3794,11 @@ function startTour() {
   // Close menu if open
   var mm = document.getElementById('main-menu');
   if (mm) mm.classList.remove('open');
-  // Remove old box to force fresh creation
+  // Reset old elements
   var oldBox = document.getElementById('tour-box');
   if (oldBox) oldBox.remove();
+  var canvas = document.getElementById('tour-spotlight-canvas');
+  if (canvas) { canvas.style.display='block'; var c2=canvas.getContext('2d'); c2.clearRect(0,0,canvas.width,canvas.height); }
   _showTourStep();
 }
 
@@ -3812,126 +3806,167 @@ function _showTourStep() {
   if (_tourStep >= _tourSteps.length) { endTour(); return; }
   var step = _tourSteps[_tourStep];
 
-  // Get or create overlay (full-screen dim)
-  var overlay = document.getElementById('tour-overlay');
-  if (!overlay) {
-    overlay = document.createElement('div');
-    overlay.id = 'tour-overlay';
-    overlay.style.cssText = 'position:fixed;inset:0;z-index:9998;pointer-events:all;background:rgba(0,0,0,.4);backdrop-filter:blur(1px);cursor:pointer';
-    overlay.title = 'Clic para avanzar al siguiente paso';
-    overlay.onclick = function(e) { if (e.target === overlay) nextTourStep(); };
-    // Progress indicator in corner
-    var progDiv = overlay.querySelector('.tour-progress');
-    if (!progDiv) {
-      progDiv = document.createElement('div');
-      progDiv.className = 'tour-progress';
-      progDiv.style.cssText = 'position:fixed;top:12px;right:12px;background:rgba(15,23,42,.8);border:1px solid #334155;border-radius:20px;padding:5px 12px;font-size:11px;color:#94a3b8;font-weight:600;z-index:10001';
-      overlay.appendChild(progDiv);
-    }
-    progDiv.textContent = (_tourStep + 1) + ' / ' + _tourSteps.length;
-    document.body.appendChild(overlay);
+  // ── 1. Execute step action / switch tab ────────────────────────────
+  if (step.action && typeof step.action === 'function') {
+    try { step.action(); } catch(e) {}
   }
-  overlay.style.display = 'block';
-
-  // Get or create tooltip box — simple explicit version
-  var box = document.getElementById('tour-box');
-  if (!box) { box = document.createElement('div'); box.id = 'tour-box'; document.body.appendChild(box); }
-  // Always rebuild innerHTML for reliability (no stale state)
-  box.setAttribute('style',
-    'position:fixed;background:#0f172a;border:2px solid #3b82f6;border-radius:14px;padding:18px 20px 14px 20px;' +
-    'max-width:300px;width:calc(100vw - 40px);z-index:10000;box-shadow:0 8px 40px rgba(0,0,0,.7);pointer-events:all;' +
-    'font-family:Inter,system-ui,sans-serif;color:#f1f5f9;top:100px;left:20px');
-  box.innerHTML =
-    '<button onclick="endTour()" style="position:absolute;top:8px;right:10px;background:none;border:none;color:#64748b;font-size:20px;cursor:pointer;line-height:1;padding:0" title="Cerrar tour">&#x00D7;</button>' +
-    '<div id="tour-step-counter" style="font-size:10px;color:#64748b;font-weight:700;margin-bottom:6px;text-transform:uppercase;letter-spacing:.5px;padding-right:20px">PASO 1 DE 7</div>' +
-    '<div id="tour-title" style="font-weight:700;font-size:15px;margin-bottom:8px;color:#60a5fa;padding-right:20px">Cargando...</div>' +
-    '<div id="tour-text" style="font-size:13px;color:#94a3b8;line-height:1.65;margin-bottom:16px">...</div>' +
-    '<div style="display:flex;align-items:center;justify-content:space-between;margin-top:4px">' +
-      '<div id="tour-dots" style="display:flex;gap:5px"></div>' +
-      '<div style="display:flex;gap:8px">' +
-        '<button id="tour-prev-btn" onclick="prevTourStep()" style="display:none;background:none;border:1px solid #334155;color:#94a3b8;padding:6px 12px;border-radius:8px;font-size:12px;cursor:pointer">&#x2190; Atrás</button>' +
-        '<button id="tour-next-btn" onclick="nextTourStep()" style="background:#3b82f6;border:none;color:#fff;padding:7px 16px;border-radius:8px;font-size:12px;font-weight:600;cursor:pointer">Siguiente &#x2192;</button>' +
-      '</div>' +
-    '</div>'
-
-  // Update content — use box.querySelector for reliability after innerHTML set
-  var _titleEl   = box.querySelector('#tour-title');
-  var _textEl    = box.querySelector('#tour-text');
-  var _counterEl = box.querySelector('#tour-step-counter');
-  var _dotsEl    = box.querySelector('#tour-dots');
-  var _prevBtn   = box.querySelector('#tour-prev-btn');
-  var _nextBtn   = box.querySelector('#tour-next-btn');
-  if (_titleEl)   _titleEl.textContent   = step.title;
-  if (_textEl)    _textEl.textContent    = step.text;
-  if (_counterEl) _counterEl.textContent = 'Paso ' + (_tourStep + 1) + ' de ' + _tourSteps.length;
-
-  // Dots
-  var dotsEl = _dotsEl;
-  if (dotsEl) {
-    dotsEl.innerHTML = _tourSteps.map(function(_,i) {
-      return '<div style="width:6px;height:6px;border-radius:50%;background:' +
-        (i === _tourStep ? 'var(--acc2)' : 'var(--s3)') + '"></div>';
-    }).join('');
+  if (step.tab) {
+    var tabEl = document.getElementById('tab-' + step.tab);
+    if (tabEl) switchTab(step.tab, tabEl);
   }
 
-  // Prev / Next buttons
-  var prevBtn = _prevBtn;
-  var nextBtn = _nextBtn;
-  if (prevBtn) prevBtn.style.display = _tourStep > 0 ? 'block' : 'none';
-  if (nextBtn) nextBtn.textContent = _tourStep === _tourSteps.length-1 ? '✓ Finalizar' : 'Siguiente →';
-
-  // Clear previous outline
+  // ── 2. Clear previous highlight ────────────────────────────────────
   document.querySelectorAll('[data-tour-active]').forEach(function(el) {
     el.style.outline = '';
     el.style.outlineOffset = '';
-    el.style.position = '';
     el.style.zIndex = '';
     el.removeAttribute('data-tour-active');
   });
 
-  // Execute optional step action
-  if (step.action && typeof step.action === 'function') {
-    try { step.action(); } catch(e) { console.warn('Tour action error:', e); }
+  // ── 3. Find target + highlight ─────────────────────────────────────
+  var target = null;
+  if (step.el) {
+    // Wait a tick for tab switch to render
+    setTimeout(function() {
+      target = document.querySelector(step.el);
+      _positionTour(target, step);
+    }, step.tab ? 350 : 0);
+  } else {
+    _positionTour(null, step);
   }
+}
 
-  // Switch to relevant tab if element is in a panel
-  if (step.tab) {
-    var tabBtn = document.getElementById('tab-' + step.tab);
-    if (tabBtn) switchTab(step.tab, tabBtn);
+function _positionTour(target, step) {
+  // ── Overlay with spotlight ────────────────────────────────────────
+  var overlay = document.getElementById('tour-overlay');
+  if (!overlay) {
+    overlay = document.createElement('div');
+    overlay.id = 'tour-overlay';
+    document.body.appendChild(overlay);
   }
+  overlay.style.cssText = 'position:fixed;inset:0;z-index:9900;pointer-events:all;cursor:pointer';
+  overlay.onclick = function(e) { if (e.target === overlay || e.target === document.getElementById('tour-spotlight-bg')) nextTourStep(); };
+  overlay.style.display = 'block';
 
-  // Highlight target
-  var target = document.querySelector(step.el);
+  // Create spotlight canvas overlay
+  var canvas = document.getElementById('tour-spotlight-canvas');
+  if (!canvas) {
+    canvas = document.createElement('canvas');
+    canvas.id = 'tour-spotlight-canvas';
+    canvas.style.cssText = 'position:fixed;inset:0;width:100%;height:100%;pointer-events:none;z-index:9901';
+    document.body.appendChild(canvas);
+  }
+  canvas.width = window.innerWidth;
+  canvas.height = window.innerHeight;
+  var ctx = canvas.getContext('2d');
+  ctx.clearRect(0, 0, canvas.width, canvas.height);
+
   if (target) {
-    target.style.outline = '2px solid var(--acc)';
-    target.style.outlineOffset = '4px';
-    target.setAttribute('data-tour-active', '1');
     target.scrollIntoView({behavior:'smooth', block:'nearest', inline:'center'});
+    target.setAttribute('data-tour-active', '1');
+    target.style.position = 'relative';
+    target.style.zIndex = '9950';
 
-    // Position box near target
     setTimeout(function() {
       var rect = target.getBoundingClientRect();
-      var bw = 320, bh = 180;
-      var vw = window.innerWidth, vh = window.innerHeight;
+      var pad = 10;
+      var x = rect.left - pad, y = rect.top - pad;
+      var w = rect.width + pad*2, h = rect.height + pad*2;
 
-      // Try below first, then above
-      var top = rect.bottom + 14;
-      if (top + bh > vh - 20) top = rect.top - bh - 14;
-      if (top < 10) top = 10;
+      // Dark overlay with hole
+      ctx.fillStyle = 'rgba(0,0,0,0.72)';
+      ctx.fillRect(0, 0, canvas.width, canvas.height);
+      ctx.clearRect(x, y, w, h);
 
-      var left = rect.left;
-      if (left + bw > vw - 10) left = vw - bw - 10;
-      if (left < 10) left = 10;
+      // Blue glow around hole
+      ctx.shadowColor = '#3b82f6';
+      ctx.shadowBlur = 20;
+      ctx.strokeStyle = '#3b82f6';
+      ctx.lineWidth = 2;
+      ctx.beginPath();
+      ctx.roundRect(x, y, w, h, 8);
+      ctx.stroke();
+      ctx.shadowBlur = 0;
 
-      box.style.top  = Math.max(10, top) + 'px';
-      box.style.left = Math.max(10, left) + 'px';
-    }, 150);
+      _placeTourBox(rect, pad);
+    }, step.tab ? 380 : 80);
   } else {
-    // Fallback: center of screen
-    box.style.top  = '50%';
-    box.style.left = '50%';
-    box.style.transform = 'translate(-50%,-50%)';
+    // No target → full dim
+    ctx.fillStyle = 'rgba(0,0,0,0.72)';
+    ctx.fillRect(0, 0, canvas.width, canvas.height);
+    _placeTourBox(null, 0);
   }
+
+  // ── Build / update tooltip box ────────────────────────────────────
+  var box = document.getElementById('tour-box');
+  if (!box) {
+    box = document.createElement('div');
+    box.id = 'tour-box';
+    document.body.appendChild(box);
+  }
+  box.setAttribute('style',
+    'position:fixed;background:#0f172a;border:2px solid #3b82f6;border-radius:16px;' +
+    'padding:22px 24px 18px;max-width:320px;width:calc(100vw - 32px);z-index:10000;' +
+    'box-shadow:0 20px 60px rgba(0,0,0,.8),0 0 0 1px rgba(59,130,246,.3);' +
+    'pointer-events:all;font-family:Inter,system-ui,sans-serif;color:#f1f5f9;' +
+    'animation:tourBoxIn .25s cubic-bezier(.34,1.56,.64,1)');
+  box.innerHTML =
+    // Close button
+    '<button onclick="endTour()" style="position:absolute;top:10px;right:12px;background:none;border:none;' +
+      'color:#475569;font-size:22px;cursor:pointer;line-height:1;padding:0;transition:.15s" ' +
+      'onmouseover="this.style.color=\'#94a3b8\'" onmouseout="this.style.color=\'#475569\'">×</button>' +
+    // Title  
+    '<div style="font-size:17px;font-weight:800;color:#f1f5f9;padding-right:24px;margin-bottom:10px;line-height:1.3">' + step.title + '</div>' +
+    // Body text
+    '<div style="font-size:14px;color:#94a3b8;line-height:1.7;margin-bottom:20px">' + step.text + '</div>' +
+    // Dots + buttons row
+    '<div style="display:flex;align-items:center;justify-content:space-between">' +
+      '<div style="display:flex;gap:6px;align-items:center">' +
+        _tourSteps.map(function(_,i) {
+          return '<div style="transition:.2s;border-radius:50%;background:' +
+            (i === _tourStep ? '#3b82f6' : 'rgba(59,130,246,.25)') +
+            ';width:' + (i === _tourStep ? '20px' : '8px') +
+            ';height:8px;border-radius:' + (i === _tourStep ? '4px' : '50%') + '"></div>';
+        }).join('') +
+      '</div>' +
+      '<div style="display:flex;gap:8px">' +
+        (_tourStep > 0 ?
+          '<button onclick="prevTourStep()" style="background:rgba(255,255,255,.06);border:1px solid rgba(255,255,255,.1);color:#94a3b8;' +
+          'padding:8px 14px;border-radius:10px;font-size:13px;cursor:pointer;font-weight:500">← Atrás</button>' : '') +
+        '<button onclick="nextTourStep()" style="background:#3b82f6;border:none;color:#fff;' +
+          'padding:8px 18px;border-radius:10px;font-size:13px;font-weight:700;cursor:pointer;' +
+          'box-shadow:0 4px 12px rgba(59,130,246,.4)">' +
+          (_tourStep === _tourSteps.length-1 ? '✓ Finalizar' : 'Siguiente →') +
+        '</button>' +
+      '</div>' +
+    '</div>';
+}
+
+function _placeTourBox(targetRect, pad) {
+  var box = document.getElementById('tour-box');
+  if (!box) return;
+  var bw = 336, bh = 260;
+  var vw = window.innerWidth, vh = window.innerHeight;
+  var top, left;
+
+  if (targetRect) {
+    var rect = targetRect;
+    // Try below target
+    top  = rect.bottom + pad + 16;
+    left = Math.max(10, Math.min(rect.left, vw - bw - 10));
+    // If goes off bottom, try above
+    if (top + bh > vh - 16) {
+      top = rect.top - pad - bh - 16;
+    }
+    // If goes off top too, center vertically
+    if (top < 10) top = Math.max(10, (vh - bh) / 2);
+  } else {
+    top  = Math.max(10, (vh - bh) / 2);
+    left = Math.max(10, (vw - bw) / 2);
+  }
+  box.style.top  = Math.round(top)  + 'px';
+  box.style.left = Math.round(left) + 'px';
+  box.style.transform = '';
 }
 
 
@@ -3947,6 +3982,9 @@ function prevTourStep() {
 
 function endTour() {
   _tourActive = false; _tourStep = 0;
+  // Clear spotlight canvas
+  var canvas = document.getElementById('tour-spotlight-canvas');
+  if (canvas) { var ctx2 = canvas.getContext('2d'); ctx2.clearRect(0,0,canvas.width,canvas.height); canvas.style.display='none'; }
   // Clear all highlights
   document.querySelectorAll('[data-tour-active]').forEach(function(el) {
     el.style.outline = '';
@@ -3978,8 +4016,13 @@ function goToARPanel(){ closeTourBox(); switchTab('ar', document.getElementById(
 function closeTourBox() {
   var overlay = document.getElementById('tour-overlay');
   if (overlay) overlay.style.display = 'none';
+  var canvas = document.getElementById('tour-spotlight-canvas');
+  if (canvas) { var c2 = canvas.getContext('2d'); c2.clearRect(0,0,canvas.width,canvas.height); canvas.style.display='none'; }
   var box = document.getElementById('tour-box');
   if (box) { box.style.display = 'none'; box.style.transform = ''; }
+  document.querySelectorAll('[data-tour-active]').forEach(function(el) {
+    el.style.zIndex = ''; el.removeAttribute('data-tour-active');
+  });
 }
 
 // ── Invoice detail modal ─────────────────────────────────────────────────
@@ -4138,6 +4181,15 @@ document.addEventListener('keydown', e => {
   }
   if (e.key === '?') { toggleAtajos(); }
   if (e.key === 'r' || e.key === 'R') { loadAll(); }
+});
+
+// Redraw tour spotlight on resize
+window.addEventListener('resize', function() {
+  if (_tourActive) {
+    var canvas = document.getElementById('tour-spotlight-canvas');
+    if (canvas) { canvas.width = window.innerWidth; canvas.height = window.innerHeight; }
+    _showTourStep();
+  }
 });
 
 // ── Swipe gestures for mobile ────────────────────────────────────────────
@@ -6112,6 +6164,30 @@ function addCalipolisInsights(hoteles) {
     '</div>';
 }
 
+
+function renderCalipolisKpis(kpis) {
+  var cont = document.getElementById('cal-kpis');
+  if (!cont || !kpis) return;
+  cont.dataset.loaded = '1';
+  var totalRevM = ((kpis.total_revenue_mtd||0) / 1000000).toFixed(2);
+  var totalGopK = Math.round((kpis.total_gop||0) / 1000);
+  var gopColor  = kpis.avg_gop_pct >= 22 ? 'var(--grn)' : kpis.avg_gop_pct >= 18 ? 'var(--ora)' : 'var(--red)';
+  var occColor  = kpis.avg_ocupacion >= 80 ? 'var(--grn)' : kpis.avg_ocupacion >= 65 ? 'var(--ora)' : 'var(--red)';
+  var cards = [
+    {l:'REVENUE MTD',     v:'€' + totalRevM + 'M', s:(kpis.num_hoteles||3)+' propiedades · Grupo Calipolis', c:'var(--acc2)'},
+    {l:'GOP TOTAL',       v:'€' + totalGopK + 'K', s:'GOP% medio: '+(kpis.avg_gop_pct||0)+'%',              c:gopColor},
+    {l:'OCUPACIÓN MEDIA', v:(kpis.avg_ocupacion||0)+'%',  s:'ADR €'+(kpis.avg_adr||0),                      c:occColor},
+    {l:'REVPAR MEDIO',    v:'€'+(kpis.avg_revpar||0),      s:'Sobre '+(kpis.total_rooms||0)+' hab.',          c:'var(--tx)'},
+  ];
+  cont.innerHTML = cards.map(function(c) {
+    return '<div class="sc">' +
+      '<div class="sc-lbl" style="font-size:9px;text-transform:uppercase;letter-spacing:.5px">'+c.l+'</div>' +
+      '<div class="sc-val" style="color:'+c.c+';font-size:clamp(22px,3.5vw,36px);font-weight:900;line-height:1.1;margin:5px 0">'+c.v+'</div>' +
+      '<div class="sc-sub" style="font-size:10px;color:var(--dim)">'+c.s+'</div>' +
+      '</div>';
+  }).join('');
+  if (_i18nLang && _i18nLang !== 'es') applyI18n(_i18nData);
+}
 
 function renderCalipolisHoteles(hoteles) {
   const cont = document.getElementById('cal-hoteles');
