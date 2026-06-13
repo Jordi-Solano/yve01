@@ -1564,6 +1564,29 @@ body::before{
 /* ── STATS ── */
 .stats{display:grid;grid-template-columns:repeat(6,1fr);gap:12px;margin-bottom:22px}
 @media(max-width:1200px){.stats{grid-template-columns:repeat(3,1fr)}}
+/* ── Mobile lite mode ─────────────────────────────────────────────── */
+body.mobile-lite .panel > .card:not(.lite-visible),
+body.mobile-lite .panel > div.tbl-wrap,
+body.mobile-lite .panel > div[style*="overflow-x:auto"],
+body.mobile-lite .panel > table,
+body.mobile-lite #activity,
+body.mobile-lite #ar-chart-wrap,
+body.mobile-lite #ap-chart-wrap,
+body.mobile-lite #banco-alerts-card,
+body.mobile-lite .hide-lite { display: none !important; }
+body.mobile-lite .mobile-lite-hint { display: block !important; }
+body.mobile-lite .panel > .stats { grid-template-columns: repeat(2,1fr) !important; gap: 8px !important; }
+body.mobile-lite .sc-val { font-size: 22px !important; }
+body.mobile-lite .panel { padding: 12px !important; }
+body.mobile-lite #exec-summary { font-size: 11px; padding: 6px 12px; }
+#mobile-lite-toggle {
+  position: fixed; bottom: 70px; left: 12px; z-index: 700;
+  background: var(--s1); border: 1px solid var(--s2); border-radius: 20px;
+  padding: 6px 14px; font-size: 11px; color: var(--mut); cursor: pointer;
+  font-weight: 600; display: none; box-shadow: 0 2px 12px rgba(0,0,0,.3);
+}
+@media(max-width:768px){ #mobile-lite-toggle { display: block; } }
+
 @media(max-width:900px){
   #ar-real-grid{grid-template-columns:1fr}
   .metrics{grid-template-columns:repeat(2,1fr)}
@@ -2025,7 +2048,7 @@ button, a { touch-action: manipulation; }
   <div class="nav-right">
     <span class="pill" id="date-pill">—</span>
   <button id="btn-install-pwa" onclick="if(_deferredInstall){_deferredInstall.prompt();}" style="display:none;background:rgba(34,197,94,.1);border:1px solid rgba(34,197,94,.2);color:#22c55e;padding:4px 10px;border-radius:8px;font-size:11px;cursor:pointer">📲 Instalar</button>
-  <button id="kbd-hint" onclick="showNotification('⌨ Atajos: 1-9 cambian pestaña · R actualiza · Ctrl+K busca · Ctrl+/ chat · F1 tour · Shift+T tour','info');this.style.display=\'none\';localStorage.setItem(\'kbd_shown\',\'1\')" style="display:none;background:rgba(59,130,246,.1);border:1px solid rgba(59,130,246,.2);color:#60a5fa;padding:4px 10px;border-radius:8px;font-size:11px;cursor:pointer">⌨ Atajos</button>
+  <button id="btn-atajos" onclick="toggleAtajos()" class="hide-mobile" style="background:rgba(59,130,246,.1);border:1px solid rgba(59,130,246,.2);color:#60a5fa;padding:5px 12px;border-radius:8px;font-size:12px;cursor:pointer;font-weight:500" title="Ver atajos (?)">⌨ Atajos</button>
     <span class="pill" style="color:var(--acc2)">👤 __USER_NAME__</span>
 
     <div class="dropdown">
@@ -2137,6 +2160,7 @@ button, a { touch-action: manipulation; }
   </div>
 
   <div id="panel-ar" class="panel active">
+    <div class="mobile-lite-hint" style="display:none;background:rgba(59,130,246,.08);border:1px solid rgba(59,130,246,.2);border-radius:8px;padding:8px 12px;margin-bottom:12px;font-size:12px;color:var(--acc2)">📱 Vista resumida · <button onclick="toggleMobileLite()" style="background:none;border:none;color:var(--acc2);text-decoration:underline;cursor:pointer;font-size:12px">Ver tabla completa →</button></div>
   <div style="display:flex;justify-content:flex-end;gap:12px;margin-bottom:14px"><a href="/api/exportar/ar" class="btn-ref" style="text-decoration:none">⬇️ Excel</a><a href="/api/exportar/ar/pdf" class="btn-ref" style="text-decoration:none">📄 PDF</a><a href="/aprobaciones-ar/" class="btn-ref" style="text-decoration:none" title="Abrir panel de aprobaciones AR">📲 Aprobar facturas AR</a></div>
   <!-- STATS -->
   <div class="stats">
@@ -2180,7 +2204,7 @@ button, a { touch-action: manipulation; }
     </div>
     <div class="card">
       <div class="card-title" data-i18n="card.resumen">Resumen de estados</div>
-      <div id="activity">
+      <div id="activity" class="hide-lite">
         <div class="empty"><div class="ei">📂</div><p>Sin datos.<br>Pulsa ⚡ Procesar Facturas.</p></div>
       </div>
     </div>
@@ -2284,7 +2308,7 @@ button, a { touch-action: manipulation; }
     <!-- Revenue Chart -->
     <div class="card" style="margin-bottom:22px" id="drr-chart-card" style="display:none">
       <div class="card-title" data-i18n="card.revDiario">Revenue Diario</div>
-      <div class="drr-chart-wrap"><canvas id="drr-revenue-chart"></canvas></div>
+      <div class="drr-chart-wrap"><canvas id="drr-revenue-chart" class="hide-lite"></canvas></div>
     </div>
 
     <!-- Days grid -->
@@ -2305,7 +2329,7 @@ button, a { touch-action: manipulation; }
 
   <!-- PANEL BANCO -->
   <div id="panel-banco" class="panel">
-    <div class="stats" id="banco-stats">
+    <div class="stats lite-visible" id="banco-stats">
       <div class="sc hl c-blu"><div class="sc-lbl" data-i18n="sc.movimientos">Movimientos</div><div class="sc-val" id="bk-total" data-tip="Movimientos totales en el extracto">—</div><div class="sc-sub" data-i18n="sc.delExtracto">del extracto</div></div>
       <div class="sc c-grn"><div class="sc-lbl" data-i18n="sc.conciliados">Conciliados</div><div class="sc-val" id="bk-conc" data-tip="Cruzados con factura en el sistema">—</div><div class="sc-sub" data-i18n="sc.conFactura">con factura</div></div>
       <div class="sc c-ora"><div class="sc-lbl" data-i18n="sc.pendientes">Pendientes</div><div class="sc-val" id="bk-pend" data-tip="Sin factura asociada — pendientes">—</div><div class="sc-sub" id="bk-imp-pend">—</div></div>
@@ -3619,6 +3643,8 @@ async function cambiarIdioma(lang) {
 
 loadAll();
 setInterval(loadAll, 60000);
+// Init mobile lite mode
+if (IS_MOBILE) initMobileLite();
 // Changelog badge
 if (localStorage.getItem('changelog_seen') !== '2026-06-v2') {
   const mb = document.getElementById('menu-badge');
@@ -3626,10 +3652,7 @@ if (localStorage.getItem('changelog_seen') !== '2026-06-v2') {
 }
 // Show keyboard hint on first visit
 if (!localStorage.getItem('kbd_shown')) {
-  setTimeout(() => {
-    const btn = document.getElementById('kbd-hint');
-    if (btn) btn.style.display = 'block';
-  }, 5000);
+  localStorage.setItem('kbd_shown', '1');  // auto-set, no need to show hint
 }
 // Show tour offer on first login
 if (localStorage.getItem('tour_done') !== _TOUR_VER) {
@@ -3864,6 +3887,61 @@ function endTour() {
 }
 
 // ── Invoice detail modal ─────────────────────────────────────────────────
+// ── Mobile lite mode ─────────────────────────────────────────────────────
+var _mobileLite = true;  // default ON on mobile
+
+function initMobileLite() {
+  if (!IS_MOBILE) return;
+  // Check stored preference
+  var stored = localStorage.getItem('mobile_lite');
+  _mobileLite = stored === null ? true : stored === '1';
+  applyMobileLite();
+}
+
+function applyMobileLite() {
+  var btn = document.getElementById('mobile-lite-toggle');
+  if (_mobileLite) {
+    document.body.classList.add('mobile-lite');
+    if (btn) btn.innerHTML = '📊 Vista completa';
+    if (btn) btn.style.color = 'var(--acc2)';
+    if (btn) btn.style.borderColor = 'rgba(59,130,246,.3)';
+  } else {
+    document.body.classList.remove('mobile-lite');
+    if (btn) btn.innerHTML = '📱 Vista lite';
+    if (btn) btn.style.color = 'var(--mut)';
+    if (btn) btn.style.borderColor = 'var(--s2)';
+  }
+}
+
+function toggleMobileLite() {
+  _mobileLite = !_mobileLite;
+  localStorage.setItem('mobile_lite', _mobileLite ? '1' : '0');
+  applyMobileLite();
+  // Reload current tab data if switching to full
+  if (!_mobileLite) {
+    showNotification('Vista completa activada', 'info');
+  } else {
+    showNotification('Vista lite activada', 'info');
+  }
+}
+
+function toggleAtajos() {
+  var m = document.getElementById('atajos-modal');
+  if (!m) return;
+  m.style.display = m.style.display === 'flex' ? 'none' : 'flex';
+}
+
+// Close modals on Escape
+document.addEventListener('keydown', function(e) {
+  if (e.key === 'Escape') {
+    closeInvoiceModal();
+    var am = document.getElementById('atajos-modal');
+    if (am) am.style.display = 'none';
+    var tm = document.getElementById('modal-emitir');
+    if (tm) tm.style.display = 'none';
+  }
+});
+
 function closeInvoiceModal() {
   var m = document.getElementById('invoice-modal');
   if (m) m.style.display = 'none';
@@ -3943,9 +4021,7 @@ document.addEventListener('keydown', e => {
     const tabEl = document.getElementById('tab-' + tabKeys[e.key]);
     if (tabEl) { switchTab(tabKeys[e.key], tabEl); }
   }
-  if (e.key === '?' || e.key === 'h') {
-    showNotification('⌨ Atajos: 1-9 cambia de pestaña · R actualiza · ? muestra ayuda', 'info');
-  }
+  if (e.key === '?') { toggleAtajos(); }
   if (e.key === 'r' || e.key === 'R') { loadAll(); }
 });
 
@@ -5397,6 +5473,9 @@ async function loadBanco() {
     if (!d) return;
     document.getElementById('bk-total').textContent = d.total || '—';
     document.getElementById('bk-conc').textContent = d.conciliados || '0';
+    // Conciliation progress bar
+    var _bT = d.total||0, _bC = d.conciliados||0, _pEl = document.getElementById('banco-progress-bar');
+    if (_pEl && _bT > 0) { var _pct = Math.round(_bC/_bT*100), _col = _pct>=80?'var(--grn)':_pct>=50?'var(--ora)':'var(--red)'; _pEl.style.display='block'; _pEl.innerHTML = '<div style="display:flex;align-items:center;gap:12px;font-size:12px"><span style="color:var(--mut);white-space:nowrap">Conciliado:</span><div style="flex:1;background:var(--s2);border-radius:4px;height:8px;overflow:hidden"><div style="height:100%;border-radius:4px;background:'+_col+';width:'+_pct+'%;transition:width .6s ease"></div></div><span style="color:'+_col+';font-weight:700;min-width:60px">'+_bC+'/'+_bT+' ('+_pct+'%)</span></div>'; }
     document.getElementById('bk-pend').textContent = d.pendientes || '0';
     document.getElementById('bk-diff').textContent = d.diferencias || '0';
     document.getElementById('bk-imp-pend').textContent = d.importe_pendiente ? eur(d.importe_pendiente) + ' pend.' : '—';
@@ -6004,6 +6083,29 @@ setTimeout(() => {
 
 </script>
 
+<!-- Keyboard Shortcuts Modal -->
+<div id="atajos-modal" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,.6);z-index:9500;align-items:center;justify-content:center">
+  <div style="background:var(--s1);border:1px solid var(--s2);border-radius:16px;padding:28px;max-width:480px;width:90%;max-height:85vh;overflow-y:auto">
+    <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:20px">
+      <h3 style="font-size:16px;font-weight:700;margin:0">⌨ Atajos de teclado</h3>
+      <button onclick="toggleAtajos()" style="background:none;border:none;color:var(--mut);font-size:22px;cursor:pointer">×</button>
+    </div>
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;font-size:13px">
+      <div style="background:var(--bg);border-radius:8px;padding:10px"><kbd style="background:var(--s2);border-radius:4px;padding:2px 7px;font-size:11px;color:var(--tx)">1 – 9</kbd><div style="color:var(--mut);margin-top:5px">Cambiar de pestaña</div></div>
+      <div style="background:var(--bg);border-radius:8px;padding:10px"><kbd style="background:var(--s2);border-radius:4px;padding:2px 7px;font-size:11px;color:var(--tx)">R</kbd><div style="color:var(--mut);margin-top:5px">Actualizar datos</div></div>
+      <div style="background:var(--bg);border-radius:8px;padding:10px"><kbd style="background:var(--s2);border-radius:4px;padding:2px 7px;font-size:11px;color:var(--tx)">Ctrl+K</kbd><div style="color:var(--mut);margin-top:5px">Búsqueda global</div></div>
+      <div style="background:var(--bg);border-radius:8px;padding:10px"><kbd style="background:var(--s2);border-radius:4px;padding:2px 7px;font-size:11px;color:var(--tx)">Ctrl+/</kbd><div style="color:var(--mut);margin-top:5px">Abrir chat Yve</div></div>
+      <div style="background:var(--bg);border-radius:8px;padding:10px"><kbd style="background:var(--s2);border-radius:4px;padding:2px 7px;font-size:11px;color:var(--tx)">F1</kbd><div style="color:var(--mut);margin-top:5px">Tour guiado</div></div>
+      <div style="background:var(--bg);border-radius:8px;padding:10px"><kbd style="background:var(--s2);border-radius:4px;padding:2px 7px;font-size:11px;color:var(--tx)">?</kbd><div style="color:var(--mut);margin-top:5px">Mostrar atajos</div></div>
+      <div style="background:var(--bg);border-radius:8px;padding:10px"><kbd style="background:var(--s2);border-radius:4px;padding:2px 7px;font-size:11px;color:var(--tx)">Esc</kbd><div style="color:var(--mut);margin-top:5px">Cerrar modales</div></div>
+      <div style="background:var(--bg);border-radius:8px;padding:10px"><kbd style="background:var(--s2);border-radius:4px;padding:2px 7px;font-size:11px;color:var(--tx)">←  →</kbd><div style="color:var(--mut);margin-top:5px">Tour: paso anterior/siguiente</div></div>
+    </div>
+    <div style="margin-top:16px;background:var(--bg);border-radius:8px;padding:12px;font-size:12px;color:var(--dim)">
+      📱 En móvil: desliza izquierda/derecha para cambiar pestaña · Tira hacia abajo para actualizar
+    </div>
+  </div>
+</div>
+
 <!-- Invoice Detail Modal -->
 <div id="invoice-modal" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,.7);z-index:9000;align-items:center;justify-content:center">
   <div style="background:var(--s1);border:1px solid var(--s2);border-radius:16px;padding:28px;max-width:500px;width:90%;max-height:85vh;overflow-y:auto">
@@ -6199,6 +6301,9 @@ if (window.innerWidth <= 768) {
 }
 </script>
 
+<button id="mobile-lite-toggle" onclick="toggleMobileLite()" title="Cambiar entre vista resumida y completa">
+  📱 Vista completa
+</button>
 <button id="back-top" onclick="window.scrollTo({top:0,behavior:'smooth'})" 
   style="display:none;position:fixed;bottom:88px;right:20px;background:var(--s1);border:1px solid var(--s2);color:var(--mut);width:36px;height:36px;border-radius:50%;font-size:16px;cursor:pointer;z-index:500;transition:.2s;box-shadow:0 2px 8px rgba(0,0,0,.3)"
   onmouseover="this.style.borderColor='var(--acc)';this.style.color='var(--acc)'"
