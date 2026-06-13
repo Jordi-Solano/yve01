@@ -3923,17 +3923,15 @@ function _positionTour(target, step) {
       'color:#475569;font-size:22px;cursor:pointer;line-height:1;padding:0;transition:.15s" ' +
       'onmouseover="this.style.color=\'#94a3b8\'" onmouseout="this.style.color=\'#475569\'">×</button>' +
     // Title  
-    '<div style="font-size:17px;font-weight:800;color:#f1f5f9;padding-right:24px;margin-bottom:10px;line-height:1.3">' + step.title + '</div>' +
+    '<div style="font-size:19px;font-weight:900;color:#f1f5f9;padding-right:24px;margin-bottom:12px;line-height:1.25;letter-spacing:-.3px">' + step.title + '</div>' +
     // Body text
-    '<div style="font-size:14px;color:#94a3b8;line-height:1.7;margin-bottom:20px">' + step.text + '</div>' +
+    '<div style="font-size:14px;color:#cbd5e1;line-height:1.75;margin-bottom:20px">' + step.text + '</div>' +
     // Dots + buttons row
     '<div style="display:flex;align-items:center;justify-content:space-between">' +
       '<div style="display:flex;gap:6px;align-items:center">' +
         _tourSteps.map(function(_,i) {
-          return '<div style="transition:.2s;border-radius:50%;background:' +
-            (i === _tourStep ? '#3b82f6' : 'rgba(59,130,246,.25)') +
-            ';width:' + (i === _tourStep ? '20px' : '8px') +
-            ';height:8px;border-radius:' + (i === _tourStep ? '4px' : '50%') + '"></div>';
+          var active = i === _tourStep;
+          return '<div style="width:'+(active?'22px':'8px')+';height:8px;border-radius:'+(active?'4px':'50%')+';background:'+(active?'#3b82f6':'rgba(59,130,246,.2)')+';transition:all .3s cubic-bezier(.34,1.56,.64,1);flex-shrink:0"></div>';
         }).join('') +
       '</div>' +
       '<div style="display:flex;gap:8px">' +
