@@ -3710,16 +3710,19 @@ function _showTourStep() {
       '</div>' +
     '</div>'
 
-  // Update content
-  document.getElementById('tour-title').textContent = step.title;
-  document.getElementById('tour-text').textContent  = step.text;
-
-  // Step counter
-  var counterEl = document.getElementById('tour-step-counter');
-  if (counterEl) counterEl.textContent = 'Paso ' + (_tourStep + 1) + ' de ' + _tourSteps.length;
+  // Update content — use box.querySelector for reliability after innerHTML set
+  var _titleEl   = box.querySelector('#tour-title');
+  var _textEl    = box.querySelector('#tour-text');
+  var _counterEl = box.querySelector('#tour-step-counter');
+  var _dotsEl    = box.querySelector('#tour-dots');
+  var _prevBtn   = box.querySelector('#tour-prev-btn');
+  var _nextBtn   = box.querySelector('#tour-next-btn');
+  if (_titleEl)   _titleEl.textContent   = step.title;
+  if (_textEl)    _textEl.textContent    = step.text;
+  if (_counterEl) _counterEl.textContent = 'Paso ' + (_tourStep + 1) + ' de ' + _tourSteps.length;
 
   // Dots
-  var dotsEl = document.getElementById('tour-dots');
+  var dotsEl = _dotsEl;
   if (dotsEl) {
     dotsEl.innerHTML = _tourSteps.map(function(_,i) {
       return '<div style="width:6px;height:6px;border-radius:50%;background:' +
@@ -3728,8 +3731,8 @@ function _showTourStep() {
   }
 
   // Prev / Next buttons
-  var prevBtn = document.getElementById('tour-prev-btn');
-  var nextBtn = document.getElementById('tour-next-btn');
+  var prevBtn = _prevBtn;
+  var nextBtn = _nextBtn;
   if (prevBtn) prevBtn.style.display = _tourStep > 0 ? 'block' : 'none';
   if (nextBtn) nextBtn.textContent = _tourStep === _tourSteps.length-1 ? '✓ Finalizar' : 'Siguiente →';
 
