@@ -59,9 +59,16 @@ def api_multi_overview():
         prev_rev = float(hist.iloc[-2]['total_ingresos']) if len(hist) >= 2 else float(row['total_ingresos'])
         rev_delta_pct = round((float(row['total_ingresos']) / prev_rev - 1) * 100, 1) if prev_rev > 0 else 0
         
+        # Build GOP% trend for sparkline
+        h_hist = df[df['hotel_id'] == row['hotel_id']].sort_values('mes')
+        gop_trend = [round(float(v), 1) for v in h_hist['gop_pct'].tolist()]
+        # Hotel stars from name heuristic
+        nombre = str(row['hotel_nombre'])
+        stars = '5★' if 'boutique' in nombre.lower() or '5' in nombre else '4★'
         hoteles.append({
             'hotel_id':   str(row['hotel_id']),
-            'nombre':     str(row['hotel_nombre']),
+            'nombre':     nombre,
+            'stars':      stars,
             'habitaciones': int(row['habitaciones']),
             'ocupacion_pct': float(row['ocupacion_pct']),
             'adr_eur':    float(row['adr_eur']),
@@ -74,6 +81,8 @@ def api_multi_overview():
             'alertas':        int(row.get('alertas_activas', 0)),
             'oob_dias':       int(row.get('out_of_balance_dias', 0)),
             'estado_oracle':  str(row.get('estado_oracle', 'SIMULACION')),
+            'gop_trend':      gop_trend,
+            'avg_gop':        round(float(h_hist['gop_pct'].mean()), 1),
         })
     
     # Sort by GOP%
