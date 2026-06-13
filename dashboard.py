@@ -3731,6 +3731,11 @@ function showNotification(msg, type = 'info') {
 
 // ── Guided tour ─────────────────────────────────────────────────────────
 var _tourActive = false, _tourStep = 0;
+var _mh_loaded = false;
+var _calLoaded = false;
+var _drrLoaded = false;
+var _fbLoaded = false;
+var _arRealLoaded = false;
 var _TOUR_VER = '2';  // increment to re-offer after updates
 var _tourSteps = [
   {
