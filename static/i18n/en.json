@@ -191,5 +191,21 @@
   "admin.audit": "Activity log",
   "billing.trialDays": "14-day free trial",
   "lbl.bestMargin": "Best margin",
-  "lbl.avgFC": "Avg FC%"
+  "lbl.avgFC": "Avg FC%",
+  "tour.step": "Step",
+  "tour.of": "of",
+  "tour.next": "Next",
+  "tour.prev": "Back",
+  "tour.finish": "Finish",
+  "tour.skip": "Skip tour",
+  "tour.title1": "AR — OTAs",
+  "tour.title2": "AR Statistics",
+  "tour.title3": "AP — Suppliers",
+  "tour.title4": "Daily Revenue Report",
+  "tour.title5": "AR Real — Groups",
+  "tour.title6": "Calipolis Group",
+  "tour.title7": "Multi-Hotel",
+  "btn.startTour": "Guided Tour",
+  "nav.atajos": "Shortcuts",
+  "status.ok": "All clear — no active issues"
 }

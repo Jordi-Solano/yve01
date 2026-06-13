@@ -1403,7 +1403,9 @@ def _hotel_name():
         try:
             with open(cfg_path, "r", encoding="utf-8") as f:
                 cfg = json.load(f)
-            return cfg.get("hotel", {}).get("nombre", "")
+            # Support both flat key and nested 'hotel.nombre'
+            name = cfg.get("hotel_tag") or cfg.get("hotel_nombre") or cfg.get("hotel", {}).get("nombre", "")
+            return name
         except Exception:
             pass
     return ""
