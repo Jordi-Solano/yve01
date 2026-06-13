@@ -2070,11 +2070,11 @@ button, a { touch-action: manipulation; }
 
   <!-- TABS -->
   <div class="tabs">
-    <button class="tab active" onclick="switchTab('ar',this)" data-i18n="tab.ar">📥 AR — OTAs</button>
-    <button class="tab" onclick="switchTab('ap',this)" data-i18n="tab.ap">📦 AP — Proveedores</button>
-    <button class="tab" onclick="switchTab('drr',this)" data-i18n="tab.drr">📊 DRR</button>
-    <button class="tab" onclick="switchTab('banco',this)" data-i18n="tab.banco">🏦 Banco</button>
-    <button class="tab" onclick="switchTab('notif',this)" data-i18n="tab.notif">🔔 Notificaciones</button>
+    <button class="tab active" id="tab-ar" onclick="switchTab('ar',this)" data-i18n="tab.ar">📥 AR — OTAs</button>
+    <button class="tab" id="tab-ap" onclick="switchTab('ap',this)" data-i18n="tab.ap">📦 AP — Proveedores</button>
+    <button class="tab" id="tab-drr" onclick="switchTab('drr',this)" data-i18n="tab.drr">📊 DRR</button>
+    <button class="tab" id="tab-banco" onclick="switchTab('banco',this)" data-i18n="tab.banco">🏦 Banco</button>
+    <button class="tab" id="tab-notif" onclick="switchTab('notif',this)" data-i18n="tab.notif">🔔 Notificaciones</button>
     <button class="tab" onclick="switchTab('fb',this)" id="tab-fb" data-i18n="tab.fb">🍽️ F&amp;B Cost</button>
     <button class="tab" onclick="switchTab('ar_real',this)" id="tab-ar-real" data-i18n="tab.arreal">🏢 AR Real</button>
     <button class="tab" onclick="switchTab('calipolis',this)" id="tab-calipolis" data-i18n="tab.calipolis">🏩 Calipolis</button>
@@ -2700,18 +2700,26 @@ async function loadAll() {
     renderStats(stats);
     try { renderChart(stats.chart); } catch(ec) { console.warn('Chart no disponible:', ec); }
 
-    // Alert bar
+    // Alert bar — defer until i18n is loaded
     const alertBar = document.getElementById('alert-bar');
-    const parts = [];
-    if (stats.discrepancias > 0)
-      parts.push(stats.discrepancias + ' ' + (t('alert.discrepancias') || 'discrepancia(s) · ' + eur(stats.importe_reclamable) + ' reclamables'));
-    if (stats.di_pendientes > 0)
-      parts.push(stats.di_pendientes + ' ' + (t('alert.sinDI') || 'factura(s) sin certificado DI'));
-    if (parts.length) {
-      document.getElementById('alert-msg').textContent = parts.join(' — ');
-      alertBar.classList.add('on');
+    const _updateAlertBar = () => {
+      const parts = [];
+      if (stats.discrepancias > 0)
+        parts.push(stats.discrepancias + ' ' + (t('alert.discrepancias') || 'discrepancia(s) reclamables'));
+      if (stats.di_pendientes > 0)
+        parts.push(stats.di_pendientes + ' ' + (t('alert.sinDI') || 'factura(s) sin cert. DI'));
+      if (parts.length) {
+        document.getElementById('alert-msg').textContent = parts.join(' — ');
+        alertBar.classList.add('on');
+      } else {
+        alertBar.classList.remove('on');
+      }
+    };
+    if (_i18nData && Object.keys(_i18nData).length > 0) {
+      _updateAlertBar();
     } else {
-      alertBar.classList.remove('on');
+      // Wait for i18n then update
+      setTimeout(_updateAlertBar, 800);
     }
 
     // 2. Cargar facturas (aislado para que un error aquí no afecte las cards)
@@ -3567,7 +3575,7 @@ if (!localStorage.getItem('kbd_shown')) {
   }, 5000);
 }
 // Show tour offer on first login
-if (!localStorage.getItem('tour_done') && !localStorage.getItem('tour_skipped')) {
+if (localStorage.getItem('tour_done') !== _TOUR_VER) {
   setTimeout(() => {
     if (confirm('¡Bienvenido a Yve.01! ¿Quieres un tour rápido de 2 minutos para conocer el sistema?')) {
       startTour();
@@ -3638,85 +3646,147 @@ function showNotification(msg, type = 'info') {
 
 // ── Guided tour ─────────────────────────────────────────────────────────
 var _tourActive = false, _tourStep = 0;
+var _TOUR_VER = '2';  // increment to re-offer after updates
 var _tourSteps = [
-  {el:'#tab-ar_otas',    title:'💳 AR — OTAs',           text:'Verifica automáticamente las comisiones de Booking y Expedia. Detecta discrepancias y certificados DI pendientes.'},
-  {el:'#sc-procesadas',  title:'Estadísticas en tiempo real', text:'KPIs actualizados en cada ciclo de procesamiento. Haz clic en las tarjetas para ver más detalle.'},
-  {el:'#tab-ap',         title:'📦 AP — Proveedores',    text:'3-way matching automático: cruza cada factura con su PO y albarán. Aprueba en lote con un clic.'},
-  {el:'#tab-drr',        title:'📊 Daily Revenue Report', text:'Sube tu DRR (.xlsm) arrastrándolo aquí. Yve detecta Out of Balance automáticamente y alerta al instante.'},
-  {el:'#tab-ar_real',    title:'🏢 AR Real',              text:'Gestión completa de clientes corporativos: factura, controla antigüedad y envía recordatorios de cobro.'},
-  {el:'#tab-calipolis',  title:'🏨 Dashboard Grupo',      text:'Vista consolidada de las 3 propiedades Calipolis con GOP%, occupancy y tendencias 6 meses.'},
+  {el:'#tab-ar',         title:'💳 AR — OTAs',             text:'Verifica automáticamente las comisiones de Booking y Expedia. Detecta discrepancias y certificados DI pendientes.'},
+  {el:'#sc-tot',         title:'📊 Estadísticas en tiempo real', text:'KPIs del ciclo AR actualizados automáticamente. Total facturas, importes, discrepancias y certificados pendientes.'},
+  {el:'#tab-ap',         title:'📦 AP — Proveedores',      text:'3-way matching automático: cruza cada factura con su PO y albarán. Aprueba en lote todas las facturas con match correcto.'},
+  {el:'#tab-drr',        title:'📊 Daily Revenue Report',  text:'Sube tu DRR arrastrando el archivo .xlsm. Yve detecta Out of Balance automáticamente y muestra RevPAR, GOP% y ADR.'},
+  {el:'#tab-ar-real',    title:'🏢 AR Real — Grupos',      text:'Gestión completa de clientes corporativos: facturas con antigüedad (aging), cobro directo y recordatorios automáticos.'},
+  {el:'#tab-calipolis',  title:'🏨 Grupo Calipolis',       text:'Dashboard multi-hotel con GOP%, ocupación y tendencias de 6 meses para las 3 propiedades del grupo.'},
+  {el:'#tab-multi-hotel',title:'🌍 Multi-Hotel',           text:'Vista consolidada de todos los hoteles del grupo con ranking de performance y alertas centralizadas.'},
 ];
 
 function startTour() {
   _tourActive = true; _tourStep = 0;
-  document.getElementById('main-menu').classList.remove('open');
+  // Close menu if open
+  var mm = document.getElementById('main-menu');
+  if (mm) mm.classList.remove('open');
+  // Remove old box to force fresh creation
+  var oldBox = document.getElementById('tour-box');
+  if (oldBox) oldBox.remove();
   _showTourStep();
 }
 
 function _showTourStep() {
+  if (_tourStep >= _tourSteps.length) { endTour(); return; }
+  var step = _tourSteps[_tourStep];
+
+  // Get or create overlay (full-screen dim)
   var overlay = document.getElementById('tour-overlay');
   if (!overlay) {
     overlay = document.createElement('div');
     overlay.id = 'tour-overlay';
-    overlay.innerHTML = '<div id="tour-box" style="position:fixed;background:var(--s1);border:1px solid var(--acc);border-radius:14px;padding:20px;max-width:320px;z-index:9999;box-shadow:0 8px 32px rgba(0,0,0,.5)">' +
-      '<div id="tour-title" style="font-weight:700;font-size:14px;margin-bottom:8px;color:var(--acc2)"></div>' +
-      '<div id="tour-text" style="font-size:13px;color:var(--mut);line-height:1.6;margin-bottom:16px"></div>' +
-      '<div style="display:flex;justify-content:space-between;align-items:center">' +
-        '<span id="tour-counter" style="font-size:11px;color:var(--dim)"></span>' +
-        '<div style="display:flex;gap:8px">' +
-          '<button onclick="endTour()" style="background:none;border:1px solid var(--s3);color:var(--mut);padding:6px 12px;border-radius:8px;font-size:12px;cursor:pointer">Saltar</button>' +
-          '<button onclick="nextTourStep()" id="tour-next-btn" style="background:var(--acc);border:none;color:#fff;padding:6px 14px;border-radius:8px;font-size:12px;font-weight:600;cursor:pointer">Siguiente →</button>' +
-        '</div>' +
-      '</div>' +
-    '</div>';
+    overlay.style.cssText = 'position:fixed;inset:0;z-index:9998;pointer-events:none';
     document.body.appendChild(overlay);
   }
-  if (_tourStep >= _tourSteps.length) { endTour(); return; }
-  var step = _tourSteps[_tourStep];
+  overlay.style.display = 'block';
+
+  // Get or create tooltip box
+  var box = document.getElementById('tour-box');
+  if (!box) {
+    box = document.createElement('div');
+    box.id = 'tour-box';
+    box.style.cssText = 'position:fixed;background:var(--s1);border:1px solid var(--acc);border-radius:14px;padding:20px 22px;max-width:300px;width:calc(100vw - 40px);z-index:9999;box-shadow:0 8px 40px rgba(0,0,0,.6);pointer-events:all;transition:top .25s,left .25s';
+    box.innerHTML =
+      '<div id="tour-close" onclick="endTour()" style="position:absolute;top:10px;right:12px;cursor:pointer;color:var(--dim);font-size:18px;line-height:1">×</div>' +
+      '<div id="tour-title" style="font-weight:700;font-size:14px;margin-bottom:8px;color:var(--acc2);padding-right:16px"></div>' +
+      '<div id="tour-text"  style="font-size:13px;color:var(--mut);line-height:1.6;margin-bottom:16px"></div>' +
+      '<div style="display:flex;justify-content:space-between;align-items:center">' +
+        '<div style="display:flex;gap:4px" id="tour-dots"></div>' +
+        '<div style="display:flex;gap:8px">' +
+          '<button id="tour-prev-btn" onclick="prevTourStep()" style="background:none;border:1px solid var(--s3);color:var(--mut);padding:6px 12px;border-radius:8px;font-size:12px;cursor:pointer;display:none">←</button>' +
+          '<button id="tour-next-btn" onclick="nextTourStep()" style="background:var(--acc);border:none;color:#fff;padding:6px 14px;border-radius:8px;font-size:12px;font-weight:600;cursor:pointer">Siguiente →</button>' +
+        '</div>' +
+      '</div>';
+    document.body.appendChild(box);
+  }
+
+  // Update content
   document.getElementById('tour-title').textContent = step.title;
   document.getElementById('tour-text').textContent  = step.text;
-  document.getElementById('tour-counter').textContent = (_tourStep+1) + ' de ' + _tourSteps.length;
-  var nextBtn = document.getElementById('tour-next-btn');
-  if (nextBtn) nextBtn.textContent = _tourStep === _tourSteps.length-1 ? '✓ Finalizar' : 'Siguiente →';
-  overlay.style.display = 'block';
-  // Position tooltip near target element
-  var target = document.querySelector(step.el);
-  var box = document.getElementById('tour-box');
-  if (target && box) {
-    target.style.outline = '2px solid var(--acc)';
-    target.style.outlineOffset = '3px';
-    var rect = target.getBoundingClientRect();
-    var top = rect.bottom + 12;
-    var left = Math.min(rect.left, window.innerWidth - 340);
-    if (top + 200 > window.innerHeight) top = rect.top - 200;
-    box.style.top = Math.max(10, top) + 'px';
-    box.style.left = Math.max(10, left) + 'px';
-    target.scrollIntoView({behavior:'smooth', block:'nearest'});
+
+  // Dots
+  var dotsEl = document.getElementById('tour-dots');
+  if (dotsEl) {
+    dotsEl.innerHTML = _tourSteps.map(function(_,i) {
+      return '<div style="width:6px;height:6px;border-radius:50%;background:' +
+        (i === _tourStep ? 'var(--acc2)' : 'var(--s3)') + '"></div>';
+    }).join('');
   }
-  // Clear previous outlines
-  document.querySelectorAll('[style*="outline"]').forEach(function(el) {
-    if (el !== target) { el.style.outline = ''; el.style.outlineOffset = ''; }
+
+  // Prev / Next buttons
+  var prevBtn = document.getElementById('tour-prev-btn');
+  var nextBtn = document.getElementById('tour-next-btn');
+  if (prevBtn) prevBtn.style.display = _tourStep > 0 ? 'block' : 'none';
+  if (nextBtn) nextBtn.textContent = _tourStep === _tourSteps.length-1 ? '✓ Finalizar' : 'Siguiente →';
+
+  // Clear previous outline
+  document.querySelectorAll('[data-tour-active]').forEach(function(el) {
+    el.style.outline = '';
+    el.style.outlineOffset = '';
+    el.style.position = '';
+    el.style.zIndex = '';
+    el.removeAttribute('data-tour-active');
   });
+
+  // Highlight target
+  var target = document.querySelector(step.el);
+  if (target) {
+    target.style.outline = '2px solid var(--acc)';
+    target.style.outlineOffset = '4px';
+    target.setAttribute('data-tour-active', '1');
+    target.scrollIntoView({behavior:'smooth', block:'nearest', inline:'center'});
+
+    // Position box near target
+    setTimeout(function() {
+      var rect = target.getBoundingClientRect();
+      var bw = 320, bh = 180;
+      var vw = window.innerWidth, vh = window.innerHeight;
+
+      // Try below first, then above
+      var top = rect.bottom + 14;
+      if (top + bh > vh - 20) top = rect.top - bh - 14;
+      if (top < 10) top = 10;
+
+      var left = rect.left;
+      if (left + bw > vw - 10) left = vw - bw - 10;
+      if (left < 10) left = 10;
+
+      box.style.top  = Math.max(10, top) + 'px';
+      box.style.left = Math.max(10, left) + 'px';
+    }, 150);
+  } else {
+    // Fallback: center of screen
+    box.style.top  = '50%';
+    box.style.left = '50%';
+    box.style.transform = 'translate(-50%,-50%)';
+  }
 }
 
+
 function nextTourStep() {
-  // Clear current highlight
-  var step = _tourSteps[_tourStep];
-  var target = document.querySelector(step.el);
-  if (target) { target.style.outline = ''; target.style.outlineOffset = ''; }
   _tourStep++;
   if (_tourStep >= _tourSteps.length) endTour();
   else _showTourStep();
 }
 
+function prevTourStep() {
+  if (_tourStep > 0) { _tourStep--; _showTourStep(); }
+}
+
 function endTour() {
-  _tourActive = false;
+  _tourActive = false; _tourStep = 0;
   var overlay = document.getElementById('tour-overlay');
   if (overlay) overlay.style.display = 'none';
-  document.querySelectorAll('[style*="outline: 2px"]').forEach(function(el) {
+  var box = document.getElementById('tour-box');
+  if (box) box.style.display = 'none';
+  // Clear all highlights
+  document.querySelectorAll('[data-tour-active]').forEach(function(el) {
     el.style.outline = ''; el.style.outlineOffset = '';
+    el.removeAttribute('data-tour-active');
   });
-  localStorage.setItem('tour_done', '1');
+  localStorage.setItem('tour_done', _TOUR_VER);
   showNotification('✓ Tour completado — ¡Ya conoces Yve.01!', 'success');
 }
 
@@ -3751,7 +3821,7 @@ document.addEventListener('keydown', e => {
 // ── Swipe gestures for mobile ────────────────────────────────────────────
 (function() {
   var touchStartX = 0, touchStartY = 0;
-  var TABS_ORDER = ['ar_otas','ap','drr','banco','notificaciones','fb_cost','ar_real','calipolis','multi_hotel'];
+  var TABS_ORDER = ['ar','ap','drr','banco','notif','fb','ar_real','calipolis','multi_hotel'];
   var currentTabIdx = 0;
 
   document.addEventListener('touchstart', function(e) {
@@ -3949,7 +4019,7 @@ function switchTab(tab, el) {
     if (el) setTimeout(function(){ el.scrollIntoView({behavior:'smooth',block:'nearest',inline:'center'}); }, 50);
     var bnBtns = document.querySelectorAll('#mobile-bottom-nav button');
     bnBtns.forEach(function(b){ b.style.color = ''; });
-    var bnMap = {'ar_otas':0,'ap':1,'drr':2,'calipolis':3};
+    var bnMap = {'ar':0,'ap':1,'drr':2,'calipolis':3};
     if (bnMap[tab] !== undefined && bnBtns[bnMap[tab]]) bnBtns[bnMap[tab]].style.color = 'var(--acc2)';
   }
   if (tab === 'fb') loadFBTab();
@@ -5847,6 +5917,7 @@ function runSearch(q) {
 document.addEventListener('keydown', e => {
   if ((e.ctrlKey || e.metaKey) && e.key === 'k') { e.preventDefault(); openSearch(); }
   if ((e.ctrlKey || e.metaKey) && e.key === '/') { e.preventDefault(); toggleChat(); }
+  if (e.key === 'F1' || (e.shiftKey && e.key === 'T')) { e.preventDefault(); startTour(); }
 });
 </script>
 <!-- /Global Search -->
@@ -5935,7 +6006,7 @@ function showSetupChecklist() {
 <!-- Mobile bottom nav -->
 <div id="mobile-bottom-nav" style="display:none;position:fixed;bottom:0;left:0;right:0;background:var(--s1);border-top:1px solid var(--s2);z-index:600;padding:6px 0 env(safe-area-inset-bottom,0)">
   <div style="display:flex;justify-content:space-around;max-width:500px;margin:0 auto">
-    <button onclick="switchTab('ar_otas',document.getElementById('tab-ar_otas'))" style="background:none;border:none;color:var(--mut);padding:6px 12px;cursor:pointer;flex:1;text-align:center;font-size:10px">
+    <button onclick="switchTab('ar',document.getElementById('tab-ar'))" style="background:none;border:none;color:var(--mut);padding:6px 12px;cursor:pointer;flex:1;text-align:center;font-size:10px">
       <div style="font-size:18px">💳</div><div>AR</div>
     </button>
     <button onclick="switchTab('ap',document.getElementById('tab-ap'))" style="background:none;border:none;color:var(--mut);padding:6px 12px;cursor:pointer;flex:1;text-align:center;font-size:10px">
