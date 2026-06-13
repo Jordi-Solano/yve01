@@ -1948,6 +1948,9 @@ tr:hover td{background:rgba(255,255,255,.025)}
 }
 
 * { -webkit-tap-highlight-color: transparent; }
+[data-tour-active] { outline: 2px solid var(--acc) !important; outline-offset: 4px !important; border-radius: 6px; animation: tourPulse 1.5s infinite; }
+@keyframes tourPulse { 0%,100%{outline-color:var(--acc)} 50%{outline-color:var(--acc2)} }
+#tour-box { font-family: Inter, system-ui, sans-serif; }
 @keyframes pulse { 0%,100%{opacity:1} 50%{opacity:.6} }
 button, a { touch-action: manipulation; }
 
@@ -3648,13 +3651,13 @@ function showNotification(msg, type = 'info') {
 var _tourActive = false, _tourStep = 0;
 var _TOUR_VER = '2';  // increment to re-offer after updates
 var _tourSteps = [
-  {el:'#tab-ar',         title:'💳 AR — OTAs',             text:'Verifica automáticamente las comisiones de Booking y Expedia. Detecta discrepancias y certificados DI pendientes.'},
-  {el:'#sc-tot',         title:'📊 Estadísticas en tiempo real', text:'KPIs del ciclo AR actualizados automáticamente. Total facturas, importes, discrepancias y certificados pendientes.'},
-  {el:'#tab-ap',         title:'📦 AP — Proveedores',      text:'3-way matching automático: cruza cada factura con su PO y albarán. Aprueba en lote todas las facturas con match correcto.'},
-  {el:'#tab-drr',        title:'📊 Daily Revenue Report',  text:'Sube tu DRR arrastrando el archivo .xlsm. Yve detecta Out of Balance automáticamente y muestra RevPAR, GOP% y ADR.'},
-  {el:'#tab-ar-real',    title:'🏢 AR Real — Grupos',      text:'Gestión completa de clientes corporativos: facturas con antigüedad (aging), cobro directo y recordatorios automáticos.'},
-  {el:'#tab-calipolis',  title:'🏨 Grupo Calipolis',       text:'Dashboard multi-hotel con GOP%, ocupación y tendencias de 6 meses para las 3 propiedades del grupo.'},
-  {el:'#tab-multi-hotel',title:'🌍 Multi-Hotel',           text:'Vista consolidada de todos los hoteles del grupo con ranking de performance y alertas centralizadas.'},
+  {el:'#tab-ar',         tab:null,         title:'💳 AR — OTAs',             text:'Verifica automáticamente las comisiones de Booking y Expedia. Detecta discrepancias y certificados DI pendientes. Pulsa ⚡ Procesar para analizar las facturas.'},
+  {el:'#sc-tot',         tab:'ar',         title:'📊 Estadísticas AR',        text:'KPIs del ciclo actual: facturas procesadas, importe total, discrepancias a reclamar y certificados de Doble Imposición pendientes.'},
+  {el:'#tab-ap',         tab:null,         title:'📦 AP — Proveedores',       text:'3-way matching automático: cruza cada factura con su PO y albarán. Aprueba en lote con ✅ Aprobar Match OK. Genera emails para discrepancias.'},
+  {el:'#drr-drop-zone',  tab:'drr',        title:'📊 DRR — Revenue Diario',   text:'Arrastra tu archivo .xlsm aquí. Yve extrae RevPAR, ADR, GOP%, ocupación y detecta Out of Balance automáticamente.'},
+  {el:'#ar-real-stats',  tab:'ar_real',    title:'🏢 AR Real — Grupos',       text:'Gestión de clientes corporativos: emite facturas, controla el aging (vencimiento), cobra y envía recordatorios automáticos por email.'},
+  {el:'#cal-kpis',       tab:'calipolis',  title:'🏨 Grupo Calipolis',        text:'Dashboard consolidado con GOP%, ocupación y tendencias de 6 meses para las 3 propiedades: Sitges, Mar y Boutique.'},
+  {el:'#mh-kpis',        tab:'multi_hotel',title:'🌍 Multi-Hotel',            text:'Vista de grupo con ranking de performance, Revenue total, RevPAR y alertas centralizadas de todos los hoteles.'},
 ];
 
 function startTour() {
@@ -3677,7 +3680,9 @@ function _showTourStep() {
   if (!overlay) {
     overlay = document.createElement('div');
     overlay.id = 'tour-overlay';
-    overlay.style.cssText = 'position:fixed;inset:0;z-index:9998;pointer-events:none';
+    overlay.style.cssText = 'position:fixed;inset:0;z-index:9998;pointer-events:all;background:rgba(0,0,0,.4);backdrop-filter:blur(1px);cursor:pointer';
+    overlay.title = 'Clic para avanzar al siguiente paso';
+    overlay.onclick = function(e) { if (e.target === overlay) nextTourStep(); };
     document.body.appendChild(overlay);
   }
   overlay.style.display = 'block';
@@ -3693,7 +3698,7 @@ function _showTourStep() {
       '<div id="tour-title" style="font-weight:700;font-size:14px;margin-bottom:8px;color:var(--acc2);padding-right:16px"></div>' +
       '<div id="tour-text"  style="font-size:13px;color:var(--mut);line-height:1.6;margin-bottom:16px"></div>' +
       '<div style="display:flex;justify-content:space-between;align-items:center">' +
-        '<div style="display:flex;gap:4px" id="tour-dots"></div>' +
+        '<div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:14px">' +'<span id="tour-counter" style="font-size:10px;color:var(--dim);font-weight:600"></span>' +'<div style="display:flex;gap:4px" id="tour-dots"></div></div>' +
         '<div style="display:flex;gap:8px">' +
           '<button id="tour-prev-btn" onclick="prevTourStep()" style="background:none;border:1px solid var(--s3);color:var(--mut);padding:6px 12px;border-radius:8px;font-size:12px;cursor:pointer;display:none">←</button>' +
           '<button id="tour-next-btn" onclick="nextTourStep()" style="background:var(--acc);border:none;color:#fff;padding:6px 14px;border-radius:8px;font-size:12px;font-weight:600;cursor:pointer">Siguiente →</button>' +
@@ -3705,6 +3710,10 @@ function _showTourStep() {
   // Update content
   document.getElementById('tour-title').textContent = step.title;
   document.getElementById('tour-text').textContent  = step.text;
+
+  // Step counter
+  var counterEl = document.getElementById('tour-counter');
+  if (counterEl) counterEl.textContent = 'Paso ' + (_tourStep + 1) + ' de ' + _tourSteps.length;
 
   // Dots
   var dotsEl = document.getElementById('tour-dots');
@@ -3729,6 +3738,12 @@ function _showTourStep() {
     el.style.zIndex = '';
     el.removeAttribute('data-tour-active');
   });
+
+  // Switch to relevant tab if element is in a panel
+  if (step.tab) {
+    var tabBtn = document.getElementById('tab-' + step.tab);
+    if (tabBtn) switchTab(step.tab, tabBtn);
+  }
 
   // Highlight target
   var target = document.querySelector(step.el);
