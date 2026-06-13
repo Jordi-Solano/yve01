@@ -2190,7 +2190,7 @@ button, a { touch-action: manipulation; }
     <div class="mobile-lite-hint" style="display:none;background:rgba(59,130,246,.08);border:1px solid rgba(59,130,246,.2);border-radius:8px;padding:8px 12px;margin-bottom:12px;font-size:12px;color:var(--acc2)">📱 Vista resumida · <button onclick="toggleMobileLite()" style="background:none;border:none;color:var(--acc2);text-decoration:underline;cursor:pointer;font-size:12px">Ver tabla completa →</button></div>
   <div style="display:flex;justify-content:flex-end;gap:12px;margin-bottom:14px"><a href="/api/exportar/ar" class="btn-ref" style="text-decoration:none">⬇️ Excel</a><a href="/api/exportar/ar/pdf" class="btn-ref" style="text-decoration:none">📄 PDF</a><a href="/aprobaciones-ar/" class="btn-ref" style="text-decoration:none" title="Abrir panel de aprobaciones AR">📲 Aprobar facturas AR</a></div>
   <!-- STATS -->
-  <div class="stats" id="ap-stats-section" id="ar-stats-section">
+  <div class="stats" id="ar-stats-section">
     <div class="sc hl c-blu">
       <div class="sc-lbl" data-i18n="sc.procesadas">Facturas procesadas</div>
       <div class="sc-val" id="s-tot">—</div>
@@ -3756,7 +3756,7 @@ var _tourSteps = [
     text: 'Verifica automáticamente las comisiones de Booking.com y Expedia. De un vistazo: facturas procesadas, importe total, discrepancias reclamables y certificados de Doble Imposición pendientes. El número rojo son euros que puedes recuperar.'
   },
   {
-    el: '#ap-stats-section',
+    el: '#stats-ap-grid',
     tab: 'ap',
     title: '📦 AP — 3-way Matching',
     text: 'Para cada factura de proveedor, Yve cruza 3 documentos: la factura, el pedido (PO) y el albarán. Si cuadra todo → Match OK automático. Si hay diferencia → alerta y email al proveedor generado con IA.'
