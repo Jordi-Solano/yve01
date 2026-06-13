@@ -3759,7 +3759,7 @@ var _tourSteps = [
     }
   },
   {
-    el:'#sc-dis', tab:'ar',
+    el:'#s-disc', tab:'ar',
     title:'📊 KPIs del ciclo AR',
     text:'De un vistazo: facturas procesadas, importe total, discrepancias reclamables y certificados de Doble Imposición pendientes. El número rojo son euros que puedes recuperar de las OTAs.',
   },
@@ -3896,10 +3896,12 @@ function _positionTour(target, step) {
       _placeTourBox(rect, pad);
     }, step.tab ? 380 : 80);
   } else {
-    // No target → full dim
+    // No target → full dim, box centered
     ctx.fillStyle = 'rgba(0,0,0,0.72)';
     ctx.fillRect(0, 0, canvas.width, canvas.height);
-    _placeTourBox(null, 0);
+    // Show box in top-left area when no target
+    var box2 = document.getElementById('tour-box');
+    if (box2) { box2.style.top = '80px'; box2.style.left = '20px'; box2.style.transform = ''; }
   }
 
   // ── Build / update tooltip box ────────────────────────────────────
