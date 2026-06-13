@@ -2577,7 +2577,7 @@ button, a { touch-action: manipulation; }
   </div>
 
   <!-- KPIs consolidados -->
-  <div id="cal-kpis" style="display:grid;grid-template-columns:repeat(4,1fr);gap:12px;margin-bottom:22px"></div>
+  <div id="cal-kpis" style="display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-bottom:20px"></div>
   <div id="cal-insights"></div>
 
   <!-- Trend row: GOP y Facturas pendientes últimos 6 meses -->
@@ -2600,64 +2600,36 @@ button, a { touch-action: manipulation; }
   </div><!-- /panel-calipolis -->
 
   <div id="panel-multi_hotel" class="panel">
+
+    <!-- Header -->
     <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:22px;flex-wrap:wrap;gap:12px">
-      <h2 style="font-size:18px;font-weight:700;margin:0">🏨 Multi-Hotel Dashboard</h2>
-      <div style="display:flex;align-items:center;gap:10px">
-        <select id="grupo-filter" onchange="loadMultiHotel()" style="background:var(--s2);color:var(--tx);border:1px solid var(--s2);border-radius:8px;padding:7px 12px;font-size:12px;cursor:pointer;font-family:inherit">
-          <option value="">Todos los grupos</option>
-        </select>
-        <a href="/api/exportar/multihotel" class="btn-ref" style="text-decoration:none">⬇️ Descargar Excel</a>
+      <div>
+        <h2 style="font-size:20px;font-weight:800;margin:0">🌍 Multi-Hotel Dashboard</h2>
+        <div style="font-size:12px;color:var(--mut);margin-top:3px">Vista consolidada del grupo</div>
       </div>
+      <a href="/api/exportar/multihotel" class="btn-ref" style="text-decoration:none;font-size:12px">⬇️ Excel</a>
     </div>
 
-    <!-- KPIs Consolidados -->
-    <div id="mh-kpis" style="margin-bottom:16px"></div>
-    <div id="cal-insights"></div>
+    <!-- KPI Cards 2x2 -->
+    <div id="mh-kpis" style="margin-bottom:20px"></div>
 
-    <!-- 6-month trend chart -->
-    <div id="mh-trend-chart" style="margin-bottom:20px"></div>
+    <!-- Smart Insights row -->
+    <div id="mh-insights" style="margin-bottom:20px"></div>
+
+    <!-- Trend charts 2 col -->
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:16px;margin-bottom:20px">
+      <div class="card">
+        <div class="card-title" style="font-size:11px;letter-spacing:.5px;text-transform:uppercase">GOP% — 6 Month Trend</div>
+        <div id="mh-gop-chart" style="height:140px;position:relative"></div>
+      </div>
+      <div class="card">
+        <div class="card-title" style="font-size:11px;letter-spacing:.5px;text-transform:uppercase">Revenue — 6 Month Trend</div>
+        <div id="mh-rev-chart" style="height:140px;position:relative"></div>
+      </div>
+    </div>
 
     <!-- Hotel cards grid -->
-    <div id="mh-hotel-cards" style="display:grid;grid-template-columns:repeat(auto-fit,minmax(280px,1fr));gap:16px"></div>
-
-    <!-- Legacy Status Summary (hidden) -->
-    <div id="mh-status" style="display:none">
-    <div id="mh-status" style="display:grid;grid-template-columns:repeat(3,1fr);gap:12px;margin-bottom:20px"></div>
-
-    <!-- Tabla de hoteles -->
-    <div style="background:var(--s1);border:1px solid var(--s2);border-radius:14px;padding:20px;margin-bottom:20px;overflow-x:auto">
-      <h3 style="font-size:14px;margin-bottom:16px;color:var(--mut)">Performance por Hotel</h3>
-      <div class="tbl-wrap"><table id="mh-table" style="width:100%;border-collapse:collapse;font-size:13px;min-width:600px">
-        <thead>
-          <tr style="border-bottom:1px solid var(--s2);color:var(--mut)">
-            <th style="text-align:left;padding:10px;font-weight:600">Hotel</th>
-            <th style="text-align:left;padding:10px;font-weight:600">Ciudad</th>
-            <th style="text-align:right;padding:10px;font-weight:600">Rooms</th>
-            <th style="text-align:right;padding:10px;font-weight:600">Occ%</th>
-            <th style="text-align:right;padding:10px;font-weight:600">ADR</th>
-            <th style="text-align:right;padding:10px;font-weight:600">RevPAR</th>
-            <th style="text-align:right;padding:10px;font-weight:600">Revenue MTD</th>
-            <th style="text-align:right;padding:10px;font-weight:600">GOP%</th>
-            <th style="text-align:right;padding:10px;font-weight:600">Fact. Pend.</th>
-            <th style="text-align:center;padding:10px;font-weight:600">Status</th>
-          </tr>
-        </thead>
-        <tbody id="mh-tbody"></tbody>
-      </table>
-    </div>
-
-    <!-- Rankings y Alertas -->
-    <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(400px,1fr));gap:16px">
-      <div style="background:var(--s1);border:1px solid var(--s2);border-radius:14px;padding:20px">
-        <h3 style="font-size:14px;margin-bottom:16px;color:var(--mut)">🏆 Top Performers (Revenue MTD)</h3>
-        <div id="mh-trend-chart" style="margin-bottom:20px"></div>
-      <div id="mh-rankings"></div></div>
-      </div>
-      <div style="background:var(--s1);border:1px solid var(--s2);border-radius:14px;padding:20px">
-        <h3 style="font-size:14px;margin-bottom:16px;color:var(--mut)">⚠️ Alertas Activas</h3>
-        <div id="mh-alertas"></div>
-      </div>
-    </div>
+    <div id="mh-hotel-cards" style="display:grid;grid-template-columns:repeat(auto-fit,minmax(290px,1fr));gap:16px"></div>
 
   </div><!-- /panel-multi_hotel -->
 
@@ -5530,107 +5502,151 @@ async function enviarNotificaciones() {
 async function loadMultiHotel() {
   if (_mh_loaded) return;
   try {
-    const r = await fetch('/api/multi_hotel/overview');
-    const data = await r.json();
+    var r = await fetch('/api/multi_hotel/overview');
+    var data = await r.json();
     if (!data.ok) throw new Error(data.error || 'Sin datos');
-    const k = data.consolidado || {};
-    const hoteles = data.hoteles || [];
+    var k   = data.consolidado || {};
+    var hs  = data.hoteles     || [];
 
-    // ── KPI Cards consolidados ──────────────────────────────
-    const gopColor = k.avg_gop_pct >= 22 ? '#22c55e' : k.avg_gop_pct >= 16 ? '#f59e0b' : '#ef4444';
-    const mhKpis = document.getElementById('mh-kpis');
-    if (mhKpis) mhKpis.innerHTML =
-      '<div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:12px">' + [
-        {l:'REVENUE MTD',      v:'€' + Math.round((k.total_revenue||0)/1000) + 'K',      s: k.n_hoteles + ' propiedades · Grupo Calipolis', c:'#60a5fa'},
-        {l:'GOP TOTAL',        v:'€' + Math.round((k.total_gop||0)/1000) + 'K',           s:'GOP% medio: ' + (k.avg_gop_pct||0) + '%',      c:gopColor},
-        {l:'OCUPACIÓN MEDIA',  v:(k.avg_occ_pct||0) + '%',                                s:'ADR €' + (k.avg_adr||0),                        c:'#22c55e'},
-        {l:'REVPAR MEDIO',     v:'€' + (k.avg_revpar||0),                                  s:'Sobre ' + (k.total_habitaciones||0) + ' hab.', c:'#f1f5f9'},
-      ].map(c =>
-        '<div class="sc"><div class="sc-lbl" style="font-size:9px;letter-spacing:.5px">' + c.l + '</div>' +
-        '<div class="sc-val" style="color:' + c.c + ';font-size:28px;font-weight:900;line-height:1.1;margin:4px 0">' + c.v + '</div>' +
-        '<div class="sc-sub" style="font-size:10px;color:var(--dim)">' + c.s + '</div></div>'
-      ).join('') + '</div>';
+    // ── 4 KPI Cards (2×2 grid, mismo estilo que Calipolis) ─────
+    var gopC = k.avg_gop_pct >= 22 ? '#22c55e' : k.avg_gop_pct >= 16 ? '#f59e0b' : '#ef4444';
+    var kEl  = document.getElementById('mh-kpis');
+    if (kEl) kEl.innerHTML =
+      '<div style="display:grid;grid-template-columns:1fr 1fr;gap:12px">' +
+      [
+        {l:'REVENUE MTD',     v:'€' + Math.round((k.total_revenue||0)/1000) + 'K',
+         s:(k.n_hoteles||0)+' propiedades · Grupo Calipolis', c:'#60a5fa'},
+        {l:'GOP TOTAL',       v:'€' + Math.round((k.total_gop||0)/1000) + 'K',
+         s:'GOP% medio: '+(k.avg_gop_pct||0)+'%', c:gopC},
+        {l:'OCUPACIÓN MEDIA', v:(k.avg_occ_pct||0)+'%',
+         s:'ADR €'+(k.avg_adr||0), c:'#22c55e'},
+        {l:'REVPAR MEDIO',    v:'€'+(k.avg_revpar||0),
+         s:'Sobre '+(k.total_habitaciones||0)+' hab.', c:'#f1f5f9'},
+      ].map(function(c) {
+        return '<div class="sc">' +
+          '<div class="sc-lbl" style="font-size:9px;letter-spacing:.5px">'+c.l+'</div>' +
+          '<div class="sc-val" style="color:'+c.c+';font-size:clamp(20px,4vw,32px);font-weight:900;line-height:1.1;margin:4px 0">'+c.v+'</div>' +
+          '<div class="sc-sub" style="font-size:10px;color:var(--dim)">'+c.s+'</div>' +
+          '</div>';
+      }).join('') + '</div>';
 
-    // ── Smart Insights ──────────────────────────────────────
-    addCalipolisInsights(hoteles);
+    // ── Smart Insights (mismo estilo que Calipolis) ─────────────
+    var iEl = document.getElementById('mh-insights');
+    if (iEl && hs.length >= 2) {
+      var best = hs.reduce(function(a,b){ return b.gop_pct>a.gop_pct?b:a; }, hs[0]);
+      iEl.innerHTML =
+        '<div style="display:grid;grid-template-columns:repeat(3,1fr);gap:12px;margin-bottom:4px">' +
+        '<div class="card" style="border-left:3px solid #22c55e;padding:14px 16px">' +
+          '<div style="font-size:9px;font-weight:700;letter-spacing:.6px;color:#22c55e;text-transform:uppercase;margin-bottom:6px">MEJOR GOP%</div>' +
+          '<div style="font-size:14px;font-weight:700;color:var(--tx);margin-bottom:4px">' + best.nombre.split(' ').slice(-1)[0] + '</div>' +
+          '<div style="font-size:24px;font-weight:900;color:#22c55e">' + best.gop_pct + '%</div>' +
+        '</div>' +
+        '<div class="card" style="border-left:3px solid #60a5fa;padding:14px 16px">' +
+          '<div style="font-size:9px;font-weight:700;letter-spacing:.6px;color:#60a5fa;text-transform:uppercase;margin-bottom:6px">REVENUE</div>' +
+          '<div style="font-size:14px;font-weight:700;color:var(--tx);margin-bottom:4px">Junio grupo</div>' +
+          '<div style="font-size:24px;font-weight:900;color:#60a5fa">€' + Math.round((k.total_revenue||0)/1000) + 'K</div>' +
+        '</div>' +
+        '<div class="card" style="border-left:3px solid #a78bfa;padding:14px 16px">' +
+          '<div style="font-size:9px;font-weight:700;letter-spacing:.6px;color:#a78bfa;text-transform:uppercase;margin-bottom:6px">GOP% MEDIO</div>' +
+          '<div style="font-size:14px;font-weight:700;color:var(--tx);margin-bottom:4px">Grupo</div>' +
+          '<div style="font-size:24px;font-weight:900;color:#a78bfa">' + (k.avg_gop_pct||0) + '%</div>' +
+        '</div>' +
+        '</div>';
+    }
 
-    // ── Trend chart ─────────────────────────────────────────
+    // ── Trend charts ─────────────────────────────────────────────
     if (data.rev_trend && window.Chart) {
-      var tEl = document.getElementById('mh-trend-chart');
-      if (tEl) {
-        if (window._mhChart) { try { window._mhChart.destroy(); } catch(e){} }
-        var ctx2 = document.createElement('canvas'); ctx2.style.cssText='width:100%;height:160px';
-        tEl.innerHTML=''; tEl.appendChild(ctx2);
-        window._mhChart = new Chart(ctx2, {
-          data:{
-            labels:data.rev_trend.map(r=>r.mes.slice(5)),
-            datasets:[
-              {type:'bar',label:'Revenue (k€)',data:data.rev_trend.map(r=>Math.round(r.revenue/1000)),
-               backgroundColor:'rgba(167,139,250,.15)',borderColor:'rgba(167,139,250,.4)',borderWidth:1,yAxisID:'y2',borderRadius:4},
-              {type:'line',label:'GOP%',data:data.rev_trend.map(r=>r.gop),borderColor:'#22c55e',
-               backgroundColor:'rgba(34,197,94,.08)',tension:.4,yAxisID:'y',pointRadius:4,borderWidth:2,fill:true},
-              {type:'line',label:'Occ%',data:data.rev_trend.map(r=>r.occ),borderColor:'#60a5fa',
-               backgroundColor:'transparent',tension:.4,yAxisID:'y',pointRadius:3,borderWidth:1.5,borderDash:[4,3]},
-            ]
-          },
-          options:{responsive:true,maintainAspectRatio:false,
-            plugins:{legend:{labels:{color:'#94a3b8',font:{size:10},boxWidth:10}},
+      var months = data.rev_trend.map(function(r){ return r.mes.slice(5); });
+      var gopData = data.rev_trend.map(function(r){ return r.gop; });
+      var revData = data.rev_trend.map(function(r){ return Math.round(r.revenue/1000); });
+
+      function makeChart(elId, datasets, yLabel) {
+        var el = document.getElementById(elId);
+        if (!el) return;
+        el.innerHTML = ''; var c = document.createElement('canvas'); el.appendChild(c);
+        return new Chart(c, {
+          data:{ labels: months, datasets: datasets },
+          options:{ responsive:true, maintainAspectRatio:false,
+            plugins:{ legend:{labels:{color:'#94a3b8',font:{size:10},boxWidth:10}},
               tooltip:{backgroundColor:'#1e293b',titleColor:'#f1f5f9',bodyColor:'#94a3b8',borderColor:'#334155',borderWidth:1}},
             scales:{
               x:{grid:{color:'rgba(51,65,85,.2)'},ticks:{color:'#64748b',font:{size:9}}},
-              y:{position:'left',grid:{color:'rgba(51,65,85,.2)'},ticks:{color:'#94a3b8',font:{size:9}},
-                 title:{display:true,text:'%',color:'#64748b',font:{size:9}}},
-              y2:{position:'right',grid:{drawOnChartArea:false},ticks:{color:'#94a3b8',font:{size:9}},
-                  title:{display:true,text:'k€',color:'#64748b',font:{size:9}}}
+              y:{grid:{color:'rgba(51,65,85,.2)'},ticks:{color:'#94a3b8',font:{size:9}},
+                 title:{display:true,text:yLabel,color:'#64748b',font:{size:9}},beginAtZero:false}
             }}
         });
       }
+      if (window._mhGopChart) { try{window._mhGopChart.destroy();}catch(e){} }
+      if (window._mhRevChart) { try{window._mhRevChart.destroy();}catch(e){} }
+      window._mhGopChart = makeChart('mh-gop-chart', [{
+        type:'line', label:'GOP%', data:gopData,
+        borderColor:'#22c55e', backgroundColor:'rgba(34,197,94,.08)',
+        tension:.4, pointRadius:4, borderWidth:2.5, fill:true
+      }], '%');
+      window._mhRevChart = makeChart('mh-rev-chart', [{
+        type:'bar', label:'Revenue (k€)', data:revData,
+        backgroundColor:'rgba(96,165,250,.2)', borderColor:'#60a5fa', borderWidth:1.5, borderRadius:4
+      }], 'k€');
     }
 
-    // ── Hotel cards (same style as Calipolis) ───────────────
+    // ── Hotel cards (MISMO ESTILO QUE SCREENSHOT Calipolis) ──────
     var cardsEl = document.getElementById('mh-hotel-cards');
-    if (cardsEl && hoteles.length) {
-      cardsEl.innerHTML = hoteles.map(function(h) {
-        var gopC = h.gop_pct>=22?'#22c55e':h.gop_pct>=16?'#f59e0b':'#ef4444';
-        var d = h.rev_delta_pct||0;
-        var spark = _calSparkline(h.gop_trend||[], '#22c55e');
-        return '<div class="card" style="padding:18px 20px;position:relative">' +
-          '<div style="display:flex;align-items:flex-start;justify-content:space-between;margin-bottom:14px">' +
+    if (cardsEl && hs.length) {
+      cardsEl.innerHTML = hs.map(function(h) {
+        var gc = h.gop_pct>=22?'#22c55e':h.gop_pct>=16?'#f59e0b':'#ef4444';
+        var d  = h.rev_delta_pct || 0;
+        var spark = _calSparkline(h.gop_trend || [], '#22c55e');
+        return '<div class="card" style="padding:20px;position:relative">' +
+          // Hotel header
+          '<div style="display:flex;align-items:flex-start;justify-content:space-between;margin-bottom:16px">' +
             '<div>' +
-              '<div style="font-weight:700;font-size:15px">' + h.nombre + '</div>' +
-              '<div style="font-size:11px;color:var(--mut);margin-top:2px">' + (h.stars||'') + ' · ' + h.habitaciones + ' hab.</div>' +
+              '<div style="font-size:15px;font-weight:700">'+h.nombre+'</div>' +
+              '<div style="font-size:11px;color:var(--mut);margin-top:3px">'+(h.stars||'4★')+' · '+h.habitaciones+' hab.</div>' +
             '</div>' +
-            '<div style="width:9px;height:9px;border-radius:50%;background:' + (h.alertas>0?'#ef4444':'#22c55e') + ';margin-top:4px" title="' + (h.alertas>0?h.alertas+' alertas':'OK') + '"></div>' +
+            '<div style="width:9px;height:9px;border-radius:50%;margin-top:4px;background:'+(h.alertas>0?'#ef4444':'#22c55e')+'" title="'+(h.alertas>0?h.alertas+' alertas':'Sin alertas')+'"></div>' +
           '</div>' +
-          '<div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:8px;margin-bottom:14px">' +
-            '<div style="background:var(--bg);border-radius:8px;padding:8px;text-align:center"><div style="font-size:9px;color:var(--mut);text-transform:uppercase;margin-bottom:3px">Ocupación</div><div style="font-size:14px;font-weight:700;color:#22c55e">' + h.ocupacion_pct + '%</div></div>' +
-            '<div style="background:var(--bg);border-radius:8px;padding:8px;text-align:center"><div style="font-size:9px;color:var(--mut);text-transform:uppercase;margin-bottom:3px">ADR</div><div style="font-size:14px;font-weight:700">€' + h.adr_eur + '</div></div>' +
-            '<div style="background:var(--bg);border-radius:8px;padding:8px;text-align:center"><div style="font-size:9px;color:var(--mut);text-transform:uppercase;margin-bottom:3px">RevPAR</div><div style="font-size:14px;font-weight:700">€' + h.revpar_eur + '</div></div>' +
+          // Metrics row
+          '<div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:8px;margin-bottom:16px">' +
+            '<div style="background:var(--bg);border-radius:8px;padding:8px;text-align:center">' +
+              '<div style="font-size:9px;color:var(--mut);text-transform:uppercase;letter-spacing:.3px;margin-bottom:4px">Ocupación</div>' +
+              '<div style="font-size:15px;font-weight:700;color:#22c55e">'+h.ocupacion_pct+'%</div>' +
+            '</div>' +
+            '<div style="background:var(--bg);border-radius:8px;padding:8px;text-align:center">' +
+              '<div style="font-size:9px;color:var(--mut);text-transform:uppercase;letter-spacing:.3px;margin-bottom:4px">ADR</div>' +
+              '<div style="font-size:15px;font-weight:700">€'+h.adr_eur+'</div>' +
+            '</div>' +
+            '<div style="background:var(--bg);border-radius:8px;padding:8px;text-align:center">' +
+              '<div style="font-size:9px;color:var(--mut);text-transform:uppercase;letter-spacing:.3px;margin-bottom:4px">RevPAR</div>' +
+              '<div style="font-size:15px;font-weight:700">€'+h.revpar_eur+'</div>' +
+            '</div>' +
           '</div>' +
-          '<div style="display:flex;align-items:flex-end;justify-content:space-between">' +
+          // GOP% + sparkline
+          '<div style="display:flex;align-items:flex-end;justify-content:space-between;margin-bottom:14px">' +
             '<div>' +
-              '<div style="font-size:9px;color:var(--mut);text-transform:uppercase;letter-spacing:.4px;margin-bottom:2px">GOP%</div>' +
-              '<div style="font-size:22px;font-weight:900;color:' + gopC + ';line-height:1">' + h.gop_pct + '%' +
-                (d!==0?'<span style="font-size:11px;color:' + (d>0?'#22c55e':'#ef4444') + ';margin-left:6px">' + (d>0?'+':'') + d + 'pp6m</span>':'') +
+              '<div style="font-size:9px;color:var(--mut);text-transform:uppercase;letter-spacing:.4px;margin-bottom:3px">GOP%</div>' +
+              '<div style="display:flex;align-items:baseline;gap:6px">' +
+                '<span style="font-size:24px;font-weight:900;color:'+gc+'">'+h.gop_pct+'%</span>' +
+                (d!==0?'<span style="font-size:11px;color:'+(d>0?'#22c55e':'#ef4444')+';font-weight:600">'+(d>0?'+':'')+d+'pp6m</span>':'') +
               '</div>' +
-              '<div style="font-size:10px;color:var(--dim);margin-top:2px">€' + Math.round((h.gop_eur||0)/1000) + 'K este mes</div>' +
+              '<div style="font-size:10px;color:var(--dim);margin-top:2px">€'+Math.round((h.gop_eur||0)/1000)+'K este mes</div>' +
             '</div>' +
             spark +
           '</div>' +
-          '<div style="margin-top:14px;padding-top:12px;border-top:1px solid var(--s2);display:flex;justify-content:space-between;align-items:center;font-size:12px">' +
+          // Footer
+          '<div style="border-top:1px solid var(--s2);padding-top:12px;display:flex;justify-content:space-between;align-items:center;font-size:12px">' +
             '<span style="color:var(--mut)">AP pendientes</span>' +
-            '<span style="color:' + (h.facturas_ap>3?'#f59e0b':'var(--dim)') + ';font-weight:700">' + (h.facturas_ap||0) + ' facturas</span>' +
+            '<span style="font-weight:700;color:'+(h.facturas_ap>3?'#f59e0b':'var(--dim)')+'">'+( h.facturas_ap||0)+' facturas</span>' +
           '</div>' +
         '</div>';
       }).join('');
     }
 
     _mh_loaded = true;
-    if (_i18nLang && _i18nLang!=='es') applyI18n(_i18nData);
+    if (_i18nLang && _i18nLang !== 'es') applyI18n(_i18nData);
   } catch(e) {
-    console.error('Error Multi-Hotel:', e);
+    console.error('MH Error:', e);
     var el = document.getElementById('mh-kpis');
-    if (el) el.innerHTML='<div style="color:var(--red);padding:16px">Error: '+(e.message||e)+'</div>';
+    if (el) el.innerHTML = '<div style="color:#ef4444;padding:20px;font-size:13px">⚠ Error cargando datos: '+(e.message||e)+'</div>';
   }
 }
 
@@ -6177,14 +6193,14 @@ function renderCalipolisKpis(kpis) {
     {label:'Ocupación media',  value: kpis.avg_ocupacion + '%',  sub:'ADR €' + kpis.avg_adr,                       color: occColor,     tip:'Ocupación media ponderada por habitaciones'},
     {label:'RevPAR medio',     value:'€' + kpis.avg_revpar,      sub:'Sobre ' + kpis.total_rooms + ' hab.',        color:'var(--tx)',   tip:'Revenue Per Available Room consolidado'},
   ];
-  cont.innerHTML = '<div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(160px,1fr));gap:12px">' +
-    cards.map(c =>
-      '<div class="sc" data-tip="' + (c.tip||'') + '">' +
-      '<div class="sc-lbl">' + c.label + '</div>' +
-      '<div class="sc-val" style="color:' + c.color + '">' + c.value + '</div>' +
-      '<div class="sc-sub">' + c.sub + '</div>' +
-      '</div>'
-    ).join('') + '</div>';
+  // Put cards directly into cont (which already has 1fr 1fr grid)
+  cont.innerHTML = cards.map(c =>
+    '<div class="sc" data-tip="' + (c.tip||'') + '">' +
+    '<div class="sc-lbl" style="font-size:9px;text-transform:uppercase;letter-spacing:.5px">' + c.label.toUpperCase() + '</div>' +
+    '<div class="sc-val" style="color:' + c.color + ';font-size:clamp(22px,3.5vw,36px);font-weight:900;line-height:1.1;margin:5px 0">' + c.value + '</div>' +
+    '<div class="sc-sub" style="font-size:10px;color:var(--dim)">' + c.sub + '</div>' +
+    '</div>'
+  ).join('');
   // Re-apply language
   if (_i18nLang && _i18nLang !== 'es') applyI18n(_i18nData);
 }
