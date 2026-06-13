@@ -123,9 +123,9 @@ body{background:var(--bg);color:var(--tx);font-family:Inter,system-ui,sans-serif
   <div class="card" id="step-1">
     <h2>🏨 Datos del hotel</h2>
     <p class="sub">Información básica de tu propiedad. Puedes cambiarla después desde Ajustes.</p>
-    <div class="fg"><label>Nombre del hotel *</label><input id="f-nombre" placeholder="Ej: Hotel Calipolis Sitges"></div>
+    <div class="fg"><label>Nombre del hotel *</label><input id="f-nombre" placeholder="Ej: Hotel Calipolis Sitges" autocomplete="organization"></div>
     <div class="row2">
-      <div class="fg"><label>Ciudad *</label><input id="f-ciudad" placeholder="Barcelona"></div>
+      <div class="fg"><label>Ciudad *</label><input id="f-ciudad" placeholder="Barcelona" autocomplete="address-level2"></div>
       <div class="fg"><label>País</label><select id="f-pais"><option value="ES">España</option><option value="PT">Portugal</option><option value="FR">Francia</option><option value="IT">Italia</option><option value="DE">Alemania</option></select></div>
     </div>
     <div class="row3">
@@ -133,7 +133,7 @@ body{background:var(--bg);color:var(--tx);font-family:Inter,system-ui,sans-serif
       <div class="fg"><label>Estrellas</label><select id="f-estrellas"><option>3</option><option selected>4</option><option>5</option></select></div>
       <div class="fg"><label>NIF/CIF</label><input id="f-nif" placeholder="A12345678"></div>
     </div>
-    <div class="fg"><label>Email de contacto finanzas *</label><input id="f-email" type="email" placeholder="finanzas@tuhotel.com"></div>
+    <div class="fg"><label>Email de contacto finanzas *</label><input id="f-email" type="email" placeholder="finanzas@tuhotel.com" autocomplete="email"></div>
     <div class="btns">
       <button class="btn-next" onclick="nextStep(1)">Siguiente → OTAs</button>
     </div>
@@ -214,7 +214,7 @@ body{background:var(--bg);color:var(--tx);font-family:Inter,system-ui,sans-serif
     <p class="sub">Define quién recibe alertas. Puedes añadir más usuarios desde el panel de administración.</p>
     <div class="fg">
       <label>Financial Controller (email)</label>
-      <input id="f-fc-email" type="email" placeholder="fc@tuhotel.com">
+      <input id="f-fc-email" type="email" placeholder="fc@tuhotel.com" autocomplete="email">
       <div class="hint">Recibirá alertas de discrepancias AR, facturas pendientes y Out of Balance.</div>
     </div>
     <div class="fg">

@@ -515,6 +515,47 @@ def api_test_stripe():
     except Exception as e:
         return jsonify({"ok": False, "error": str(e)[:200]})
 
+@app.route("/api/health")
+def api_health():
+    """System health check — all components status."""
+    import glob as _g
+    health = {
+        'status': 'ok',
+        'components': {}
+    }
+    # Data files
+    has_drr = bool(_g.glob(os.path.join(REPORTES_DIR, 'drr_procesado_*.xlsx')))
+    has_ar  = bool(_g.glob(os.path.join(REPORTES_DIR, 'doble_imposicion_*.xlsx')) or
+                   _g.glob(os.path.join(REPORTES_DIR, 'verificacion_*.xlsx')))
+    has_ap  = bool(_g.glob(os.path.join(REPORTES_DIR, 'matching_*.xlsx')))
+    has_cfg = os.path.exists(os.path.join(BASE_DIR, 'datos-referencia', 'hotel_config.json'))
+    
+    # Oracle mode
+    oracle_mode = 'real' if os.environ.get('ORACLE_BASE_URL') else 'simulation'
+    
+    # SMTP configured
+    smtp_ok = bool(os.environ.get('SMTP_USER') and os.environ.get('SMTP_PASSWORD'))
+    
+    # Telegram configured
+    tg_ok = bool(os.environ.get('TELEGRAM_BOT_TOKEN') and os.environ.get('TELEGRAM_CHAT_ID'))
+    
+    health['components'] = {
+        'drr':      {'ok': has_drr,   'msg': 'DRR procesado' if has_drr else 'Sin DRR'},
+        'ar':       {'ok': has_ar,    'msg': 'AR datos OK' if has_ar else 'Sin datos AR'},
+        'ap':       {'ok': has_ap,    'msg': 'AP datos OK' if has_ap else 'Sin datos AP'},
+        'config':   {'ok': has_cfg,   'msg': 'Hotel configurado' if has_cfg else 'Sin configuración'},
+        'oracle':   {'ok': True,      'msg': f'Oracle {oracle_mode}', 'mode': oracle_mode},
+        'smtp':     {'ok': smtp_ok,   'msg': 'SMTP configurado' if smtp_ok else 'SMTP no configurado'},
+        'telegram': {'ok': tg_ok,     'msg': 'Telegram OK' if tg_ok else 'Telegram no configurado'},
+    }
+    
+    # Overall status
+    critical = ['ar', 'ap', 'config']
+    if any(not health['components'][k]['ok'] for k in critical):
+        health['status'] = 'degraded'
+    
+    return jsonify(health)
+
 @app.route("/api/demo_stats")
 def api_demo_stats():
     """Returns curated demo statistics for the demo mode."""
@@ -1098,7 +1139,16 @@ def api_stats_drr():
     ruta = _cargar_drr_procesado()
     if not ruta:
         return jsonify(None)
-    return jsonify(_leer_drr_stats(ruta))
+    stats = _leer_drr_stats(ruta)
+    if stats and ruta:
+        import os as _os2
+        from datetime import datetime as _dt2, date as _d2
+        mtime = _os2.path.getmtime(ruta)
+        upload_date = _dt2.fromtimestamp(mtime).strftime('%d/%m/%Y %H:%M')
+        days_ago = (date.today() - _dt2.fromtimestamp(mtime).date()).days
+        stats['last_upload'] = upload_date
+        stats['days_ago'] = days_ago
+    return jsonify(stats)
 
 
 @app.route("/api/upload_drr", methods=["POST"])
@@ -1975,7 +2025,7 @@ button, a { touch-action: manipulation; }
   <div class="nav-right">
     <span class="pill" id="date-pill">—</span>
   <button id="btn-install-pwa" onclick="if(_deferredInstall){_deferredInstall.prompt();}" style="display:none;background:rgba(34,197,94,.1);border:1px solid rgba(34,197,94,.2);color:#22c55e;padding:4px 10px;border-radius:8px;font-size:11px;cursor:pointer">📲 Instalar</button>
-  <button id="kbd-hint" onclick="showNotification('⌨ Atajos: 1-9 cambian pestaña · R recarga · ? muestra ayuda','info');this.style.display=\'none\';localStorage.setItem(\'kbd_shown\',\'1\')" style="display:none;background:rgba(59,130,246,.1);border:1px solid rgba(59,130,246,.2);color:#60a5fa;padding:4px 10px;border-radius:8px;font-size:11px;cursor:pointer">⌨ Atajos</button>
+  <button id="kbd-hint" onclick="showNotification('⌨ Atajos: 1-9 cambian pestaña · R actualiza · Ctrl+K busca · Ctrl+/ chat · F1 tour · Shift+T tour','info');this.style.display=\'none\';localStorage.setItem(\'kbd_shown\',\'1\')" style="display:none;background:rgba(59,130,246,.1);border:1px solid rgba(59,130,246,.2);color:#60a5fa;padding:4px 10px;border-radius:8px;font-size:11px;cursor:pointer">⌨ Atajos</button>
     <span class="pill" style="color:var(--acc2)">👤 __USER_NAME__</span>
 
     <div class="dropdown">
@@ -4852,6 +4902,18 @@ function renderDRR(s) {
     s.archivo + ' · ' + s.total_dias + ' días · ' + s.dias_oob + ' OOB';
   // Render revenue chart
   renderDRRChart();
+
+  // Show last upload date
+  if (s.last_upload) {
+    var tag = document.getElementById('oracle-mode-badge');
+    var daysMsg = s.days_ago === 0 ? 'hoy' : s.days_ago === 1 ? 'ayer' : 'hace ' + s.days_ago + 'd';
+    var uploadEl = document.getElementById('drr-last-upload');
+    if (uploadEl) uploadEl.textContent = '📅 Último DRR: ' + s.last_upload + ' (' + daysMsg + ')';
+    if (tag && s.days_ago > 3) {
+      tag.textContent = '⚠ DRR desactualizado'; tag.style.display='inline';
+      tag.style.background='rgba(239,68,68,.15)'; tag.style.color='var(--red)';
+    }
+  }
 
   // Budget vs Real bar
   const budgetBarEl = document.getElementById('drr-budget-bar');
