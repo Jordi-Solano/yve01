@@ -2024,9 +2024,24 @@ tr:hover td{background:rgba(255,255,255,.025)}
 }
 
 * { -webkit-tap-highlight-color: transparent; }
-[data-tour-active] { outline: 2px solid var(--acc) !important; outline-offset: 4px !important; border-radius: 6px; animation: tourPulse 1.5s infinite; }
-@keyframes tourPulse { 0%,100%{outline-color:var(--acc)} 50%{outline-color:var(--acc2)} }
-#tour-box { font-family: Inter, system-ui, sans-serif; }
+[data-tour-active] {
+  outline: 2px solid #3b82f6 !important;
+  outline-offset: 6px !important;
+  border-radius: 8px;
+  box-shadow: 0 0 0 6px rgba(59,130,246,.15) !important;
+  animation: tourPulse 2s ease-in-out infinite;
+  position: relative;
+  z-index: 9999 !important;
+}
+@keyframes tourPulse {
+  0%,100%{ outline-color:#3b82f6; box-shadow:0 0 0 6px rgba(59,130,246,.15); }
+  50%{ outline-color:#60a5fa; box-shadow:0 0 0 10px rgba(59,130,246,.08); }
+}
+#tour-box {
+  font-family: Inter, system-ui, sans-serif;
+  animation: tourBoxIn .2s ease-out;
+}
+@keyframes tourBoxIn { from{opacity:0;transform:translateY(8px)} to{opacity:1;transform:translateY(0)} }
 @keyframes pulse { 0%,100%{opacity:1} 50%{opacity:.6} }
 button, a { touch-action: manipulation; }
 
@@ -3754,13 +3769,49 @@ function showNotification(msg, type = 'info') {
 var _tourActive = false, _tourStep = 0;
 var _TOUR_VER = '2';  // increment to re-offer after updates
 var _tourSteps = [
-  {el:'#tab-ar',         tab:null,         title:'💳 AR — OTAs',             text:'Verifica automáticamente las comisiones de Booking y Expedia. Detecta discrepancias y certificados DI pendientes. Pulsa ⚡ Procesar para analizar las facturas.'},
-  {el:'#sc-tot',         tab:'ar',         title:'📊 Estadísticas AR',        text:'KPIs del ciclo actual: facturas procesadas, importe total, discrepancias a reclamar y certificados de Doble Imposición pendientes.'},
-  {el:'#tab-ap',         tab:null,         title:'📦 AP — Proveedores',       text:'3-way matching automático: cruza cada factura con su PO y albarán. Aprueba en lote con ✅ Aprobar Match OK. Genera emails para discrepancias.'},
-  {el:'#drr-drop-zone',  tab:'drr',        title:'📊 DRR — Revenue Diario',   text:'Arrastra tu archivo .xlsm aquí. Yve extrae RevPAR, ADR, GOP%, ocupación y detecta Out of Balance automáticamente.'},
-  {el:'#ar-real-stats',  tab:'ar_real',    title:'🏢 AR Real — Grupos',       text:'Gestión de clientes corporativos: emite facturas, controla el aging (vencimiento), cobra y envía recordatorios automáticos por email.'},
-  {el:'#cal-kpis',       tab:'calipolis',  title:'🏨 Grupo Calipolis',        text:'Dashboard consolidado con GOP%, ocupación y tendencias de 6 meses para las 3 propiedades: Sitges, Mar y Boutique.'},
-  {el:'#mh-kpis',        tab:'multi_hotel',title:'🌍 Multi-Hotel',            text:'Vista de grupo con ranking de performance, Revenue total, RevPAR y alertas centralizadas de todos los hoteles.'},
+  {
+    el:'#tab-ar', tab:null,
+    title:'💳 AR — Comisiones OTA',
+    text:'El corazón del módulo AR. Yve verifica automáticamente cada factura de Booking.com, Expedia y otras OTAs contra las comisiones pactadas. Detecta discrepancias y facturas sin certificado DI.',
+    action: function() {
+      var btn = document.getElementById('tab-ar');
+      if (btn) btn.scrollIntoView({behavior:'smooth',block:'nearest',inline:'center'});
+    }
+  },
+  {
+    el:'#sc-dis', tab:'ar',
+    title:'📊 KPIs del ciclo AR',
+    text:'De un vistazo: facturas procesadas, importe total, discrepancias reclamables y certificados de Doble Imposición pendientes. El número rojo son euros que puedes recuperar de las OTAs.',
+  },
+  {
+    el:'#tab-ap', tab:null,
+    title:'📦 AP — 3-way Matching',
+    text:'Para cada factura de proveedor, Yve cruza 3 documentos: la factura, el pedido (PO) y el albarán. Si cuadra todo → Match OK. Si hay diferencia → alerta automática y email al proveedor.',
+    action: function() {
+      var aprobar = document.querySelector('.btn-run[onclick*="aprobarMatchOK"]');
+      if (aprobar) aprobar.style.outline = '2px solid var(--grn)';
+    }
+  },
+  {
+    el:'#drr-drop-zone', tab:'drr',
+    title:'📊 DRR — Revenue Diario',
+    text:'Arrastra aquí tu archivo .xlsm del DRR. Yve extrae automáticamente RevPAR, ADR, GOP%, ocupación y las 7.000+ líneas del Trial Balance. Detecta Out of Balance al instante.',
+  },
+  {
+    el:'#ar-real-stats', tab:'ar_real',
+    title:'🏢 AR Real — Grupos Corporativos',
+    text:'Para grupos como Telefónica o Accenture: emite facturas, controla el aging (0-30 / 31-60 / 61-90 / >90 días), cobra y envía recordatorios automáticos por email con un clic.',
+  },
+  {
+    el:'#cal-kpis', tab:'calipolis',
+    title:'🏨 Dashboard Grupo Calipolis',
+    text:'Vista consolidada de las 3 propiedades con GOP%, RevPAR y tendencias de 6 meses. Detecta qué hotel rinde mejor y dónde hay alertas. €' + '€' + '2M de revenue gestionados aquí.',
+  },
+  {
+    el:'#mh-kpis', tab:'multi_hotel',
+    title:'🌍 Multi-Hotel — Vista de Grupo',
+    text:'Para grupos con múltiples propiedades: KPIs consolidados, ranking de performance por hotel, tendencia de 6 meses y alertas centralizadas. El FC de grupo lo ve todo desde una pantalla.',
+  },
 ];
 
 function startTour() {
@@ -3786,6 +3837,15 @@ function _showTourStep() {
     overlay.style.cssText = 'position:fixed;inset:0;z-index:9998;pointer-events:all;background:rgba(0,0,0,.4);backdrop-filter:blur(1px);cursor:pointer';
     overlay.title = 'Clic para avanzar al siguiente paso';
     overlay.onclick = function(e) { if (e.target === overlay) nextTourStep(); };
+    // Progress indicator in corner
+    var progDiv = overlay.querySelector('.tour-progress');
+    if (!progDiv) {
+      progDiv = document.createElement('div');
+      progDiv.className = 'tour-progress';
+      progDiv.style.cssText = 'position:fixed;top:12px;right:12px;background:rgba(15,23,42,.8);border:1px solid #334155;border-radius:20px;padding:5px 12px;font-size:11px;color:#94a3b8;font-weight:600;z-index:10001';
+      overlay.appendChild(progDiv);
+    }
+    progDiv.textContent = (_tourStep + 1) + ' / ' + _tourSteps.length;
     document.body.appendChild(overlay);
   }
   overlay.style.display = 'block';
@@ -3845,6 +3905,11 @@ function _showTourStep() {
     el.style.zIndex = '';
     el.removeAttribute('data-tour-active');
   });
+
+  // Execute optional step action
+  if (step.action && typeof step.action === 'function') {
+    try { step.action(); } catch(e) { console.warn('Tour action error:', e); }
+  }
 
   // Switch to relevant tab if element is in a panel
   if (step.tab) {
