@@ -377,6 +377,98 @@ def api_oracle_status():
     mode='real' if os.environ.get('ORACLE_BASE_URL') else 'simulation'
     return jsonify({'mode':mode,'ok':True})
 
+@app.route('/api/procesar_batch_stream')
+@login_required
+def api_procesar_batch_stream():
+    """SSE stream for batch processing — called after files are uploaded."""
+    import json as _json
+    archivos_str = request.args.get('archivos', '[]')
+    try:
+        archivos = _json.loads(archivos_str)
+    except Exception:
+        archivos = []
+    
+    log = _load_proc_log()
+    from datetime import datetime as _dt2
+    
+    def _mark(fname, result='OK'):
+        log[fname] = {'fecha': _dt2.now().strftime('%Y-%m-%d %H:%M'), 'resultado': result}
+        _save_proc_log(log)
+    
+    def generar():
+        global _pipeline_running
+        with _pipeline_lock:
+            if _pipeline_running:
+                yield 'data: ℹ Ya hay un proceso — espera\n\n'
+                yield 'data: PIPELINE_CON_ERRORES\n\n'
+                return
+            _pipeline_running = True
+        try:
+            if not archivos:
+                yield 'data: ✗ No se especificaron archivos\n\n'
+                yield 'data: PIPELINE_CON_ERRORES\n\n'
+                return
+            
+            yield f'data: >> Procesando {len(archivos)} archivo(s) nuevos...\n\n'
+            has_ar = False; has_ap = False
+            
+            for fname in archivos:
+                fpath = os.path.join(ENTRADA_DIR, fname)
+                if not os.path.exists(fpath):
+                    yield f'data: ✗ {fname}: no encontrado en facturas-entrada\n\n'
+                    continue
+                
+                tipo = _detect_file_type(fname)
+                yield f'data: >> {fname} ({tipo})...\n\n'
+                
+                try:
+                    if tipo == 'DRR':
+                        import shutil as _sh
+                        dst = os.path.join(BASE_DIR, 'reportes', 'drr_upload.xlsm')
+                        _sh.copy2(fpath, dst)
+                        yield f'data: ✓ DRR {fname} → copiado\n\n'
+                        _mark(fname, 'DRR_OK')
+                    else:
+                        import subprocess as _sp
+                        if tipo == 'AR' or (tipo == 'AR_o_AP' and any(x in fname.lower() for x in ['booking','expedia','ota'])):
+                            r = _sp.run(['python3', 'lector_ota.py', '--file', fpath],
+                                capture_output=True, text=True, cwd=BASE_DIR, timeout=180)
+                            ok = r.returncode == 0
+                            yield f'data: {"✓" if ok else "✗"} AR OTA {fname}: {"OK" if ok else r.stderr[:80]}\n\n'
+                            _mark(fname, 'AR_OK' if ok else f'ERR:{r.stderr[:40]}')
+                            if ok: has_ar = True
+                        else:
+                            r = _sp.run(['python3', 'lector_facturas_ap.py', '--file', fpath],
+                                capture_output=True, text=True, cwd=BASE_DIR, timeout=180)
+                            ok = r.returncode == 0
+                            yield f'data: {"✓" if ok else "✗"} AP {fname}: {"OK" if ok else r.stderr[:80]}\n\n'
+                            _mark(fname, 'AP_OK' if ok else f'ERR:{r.stderr[:40]}')
+                            if ok: has_ap = True
+                except Exception as e2:
+                    yield f'data: ✗ {fname}: {str(e2)[:80]}\n\n'
+                    _mark(fname, f'CRASH:{str(e2)[:40]}')
+            
+            # Post-processing
+            if has_ar:
+                yield 'data: >> Verificando comisiones...\n\n'
+                try:
+                    import subprocess as _sp2
+                    _sp2.run(['python3','verificador_comisiones.py'], cwd=BASE_DIR, timeout=60, capture_output=True)
+                    _sp2.run(['python3','detector_doble_imposicion.py'], cwd=BASE_DIR, timeout=60, capture_output=True)
+                    yield 'data: ✓ Verificación AR completada\n\n'
+                except: pass
+            
+            yield 'data: \n\n'
+            yield 'data: PIPELINE_COMPLETO\n\n'
+        except Exception as e:
+            yield f'data: ERROR: {str(e)[:200]}\n\n'
+            yield 'data: PIPELINE_CON_ERRORES\n\n'
+        finally:
+            _pipeline_running = False
+    
+    return Response(stream_with_context(generar()), mimetype='text/event-stream',
+                    headers={'Cache-Control':'no-cache','X-Accel-Buffering':'no'})
+
 @app.route("/api/health")
 def health():
     """Health check — keeps Render awake and provides system status."""
@@ -604,6 +696,228 @@ def api_stats():
 def api_facturas():
     df, _ = cargar_datos()
     return jsonify(df_a_lista(df))
+
+# ── File Upload & Processing Batch ──────────────────────────────────────────
+
+ENTRADA_DIR   = os.path.join(BASE_DIR, 'facturas-entrada')
+PROCESADAS_DIR = os.path.join(BASE_DIR, 'facturas-procesadas')
+PROC_LOG_PATH  = os.path.join(BASE_DIR, 'datos-referencia', 'archivos_procesados.json')
+os.makedirs(ENTRADA_DIR,   exist_ok=True)
+os.makedirs(PROCESADAS_DIR, exist_ok=True)
+
+def _load_proc_log():
+    """Load the processed-files log."""
+    if os.path.exists(PROC_LOG_PATH):
+        try:
+            with open(PROC_LOG_PATH, 'r', encoding='utf-8') as f:
+                return json.load(f)
+        except Exception:
+            pass
+    return {}
+
+def _save_proc_log(log):
+    with open(PROC_LOG_PATH, 'w', encoding='utf-8') as f:
+        json.dump(log, f, indent=2, ensure_ascii=False)
+
+def _detect_file_type(filename):
+    """Detect what section a file belongs to."""
+    name = filename.lower()
+    if name.endswith('.xlsm') or 'drr' in name or 'daily' in name or 'revenue' in name:
+        return 'DRR'
+    if any(ota in name for ota in ['booking', 'expedia', 'hotelbeds', 'hotusa', 'ota']):
+        return 'AR'
+    if name.endswith('.pdf'):
+        # Check if it looks like OTA or AP
+        return 'AR_o_AP'  # Will need user to clarify or auto-detect
+    return 'AP'
+
+@app.route('/api/archivos_estado', methods=['GET'])
+@login_required
+def api_archivos_estado():
+    """List files in facturas-entrada with processed status."""
+    log = _load_proc_log()
+    files = []
+    if os.path.exists(ENTRADA_DIR):
+        for fname in sorted(os.listdir(ENTRADA_DIR)):
+            fpath = os.path.join(ENTRADA_DIR, fname)
+            if os.path.isfile(fpath) and not fname.startswith('.'):
+                fsize = os.path.getsize(fpath)
+                proc_info = log.get(fname, None)
+                files.append({
+                    'nombre': fname,
+                    'tipo': _detect_file_type(fname),
+                    'tamano': fsize,
+                    'tamano_str': f'{fsize/1024:.0f}KB' if fsize < 1024*1024 else f'{fsize/1024/1024:.1f}MB',
+                    'procesado': proc_info is not None,
+                    'fecha_proceso': proc_info.get('fecha') if proc_info else None,
+                    'resultado': proc_info.get('resultado') if proc_info else None,
+                })
+    return jsonify({'ok': True, 'files': files, 'total': len(files),
+                    'pendientes': sum(1 for f in files if not f['procesado'])})
+
+@app.route('/api/upload_facturas', methods=['POST'])
+@login_required
+def api_upload_facturas():
+    """Upload one or more invoice files to facturas-entrada/."""
+    if 'files' not in request.files:
+        return jsonify({'ok': False, 'error': 'No files provided'}), 400
+    
+    log = _load_proc_log()
+    results = []
+    files = request.files.getlist('files')
+    
+    for file in files:
+        if not file.filename:
+            continue
+        fname = os.path.basename(file.filename)
+        fpath = os.path.join(ENTRADA_DIR, fname)
+        already_exists = os.path.exists(fpath)
+        already_processed = fname in log
+        
+        if already_processed:
+            results.append({'nombre': fname, 'status': 'ya_procesado', 
+                           'fecha': log[fname].get('fecha')})
+            continue
+        
+        file.save(fpath)
+        results.append({'nombre': fname, 'status': 'subido', 
+                        'tipo': _detect_file_type(fname)})
+    
+    return jsonify({'ok': True, 'results': results,
+                    'subidos': sum(1 for r in results if r['status'] == 'subido'),
+                    'ya_procesados': sum(1 for r in results if r['status'] == 'ya_procesado')})
+
+@app.route('/api/procesar_batch', methods=['POST'])
+@login_required
+def api_procesar_batch():
+    """Process only new (unprocessed) files from facturas-entrada/."""
+    global _pipeline_running
+    data = request.get_json(force=True, silent=True) or {}
+    solo_nuevos = data.get('solo_nuevos', True)  # default: skip already processed
+    tipos = data.get('tipos', ['AR', 'AP', 'DRR', 'AR_o_AP'])  # which types to process
+    archivos_seleccionados = data.get('archivos', [])  # specific filenames to process
+    
+    if _pipeline_running:
+        return jsonify({'ok': False, 'error': 'Ya hay un proceso en ejecución'}), 409
+    
+    log = _load_proc_log()
+    from datetime import datetime as _dt
+    
+    def _mark_processed(fname, resultado='OK'):
+        log[fname] = {'fecha': _dt.now().strftime('%Y-%m-%d %H:%M'), 'resultado': resultado}
+        _save_proc_log(log)
+    
+    def generar():
+        global _pipeline_running
+        with _pipeline_lock:
+            if _pipeline_running:
+                yield 'data: Ya hay un proceso — espera\n\n'
+                return
+            _pipeline_running = True
+        
+        try:
+            yield 'data: >> Iniciando procesamiento batch\n\n'
+            
+            # Get files to process
+            if archivos_seleccionados:
+                candidatos = archivos_seleccionados
+            else:
+                candidatos = sorted(os.listdir(ENTRADA_DIR)) if os.path.exists(ENTRADA_DIR) else []
+            
+            a_procesar = []
+            a_saltar = []
+            for fname in candidatos:
+                if fname.startswith('.'): continue
+                if solo_nuevos and fname in log:
+                    a_saltar.append(fname)
+                else:
+                    tipo = _detect_file_type(fname)
+                    if tipo in tipos or 'AR_o_AP' in tipos:
+                        a_procesar.append((fname, tipo))
+            
+            if a_saltar:
+                yield f'data: ℹ Saltando {len(a_saltar)} archivos ya procesados\n\n'
+            
+            if not a_procesar:
+                yield 'data: ✓ No hay archivos nuevos que procesar\n\n'
+                yield 'data: PIPELINE_COMPLETO\n\n'
+                return
+            
+            yield f'data: >> Procesando {len(a_procesar)} archivo(s) nuevos...\n\n'
+            
+            has_ar = False; has_ap = False; has_drr = False
+            
+            # Process each file
+            for fname, tipo in a_procesar:
+                fpath = os.path.join(ENTRADA_DIR, fname)
+                if not os.path.exists(fpath):
+                    yield f'data: ✗ {fname}: archivo no encontrado\n\n'
+                    continue
+                
+                yield f'data: >> Procesando {fname} ({tipo})...\n\n'
+                
+                try:
+                    if tipo == 'DRR':
+                        # Copy to expected DRR location and trigger reader
+                        import shutil
+                        drr_dest = os.path.join(BASE_DIR, 'reportes', 'drr_upload.xlsm')
+                        shutil.copy2(fpath, drr_dest)
+                        yield f'data: ✓ DRR {fname}: copiado para procesamiento\n\n'
+                        _mark_processed(fname, 'DRR_OK')
+                        has_drr = True
+                    
+                    elif tipo in ('AR', 'AR_o_AP', 'AP'):
+                        # Run OTA reader for AR, AP reader for others
+                        if tipo == 'AR' or (tipo == 'AR_o_AP' and any(x in fname.lower() for x in ['booking','expedia','ota'])):
+                            import subprocess
+                            result = subprocess.run(['python3', 'lector_ota.py', '--file', fpath], 
+                                capture_output=True, text=True, cwd=BASE_DIR, timeout=120)
+                            if result.returncode == 0:
+                                yield f'data: ✓ AR OTA {fname}: procesado\n\n'
+                                _mark_processed(fname, 'AR_OK')
+                                has_ar = True
+                            else:
+                                yield f'data: ✗ AR {fname}: {result.stderr[:100]}\n\n'
+                                _mark_processed(fname, f'ERROR: {result.stderr[:50]}')
+                        else:
+                            result = subprocess.run(['python3', 'lector_facturas_ap.py', '--file', fpath],
+                                capture_output=True, text=True, cwd=BASE_DIR, timeout=120)
+                            if result.returncode == 0:
+                                yield f'data: ✓ AP {fname}: procesado\n\n'
+                                _mark_processed(fname, 'AP_OK')
+                                has_ap = True
+                            else:
+                                yield f'data: ✗ AP {fname}: {result.stderr[:100]}\n\n'
+                                _mark_processed(fname, f'ERROR: {result.stderr[:50]}')
+                except Exception as e:
+                    yield f'data: ✗ {fname}: {str(e)[:100]}\n\n'
+            
+            # Run verification passes if we processed AR files
+            if has_ar:
+                yield 'data: >> Verificando comisiones OTA...\n\n'
+                try:
+                    import subprocess
+                    result = subprocess.run(['python3', 'verificador_comisiones.py'],
+                        capture_output=True, text=True, cwd=BASE_DIR, timeout=60)
+                    yield f'data: ✓ Verificación comisiones completada\n\n'
+                    result2 = subprocess.run(['python3', 'detector_doble_imposicion.py'],
+                        capture_output=True, text=True, cwd=BASE_DIR, timeout=60)
+                    yield f'data: ✓ Análisis doble imposición completado\n\n'
+                except Exception as e:
+                    yield f'data: ✗ Verificación: {str(e)[:80]}\n\n'
+            
+            yield 'data: \n\n'
+            yield 'data: ✅ Batch completado\n\n'
+            yield 'data: PIPELINE_COMPLETO\n\n'
+        
+        except Exception as e:
+            yield f'data: ERROR CRÍTICO: {str(e)[:200]}\n\n'
+            yield 'data: PIPELINE_CON_ERRORES\n\n'
+        finally:
+            _pipeline_running = False
+    
+    return Response(stream_with_context(generar()), mimetype='text/event-stream',
+                    headers={'Cache-Control': 'no-cache', 'X-Accel-Buffering': 'no'})
 
 @app.route("/api/procesar")
 def api_procesar():
@@ -2084,7 +2398,7 @@ button, a { touch-action: manipulation; }
 
     <button class="btn-ref" onclick="loadAll()" title="Actualizar datos" data-i18n="nav.actualizar">↻ Actualizar</button>
 
-    <button class="btn-run" id="btn-run" onclick="runPipeline()">
+    <button class="btn-run" id="btn-run" onclick="openUploadModal()">
       <div class="spin" id="spin"></div>
       <span id="run-lbl" data-i18n="nav.procesar">⚡ Procesar Facturas</span>
     </button>
@@ -2633,6 +2947,51 @@ button, a { touch-action: manipulation; }
 </div><!-- /main -->
 
 <!-- MODAL PIPELINE -->
+<!-- ── File Upload Modal ─────────────────────────────────────────────── -->
+<div id="upload-modal" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,.7);z-index:9000;align-items:center;justify-content:center">
+  <div style="background:var(--s1);border:1px solid var(--s2);border-radius:20px;padding:28px;width:min(600px,95vw);max-height:85vh;overflow-y:auto;position:relative">
+    <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:22px">
+      <div>
+        <h2 style="font-size:18px;font-weight:800;margin:0">⚡ Procesar Facturas</h2>
+        <div style="font-size:12px;color:var(--mut);margin-top:4px">OTA (PDF) · Proveedores (PDF) · DRR (.xlsm) — los ya procesados se saltan automáticamente</div>
+      </div>
+      <button onclick="closeUploadModal()" style="background:none;border:none;color:var(--mut);font-size:24px;cursor:pointer">×</button>
+    </div>
+    <div id="upload-drop-zone"
+         onclick="document.getElementById('upload-file-input').click()"
+         ondragover="event.preventDefault();this.style.borderColor='#3b82f6';this.style.background='rgba(59,130,246,.08)'"
+         ondragleave="this.style.borderColor='var(--s3)';this.style.background=''"
+         ondrop="handleUploadDrop(event)"
+         style="border:2px dashed var(--s3);border-radius:14px;padding:32px;text-align:center;cursor:pointer;transition:.2s;margin-bottom:16px">
+      <div style="font-size:36px;margin-bottom:10px">📂</div>
+      <div style="font-size:15px;font-weight:600;color:var(--tx);margin-bottom:6px">Arrastra archivos aquí o haz clic</div>
+      <div style="font-size:12px;color:var(--dim);margin-bottom:14px">PDF (facturas) · XLSM (DRR)</div>
+      <div style="display:flex;gap:10px;justify-content:center;flex-wrap:wrap">
+        <button onclick="event.stopPropagation();document.getElementById('upload-file-input').click()"
+                style="background:var(--acc);border:none;color:#fff;padding:8px 18px;border-radius:9px;font-size:13px;font-weight:600;cursor:pointer">📄 Seleccionar archivos</button>
+        <button onclick="event.stopPropagation();document.getElementById('upload-folder-input').click()"
+                style="background:var(--s2);border:1px solid var(--s3);color:var(--tx);padding:8px 18px;border-radius:9px;font-size:13px;font-weight:600;cursor:pointer">📁 Seleccionar carpeta</button>
+      </div>
+    </div>
+    <input id="upload-file-input" type="file" multiple accept=".pdf,.xlsm,.xlsx" style="display:none" onchange="handleUploadFiles(this.files)">
+    <input id="upload-folder-input" type="file" multiple webkitdirectory accept=".pdf,.xlsm,.xlsx" style="display:none" onchange="handleUploadFiles(this.files)">
+    <div id="upload-file-list" style="display:none;margin-bottom:16px">
+      <div style="font-size:11px;font-weight:700;color:var(--dim);text-transform:uppercase;letter-spacing:.5px;margin-bottom:10px">ARCHIVOS SELECCIONADOS</div>
+      <div id="upload-files-container" style="max-height:220px;overflow-y:auto;display:flex;flex-direction:column;gap:6px"></div>
+      <div style="margin-top:10px;font-size:12px;color:var(--mut)">
+        <span id="upload-count-new" style="color:var(--acc2);font-weight:700">0 nuevos</span> · <span id="upload-count-dup" style="color:var(--ora)">0 ya procesados (se saltarán)</span>
+      </div>
+    </div>
+    <div style="display:flex;gap:10px;justify-content:flex-end">
+      <button onclick="closeUploadModal()" class="btn-ref">Cancelar</button>
+      <button id="btn-upload-procesar" onclick="uploadAndProcess()" disabled
+              style="background:var(--acc);border:none;color:#fff;padding:10px 22px;border-radius:10px;font-size:14px;font-weight:700;cursor:not-allowed;opacity:.4;transition:.2s">
+        ⚡ Procesar archivos nuevos
+      </button>
+    </div>
+  </div>
+</div>
+
 <div class="overlay" id="overlay">
   <div class="modal">
     <div class="modal-h">
@@ -4221,6 +4580,245 @@ function showAPDetail(row) {
     '</div>' +
     '<div style="display:flex;gap:10px;margin-top:16px"><button onclick="closeInvoiceModal()" class="btn-ref" style="flex:1">Cerrar</button></div>';
   modal.style.display = 'flex';
+}
+
+// ── Upload Modal ─────────────────────────────────────────────────────────
+var _uploadFiles = [];        // File objects selected by user
+var _processedNames = new Set(); // Names already processed (from server)
+
+async function openUploadModal() {
+  // Reset state
+  _uploadFiles = [];
+  document.getElementById('upload-file-list').style.display = 'none';
+  document.getElementById('upload-files-container').innerHTML = '';
+  document.getElementById('upload-count-new').textContent = '0 nuevos';
+  document.getElementById('upload-count-dup').textContent = '0 ya procesados (se saltarán)';
+  var procBtn = document.getElementById('btn-upload-procesar');
+  procBtn.disabled = true; procBtn.style.opacity = '.4'; procBtn.style.cursor = 'not-allowed';
+
+  // Load already-processed file names from server
+  try {
+    var r = await fetch('/api/archivos_estado');
+    var d = await r.json();
+    _processedNames = new Set((d.files || []).filter(f => f.procesado).map(f => f.nombre));
+  } catch(e) { _processedNames = new Set(); }
+
+  var modal = document.getElementById('upload-modal');
+  modal.style.display = 'flex';
+}
+
+function closeUploadModal() {
+  document.getElementById('upload-modal').style.display = 'none';
+  _uploadFiles = [];
+}
+
+function handleUploadDrop(e) {
+  e.preventDefault();
+  var zone = document.getElementById('upload-drop-zone');
+  zone.style.borderColor = 'var(--s3)'; zone.style.background = '';
+  var items = e.dataTransfer.items;
+  var files = [];
+  if (items) {
+    // Handle folders via DataTransferItemList
+    for (var i = 0; i < items.length; i++) {
+      var entry = items[i].webkitGetAsEntry ? items[i].webkitGetAsEntry() : null;
+      if (entry && entry.isDirectory) {
+        // Read directory
+        _readDir(entry, files, function() { _addFilesToList(files); });
+        return;
+      } else if (items[i].kind === 'file') {
+        files.push(items[i].getAsFile());
+      }
+    }
+  }
+  _addFilesToList(files);
+}
+
+function _readDir(dirEntry, files, done) {
+  var reader = dirEntry.createReader();
+  reader.readEntries(function(entries) {
+    var pending = entries.length;
+    if (pending === 0) { done(); return; }
+    entries.forEach(function(entry) {
+      if (entry.isFile) {
+        entry.file(function(f) { files.push(f); if (--pending === 0) done(); });
+      } else if (entry.isDirectory) {
+        _readDir(entry, files, function() { if (--pending === 0) done(); });
+      } else {
+        if (--pending === 0) done();
+      }
+    });
+  });
+}
+
+function handleUploadFiles(fileList) {
+  var files = Array.from(fileList).filter(function(f) {
+    return f.name.match(/\.(pdf|xlsm|xlsx)$/i);
+  });
+  _addFilesToList(files);
+}
+
+function _addFilesToList(newFiles) {
+  // Merge with existing, deduplicate by name
+  var existing = new Set(_uploadFiles.map(function(f){ return f.name; }));
+  newFiles.forEach(function(f) { if (!existing.has(f.name)) { _uploadFiles.push(f); } });
+  _renderFileList();
+}
+
+function _detectType(fname) {
+  var n = fname.toLowerCase();
+  if (n.endsWith('.xlsm') || n.includes('drr') || n.includes('daily')) return 'DRR';
+  if (n.includes('booking') || n.includes('expedia') || n.includes('hotelbeds') || n.includes('ota')) return 'AR — OTA';
+  if (n.endsWith('.pdf')) return 'AP / AR';
+  return 'Otro';
+}
+
+function _typeColor(t) {
+  if (t === 'DRR') return '#a78bfa';
+  if (t.includes('OTA') || t.includes('AR')) return '#60a5fa';
+  if (t.includes('AP')) return '#f59e0b';
+  return 'var(--mut)';
+}
+
+function _renderFileList() {
+  var cont = document.getElementById('upload-files-container');
+  var list = document.getElementById('upload-file-list');
+  if (!_uploadFiles.length) { list.style.display = 'none'; return; }
+  list.style.display = 'block';
+
+  var newCount = 0, dupCount = 0;
+  cont.innerHTML = _uploadFiles.map(function(f, i) {
+    var isProc = _processedNames.has(f.name);
+    var tipo = _detectType(f.name);
+    var size = f.size < 1024*1024 ? Math.round(f.size/1024) + 'KB' : (f.size/1024/1024).toFixed(1) + 'MB';
+    if (isProc) dupCount++; else newCount++;
+    return '<div style="display:flex;align-items:center;gap:10px;padding:8px 12px;background:' + 
+      (isProc ? 'rgba(245,158,11,.06)' : 'var(--bg)') + ';border-radius:8px;border:1px solid ' +
+      (isProc ? 'rgba(245,158,11,.2)' : 'var(--s2)') + ';opacity:' + (isProc ? '.6' : '1') + '">' +
+      '<div style="font-size:18px">' + (f.name.endsWith('.xlsm') ? '📊' : '📄') + '</div>' +
+      '<div style="flex:1;min-width:0">' +
+        '<div style="font-size:13px;font-weight:600;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">' + f.name + '</div>' +
+        '<div style="font-size:11px;color:var(--dim)">' + size + ' · <span style="color:' + _typeColor(tipo) + '">' + tipo + '</span>' + 
+          (isProc ? ' · <span style="color:var(--ora)">⚠ Ya procesado</span>' : '') +
+        '</div>' +
+      '</div>' +
+      '<button onclick="_removeUploadFile(' + i + ')" style="background:none;border:none;color:var(--dim);cursor:pointer;font-size:16px;padding:0 4px" title="Quitar">×</button>' +
+      '</div>';
+  }).join('');
+
+  document.getElementById('upload-count-new').textContent = newCount + ' nuevo' + (newCount !== 1 ? 's' : '');
+  document.getElementById('upload-count-dup').textContent = dupCount + ' ya procesado' + (dupCount !== 1 ? 's' : '') + ' (se saltarán)';
+  
+  var procBtn = document.getElementById('btn-upload-procesar');
+  procBtn.textContent = '⚡ Procesar ' + (newCount > 0 ? newCount + ' archivo' + (newCount !== 1 ? 's' : '') + ' nuevo' + (newCount !== 1 ? 's' : '') : 'seleccionados');
+  procBtn.disabled = newCount === 0;
+  procBtn.style.opacity = newCount > 0 ? '1' : '.4';
+  procBtn.style.cursor = newCount > 0 ? 'pointer' : 'not-allowed';
+}
+
+function _removeUploadFile(idx) {
+  _uploadFiles.splice(idx, 1);
+  _renderFileList();
+}
+
+async function uploadAndProcess() {
+  var newFiles = _uploadFiles.filter(function(f) { return !_processedNames.has(f.name); });
+  if (!newFiles.length) { showNotification('No hay archivos nuevos que procesar', 'info'); return; }
+  
+  var btn = document.getElementById('btn-upload-procesar');
+  btn.disabled = true; btn.style.opacity = '.4';
+  btn.textContent = '⏳ Subiendo archivos...';
+
+  // Upload files
+  var formData = new FormData();
+  newFiles.forEach(function(f) { formData.append('files', f, f.name); });
+  
+  try {
+    var r = await fetch('/api/upload_facturas', { method: 'POST', body: formData });
+    var d = await r.json();
+    if (!d.ok) throw new Error(d.error || 'Upload failed');
+    showNotification('✓ ' + d.subidos + ' archivo(s) subidos', 'success');
+  } catch(e) {
+    showNotification('✗ Error subiendo archivos: ' + e.message, 'error');
+    btn.disabled = false; btn.style.opacity = '1'; btn.textContent = '⚡ Reintentar';
+    return;
+  }
+
+  // Close upload modal and open pipeline modal to show progress
+  closeUploadModal();
+  
+  // Trigger batch processing via SSE
+  _runBatchPipeline(newFiles.map(function(f){ return f.name; }));
+}
+
+function _runBatchPipeline(fileNames) {
+  // Open the standard pipeline log modal
+  var overlay = document.getElementById('overlay');
+  var log = document.getElementById('log');
+  var btn = document.getElementById('btn-run');
+  var spin = document.getElementById('spin');
+  var lbl = document.getElementById('run-lbl');
+  var btnCl = document.getElementById('btn-cl');
+  var icon = document.getElementById('modal-icon');
+  var title = document.getElementById('modal-title');
+
+  if (overlay) overlay.classList.add('on');
+  if (log) log.innerHTML = '';
+  if (btn) btn.disabled = true;
+  if (spin) spin.style.display = 'block';
+  if (lbl) lbl.textContent = 'Procesando...';
+  if (btnCl) btnCl.disabled = true;
+  if (icon) icon.textContent = '⚡';
+  if (title) title.textContent = 'Procesando ' + fileNames.length + ' archivo(s)...';
+
+  fetch('/api/procesar_batch', {
+    method: 'POST',
+    headers: {'Content-Type': 'application/json'},
+    body: JSON.stringify({solo_nuevos: true, archivos: fileNames, tipos: ['AR','AP','DRR','AR_o_AP']})
+  }).then(function() {
+    // For batch, use EventSource to stream results
+    var evtSrc = new EventSource('/api/procesar_batch_stream?archivos=' + encodeURIComponent(JSON.stringify(fileNames)));
+    evtSrc.onmessage = function(ev) {
+      var txt = ev.data;
+      if (!log) return;
+      var p = document.createElement('p');
+      if (txt === 'PIPELINE_COMPLETO') p.className = 'l-ok';
+      else if (txt === 'PIPELINE_CON_ERRORES') p.className = 'l-err';
+      else if (txt.startsWith('✓') || txt.startsWith('OK')) p.className = 'l-ok';
+      else if (txt.startsWith('✗') || txt.startsWith('ERROR')) p.className = 'l-err';
+      else if (txt.startsWith('>>') || txt.startsWith('ℹ')) p.className = 'l-info';
+      else p.className = 'l-dim';
+      p.textContent = txt;
+      log.appendChild(p); log.scrollTop = log.scrollHeight;
+      if (txt === 'PIPELINE_COMPLETO' || txt === 'PIPELINE_CON_ERRORES') {
+        evtSrc.close();
+        var ok = txt === 'PIPELINE_COMPLETO';
+        if (icon) icon.textContent = ok ? '✅' : '⚠️';
+        if (title) title.textContent = ok ? 'Procesamiento completado' : 'Completado con errores';
+        if (btn) btn.disabled = false;
+        if (spin) spin.style.display = 'none';
+        if (lbl) lbl.textContent = '⚡ Procesar Facturas';
+        if (btnCl) btnCl.disabled = false;
+        setTimeout(loadAll, 800);
+      }
+    };
+    evtSrc.onerror = function() {
+      evtSrc.close();
+      if (icon) icon.textContent = '⚠️';
+      if (title) title.textContent = 'Error de conexión';
+      if (btn) btn.disabled = false;
+      if (spin) spin.style.display = 'none';
+      if (lbl) lbl.textContent = '⚡ Procesar Facturas';
+      if (btnCl) btnCl.disabled = false;
+    };
+  }).catch(function(e) {
+    if (icon) icon.textContent = '⚠️';
+    if (title) title.textContent = 'Error: ' + e.message;
+    if (btn) btn.disabled = false;
+    if (spin) spin.style.display = 'none';
+    if (lbl) lbl.textContent = '⚡ Procesar Facturas';
+    if (btnCl) btnCl.disabled = false;
+  });
 }
 
 function closeInvoiceModal() {
