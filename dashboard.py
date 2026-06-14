@@ -2993,7 +2993,7 @@ function renderTable(rows) {
   tbody.innerHTML = rows.map((r, i) => {
     const hasDisc = r.discrepancia_euros && r.discrepancia_euros !== '';
     return [
-      '<tr style="cursor:pointer" data-idx="' + i + '" onclick="showInvoiceDetail(_arRows[parseInt(this.getAttribute(\'data-idx\'))])" onmouseover="this.style.background=\'rgba(59,130,246,.04)\'" onmouseout="this.style.background=\'\'">',
+      '<tr style="cursor:pointer;transition:background .15s" data-idx="' + i + '" onclick="showInvoiceDetail(_arRows[parseInt(this.getAttribute(\'data-idx\'))])" onmouseover="this.style.background=\'rgba(59,130,246,.06)\';this.style.outline=\'1px solid rgba(59,130,246,.1)\'" onmouseout="this.style.background=\'\';this.style.outline=\'\'">',
       '<td style="padding:6px 4px;text-align:center"><input type="checkbox" class="ar-row-cb" style="cursor:pointer;accent-color:var(--acc)" onchange="updateSelectionCount()"></td>',
       '<td class="td-dim">' + (r.archivo || '—') + '</td>',
       '<td class="td-b" onclick="copyToClip(\'' + (r.numero_factura||'') + '\', \'Nº factura\')" style="cursor:pointer" title="Clic para copiar">' + (r.numero_factura || '—') + '</td>',
@@ -6458,6 +6458,13 @@ setTimeout(() => {
 }, 2000);
 
 </script>
+
+<!-- Search result keyboard hint -->
+<div id="search-hint-bar" style="display:none;position:fixed;bottom:0;left:0;right:0;background:#0f172a;border-top:1px solid #1e293b;padding:8px 16px;font-size:11px;color:#64748b;z-index:8999;display:flex;gap:16px">
+  <span>↑↓ Navegar</span>
+  <span>↵ Abrir</span>
+  <span>Esc Cerrar</span>
+</div>
 
 <!-- Keyboard Shortcuts Modal -->
 <div id="atajos-modal" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,.6);z-index:9500;align-items:center;justify-content:center">
