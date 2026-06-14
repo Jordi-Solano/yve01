@@ -3303,20 +3303,21 @@ async function loadAll() {
   }
   if (topBar) { topBar.style.width = '100%'; setTimeout(() => { topBar.style.opacity = '0'; setTimeout(() => { topBar.style.width = '0'; topBar.style.opacity = '1'; }, 300); }, 400); }
 
-  // Recargar tabs activos después de procesar
+  // Recargar SIEMPRE todos los tabs con datos
   try {
-    var activeTab = document.querySelector('.tab.active');
-    if (activeTab) {
-      var tabName = activeTab.getAttribute('onclick') || '';
-      if (tabName.includes('ap')) { cargarStatsAP && cargarStatsAP(); }
-      if (tabName.includes('drr')) { cargarDRR && cargarDRR(); }
-      if (tabName.includes('banco')) { cargarBanco && cargarBanco(); }
-      if (tabName.includes('calipolis')) { loadCalipolis && loadCalipolis(); }
-      if (tabName.includes('multi_hotel')) { loadMultiHotel && loadMultiHotel(); }
+    // AP — siempre recargar
+    if (typeof cargarStatsAP === 'function') cargarStatsAP();
+    if (typeof cargarFacturasAP === 'function') cargarFacturasAP();
+    // Tab activo extra
+    var activePanel = document.querySelector('.panel.active');
+    if (activePanel) {
+      var pid = activePanel.id || '';
+      if (pid === 'panel-drr' && typeof cargarDRR === 'function') cargarDRR();
+      if (pid === 'panel-banco' && typeof cargarBanco === 'function') cargarBanco();
+      if (pid === 'panel-calipolis' && typeof loadCalipolis === 'function') loadCalipolis();
+      if (pid === 'panel-multi_hotel' && typeof loadMultiHotel === 'function') loadMultiHotel();
     }
-    // Siempre recargar AP stats silenciosamente
-    fetch('/api/stats_ap').then(r=>r.json()).then(d=>{ renderStatsAP && renderStatsAP(d); }).catch(()=>{});
-  } catch(e2) {}
+  } catch(e2) { console.warn('Error recargando tabs:', e2); }
 
   } catch(e) {
     console.error('Error en loadAll:', e);
