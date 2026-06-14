@@ -4869,12 +4869,8 @@ function _runBatchPipeline(fileNames) {
   if (icon) icon.textContent = '⚡';
   if (title) title.textContent = 'Procesando ' + fileNames.length + ' archivo(s)...';
 
-  fetch('/api/procesar_batch', {
-    method: 'POST',
-    headers: {'Content-Type': 'application/json'},
-    body: JSON.stringify({solo_nuevos: true, archivos: fileNames, tipos: ['AR','AP','DRR','AR_o_AP']})
-  }).then(function() {
-    // For batch, use EventSource to stream results
+  // Ir directamente al stream sin POST previo
+  function _iniciarStream() {
     var evtSrc = new EventSource('/api/procesar_batch_stream?archivos=' + encodeURIComponent(JSON.stringify(fileNames)));
     evtSrc.onmessage = function(ev) {
       var txt = ev.data;
@@ -4907,16 +4903,17 @@ function _runBatchPipeline(fileNames) {
       if (btn) btn.disabled = false;
       if (spin) spin.style.display = 'none';
       if (lbl) lbl.textContent = '⚡ Procesar Facturas';
+      // Botón reintentar
+      var retryDiv = document.createElement('div');
+      retryDiv.style.cssText = 'display:flex;gap:12px;margin-top:16px;justify-content:flex-end';
+      retryDiv.innerHTML =
+        '<button onclick="closeModal()" style="background:transparent;border:1px solid #444;color:#aaa;padding:10px 16px;border-radius:8px;cursor:pointer;font-size:13px">Cerrar</button>' +
+        '<button onclick="closeModal();setTimeout(function(){_runBatchPipeline(' + JSON.stringify(fileNames) + ')},300)" style="background:#1db954;border:none;color:#fff;padding:10px 16px;border-radius:8px;cursor:pointer;font-weight:600;font-size:13px">🔄 Reintentar</button>';
+      if (log) log.appendChild(retryDiv);
       if (btnCl) btnCl.disabled = false;
     };
-  }).catch(function(e) {
-    if (icon) icon.textContent = '⚠️';
-    if (title) title.textContent = 'Error: ' + e.message;
-    if (btn) btn.disabled = false;
-    if (spin) spin.style.display = 'none';
-    if (lbl) lbl.textContent = '⚡ Procesar Facturas';
-    if (btnCl) btnCl.disabled = false;
-  });
+  }
+  _iniciarStream();
 }
 
 function closeInvoiceModal() {
