@@ -3917,29 +3917,43 @@ function _positionTour(target, step) {
     target.style.zIndex = '9950';
 
     setTimeout(function() {
+      // Re-query target in case DOM updated after tab switch
+      if (step && step.el) { var freshTarget = document.querySelector(step.el); if (freshTarget) target = freshTarget; }
       var rect = target.getBoundingClientRect();
+      // If rect is 0,0,0,0 (element not visible yet) — fall back to full dim
+      if (rect.width === 0 && rect.height === 0) {
+        ctx.fillStyle = 'rgba(0,0,0,0.78)'; ctx.fillRect(0,0,canvas.width,canvas.height);
+        _placeTourBox(null, 0); return;
+      }
       var pad = 10;
       var x = rect.left - pad, y = rect.top - pad;
       var w = rect.width + pad*2, h = rect.height + pad*2;
 
       // Dark overlay with hole
-      var extraPad = (step && step.el && (step.el.includes('stats') || step.el.includes('panel') || step.el.includes('metrics'))) ? 16 : 0;
+      var extraPad = (step && step.el && (step.el.includes('stats') || step.el.includes('panel') || step.el.includes('metrics') || step.el.includes('grid'))) ? 24 : 8;
       ctx.fillStyle = 'rgba(0,0,0,0.78)';
       ctx.fillRect(0, 0, canvas.width, canvas.height);
       ctx.clearRect(x - extraPad, y - extraPad, w + extraPad*2, h + extraPad*2);
 
       // Blue glow around hole
+      // Outer glow
       ctx.shadowColor = '#3b82f6';
-      ctx.shadowBlur = 20;
-      ctx.strokeStyle = '#3b82f6';
-      ctx.lineWidth = 2;
+      ctx.shadowBlur = 30;
+      ctx.strokeStyle = 'rgba(59,130,246,0.8)';
+      ctx.lineWidth = 3;
       ctx.beginPath();
-      ctx.roundRect(x, y, w, h, 8);
+      if (ctx.roundRect) ctx.roundRect(x, y, w, h, 10); else ctx.rect(x, y, w, h);
       ctx.stroke();
       ctx.shadowBlur = 0;
+      // Inner highlight
+      ctx.strokeStyle = 'rgba(96,165,250,0.4)';
+      ctx.lineWidth = 1;
+      ctx.beginPath();
+      if (ctx.roundRect) ctx.roundRect(x+2, y+2, w-4, h-4, 8); else ctx.rect(x+2, y+2, w-4, h-4);
+      ctx.stroke();
 
       _placeTourBox(rect, pad);
-    }, step.tab ? 520 : 100);
+    }, step.tab ? 800 : 150);
   } else {
     // No target → full dim, box centered
     ctx.fillStyle = 'rgba(0,0,0,0.72)';
@@ -3958,10 +3972,10 @@ function _positionTour(target, step) {
   }
   box.setAttribute('style',
     'position:fixed;background:#0f172a;border:2px solid #3b82f6;border-radius:16px;' +
-    'padding:22px 24px 18px;max-width:320px;width:calc(100vw - 32px);z-index:10000;' +
-    'box-shadow:0 20px 60px rgba(0,0,0,.8),0 0 0 1px rgba(59,130,246,.3);' +
+    'padding:22px 26px 18px;max-width:360px;width:calc(100vw - 32px);z-index:10000;' +
+    'box-shadow:0 20px 60px rgba(0,0,0,.85),0 0 0 1px rgba(59,130,246,.35),0 0 60px rgba(59,130,246,.08);' +
     'pointer-events:all;font-family:Inter,system-ui,sans-serif;color:#f1f5f9;' +
-    'animation:tourBoxIn .25s cubic-bezier(.34,1.56,.64,1)');
+    'animation:tourBoxIn .3s cubic-bezier(.34,1.56,.64,1)');
   box.innerHTML =
     // Close button
     '<button onclick="endTour()" style="position:absolute;top:10px;right:12px;background:none;border:none;' +
@@ -4003,15 +4017,20 @@ function _placeTourBox(targetRect, pad) {
 
   if (targetRect) {
     var rect = targetRect;
-    // Try below target
-    top  = rect.bottom + pad + 16;
-    left = Math.max(10, Math.min(rect.left, vw - bw - 10));
-    // If goes off bottom, try above
-    if (top + bh > vh - 16) {
-      top = rect.top - pad - bh - 16;
+    var isSmall = rect.width < 200;  // tab button vs panel section
+    if (isSmall) {
+      // Small target (tab button): show below
+      top  = rect.bottom + pad + 12;
+      left = Math.max(10, Math.min(rect.left, vw - bw - 10));
+      if (top + bh > vh - 16) top = rect.top - bh - 16;
+    } else {
+      // Large target (panel section): show beside or below
+      top  = Math.max(10, rect.bottom + 16);
+      left = Math.max(10, Math.min(rect.left, vw - bw - 10));
+      // If goes off bottom → show in top-left of screen
+      if (top + bh > vh - 16) top = Math.max(10, (vh - bh) / 2);
     }
-    // If goes off top too, center vertically
-    if (top < 10) top = Math.max(10, (vh - bh) / 2);
+    if (top < 10) top = 10;
   } else {
     top  = Math.max(10, (vh - bh) / 2);
     left = Math.max(10, (vw - bw) / 2);
