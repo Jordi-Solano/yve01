@@ -3020,8 +3020,9 @@ button, a { touch-action: manipulation; }
       <h3 id="modal-title">Pipeline AR — Procesando...</h3>
     </div>
     <div class="log" id="log"></div>
-    <div class="modal-f">
-      <button class="btn-cl" id="btn-cl" onclick="closeModal()" disabled>Cerrar</button>
+    <div class="modal-f" style="display:flex;gap:10px;justify-content:flex-end">
+      <button class="btn-cl" id="btn-cl" onclick="closeModalAndRefresh()" disabled>Cerrar</button>
+      <button class="btn-cl" id="btn-retry" onclick="retryLastBatch()" style="display:none;background:#1db954;color:#fff;border:none">🔄 Reintentar</button>
     </div>
   </div>
 </div>
@@ -3511,6 +3512,18 @@ function runPipeline() {
     log.appendChild(actionsDiv);
     btnCl.disabled = false;
   };
+}
+
+function closeModalAndRefresh() {
+  closeModal();
+  loadAll(); // Recargar datos al cerrar
+}
+
+var _lastBatchFiles = [];
+function retryLastBatch() {
+  var retryBtn = document.getElementById('btn-retry');
+  if (retryBtn) retryBtn.style.display = 'none';
+  _procesarSiguiente && _procesarSiguiente();
 }
 
 function closeModal() {
@@ -4913,6 +4926,8 @@ function _runBatchPipeline(fileNames) {
       if (spin) spin.style.display = 'none';
       if (lbl) lbl.textContent = '⚡ Procesar Facturas';
       if (btnCl) btnCl.disabled = false;
+      var retryBtn = document.getElementById('btn-retry');
+      if (retryBtn) retryBtn.style.display = 'none'; // Ocultar si completó bien
       setTimeout(loadAll, 800);
       return;
     }
@@ -4974,7 +4989,19 @@ function _runBatchPipeline(fileNames) {
           evtSrc2.close();
           _log('✗ ' + fname + ': error — saltando', 'l-err');
           pendientes.shift();
-          _procesarSiguiente();
+          // Mostrar Reintentar si quedan archivos sin procesar
+          if (pendientes.length > 0) {
+            var retryBtn = document.getElementById('btn-retry');
+            if (retryBtn) {
+              retryBtn.style.display = 'inline-block';
+              retryBtn.onclick = function() {
+                retryBtn.style.display = 'none';
+                _procesarSiguiente();
+              };
+            }
+          } else {
+            _procesarSiguiente();
+          }
         };
       }, 2000);
     };
