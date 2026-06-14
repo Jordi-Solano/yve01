@@ -2975,6 +2975,12 @@ button, a { touch-action: manipulation; }
     </div>
     <input id="upload-file-input" type="file" multiple accept=".pdf,.xlsm,.xlsx" style="display:none" onchange="handleUploadFiles(this.files)">
     <input id="upload-folder-input" type="file" multiple webkitdirectory accept=".pdf,.xlsm,.xlsx" style="display:none" onchange="handleUploadFiles(this.files)">
+    <!-- Already uploaded files on server -->
+    <div id="server-files-section" style="display:none;margin-bottom:16px">
+      <div style="font-size:11px;font-weight:700;color:var(--dim);text-transform:uppercase;letter-spacing:.5px;margin-bottom:8px">EN SERVIDOR (facturas-entrada)</div>
+      <div id="server-files-list" style="max-height:120px;overflow-y:auto;display:flex;flex-direction:column;gap:5px"></div>
+    </div>
+    
     <div id="upload-file-list" style="display:none;margin-bottom:16px">
       <div style="font-size:11px;font-weight:700;color:var(--dim);text-transform:uppercase;letter-spacing:.5px;margin-bottom:10px">ARCHIVOS SELECCIONADOS</div>
       <div id="upload-files-container" style="max-height:220px;overflow-y:auto;display:flex;flex-direction:column;gap:6px"></div>
@@ -2982,12 +2988,17 @@ button, a { touch-action: manipulation; }
         <span id="upload-count-new" style="color:var(--acc2);font-weight:700">0 nuevos</span> · <span id="upload-count-dup" style="color:var(--ora)">0 ya procesados (se saltarán)</span>
       </div>
     </div>
-    <div style="display:flex;gap:10px;justify-content:flex-end">
-      <button onclick="closeUploadModal()" class="btn-ref">Cancelar</button>
-      <button id="btn-upload-procesar" onclick="uploadAndProcess()" disabled
-              style="background:var(--acc);border:none;color:#fff;padding:10px 22px;border-radius:10px;font-size:14px;font-weight:700;cursor:not-allowed;opacity:.4;transition:.2s">
-        ⚡ Procesar archivos nuevos
+    <div style="display:flex;gap:10px;justify-content:space-between;align-items:center;flex-wrap:wrap">
+      <button id="btn-procesar-server" onclick="procesarPendientesServidor()" style="background:rgba(34,197,94,.1);border:1px solid rgba(34,197,94,.2);color:#22c55e;padding:9px 16px;border-radius:10px;font-size:13px;font-weight:600;cursor:pointer;display:none">
+        ▶ Procesar pendientes del servidor
       </button>
+      <div style="display:flex;gap:10px;margin-left:auto">
+        <button onclick="closeUploadModal()" class="btn-ref">Cancelar</button>
+        <button id="btn-upload-procesar" onclick="uploadAndProcess()" disabled
+                style="background:var(--acc);border:none;color:#fff;padding:10px 22px;border-radius:10px;font-size:14px;font-weight:700;cursor:not-allowed;opacity:.4;transition:.2s">
+          ⚡ Procesar archivos nuevos
+        </button>
+      </div>
     </div>
   </div>
 </div>
@@ -4603,8 +4614,56 @@ async function openUploadModal() {
     _processedNames = new Set((d.files || []).filter(f => f.procesado).map(f => f.nombre));
   } catch(e) { _processedNames = new Set(); }
 
+  // Show files already on server
+  try {
+    var r2 = await fetch('/api/archivos_estado');
+    var d2 = await r2.json();
+    var serverFiles = d2.files || [];
+    var sSection = document.getElementById('server-files-section');
+    var sList = document.getElementById('server-files-list');
+    if (serverFiles.length > 0 && sSection && sList) {
+      sSection.style.display = 'block';
+      // Show "process server pending" button
+      var serverBtn = document.getElementById('btn-procesar-server');
+      var pendingCount = serverFiles.filter(function(f){ return !f.procesado; }).length;
+      if (serverBtn) {
+        serverBtn.style.display = pendingCount > 0 ? 'block' : 'none';
+        serverBtn.textContent = '▶ Procesar ' + pendingCount + ' pendiente' + (pendingCount !== 1 ? 's' : '') + ' del servidor';
+      }
+      sList.innerHTML = serverFiles.map(function(f) {
+        return '<div style="display:flex;align-items:center;gap:8px;padding:6px 10px;background:' + 
+          (f.procesado ? 'rgba(34,197,94,.05)' : 'var(--bg)') + ';border-radius:7px;border:1px solid ' +
+          (f.procesado ? 'rgba(34,197,94,.2)' : 'var(--s2)') + ';font-size:12px">' +
+          '<span>' + (f.nombre.endsWith('.xlsm') ? '📊' : '📄') + '</span>' +
+          '<span style="flex:1;color:var(--tx)">' + f.nombre + '</span>' +
+          '<span style="color:var(--dim)">' + f.tamano_str + '</span>' +
+          '<span style="font-size:11px;padding:2px 7px;border-radius:5px;background:' + 
+            (f.procesado ? 'rgba(34,197,94,.1)' : 'rgba(245,158,11,.1)') + ';color:' +
+            (f.procesado ? '#22c55e' : '#f59e0b') + '">' +
+            (f.procesado ? '✓ Procesado' : '⏳ Pendiente') + '</span>' +
+          '</div>';
+      }).join('');
+    } else if (sSection) {
+      sSection.style.display = 'none';
+    }
+  } catch(e) {}
+
   var modal = document.getElementById('upload-modal');
   modal.style.display = 'flex';
+}
+
+function procesarPendientesServidor() {
+  // Process files already on server that haven't been processed yet
+  fetch('/api/archivos_estado')
+    .then(function(r){ return r.json(); })
+    .then(function(d) {
+      var pendientes = (d.files || []).filter(function(f){ return !f.procesado; }).map(function(f){ return f.nombre; });
+      if (!pendientes.length) { showNotification('No hay archivos pendientes en el servidor', 'info'); return; }
+      closeUploadModal();
+      showNotification('⏳ Procesando ' + pendientes.length + ' archivo(s) del servidor...', 'info');
+      _runBatchPipeline(pendientes);
+    })
+    .catch(function(e){ showNotification('Error: ' + e.message, 'error'); });
 }
 
 function closeUploadModal() {
