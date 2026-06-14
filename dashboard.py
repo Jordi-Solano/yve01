@@ -4829,7 +4829,6 @@ async function uploadAndProcess() {
 }
 
 function _runBatchPipeline(fileNames) {
-  // Open the standard pipeline log modal
   var overlay = document.getElementById('overlay');
   var log = document.getElementById('log');
   var btn = document.getElementById('btn-run');
@@ -4848,58 +4847,97 @@ function _runBatchPipeline(fileNames) {
   if (icon) icon.textContent = '⚡';
   if (title) title.textContent = 'Procesando ' + fileNames.length + ' archivo(s)...';
 
-  // Ir directamente al stream sin POST previo
-  function _iniciarStream() {
-    var evtSrc = new EventSource('/api/procesar_batch_stream?archivos=' + encodeURIComponent(JSON.stringify(fileNames)));
-    evtSrc.onmessage = function(ev) {
-      var txt = ev.data;
-      if (!log) return;
-      var p = document.createElement('p');
-      if (txt === 'PIPELINE_COMPLETO') p.className = 'l-ok';
-      else if (txt === 'PIPELINE_CON_ERRORES') p.className = 'l-err';
-      else if (txt.startsWith('✓') || txt.startsWith('OK')) p.className = 'l-ok';
-      else if (txt.startsWith('✗') || txt.startsWith('ERROR')) p.className = 'l-err';
-      else if (txt.startsWith('>>') || txt.startsWith('ℹ')) p.className = 'l-info';
-      else p.className = 'l-dim';
-      p.textContent = txt;
-      log.appendChild(p); log.scrollTop = log.scrollHeight;
-      if (txt === 'PIPELINE_COMPLETO' || txt === 'PIPELINE_CON_ERRORES') {
-        evtSrc.close();
-        var ok = txt === 'PIPELINE_COMPLETO';
-        if (icon) icon.textContent = ok ? '✅' : '⚠️';
-        if (title) title.textContent = ok ? 'Procesamiento completado' : 'Completado con errores';
-        if (btn) btn.disabled = false;
-        if (spin) spin.style.display = 'none';
-        if (lbl) lbl.textContent = '⚡ Procesar Facturas';
-        if (btnCl) btnCl.disabled = false;
-        setTimeout(loadAll, 800);
-      }
-    };
-    evtSrc.onerror = function() {
-      evtSrc.close();
-      if (icon) icon.textContent = '⚠️';
-      if (title) title.textContent = 'Error de conexión';
+  // Procesar de 1 en 1 para evitar timeout de Render
+  var pendientes = fileNames.slice();
+  var procesados = 0;
+  var total = fileNames.length;
+
+  function _log(txt, cls) {
+    if (!log) return;
+    var p = document.createElement('p');
+    p.className = cls || 'l-dim';
+    p.textContent = txt;
+    log.appendChild(p);
+    log.scrollTop = log.scrollHeight;
+  }
+
+  function _procesarSiguiente() {
+    if (pendientes.length === 0) {
+      // Todo completado
+      if (icon) icon.textContent = '✅';
+      if (title) title.textContent = 'Completado — ' + procesados + '/' + total + ' archivo(s)';
       if (btn) btn.disabled = false;
       if (spin) spin.style.display = 'none';
       if (lbl) lbl.textContent = '⚡ Procesar Facturas';
-      // Botón reintentar
-      var retryDiv = document.createElement('div');
-      retryDiv.style.cssText = 'display:flex;gap:12px;margin-top:16px;justify-content:flex-end';
-      var btnCerrar = document.createElement('button');
-      btnCerrar.textContent = 'Cerrar';
-      btnCerrar.style.cssText = 'background:transparent;border:1px solid #444;color:#aaa;padding:10px 16px;border-radius:8px;cursor:pointer;font-size:13px';
-      btnCerrar.onclick = closeModal;
-      var btnReintentar = document.createElement('button');
-      btnReintentar.textContent = '🔄 Reintentar';
-      btnReintentar.style.cssText = 'background:#1db954;border:none;color:#fff;padding:10px 16px;border-radius:8px;cursor:pointer;font-weight:600;font-size:13px';
-      btnReintentar.onclick = function() { closeModal(); setTimeout(function(){ _runBatchPipeline(fileNames); }, 300); };
-      retryDiv.appendChild(btnCerrar);
-      retryDiv.appendChild(btnReintentar);
-      if (log) log.appendChild(retryDiv);
       if (btnCl) btnCl.disabled = false;
+      setTimeout(loadAll, 800);
+      return;
+    }
+
+    var fname = pendientes[0];
+    var idx = total - pendientes.length + 1;
+    if (title) title.textContent = '[' + idx + '/' + total + '] ' + fname;
+
+    var evtSrc = new EventSource('/api/procesar_batch_stream?archivos=' + encodeURIComponent(JSON.stringify([fname])));
+    var timer = setTimeout(function() {
+      evtSrc.close();
+      _log('✗ ' + fname + ': timeout — saltando', 'l-err');
+      pendientes.shift();
+      _procesarSiguiente();
+    }, 55000); // 55s timeout por archivo
+
+    evtSrc.onmessage = function(ev) {
+      var txt = ev.data;
+      if (txt === 'PIPELINE_COMPLETO' || txt === 'PIPELINE_CON_ERRORES') {
+        clearTimeout(timer);
+        evtSrc.close();
+        procesados++;
+        pendientes.shift();
+        setTimeout(_procesarSiguiente, 500);
+      } else if (txt && txt !== '') {
+        var cls = txt.startsWith('✓') ? 'l-ok' : txt.startsWith('✗') ? 'l-err' : txt.startsWith('>>') ? 'l-info' : 'l-dim';
+        _log(txt, cls);
+      }
+    };
+
+    evtSrc.onerror = function() {
+      clearTimeout(timer);
+      evtSrc.close();
+      _log('⚠ Conexión perdida — reintentando ' + fname + '...', 'l-err');
+      // Reintentar el mismo archivo una vez
+      setTimeout(function() {
+        var evtSrc2 = new EventSource('/api/procesar_batch_stream?archivos=' + encodeURIComponent(JSON.stringify([fname])));
+        var timer2 = setTimeout(function() {
+          evtSrc2.close();
+          _log('✗ ' + fname + ': timeout en reintento — saltando', 'l-err');
+          pendientes.shift();
+          _procesarSiguiente();
+        }, 55000);
+        evtSrc2.onmessage = function(ev) {
+          var txt = ev.data;
+          if (txt === 'PIPELINE_COMPLETO' || txt === 'PIPELINE_CON_ERRORES') {
+            clearTimeout(timer2);
+            evtSrc2.close();
+            procesados++;
+            pendientes.shift();
+            setTimeout(_procesarSiguiente, 500);
+          } else if (txt && txt !== '') {
+            var cls = txt.startsWith('✓') ? 'l-ok' : txt.startsWith('✗') ? 'l-err' : txt.startsWith('>>') ? 'l-info' : 'l-dim';
+            _log(txt, cls);
+          }
+        };
+        evtSrc2.onerror = function() {
+          clearTimeout(timer2);
+          evtSrc2.close();
+          _log('✗ ' + fname + ': error — saltando', 'l-err');
+          pendientes.shift();
+          _procesarSiguiente();
+        };
+      }, 2000);
     };
   }
-  _iniciarStream();
+
+  _procesarSiguiente();
 }
 
 function closeInvoiceModal() {
