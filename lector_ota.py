@@ -231,4 +231,33 @@ def main():
 
 
 if __name__ == "__main__":
-    main()
+    import sys
+    if "--file" in sys.argv:
+        idx = sys.argv.index("--file")
+        if idx + 1 < len(sys.argv):
+            file_path = sys.argv[idx + 1]
+            if not os.path.exists(file_path):
+                print(f"ERROR: archivo no encontrado: {file_path}")
+                sys.exit(1)
+            registro = procesar_factura(file_path)
+            if registro and not registro.get("error"):
+                # Añadir al Excel existente o crear nuevo
+                from datetime import date as _date
+                fecha_hoy = _date.today().strftime("%Y%m%d")
+                ruta_excel = os.path.join(SALIDA_DIR if "SALIDA_DIR" in dir() else os.path.dirname(SALIDA_EXCEL), f"facturas_procesadas_{fecha_hoy}.xlsx")
+                if os.path.exists(ruta_excel):
+                    df_existing = pd.read_excel(ruta_excel)
+                    df_new = pd.DataFrame([registro])
+                    df_combined = pd.concat([df_existing, df_new], ignore_index=True)
+                    df_combined.drop_duplicates(subset=["numero_factura"], keep="last", inplace=True)
+                    df_combined.to_excel(ruta_excel, index=False)
+                else:
+                    guardar_excel([registro], ruta_excel)
+                print(f"OK: {os.path.basename(file_path)} procesado correctamente")
+                sys.exit(0)
+            else:
+                err = registro.get("error", "error desconocido") if registro else "sin resultado"
+                print(f"ERROR: {err}")
+                sys.exit(1)
+    else:
+        main()

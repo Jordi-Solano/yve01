@@ -278,4 +278,42 @@ def main():
 
 
 if __name__ == "__main__":
-    main()
+    import sys
+    # Soporte para --file archivo.pdf (procesar un solo archivo)
+    if "--file" in sys.argv:
+        idx = sys.argv.index("--file")
+        if idx + 1 < len(sys.argv):
+            file_path = sys.argv[idx + 1]
+            if not os.path.exists(file_path):
+                print(f"ERROR: archivo no encontrado: {file_path}")
+                sys.exit(1)
+            proveedores = {}
+            if os.path.exists(PROV_FILE):
+                df_prov = pd.read_excel(PROV_FILE)
+                for _, row in df_prov.iterrows():
+                    nombre = str(row.get("nombre_proveedor","")).strip().lower()
+                    proveedores[nombre] = {
+                        "tipo": str(row.get("tipo","OTRAS")).strip().upper(),
+                        "cuenta_contable": str(row.get("cuenta_contable","629")).strip(),
+                        "email_contacto": str(row.get("email_contacto","")).strip(),
+                    }
+            reg = procesar_factura_ap(file_path, proveedores)
+            if reg and not reg.get("error"):
+                # Cargar Excel existente o crear nuevo
+                ruta_excel = os.path.join(SALIDA_DIR, f"facturas_ap_{FECHA_HOY}.xlsx")
+                if os.path.exists(ruta_excel):
+                    df_existing = pd.read_excel(ruta_excel)
+                    df_new = pd.DataFrame([reg])
+                    df_combined = pd.concat([df_existing, df_new], ignore_index=True)
+                    df_combined.drop_duplicates(subset=["numero_factura"], keep="last", inplace=True)
+                    df_combined.to_excel(ruta_excel, index=False)
+                else:
+                    guardar_excel([reg], ruta_excel)
+                print(f"OK: {os.path.basename(file_path)} procesado correctamente")
+                sys.exit(0)
+            else:
+                err = reg.get("error", "error desconocido") if reg else "sin resultado"
+                print(f"ERROR: {err}")
+                sys.exit(1)
+    else:
+        main()

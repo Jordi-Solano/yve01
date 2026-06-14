@@ -2575,7 +2575,7 @@ button, a { touch-action: manipulation; }
             <th data-i18n="th.archivo">Archivo</th>
             <th data-i18n="th.factura">Nº Factura</th>
             <th data-i18n="th.ota">OTA</th>
-            <th data-i18n="th.hotel">Hotel</th>
+
             <th data-i18n="th.fecha">Fecha</th>
             <th data-i18n="th.importe">Importe bruto</th>
             <th data-i18n="th.comision">% Com.</th>
@@ -3394,7 +3394,7 @@ function renderTable(rows) {
       '<td class="td-dim">' + (r.archivo || '—') + '</td>',
       '<td class="td-b" onclick="copyToClip(\'' + (r.numero_factura||'') + '\', \'Nº factura\')" style="cursor:pointer" title="Clic para copiar">' + (r.numero_factura || '—') + '</td>',
       '<td class="td-b" style="color:var(--acc3)">' + (r.nombre_ota || '—') + '</td>',
-      '<td>' + (r.nombre_hotel || '—') + '</td>',
+
       '<td class="td-dim">' + (r.fecha || '—') + '</td>',
       '<td class="td-b">' + (r.importe_bruto || '—') + '</td>',
       '<td>' + (r.porcentaje_factura || '—') + '</td>',
@@ -4974,7 +4974,7 @@ function showInvoiceDetail(row) {
 
   const fields = [
     ['OTA / Canal',           row.nombre_ota || '—'],
-    ['Hotel',                 row.nombre_hotel || '—'],
+
     ['Fecha',                 row.fecha || '—'],
     ['Mercado',               row.mercado || '—'],
     ['Importe bruto',         row.importe_bruto ? '€' + row.importe_bruto : '—'],
