@@ -3516,7 +3516,7 @@ function runPipeline() {
 
 function closeModalAndRefresh() {
   closeModal();
-  loadAll(); // Recargar datos al cerrar
+  setTimeout(loadAll, 300);
 }
 
 var _lastBatchFiles = [];
@@ -4919,16 +4919,15 @@ function _runBatchPipeline(fileNames) {
 
   function _procesarSiguiente() {
     if (pendientes.length === 0) {
-      // Todo completado
-      if (icon) icon.textContent = '✅';
+      if (icon) icon.textContent = procesados === total ? '✅' : '⚠️';
       if (title) title.textContent = 'Completado — ' + procesados + '/' + total + ' archivo(s)';
       if (btn) btn.disabled = false;
       if (spin) spin.style.display = 'none';
       if (lbl) lbl.textContent = '⚡ Procesar Facturas';
-      if (btnCl) btnCl.disabled = false;
+      if (btnCl) { btnCl.disabled = false; btnCl.textContent = 'Cerrar'; }
       var retryBtn = document.getElementById('btn-retry');
-      if (retryBtn) retryBtn.style.display = 'none'; // Ocultar si completó bien
-      setTimeout(loadAll, 800);
+      if (retryBtn) retryBtn.style.display = 'none';
+      setTimeout(loadAll, 500);
       return;
     }
 
@@ -4989,19 +4988,7 @@ function _runBatchPipeline(fileNames) {
           evtSrc2.close();
           _log('✗ ' + fname + ': error — saltando', 'l-err');
           pendientes.shift();
-          // Mostrar Reintentar si quedan archivos sin procesar
-          if (pendientes.length > 0) {
-            var retryBtn = document.getElementById('btn-retry');
-            if (retryBtn) {
-              retryBtn.style.display = 'inline-block';
-              retryBtn.onclick = function() {
-                retryBtn.style.display = 'none';
-                _procesarSiguiente();
-              };
-            }
-          } else {
-            _procesarSiguiente();
-          }
+          _procesarSiguiente();
         };
       }, 2000);
     };
@@ -7715,6 +7702,24 @@ def api_eliminar_archivo():
         _save_proc_log(log)
         return jsonify({"ok": True})
     return jsonify({"error": "archivo no encontrado"}), 404
+
+
+@app.route('/api/reset_datos', methods=['POST'])
+@login_required
+def api_reset_datos():
+    """Borra todos los datos procesados para empezar desde cero."""
+    import glob, json as _json
+    borrados = 0
+    # facturas-procesadas
+    for f in glob.glob(os.path.join(BASE_DIR, 'facturas-procesadas', '*.xlsx')):
+        os.remove(f); borrados += 1
+    # reportes de datos
+    for pattern in ['doble_imposicion_*', 'matching_*', 'verificacion_*', 'conciliacion_*']:
+        for f in glob.glob(os.path.join(BASE_DIR, 'reportes', pattern)):
+            os.remove(f); borrados += 1
+    # reset log
+    _save_proc_log({})
+    return jsonify({"ok": True, "borrados": borrados})
 
 if __name__ == '__main__':
     import socket
