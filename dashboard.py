@@ -380,8 +380,8 @@ def api_oracle_status():
 @app.route('/api/procesar_batch_stream')
 @login_required
 def api_procesar_batch_stream():
-    """SSE stream — procesamiento PARALELO, 3 a la vez, timeout 45s."""
-    import json as _json, concurrent.futures as _cf, threading as _th
+    """SSE stream — procesa archivos en serie, timeout 60s por archivo."""
+    import json as _json
     archivos_str = request.args.get('archivos', '[]')
     try:
         archivos = _json.loads(archivos_str)
@@ -390,52 +390,10 @@ def api_procesar_batch_stream():
 
     log = _load_proc_log()
     from datetime import datetime as _dt2
-    results_queue = _th.Queue()
 
     def _mark(fname, result='OK'):
         log[fname] = {'fecha': _dt2.now().strftime('%Y-%m-%d %H:%M'), 'resultado': result}
         _save_proc_log(log)
-
-    def _procesar_uno(fname):
-        fpath = os.path.join(ENTRADA_DIR, fname)
-        if not os.path.exists(fpath):
-            results_queue.put(('error', fname, 'no encontrado'))
-            return False, False
-        try:
-            size_mb = os.path.getsize(fpath) / (1024*1024)
-            if size_mb > 30:
-                results_queue.put(('error', fname, f'PDF demasiado grande ({size_mb:.0f}MB)'))
-                _mark(fname, 'ERR:TOO_LARGE')
-                return False, False
-        except: pass
-
-        tipo = _detect_file_type(fname)
-        results_queue.put(('start', fname, tipo))
-
-        try:
-            import subprocess as _sp
-            if tipo == 'DRR':
-                import shutil as _sh
-                _sh.copy2(fpath, os.path.join(BASE_DIR, 'reportes', 'drr_upload.xlsm'))
-                results_queue.put(('ok', fname, 'DRR copiado'))
-                _mark(fname, 'DRR_OK')
-                return False, False
-
-            is_ar = tipo == 'AR' or (tipo == 'AR_o_AP' and any(
-                x in fname.lower() for x in ['booking','expedia','hotels','despegar','ota']
-            ))
-            cmd = ['python3', 'lector_ota.py' if is_ar else 'lector_facturas_ap.py', '--file', fpath]
-            r = _sp.run(cmd, capture_output=True, text=True, cwd=BASE_DIR, timeout=45)
-            ok = r.returncode == 0
-            msg = 'OK' if ok else (r.stderr[:60] or r.stdout[:60] or 'error')
-            results_queue.put(('ok' if ok else 'error', fname, msg))
-            _mark(fname, ('AR_OK' if is_ar else 'AP_OK') if ok else f'ERR:{msg[:30]}')
-            return (ok and is_ar), (ok and not is_ar)
-        except Exception as e:
-            msg = f'TIMEOUT (45s)' if 'Timeout' in type(e).__name__ else str(e)[:60]
-            results_queue.put(('error', fname, msg))
-            _mark(fname, f'CRASH:{msg[:30]}')
-            return False, False
 
     def generar():
         global _pipeline_running
@@ -452,33 +410,54 @@ def api_procesar_batch_stream():
                 return
 
             total = len(archivos)
-            yield f'data: >> {total} archivo(s) — procesando 3 en paralelo...\n\n'
+            yield f'data: >> Procesando {total} archivo(s)...\n\n'
             has_ar = False; has_ap = False
 
-            for i in range(0, total, 3):
-                batch = archivos[i:i+3]
-                if len(batch) > 1:
-                    yield f'data: >> Lote {i//3+1}: {len(batch)} archivos...\n\n'
-                with _cf.ThreadPoolExecutor(max_workers=3) as ex:
-                    futures = {ex.submit(_procesar_uno, f): f for f in batch}
-                    done = 0
-                    while done < len(batch):
-                        try:
-                            kind, fname, msg = results_queue.get(timeout=50)
-                            if kind == 'start':
-                                yield f'data: >> {fname} ({msg})...\n\n'
-                            else:
-                                yield f'data: {"✓" if kind=="ok" else "✗"} {fname}: {msg}\n\n'
-                            done = sum(1 for f in futures if f.done())
-                        except:
-                            done = sum(1 for f in futures if f.done())
-                    for f in futures:
-                        try:
-                            ar_ok, ap_ok = f.result()
-                            if ar_ok: has_ar = True
-                            if ap_ok: has_ap = True
-                        except: pass
-                yield f'data: ✓ Lote {i//3+1} completado ({min(i+3,total)}/{total})\n\n'
+            for i, fname in enumerate(archivos):
+                fpath = os.path.join(ENTRADA_DIR, fname)
+                if not os.path.exists(fpath):
+                    yield f'data: ✗ {fname}: no encontrado\n\n'
+                    continue
+
+                # Límite 30MB
+                try:
+                    size_mb = os.path.getsize(fpath) / (1024*1024)
+                    if size_mb > 30:
+                        yield f'data: ✗ {fname}: demasiado grande ({size_mb:.0f}MB)\n\n'
+                        _mark(fname, 'ERR:TOO_LARGE')
+                        continue
+                except: pass
+
+                tipo = _detect_file_type(fname)
+                yield f'data: >> [{i+1}/{total}] {fname}...\n\n'
+
+                try:
+                    import subprocess as _sp
+                    if tipo == 'DRR':
+                        import shutil as _sh
+                        _sh.copy2(fpath, os.path.join(BASE_DIR, 'reportes', 'drr_upload.xlsm'))
+                        yield f'data: ✓ DRR {fname}: copiado\n\n'
+                        _mark(fname, 'DRR_OK')
+                        continue
+
+                    is_ar = tipo == 'AR' or (tipo == 'AR_o_AP' and any(
+                        x in fname.lower() for x in ['booking','expedia','hotels','despegar','ota']
+                    ))
+                    cmd = ['python3', 'lector_ota.py' if is_ar else 'lector_facturas_ap.py', '--file', fpath]
+                    r = _sp.run(cmd, capture_output=True, text=True, cwd=BASE_DIR, timeout=60)
+                    ok = r.returncode == 0
+                    msg = 'OK' if ok else (r.stderr[:80] or r.stdout[:80] or 'error')
+                    yield f'data: {"✓" if ok else "✗"} {"AR" if is_ar else "AP"} {fname}: {msg}\n\n'
+                    _mark(fname, ('AR_OK' if is_ar else 'AP_OK') if ok else f'ERR:{msg[:30]}')
+                    if ok and is_ar: has_ar = True
+                    if ok and not is_ar: has_ap = True
+
+                except subprocess.TimeoutExpired:
+                    yield f'data: ✗ {fname}: TIMEOUT (60s)\n\n'
+                    _mark(fname, 'ERR:TIMEOUT')
+                except Exception as e2:
+                    yield f'data: ✗ {fname}: {str(e2)[:80]}\n\n'
+                    _mark(fname, f'CRASH:{str(e2)[:30]}')
 
             if has_ar:
                 yield 'data: >> Verificando comisiones OTA...\n\n'
@@ -4906,9 +4885,16 @@ function _runBatchPipeline(fileNames) {
       // Botón reintentar
       var retryDiv = document.createElement('div');
       retryDiv.style.cssText = 'display:flex;gap:12px;margin-top:16px;justify-content:flex-end';
-      retryDiv.innerHTML =
-        '<button onclick="closeModal()" style="background:transparent;border:1px solid #444;color:#aaa;padding:10px 16px;border-radius:8px;cursor:pointer;font-size:13px">Cerrar</button>' +
-        '<button onclick="closeModal();setTimeout(function(){_runBatchPipeline(' + JSON.stringify(fileNames) + ')},300)" style="background:#1db954;border:none;color:#fff;padding:10px 16px;border-radius:8px;cursor:pointer;font-weight:600;font-size:13px">🔄 Reintentar</button>';
+      var btnCerrar = document.createElement('button');
+      btnCerrar.textContent = 'Cerrar';
+      btnCerrar.style.cssText = 'background:transparent;border:1px solid #444;color:#aaa;padding:10px 16px;border-radius:8px;cursor:pointer;font-size:13px';
+      btnCerrar.onclick = closeModal;
+      var btnReintentar = document.createElement('button');
+      btnReintentar.textContent = '🔄 Reintentar';
+      btnReintentar.style.cssText = 'background:#1db954;border:none;color:#fff;padding:10px 16px;border-radius:8px;cursor:pointer;font-weight:600;font-size:13px';
+      btnReintentar.onclick = function() { closeModal(); setTimeout(function(){ _runBatchPipeline(fileNames); }, 300); };
+      retryDiv.appendChild(btnCerrar);
+      retryDiv.appendChild(btnReintentar);
       if (log) log.appendChild(retryDiv);
       if (btnCl) btnCl.disabled = false;
     };
