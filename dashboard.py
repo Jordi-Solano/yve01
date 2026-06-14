@@ -431,6 +431,15 @@ def api_procesar_batch_stream():
                 tipo = _detect_file_type(fname)
                 yield f'data: >> [{i+1}/{total}] {fname}...\n\n'
 
+                # Detectar archivos que claramente no son facturas
+                _fname_lower = fname.lower()
+                _palabras_no_factura = ['rooming', 'sow', 'contract', 'signed', 'agreement',
+                    'nda', 'proposal', 'quote', 'presupuesto', 'convenio', 'protocolo']
+                if any(p in _fname_lower for p in _palabras_no_factura):
+                    yield f'data: ⚠ {fname}: no parece una factura (saltando)\n\n'
+                    _mark(fname, 'SKIP:NOT_INVOICE')
+                    continue
+
                 try:
                     import subprocess as _sp
                     if tipo == 'DRR':
