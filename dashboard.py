@@ -4664,19 +4664,46 @@ async function openUploadModal() {
         serverBtn.style.display = pendingCount > 0 ? 'block' : 'none';
         serverBtn.textContent = '▶ Procesar ' + pendingCount + ' pendiente' + (pendingCount !== 1 ? 's' : '') + ' del servidor';
       }
-      sList.innerHTML = serverFiles.map(function(f) {
-        return '<div style="display:flex;align-items:center;gap:8px;padding:6px 10px;background:' + 
+      sList.innerHTML = '';
+      serverFiles.forEach(function(f) {
+        var row = document.createElement('div');
+        row.id = 'file-row-' + f.nombre.replace(/[^a-zA-Z0-9]/g,'_');
+        row.style.cssText = 'display:flex;align-items:center;gap:8px;padding:6px 10px;background:' + 
           (f.procesado ? 'rgba(34,197,94,.05)' : 'var(--bg)') + ';border-radius:7px;border:1px solid ' +
-          (f.procesado ? 'rgba(34,197,94,.2)' : 'var(--s2)') + ';font-size:12px">' +
-          '<span>' + (f.nombre.endsWith('.xlsm') ? '📊' : '📄') + '</span>' +
-          '<span style="flex:1;color:var(--tx)">' + f.nombre + '</span>' +
-          '<span style="color:var(--dim)">' + f.tamano_str + '</span>' +
-          '<span style="font-size:11px;padding:2px 7px;border-radius:5px;background:' + 
-            (f.procesado ? 'rgba(34,197,94,.1)' : 'rgba(245,158,11,.1)') + ';color:' +
-            (f.procesado ? '#22c55e' : '#f59e0b') + '">' +
-            (f.procesado ? '✓ Procesado' : '⏳ Pendiente') + '</span>' +
-          '</div>';
-      }).join('');
+          (f.procesado ? 'rgba(34,197,94,.2)' : 'var(--s2)') + ';font-size:12px;margin-bottom:4px';
+        
+        var icon = document.createElement('span');
+        icon.textContent = f.nombre.endsWith('.xlsm') ? '📊' : '📄';
+        
+        var nombre = document.createElement('span');
+        nombre.style.cssText = 'flex:1;color:var(--tx)';
+        nombre.textContent = f.nombre;
+        
+        var tamano = document.createElement('span');
+        tamano.style.cssText = 'color:var(--dim);font-size:11px';
+        tamano.textContent = f.tamano_str;
+        
+        var estado = document.createElement('span');
+        estado.style.cssText = 'font-size:11px;padding:2px 7px;border-radius:5px;background:' +
+          (f.procesado ? 'rgba(34,197,94,.1)' : 'rgba(245,158,11,.1)') + ';color:' +
+          (f.procesado ? '#22c55e' : '#f59e0b');
+        estado.textContent = f.procesado ? '✓ Procesado' : '⏳ Pendiente';
+        
+        var btnX = document.createElement('button');
+        btnX.textContent = '✕';
+        btnX.title = 'Eliminar archivo';
+        btnX.style.cssText = 'background:transparent;border:1px solid rgba(239,68,68,.3);color:#e05252;width:22px;height:22px;border-radius:50%;cursor:pointer;font-size:11px;line-height:1;padding:0;flex-shrink:0;transition:all .15s';
+        btnX.onmouseover = function(){ this.style.background='rgba(239,68,68,.15)'; };
+        btnX.onmouseout = function(){ this.style.background='transparent'; };
+        btnX.onclick = function() { eliminarArchivoServidor(f.nombre, row); };
+        
+        row.appendChild(icon);
+        row.appendChild(nombre);
+        row.appendChild(tamano);
+        row.appendChild(estado);
+        row.appendChild(btnX);
+        sList.appendChild(row);
+      });
     } else if (sSection) {
       sSection.style.display = 'none';
     }
@@ -5237,6 +5264,40 @@ document.addEventListener('DOMContentLoaded', () => {
   }
 });
 
+
+
+function eliminarArchivoServidor(nombre, rowEl) {
+  if (!confirm('¿Eliminar ' + nombre + '?')) return;
+  fetch('/api/eliminar_archivo', {
+    method: 'POST',
+    headers: {'Content-Type': 'application/json'},
+    body: JSON.stringify({nombre: nombre})
+  })
+  .then(function(r){ return r.json(); })
+  .then(function(d) {
+    if (d.ok) {
+      rowEl.style.opacity = '0';
+      rowEl.style.transform = 'translateX(20px)';
+      rowEl.style.transition = 'all .3s';
+      setTimeout(function(){ rowEl.remove(); }, 300);
+      showNotification('✓ ' + nombre + ' eliminado', 'info');
+      // Actualizar contador del botón procesar pendientes
+      var serverBtn = document.getElementById('btn-procesar-server');
+      if (serverBtn) {
+        var remaining = document.querySelectorAll('[id^="file-row-"]').length - 1;
+        if (remaining <= 0) {
+          serverBtn.style.display = 'none';
+          document.getElementById('server-files-section').style.display = 'none';
+        } else {
+          serverBtn.textContent = '▶ Procesar ' + remaining + ' pendiente' + (remaining !== 1 ? 's' : '') + ' del servidor';
+        }
+      }
+    } else {
+      showNotification('Error: ' + (d.error || 'no se pudo eliminar'), 'error');
+    }
+  })
+  .catch(function(e){ showNotification('Error de conexión', 'error'); });
+}
 
 function switchTab(tab, el) {
   document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
@@ -7608,6 +7669,25 @@ a{{background:linear-gradient(135deg,#3b82f6,#2563eb);color:#fff;padding:11px 24
   <a href="/">← Volver al inicio</a>
 </div></body></html>""", 500
 
+
+
+@app.route('/api/eliminar_archivo', methods=['POST'])
+@login_required
+def api_eliminar_archivo():
+    """Elimina un archivo de facturas-entrada."""
+    data = request.json or {}
+    fname = data.get('nombre', '').strip()
+    if not fname or '/' in fname or '..' in fname:
+        return jsonify({"error": "nombre inválido"}), 400
+    fpath = os.path.join(ENTRADA_DIR, fname)
+    if os.path.exists(fpath):
+        os.remove(fpath)
+        # Quitar del log de procesados también
+        log = _load_proc_log()
+        log.pop(fname, None)
+        _save_proc_log(log)
+        return jsonify({"ok": True})
+    return jsonify({"error": "archivo no encontrado"}), 404
 
 if __name__ == '__main__':
     import socket
