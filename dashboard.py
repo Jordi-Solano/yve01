@@ -3292,6 +3292,22 @@ async function loadAll() {
     else { sumEl.style.display = 'block'; sumTxt.textContent = '✓ Todo en orden — ' + stats.total + ' facturas procesadas sin incidencias'; sumEl.style.background = 'rgba(34,197,94,.05)'; sumEl.style.borderColor = 'rgba(34,197,94,.1)'; }
   }
   if (topBar) { topBar.style.width = '100%'; setTimeout(() => { topBar.style.opacity = '0'; setTimeout(() => { topBar.style.width = '0'; topBar.style.opacity = '1'; }, 300); }, 400); }
+
+  // Recargar tabs activos después de procesar
+  try {
+    var activeTab = document.querySelector('.tab.active');
+    if (activeTab) {
+      var tabName = activeTab.getAttribute('onclick') || '';
+      if (tabName.includes('ap')) { cargarStatsAP && cargarStatsAP(); }
+      if (tabName.includes('drr')) { cargarDRR && cargarDRR(); }
+      if (tabName.includes('banco')) { cargarBanco && cargarBanco(); }
+      if (tabName.includes('calipolis')) { loadCalipolis && loadCalipolis(); }
+      if (tabName.includes('multi_hotel')) { loadMultiHotel && loadMultiHotel(); }
+    }
+    // Siempre recargar AP stats silenciosamente
+    fetch('/api/stats_ap').then(r=>r.json()).then(d=>{ renderStatsAP && renderStatsAP(d); }).catch(()=>{});
+  } catch(e2) {}
+
   } catch(e) {
     console.error('Error en loadAll:', e);
     document.getElementById('status-txt').textContent = t('status.error') || 'Error al cargar datos';
