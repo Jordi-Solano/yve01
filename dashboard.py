@@ -3114,7 +3114,6 @@ function closeModal() {
 }
 
 // ── Init ──────────────────────────────────────────────────────────────────
-// ══════════════════════════════════════════════════════════════
 // SPARKLINES — mini gráficos en stat cards
 // ══════════════════════════════════════════════════════════════
 
@@ -4165,6 +4164,46 @@ async function generarEmailAR(numero) {
   }
 }
 
+function generarEmailAP(numero) {
+  if (!numero) return;
+  showNotification('⏳ Generando email AP...', 'info');
+  fetch('/ap/api/generar_email', {
+    method:'POST',
+    headers:{'Content-Type':'application/json'},
+    body:JSON.stringify({numero_factura: numero})
+  }).then(function(r){ return r.json(); }).then(function(d){
+    if (d.ok) {
+      showNotification('✉ Email generado: ' + (d.email||'proveedor'), 'success');
+      closeInvoiceModal();
+    } else {
+      showNotification('✗ ' + (d.error||'Error generando email'), 'error');
+    }
+  }).catch(function(){ showNotification('✗ Error de conexión', 'error'); });
+}
+
+function showAPDetail(row) {
+  var modal = document.getElementById('invoice-modal');
+  var body  = document.getElementById('inv-modal-body');
+  var title = document.getElementById('inv-modal-title');
+  if (!modal || !body || !row) return;
+  title.textContent = row.numero_factura || 'Factura AP';
+  var stC = row.aprobacion === 'APROBADA' ? '#22c55e' : row.aprobacion === 'RECHAZADA' ? '#ef4444' : '#f59e0b';
+  var fields = [
+    ['Proveedor', row.proveedor||'—'], ['Fecha', row.fecha_factura||'—'],
+    ['Total', row.importe_con_iva ? '€'+row.importe_con_iva : '—'],
+    ['Cuenta', row.cuenta_contable||'—'], ['Tipo', row.tipo||'—'],
+    ['Estado', row.estado||'—'], ['Aprobación', row.aprobacion||'—'],
+    ['PO', row.tiene_po ? '✅' : '❌'], ['Albarán', row.tiene_alb ? '✅' : '❌'],
+  ];
+  body.innerHTML =
+    '<div style="background:'+stC+'20;border:1px solid '+stC+'40;border-radius:10px;padding:10px 14px;margin-bottom:16px;font-weight:700;color:'+stC+'">'+(row.aprobacion||'Pendiente')+'</div>' +
+    '<div style="display:grid;grid-template-columns:1fr 1fr;gap:8px">' +
+    fields.map(function(f){ return '<div style="background:var(--bg);border-radius:8px;padding:10px"><div style="font-size:10px;color:var(--dim);font-weight:600;text-transform:uppercase;margin-bottom:3px">'+f[0]+'</div><div style="font-size:13px;font-weight:600">'+f[1]+'</div></div>'; }).join('') +
+    '</div>' +
+    '<div style="display:flex;gap:10px;margin-top:16px"><button onclick="closeInvoiceModal()" class="btn-ref" style="flex:1">Cerrar</button></div>';
+  modal.style.display = 'flex';
+}
+
 function closeInvoiceModal() {
   var m = document.getElementById('invoice-modal');
   if (m) m.style.display = 'none';
@@ -4453,6 +4492,7 @@ function switchTab(tab, el) {
   el.classList.add('active');
   var panel = document.getElementById('panel-' + tab);
   if (panel) panel.classList.add('active');
+  window.scrollTo({top:0, behavior:'smooth'});
   // Mobile: scroll tab into view + highlight bottom nav
   if (IS_MOBILE) {
     if (el) setTimeout(function(){ el.scrollIntoView({behavior:'smooth',block:'nearest',inline:'center'}); }, 50);
@@ -4469,7 +4509,9 @@ function switchTab(tab, el) {
   if (tab === 'calipolis') loadCalipolis();
   if (tab === 'multi_hotel') loadMultiHotel();
 }
-// ══ F&B COST CONTROL ══════════════════════════════════════════════════
+// ══ F&B COST CONTROL ══════════════════════════════════
+function loadFB() { if (typeof cargarFB === 'function') cargarFB(); else if (typeof loadFBCost === 'function') loadFBCost(); }
+
 var _fbLoaded = {resumen:false, inventario:false, mermas:false, recetas:false};
 var _fbActive = 'resumen';
 
@@ -5778,6 +5820,8 @@ async function loadMultiHotel() {
   }
 }
 
+
+function loadNotificaciones() { if (typeof cargarNotificaciones === 'function') cargarNotificaciones(); else if (typeof loadNotif === 'function') loadNotif(); }
 
 async function loadBanco() {
   try {

@@ -562,6 +562,42 @@ function toggleFaq(btn) {
 </script>
 <!-- /FAQ -->
 
+<!-- TESTIMONIAL SECTION -->
+<section style="padding:70px 5%;background:var(--s1)">
+  <div style="max-width:900px;margin:0 auto">
+    <div style="text-align:center;margin-bottom:40px">
+      <div style="font-size:13px;font-weight:700;text-transform:uppercase;letter-spacing:.8px;color:var(--acc2);margin-bottom:10px">VALIDADO CON PROFESIONALES REALES</div>
+      <h2 style="font-size:28px;font-weight:900;margin:0">Lo que dicen los expertos del sector</h2>
+    </div>
+    <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(260px,1fr));gap:20px">
+      <div style="background:var(--bg);border:1px solid var(--s2);border-radius:16px;padding:24px">
+        <div style="font-size:32px;color:var(--acc2);margin-bottom:12px">❝</div>
+        <p style="font-size:14px;color:var(--mut);line-height:1.7;margin-bottom:16px">"Lo que Yve hace en segundos me costaba 4 horas al día. El módulo AP con 3-way matching es exactamente lo que necesitaba."</p>
+        <div style="display:flex;align-items:center;gap:10px">
+          <div style="width:36px;height:36px;border-radius:50%;background:linear-gradient(135deg,var(--acc),var(--pur));display:flex;align-items:center;justify-content:center;font-size:14px;font-weight:700;color:#fff">MC</div>
+          <div><div style="font-size:13px;font-weight:700">M.C.</div><div style="font-size:11px;color:var(--dim)">Assistant Financial Controller · Hotel 5★ Barcelona</div></div>
+        </div>
+      </div>
+      <div style="background:var(--bg);border:1px solid var(--s2);border-radius:16px;padding:24px">
+        <div style="font-size:32px;color:var(--acc2);margin-bottom:12px">❝</div>
+        <p style="font-size:14px;color:var(--mut);line-height:1.7;margin-bottom:16px">"Tener el GOP%, RevPAR y ocupación de mis 3 hoteles en una sola pantalla, actualizados al día, cambia completamente cómo gestiono el grupo."</p>
+        <div style="display:flex;align-items:center;gap:10px">
+          <div style="width:36px;height:36px;border-radius:50%;background:linear-gradient(135deg,var(--grn),var(--acc));display:flex;align-items:center;justify-content:font-size:14px;font-weight:700;color:#fff">JS</div>
+          <div><div style="font-size:13px;font-weight:700">J.S.</div><div style="font-size:11px;color:var(--dim)">F&B Manager · Grupo Calipolis, Sitges</div></div>
+        </div>
+      </div>
+      <div style="background:var(--bg);border:1px solid var(--s2);border-radius:16px;padding:24px">
+        <div style="font-size:32px;color:var(--acc2);margin-bottom:12px">❝</div>
+        <p style="font-size:14px;color:var(--mut);line-height:1.7;margin-bottom:16px">"El DRR automatizado detectó un Out of Balance de -2.185€ que habríamos tardado horas en encontrar. En 30 segundos estaba localizado."</p>
+        <div style="display:flex;align-items:center;gap:10px">
+          <div style="width:36px;height:36px;border-radius:50%;background:linear-gradient(135deg,var(--ora),var(--red));display:flex;align-items:center;justify-content:center;font-size:14px;font-weight:700;color:#fff">IA</div>
+          <div><div style="font-size:13px;font-weight:700">Income Auditor</div><div style="font-size:11px;color:var(--dim)">Cadena internacional · Barcelona</div></div>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
 <!-- LIVE DEMO CTA -->
 <section style="padding:80px 5%;background:linear-gradient(135deg,rgba(59,130,246,.1),rgba(167,139,250,.08));border-top:1px solid rgba(59,130,246,.15);border-bottom:1px solid rgba(59,130,246,.15);text-align:center">
   <div style="max-width:600px;margin:0 auto">
