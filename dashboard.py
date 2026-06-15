@@ -1912,29 +1912,44 @@ body::before{
 .stats{display:grid;grid-template-columns:repeat(6,1fr);gap:12px;margin-bottom:22px}
 @media(max-width:1200px){.stats{grid-template-columns:repeat(3,1fr)}}
 /* ── Mobile lite mode ─────────────────────────────────────────────── */
+/* ── Mobile Lite Mode ── Oculta todo excepto KPI cards ── */
 body.mobile-lite .panel > .card:not(.lite-visible),
 body.mobile-lite .panel > div.tbl-wrap,
 body.mobile-lite .panel > div[style*="overflow-x:auto"],
 body.mobile-lite .panel > table,
-body.mobile-lite #activity,
-body.mobile-lite #ar-chart-wrap,
-body.mobile-lite #ap-chart-wrap,
-body.mobile-lite #banco-alerts-card,
 body.mobile-lite .hide-lite,
-/* F&B, Real AR, Calipolis, Multi-Hotel lite mode */
+body.mobile-lite #activity,
+/* AR */
+body.mobile-lite #ar-chart-wrap,
+/* AP */
+body.mobile-lite #ap-chart-wrap,
+/* Banco */
+body.mobile-lite #banco-alerts-card,
+/* F&B */
 body.mobile-lite #fb-inventario,
 body.mobile-lite #fb-recetas,
 body.mobile-lite #fb-mermas-panel,
-body.mobile-lite #ar-real-grid > .card:not(.lite-visible),
+body.mobile-lite #fb-resumen > *:not(.stats),
+/* Real AR */
+body.mobile-lite #ar-clientes-list,
+body.mobile-lite #ar-facturas-tbody,
+body.mobile-lite #ar-aging-bar,
+body.mobile-lite #ar-real-grid > div:not(.lite-visible),
+/* Calipolis */
 body.mobile-lite #cal-tendencias,
 body.mobile-lite #cal-ap-chart,
-body.mobile-lite #cal-hotel-cards .card > div[style*="height"],
-body.mobile-lite #mh-trend-chart,
+body.mobile-lite #cal-hoteles,
+body.mobile-lite #cal-detail,
+/* Multi-Hotel */
 body.mobile-lite #mh-gop-chart,
 body.mobile-lite #mh-rev-chart,
-body.mobile-lite #mh-hotel-cards .card > div[style*="height"],
-body.mobile-lite .chart-container,
-body.mobile-lite canvas:not(.lite-visible) { display: none !important; }
+body.mobile-lite #mh-hotel-cards,
+body.mobile-lite #mh-insights
+{ display: none !important; }
+
+/* Lite: simplify Calipolis to just KPI summary */
+body.mobile-lite #cal-kpis { grid-template-columns: repeat(2,1fr) !important; }
+body.mobile-lite #mh-kpis > div > div { grid-template-columns: repeat(2,1fr) !important; }
 body.mobile-lite .mobile-lite-hint { display: block !important; }
 body.mobile-lite #mobile-kpi-bar { display: block !important; }
 body.mobile-lite .panel > .stats { grid-template-columns: repeat(2,1fr) !important; gap: 8px !important; }
@@ -2118,43 +2133,110 @@ tr:hover td{background:rgba(255,255,255,.025)}
 .disc-box{background:rgba(239,68,68,.1);border:1px solid rgba(239,68,68,.3);border-radius:6px;padding:8px 12px;margin-top:8px;font-size:.8rem;color:#fca5a5}
 
 /* ── Chat AI — Yve Copilot ─────────────────────────────── */
-#chat-fab{position:fixed;bottom:28px;right:28px;z-index:1000;
+/* ── Chat / Ask Yve ─────────────────────────────────── */
+#chat-fab{
+  position:fixed;bottom:24px;right:24px;z-index:1000;
   display:flex;align-items:center;gap:10px;
   background:linear-gradient(135deg,#7c3aed,#3b82f6);
-  color:#fff;border:none;border-radius:50px;padding:14px 22px 14px 18px;
-  cursor:pointer;font-size:.95rem;font-weight:700;letter-spacing:.02em;
-  box-shadow:0 4px 24px rgba(124,58,237,.5);transition:.2s}
-#chat-fab:hover{transform:scale(1.04);box-shadow:0 6px 32px rgba(124,58,237,.65)}
-@media(max-width:768px){
-  #chat-fab{ display:none; }
+  color:#fff;border:none;border-radius:50px;
+  padding:13px 20px 13px 16px;cursor:pointer;
+  font-size:.9rem;font-weight:700;
+  box-shadow:0 4px 20px rgba(124,58,237,.5);transition:.2s;
 }
 #chat-fab:hover{transform:translateY(-2px);box-shadow:0 8px 32px rgba(124,58,237,.6)}
-#chat-fab .fab-dot{width:9px;height:9px;border-radius:50%;
-  background:#22c55e;box-shadow:0 0 6px #22c55e;animation:pulse-dot 2s infinite}
+#chat-fab .fab-dot{
+  width:9px;height:9px;border-radius:50%;
+  background:#22c55e;box-shadow:0 0 6px #22c55e;
+  animation:pulse-dot 2s infinite;flex-shrink:0;
+}
 @keyframes pulse-dot{0%,100%{opacity:1}50%{opacity:.4}}
+@media(max-width:768px){#chat-fab{display:none}}
 
-#chat-panel{position:fixed;bottom:0;right:0;width:420px;height:100vh;
-  background:#0f172a;border-left:1px solid #1e293b;z-index:999;
-  display:flex;flex-direction:column;transform:translateX(100%);
+#chat-panel{
+  position:fixed;top:0;right:0;width:420px;height:100%;
+  background:#0f172a;border-left:1px solid #1e293b;
+  z-index:1200;display:flex;flex-direction:column;
+  transform:translateX(100%);
   transition:transform .3s cubic-bezier(.4,0,.2,1);
-  box-shadow:-8px 0 40px rgba(0,0,0,.5)}
+  box-shadow:-8px 0 40px rgba(0,0,0,.5);
+}
 #chat-panel.open{transform:translateX(0)}
 @media(max-width:768px){
-  #chat-panel{width:100vw;height:calc(100vh - 56px);bottom:56px;border-left:none;border-top:1px solid #1e293b}
+  #chat-panel{
+    width:100%;height:100%;
+    top:0;left:0;right:0;bottom:0;
+    border-left:none;
+    transform:translateY(100%);
+  }
+  #chat-panel.open{transform:translateY(0)}
 }
-#chat-input-row{padding:14px 16px;border-top:1px solid #1e293b;
-  display:flex;gap:10px;align-items:center;flex-shrink:0;background:#0f172a}
-#chat-input{flex:1;background:#1e293b;border:1px solid #334155;color:#f1f5f9;
-  border-radius:24px;padding:11px 18px;font-size:.88rem;outline:none;
-  resize:none;font-family:inherit;transition:.15s;max-height:120px}
-#chat-input:focus{border-color:#60a5fa;box-shadow:0 0 0 2px rgba(96,165,250,.15)}
+
+#chat-header{
+  padding:16px 18px;border-bottom:1px solid #1e293b;
+  display:flex;align-items:center;justify-content:space-between;
+  flex-shrink:0;background:#0f172a;
+}
+.chat-title{display:flex;align-items:center;gap:12px}
+.chat-title span{font-size:1.8rem;line-height:1}
+.chat-title h3{font-size:1rem;font-weight:700;color:#f1f5f9;margin:0}
+.chat-title p{font-size:.75rem;color:#64748b;margin:0;margin-top:2px}
+#chat-close{
+  background:rgba(255,255,255,.06);border:1px solid rgba(255,255,255,.1);
+  color:#94a3b8;width:34px;height:34px;border-radius:50%;
+  cursor:pointer;font-size:1.1rem;display:flex;align-items:center;justify-content:center;
+  transition:.15s;flex-shrink:0;
+}
+#chat-close:hover{background:rgba(239,68,68,.15);border-color:rgba(239,68,68,.3);color:#f87171}
+
+#chat-msgs{
+  flex:1;overflow-y:auto;padding:16px;
+  display:flex;flex-direction:column;gap:12px;
+  scroll-behavior:smooth;
+}
+#chat-msgs::-webkit-scrollbar{width:4px}
+#chat-msgs::-webkit-scrollbar-thumb{background:#334155;border-radius:2px}
+
+.msg-user{align-self:flex-end;max-width:80%;background:#3b82f6;color:#fff;border-radius:16px 16px 4px 16px;padding:10px 14px;font-size:.88rem;line-height:1.5}
+.msg-bot{align-self:flex-start;max-width:88%;background:#1e293b;color:#e2e8f0;border-radius:16px 16px 16px 4px;padding:12px 14px;font-size:.88rem;line-height:1.6}
+.msg-bot .msg-label{font-size:.7rem;font-weight:700;color:#60a5fa;margin-bottom:6px;display:block;letter-spacing:.04em}
+.msg-typing{align-self:flex-start;background:#1e293b;border-radius:16px;padding:12px 16px;display:flex;gap:5px}
+.dot-pulse{width:7px;height:7px;border-radius:50%;background:#60a5fa;animation:dotPulse 1.2s infinite}
+.dot-pulse:nth-child(2){animation-delay:.2s}
+.dot-pulse:nth-child(3){animation-delay:.4s}
+@keyframes dotPulse{0%,80%,100%{opacity:.2;transform:scale(.8)}40%{opacity:1;transform:scale(1)}}
+
+#chat-suggestions{
+  padding:0 16px 12px;display:flex;flex-wrap:wrap;gap:7px;flex-shrink:0;
+}
+.sug{
+  background:rgba(59,130,246,.1);border:1px solid rgba(59,130,246,.2);
+  color:#93c5fd;border-radius:20px;padding:7px 13px;font-size:.78rem;
+  cursor:pointer;transition:.15s;white-space:nowrap;font-weight:500;
+}
+.sug:hover{background:rgba(59,130,246,.2);border-color:rgba(59,130,246,.4)}
+
+#chat-input-row{
+  padding:12px 14px;border-top:1px solid #1e293b;
+  display:flex;gap:10px;align-items:flex-end;flex-shrink:0;background:#0f172a;
+  padding-bottom:max(12px, env(safe-area-inset-bottom));
+}
+#chat-input{
+  flex:1;background:#1e293b;border:1px solid #334155;color:#f1f5f9;
+  border-radius:20px;padding:11px 16px;font-size:.9rem;outline:none;
+  resize:none;font-family:inherit;transition:.15s;max-height:120px;
+  line-height:1.5;
+}
+#chat-input:focus{border-color:#60a5fa;box-shadow:0 0 0 2px rgba(96,165,250,.12)}
 #chat-input::placeholder{color:#475569}
-#chat-send{background:linear-gradient(135deg,#7c3aed,#3b82f6);border:none;
+#chat-send{
+  background:linear-gradient(135deg,#7c3aed,#3b82f6);border:none;
   color:#fff;border-radius:50%;width:42px;height:42px;cursor:pointer;
-  font-size:1.1rem;flex-shrink:0;transition:.15s;display:flex;
-  align-items:center;justify-content:center}
+  font-size:1.1rem;flex-shrink:0;transition:.15s;
+  display:flex;align-items:center;justify-content:center;
+}
 #chat-send:hover{transform:scale(1.08)}
 #chat-send:disabled{opacity:.4;cursor:not-allowed;transform:none}
+
 
 /* ── DRR Panel ─────────────────────────────────────────── */
 .drr-metrics{display:grid;grid-template-columns:repeat(3,1fr);gap:12px;margin-bottom:22px}
@@ -2756,7 +2838,7 @@ button, a { touch-action: manipulation; }
       </div>
     </div>
     <div id="fb-upload-msg" style="font-size:12px;margin-bottom:12px;min-height:16px"></div>
-    <div id="fb-resumen"><div class="empty"><p>Cargando...</p></div></div>
+    <div id="fb-resumen" class="lite-visible"><div class="empty"><p>Cargando...</p></div></div>
     <div id="fb-inventario" style="display:none"></div>
     <div id="fb-mermas-panel" style="display:none"></div>
     <div id="fb-recetas" style="display:none"></div>
@@ -2782,7 +2864,7 @@ button, a { touch-action: manipulation; }
     </div>
 
     <!-- Stats KPIs -->
-    <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(120px,1fr));gap:10px;margin-bottom:16px" id="ar-real-stats">
+    <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(120px,1fr));gap:10px;margin-bottom:16px" id="ar-real-stats" class="lite-visible">
       <div class="sc hl c-ora"><div class="sc-lbl" data-tip="Facturas emitidas aún no cobradas">PENDIENTE COBRO</div><div class="sc-val" id="arp-pendiente">—</div></div>
       <div class="sc c-red"><div class="sc-lbl" data-tip="Facturas con más de 60 días sin cobrar">VENCIDO >60d</div><div class="sc-val" id="arp-vencido">—</div></div>
       <div class="sc c-grn"><div class="sc-lbl" data-tip="Cobrado este mes">COBRADO MES</div><div class="sc-val" id="arp-cobrado">—</div></div>
@@ -2897,7 +2979,7 @@ button, a { touch-action: manipulation; }
   </div>
 
   <!-- KPIs consolidados -->
-  <div id="cal-kpis" style="display:grid;grid-template-columns:repeat(auto-fit,minmax(min(200px,45%),1fr));gap:10px;margin-bottom:20px;overflow:hidden"></div>
+  <div id="cal-kpis" class="lite-visible" style="display:grid;grid-template-columns:repeat(auto-fit,minmax(min(200px,45%),1fr));gap:10px;margin-bottom:20px;overflow:hidden"></div>
   <div id="cal-insights"></div>
 
   <!-- Trend row: GOP y Facturas pendientes últimos 6 meses -->
@@ -2931,7 +3013,7 @@ button, a { touch-action: manipulation; }
     </div>
 
     <!-- KPI Cards 2x2 -->
-    <div id="mh-kpis" style="margin-bottom:20px"></div>
+    <div id="mh-kpis" class="lite-visible" style="margin-bottom:20px"></div>
 
     <!-- Smart Insights row -->
     <div id="mh-insights" style="margin-bottom:20px"></div>
@@ -5962,15 +6044,18 @@ var chatGreeted  = false;
 
 function toggleChat() {
   chatOpen = !chatOpen;
-  const panel = document.getElementById('chat-panel');
-  const fab   = document.getElementById('chat-fab');
+  var panel    = document.getElementById('chat-panel');
+  var fab      = document.getElementById('chat-fab');
+  var backdrop = document.getElementById('chat-backdrop');
   panel.classList.toggle('open', chatOpen);
-  fab.style.display = chatOpen ? 'none' : 'flex';
-  if (chatOpen && !chatGreeted) {
-    chatGreeted = true;
-    addMsg('bot', '¡Hola! Soy Yve, tu copiloto financiero 👋 — Tengo acceso a todos los datos del hotel. ¿En qué puedo ayudarte?');
+  // Mobile: show backdrop + lock body scroll
+  if (IS_MOBILE) {
+    if (backdrop) backdrop.style.display = chatOpen ? 'block' : 'none';
+    document.body.style.overflow = chatOpen ? 'hidden' : '';
   }
-  if (chatOpen) setTimeout(() => document.getElementById('chat-input').focus(), 300);
+  // FAB: hide when open
+  if (fab) fab.style.opacity = chatOpen ? '0' : '1';
+  if (fab) fab.style.pointerEvents = chatOpen ? 'none' : 'auto';
 }
 
 function renderMarkdown(text) {
