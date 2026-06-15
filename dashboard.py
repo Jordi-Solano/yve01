@@ -1912,56 +1912,75 @@ body::before{
 .stats{display:grid;grid-template-columns:repeat(6,1fr);gap:12px;margin-bottom:22px}
 @media(max-width:1200px){.stats{grid-template-columns:repeat(3,1fr)}}
 /* ── Mobile lite mode ─────────────────────────────────────────────── */
-/* ── Mobile Lite Mode ── Oculta todo excepto KPI cards ── */
-body.mobile-lite .panel > .card:not(.lite-visible),
-body.mobile-lite .panel > div.tbl-wrap,
-body.mobile-lite .panel > div[style*="overflow-x:auto"],
-body.mobile-lite .panel > table,
-body.mobile-lite .hide-lite,
+/* ── Mobile Lite Mode ─────────────────────────────────── */
+/* AR — ocultar charts, tabla, actividad, toolbar */
+body.mobile-lite #ota-chart,
 body.mobile-lite #activity,
-/* AR */
-body.mobile-lite #ar-chart-wrap,
-/* AP */
+body.mobile-lite #tbl-body,
+body.mobile-lite #tbl-count,
+body.mobile-lite #ar-select-all,
+body.mobile-lite .tbl-wrap,
+body.mobile-lite #panel-ar > div[style*="flex-end"],
+body.mobile-lite #panel-ar > .card { display: none !important; }
+
+/* AP — ocultar tabla, filtros, toolbar */
+body.mobile-lite #ap-tbody,
+body.mobile-lite #ap-count,
 body.mobile-lite #ap-chart-wrap,
-/* Banco */
+body.mobile-lite #btn-filter-ap,
+body.mobile-lite #ap-estado-filter,
+body.mobile-lite #panel-ap > div[style*="flex-end"],
+body.mobile-lite #panel-ap > .card { display: none !important; }
+
+/* DRR — ocultar charts, tabla días, alertas, presupuesto */
+body.mobile-lite #drr-chart-card,
+body.mobile-lite #drr-days,
+body.mobile-lite #drr-alerts,
+body.mobile-lite #drr-budget-bar,
+body.mobile-lite #drr-revenue-chart { display: none !important; }
+body.mobile-lite #drr-metrics { grid-template-columns: repeat(2,1fr) !important; }
+
+/* Banco — ocultar alertas y botones extras */
 body.mobile-lite #banco-alerts-card,
-/* F&B */
+body.mobile-lite #panel-banco > div[style*="margin-top:16px"] { display: none !important; }
+
+/* Notificaciones — ocultar tabla historial */
+body.mobile-lite #notif-tbody,
+body.mobile-lite #panel-notif > .card { display: none !important; }
+
+/* F&B — solo mostrar resumen KPIs */
 body.mobile-lite #fb-inventario,
 body.mobile-lite #fb-recetas,
-body.mobile-lite #fb-mermas-panel,
-body.mobile-lite #fb-resumen > *:not(.stats),
-/* Real AR */
+body.mobile-lite #fb-mermas-panel { display: none !important; }
+
+/* Real AR — ocultar tabla, lista, aging */
 body.mobile-lite #ar-clientes-list,
 body.mobile-lite #ar-facturas-tbody,
 body.mobile-lite #ar-aging-bar,
-body.mobile-lite #ar-real-grid > div:not(.lite-visible),
-/* Calipolis */
+body.mobile-lite #ar-filter-estado,
+body.mobile-lite #ar-real-grid > div:last-child { display: none !important; }
+
+/* Calipolis — solo KPI cards */
 body.mobile-lite #cal-tendencias,
 body.mobile-lite #cal-ap-chart,
 body.mobile-lite #cal-hoteles,
 body.mobile-lite #cal-detail,
-/* Multi-Hotel */
+body.mobile-lite #cal-insights { display: none !important; }
+body.mobile-lite #cal-kpis { grid-template-columns: repeat(2,1fr) !important; }
+
+/* Multi-Hotel — solo KPI cards */
 body.mobile-lite #mh-gop-chart,
 body.mobile-lite #mh-rev-chart,
 body.mobile-lite #mh-hotel-cards,
-body.mobile-lite #mh-insights
-{ display: none !important; }
+body.mobile-lite #mh-insights { display: none !important; }
 
-/* Lite: simplify Calipolis to just KPI summary */
-body.mobile-lite #cal-kpis { grid-template-columns: repeat(2,1fr) !important; }
-body.mobile-lite #mh-kpis > div > div { grid-template-columns: repeat(2,1fr) !important; }
-body.mobile-lite .mobile-lite-hint { display: block !important; }
-body.mobile-lite #mobile-kpi-bar { display: block !important; }
-body.mobile-lite .panel > .stats { grid-template-columns: repeat(2,1fr) !important; gap: 8px !important; }
+/* Ocultar class genéricas */
+body.mobile-lite .hide-lite { display: none !important; }
+
+/* Stats siempre en 2 columnas en lite */
+body.mobile-lite .stats { grid-template-columns: repeat(2,1fr) !important; gap: 8px !important; }
 body.mobile-lite .sc-val { font-size: 22px !important; }
 body.mobile-lite .panel { padding: 12px !important; }
-body.mobile-lite #exec-summary { font-size: 11px; padding: 6px 12px; }
-#mobile-lite-toggle {
-  display: none;
-}
-@media(max-width:768px){
-  #mobile-lite-toggle { display: none; }
-}
 
 
 @media(max-width:900px){
@@ -2594,7 +2613,7 @@ button, a { touch-action: manipulation; }
   </div>
 
   <div id="panel-ar" class="panel active">
-    <div class="mobile-lite-hint" style="display:none;background:rgba(59,130,246,.08);border:1px solid rgba(59,130,246,.2);border-radius:8px;padding:8px 12px;margin-bottom:12px;font-size:12px;color:var(--acc2)">📱 Vista resumida · <button onclick="toggleMobileLite()" style="background:none;border:none;color:var(--acc2);text-decoration:underline;cursor:pointer;font-size:12px">Ver tabla completa →</button></div>
+    
   <div style="display:flex;justify-content:flex-end;gap:12px;margin-bottom:14px"><a href="/api/exportar/ar" class="btn-ref" style="text-decoration:none">⬇️ Excel</a><a href="/api/exportar/ar/pdf" class="btn-ref" style="text-decoration:none">📄 PDF</a><a href="/aprobaciones-ar/" class="btn-ref" style="text-decoration:none" title="Abrir panel de aprobaciones AR">📲 Aprobar facturas AR</a></div>
   <!-- STATS -->
   <div class="stats" id="ar-stats-section">
