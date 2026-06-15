@@ -249,7 +249,9 @@ if __name__ == "__main__":
                     df_existing = pd.read_excel(ruta_excel)
                     df_new = pd.DataFrame([registro])
                     df_combined = pd.concat([df_existing, df_new], ignore_index=True)
-                    df_combined.drop_duplicates(subset=["numero_factura"], keep="last", inplace=True)
+                    # Dedupe por archivo, no numero_factura
+                    if "archivo" in df_combined.columns:
+                        df_combined.drop_duplicates(subset=["archivo"], keep="last", inplace=True)
                     df_combined.to_excel(ruta_excel, index=False)
                 else:
                     guardar_excel([registro], ruta_excel)

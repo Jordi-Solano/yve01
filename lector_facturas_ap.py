@@ -299,13 +299,13 @@ if __name__ == "__main__":
                     }
             reg = procesar_factura_ap(file_path, proveedores)
             if reg and not reg.get("error"):
-                # Cargar Excel existente o crear nuevo
                 ruta_excel = os.path.join(SALIDA_DIR, f"facturas_ap_{FECHA_HOY}.xlsx")
                 if os.path.exists(ruta_excel):
                     df_existing = pd.read_excel(ruta_excel)
                     df_new = pd.DataFrame([reg])
                     df_combined = pd.concat([df_existing, df_new], ignore_index=True)
-                    df_combined.drop_duplicates(subset=["numero_factura"], keep="last", inplace=True)
+                    # Deduplicar por ARCHIVO (no por numero_factura porque puede ser NO_ENCONTRADO)
+                    df_combined.drop_duplicates(subset=["archivo"], keep="last", inplace=True)
                     df_combined.to_excel(ruta_excel, index=False)
                 else:
                     guardar_excel([reg], ruta_excel)
