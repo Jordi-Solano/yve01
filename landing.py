@@ -350,12 +350,17 @@ footer{background:var(--s1);border-top:1px solid var(--s2);padding:48px 5% 32px;
       <div class="roi-result">
         <div class="roi-saving" id="roi-saving">€800</div>
         <div class="roi-saving-lbl">ahorro neto al mes</div>
-        <div style="font-size:30px;font-weight:800;color:var(--acc2);margin-top:8px" id="roi-pct">+167%</div>
+        <div style="font-size:22px;font-weight:900;color:var(--grn);margin-top:6px" id="roi-annual">€9.600 al año</div>
+        <div style="font-size:30px;font-weight:800;color:var(--acc2);margin-top:10px" id="roi-pct">+167%</div>
         <div style="font-size:13px;color:var(--mut)">ROI sobre el precio de Yve</div>
         <div class="roi-breakdown">
           <div class="roi-row"><span class="k">Ahorro en horas</span><span class="v" id="roi-save">€1.200/mes</span></div>
+          <div class="roi-row"><span class="k">Ahorro en AP (<span id="roi-inv-count">100</span> facturas)</span><span class="v" id="roi-ap-save">€250/mes</span></div>
           <div class="roi-row"><span class="k">Precio Yve</span><span class="v" id="roi-price">€400/mes</span></div>
-          <div class="roi-row"><span class="k">Payback</span><span class="v" style="color:var(--grn)">Inmediato</span></div>
+          <div class="roi-row" style="border-top:1px solid var(--s2);padding-top:10px;margin-top:4px">
+            <span class="k" style="font-weight:700;color:var(--tx)">Ahorro neto al año</span>
+            <span class="v" style="color:var(--grn);font-size:16px" id="roi-annual-row">€9.600</span>
+          </div>
         </div>
       </div>
     </div>
@@ -657,23 +662,53 @@ function toggleFaq(btn) {
 
 <script>
 function calcROI() {
-  const hotels = parseInt(document.getElementById('sl-hotels').value);
-  const inv    = parseInt(document.getElementById('sl-inv').value);
-  const hours  = parseInt(document.getElementById('sl-hours').value);
-  const cost   = parseInt(document.getElementById('sl-cost').value);
+  var hotels = parseInt(document.getElementById('sl-hotels').value);
+  var inv    = parseInt(document.getElementById('sl-inv').value);
+  var hours  = parseInt(document.getElementById('sl-hours').value);
+  var cost   = parseInt(document.getElementById('sl-cost').value);
+
+  // Update slider labels
   document.getElementById('v-hotels').textContent = hotels + (hotels === 1 ? ' hotel' : ' hoteles');
   document.getElementById('v-inv').textContent    = inv + ' facturas';
   document.getElementById('v-hours').textContent  = hours + ' horas/semana';
-  document.getElementById('v-cost').textContent   = cost + ' €/hora';
-  const save = hours * 4 * cost;
-  const price = hotels <= 1 ? 400 : hotels <= 5 ? hotels * 400 : hotels * 350;
-  const net = save - price;
-  const roi = price > 0 ? Math.round((net / price) * 100) : 0;
-  document.getElementById('roi-saving').textContent = '€' + net.toLocaleString('es-ES');
-  document.getElementById('roi-pct').textContent    = (roi >= 0 ? '+' : '') + roi + '%';
-  document.getElementById('roi-save').textContent   = '€' + save.toLocaleString('es-ES') + '/mes';
-  document.getElementById('roi-price').textContent  = '€' + price.toLocaleString('es-ES') + '/mes';
-  document.getElementById('roi-saving').style.color = net >= 0 ? 'var(--grn)' : 'var(--red)';
+  document.getElementById('v-cost').textContent   = cost + ' \u20AC/hora';
+
+  // --- Savings calculation ---
+  // 1. Time savings: hours/week × 4.3 weeks × hourly cost
+  var savingHoras = Math.round(hours * 4.3 * cost);
+
+  // 2. AP invoice savings:
+  //    Manual: ~20 min/factura (3-way match manual)
+  //    Con Yve: ~2 min/factura (solo revisión)
+  //    Ahorro: 18 min = 0.30h por factura
+  var minAhorradasPorFactura = 18;
+  var savingAP = Math.round(inv * (minAhorradasPorFactura / 60) * cost);
+
+  // 3. Total savings
+  var totalSave = savingHoras + savingAP;
+
+  // 4. Yve price (by hotel count)
+  var price = hotels <= 1 ? 400 : hotels <= 5 ? hotels * 380 : hotels * 320;
+
+  // 5. Net and ROI
+  var net    = totalSave - price;
+  var roi    = price > 0 ? Math.round((net / price) * 100) : 0;
+  var annual = net * 12;
+
+  // --- Update DOM ---
+  var netColor = net >= 0 ? 'var(--grn)' : 'var(--red)';
+
+  document.getElementById('roi-saving').textContent   = '\u20AC' + net.toLocaleString('es-ES');
+  document.getElementById('roi-saving').style.color   = netColor;
+  document.getElementById('roi-annual').textContent   = '\u20AC' + annual.toLocaleString('es-ES') + ' al a\u00F1o';
+  document.getElementById('roi-annual').style.color   = netColor;
+  document.getElementById('roi-pct').textContent      = (roi >= 0 ? '+' : '') + roi + '%';
+  document.getElementById('roi-save').textContent     = '\u20AC' + savingHoras.toLocaleString('es-ES') + '/mes';
+  document.getElementById('roi-ap-save').textContent  = '\u20AC' + savingAP.toLocaleString('es-ES') + '/mes';
+  document.getElementById('roi-inv-count').textContent = inv;
+  document.getElementById('roi-price').textContent    = '\u20AC' + price.toLocaleString('es-ES') + '/mes';
+  document.getElementById('roi-annual-row').textContent = '\u20AC' + annual.toLocaleString('es-ES');
+  document.getElementById('roi-annual-row').style.color = netColor;
 }
 </script>
 <script>
