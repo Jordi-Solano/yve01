@@ -1860,8 +1860,9 @@ body.light-mode .tab-btn.active{color:#2563eb}
   --grn:#22c55e;--red:#ef4444;--ora:#f97316;--yel:#eab308;--pur:#8b5cf6;
 }
 *{box-sizing:border-box;margin:0;padding:0}
+html{overflow-x:hidden}
 body{
-  background:var(--bg);color:var(--tx);
+  overflow-x:hidden;background:var(--bg);color:var(--tx);
   font-family:'Inter',-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif;
   min-height:100vh;line-height:1.5;position:relative;
 }
@@ -1927,12 +1928,19 @@ body.mobile-lite .sc-val { font-size: 22px !important; }
 body.mobile-lite .panel { padding: 12px !important; }
 body.mobile-lite #exec-summary { font-size: 11px; padding: 6px 12px; }
 #mobile-lite-toggle {
-  position: fixed; bottom: 70px; left: 12px; z-index: 700;
-  background: var(--s1); border: 1px solid var(--s2); border-radius: 20px;
-  padding: 6px 14px; font-size: 11px; color: var(--mut); cursor: pointer;
-  font-weight: 600; display: none; box-shadow: 0 2px 12px rgba(0,0,0,.3);
+  display: none;
 }
-@media(max-width:768px){ #mobile-lite-toggle { display: block; } }
+@media(max-width:768px){
+  #mobile-lite-toggle {
+    display: flex;align-items:center;gap:6px;
+    position: fixed; bottom: 56px; left: 0; right: 0; z-index: 499;
+    background: var(--s1); border-top: 1px solid var(--s2); border-bottom:none;
+    padding: 8px 20px; font-size: 12px; font-weight:600;
+    color: var(--mut); cursor:pointer; justify-content:center;
+  }
+  #mobile-lite-toggle:active { background: var(--s2); }
+}
+
 
 @media(max-width:900px){
   #ar-real-grid{grid-template-columns:1fr}
@@ -1947,6 +1955,7 @@ body.mobile-lite #exec-summary { font-size: 11px; padding: 6px 12px; }
   .btn-ref{font-size:11px;padding:5px 8px}
   .btn-run{font-size:12px;padding:7px 12px}
   #btn-install-pwa{display:none}
+  .hide-mobile{display:none!important}
   /* Tabs */
   .tabs{gap:0;overflow-x:auto;-webkit-overflow-scrolling:touch;scrollbar-width:none;padding:0 4px}
   .tabs::-webkit-scrollbar{display:none}
@@ -2107,7 +2116,16 @@ tr:hover td{background:rgba(255,255,255,.025)}
   background:linear-gradient(135deg,#7c3aed,#3b82f6);
   color:#fff;border:none;border-radius:50px;padding:14px 22px 14px 18px;
   cursor:pointer;font-size:.95rem;font-weight:700;letter-spacing:.02em;
-  box-shadow:0 4px 24px rgba(124,58,237,.5);transition:.2s;white-space:nowrap}
+  box-shadow:0 4px 24px rgba(124,58,237,.5);transition:.2s}
+#chat-fab:hover{transform:scale(1.04);box-shadow:0 6px 32px rgba(124,58,237,.65)}
+@media(max-width:768px){
+  #chat-fab{
+    bottom:0;right:0;left:0;border-radius:0;
+    width:100%;justify-content:center;
+    padding:14px 20px;border-top:1px solid rgba(124,58,237,.3);
+    position:fixed;z-index:500;font-size:1rem;
+  }
+}
 #chat-fab:hover{transform:translateY(-2px);box-shadow:0 8px 32px rgba(124,58,237,.6)}
 #chat-fab .fab-dot{width:9px;height:9px;border-radius:50%;
   background:#22c55e;box-shadow:0 0 6px #22c55e;animation:pulse-dot 2s infinite}
@@ -2119,44 +2137,9 @@ tr:hover td{background:rgba(255,255,255,.025)}
   transition:transform .3s cubic-bezier(.4,0,.2,1);
   box-shadow:-8px 0 40px rgba(0,0,0,.5)}
 #chat-panel.open{transform:translateX(0)}
-@media(max-width:480px){#chat-panel{width:100vw}}
-
-#chat-header{padding:18px 20px;background:#1e293b;border-bottom:1px solid #334155;
-  display:flex;align-items:center;justify-content:space-between;flex-shrink:0}
-#chat-header .chat-title{display:flex;align-items:center;gap:10px}
-#chat-header .chat-title span:first-child{font-size:1.5rem}
-#chat-header h3{margin:0;font-size:1rem;font-weight:700;color:#f1f5f9}
-#chat-header p{margin:0;font-size:.75rem;color:#60a5fa}
-#chat-close{background:none;border:none;color:#64748b;cursor:pointer;
-  font-size:1.4rem;padding:4px 8px;border-radius:6px;transition:.15s}
-#chat-close:hover{background:#334155;color:#f1f5f9}
-
-#chat-msgs{flex:1;overflow-y:auto;padding:20px;display:flex;
-  flex-direction:column;gap:14px;scroll-behavior:smooth}
-#chat-msgs::-webkit-scrollbar{width:4px}
-#chat-msgs::-webkit-scrollbar-track{background:transparent}
-#chat-msgs::-webkit-scrollbar-thumb{background:#334155;border-radius:2px}
-
-.msg{max-width:90%;padding:12px 16px;border-radius:16px;font-size:.88rem;
-  line-height:1.55;animation:msgIn .2s ease}
-@keyframes msgIn{from{opacity:0;transform:translateY(6px)}to{opacity:1;transform:none}}
-.msg.user{align-self:flex-end;background:linear-gradient(135deg,#3b82f6,#2563eb);
-  color:#fff;border-bottom-right-radius:4px}
-.msg.bot{align-self:flex-start;background:#1e293b;color:#e2e8f0;
-  border:1px solid #334155;border-bottom-left-radius:4px}
-.msg.bot.thinking{color:#64748b;font-style:italic;border-style:dashed}
-
-#chat-suggestions{padding:0 16px 12px;display:flex;flex-wrap:wrap;gap:7px;flex-shrink:0}
-.sug{background:#1e293b;border:1px solid #334155;color:#94a3b8;
-  border-radius:20px;padding:6px 13px;font-size:.78rem;cursor:pointer;
-  transition:.15s;white-space:nowrap}
-.sug:hover{border-color:#60a5fa;color:#60a5fa;background:#1e3a5f}
-
-.typing{display:inline-flex;gap:4px;align-items:center;padding:4px 0}
-.typing span{width:7px;height:7px;border-radius:50%;background:#60a5fa;animation:typingDot 1.2s infinite}
-.typing span:nth-child(2){animation-delay:.2s}
-.typing span:nth-child(3){animation-delay:.4s}
-@keyframes typingDot{0%,60%,100%{opacity:.3;transform:translateY(0)}30%{opacity:1;transform:translateY(-3px)}}
+@media(max-width:768px){
+  #chat-panel{width:100vw;height:calc(100vh - 56px);bottom:56px;border-left:none;border-top:1px solid #1e293b}
+}
 #chat-input-row{padding:14px 16px;border-top:1px solid #1e293b;
   display:flex;gap:10px;align-items:center;flex-shrink:0;background:#0f172a}
 #chat-input{flex:1;background:#1e293b;border:1px solid #334155;color:#f1f5f9;
@@ -2400,11 +2383,12 @@ button, a { touch-action: manipulation; }
     <button onclick="toggleDemoMode()" style="margin-left:16px;background:rgba(0,0,0,.2);border:none;padding:3px 10px;border-radius:6px;cursor:pointer;font-size:12px;font-weight:700">✕ Salir</button>
   </div>
   <div class="nav-right">
-    <span class="pill" id="date-pill">—</span>
-  <button id="btn-install-pwa" onclick="if(_deferredInstall){_deferredInstall.prompt();}" style="display:none;background:rgba(34,197,94,.1);border:1px solid rgba(34,197,94,.2);color:#22c55e;padding:4px 10px;border-radius:8px;font-size:11px;cursor:pointer">📲 Instalar</button>
-  <button id="btn-theme-nav" onclick="toggleLightMode()" title="Cambiar tema" style="background:rgba(148,163,184,.08);border:1px solid rgba(148,163,184,.2);color:var(--mut);padding:6px 10px;border-radius:8px;font-size:14px;cursor:pointer;transition:.15s" onmouseover="this.style.color='var(--tx)'" onmouseout="this.style.color='var(--mut)'">☀️</button>
-  <button id="btn-atajos" onclick="toggleAtajos()" class="hide-mobile" style="background:rgba(59,130,246,.1);border:1px solid rgba(59,130,246,.2);color:#60a5fa;padding:5px 12px;border-radius:8px;font-size:12px;cursor:pointer;font-weight:500" title="Ver atajos (?)">⌨ Atajos</button>
-    <span class="pill" style="color:var(--acc2)">👤 __USER_NAME__</span>
+    <!-- DESKTOP: fecha + instalar + tema + atajos + usuario -->
+    <span class="pill hide-mobile" id="date-pill">—</span>
+    <button id="btn-install-pwa" onclick="if(_deferredInstall){_deferredInstall.prompt();}" style="display:none;background:rgba(34,197,94,.1);border:1px solid rgba(34,197,94,.2);color:#22c55e;padding:4px 10px;border-radius:8px;font-size:11px;cursor:pointer">📲 Instalar</button>
+    <button id="btn-theme-nav" onclick="toggleLightMode()" title="Cambiar tema" class="hide-mobile" style="background:rgba(148,163,184,.08);border:1px solid rgba(148,163,184,.2);color:var(--mut);padding:6px 10px;border-radius:8px;font-size:14px;cursor:pointer;transition:.15s">☀️</button>
+    <button id="btn-atajos" onclick="toggleAtajos()" class="hide-mobile" style="background:rgba(59,130,246,.1);border:1px solid rgba(59,130,246,.2);color:#60a5fa;padding:5px 12px;border-radius:8px;font-size:12px;cursor:pointer;font-weight:500" title="Ver atajos (?)">⌨ Atajos</button>
+    <span class="pill hide-mobile" style="color:var(--acc2)">👤 __USER_NAME__</span>
 
     <div class="dropdown">
       <button class="btn-ref" onclick="toggleMenu('reportes-menu')" title="Descargar reportes" data-i18n="nav.reportes">📄 Reportes</button>
@@ -2424,7 +2408,7 @@ button, a { touch-action: manipulation; }
       </div>
     </div>
 
-    <button class="btn-ref" onclick="loadAll()" title="Actualizar datos" data-i18n="nav.actualizar">↻ Actualizar</button>
+    <button class="btn-ref hide-mobile" onclick="loadAll()" title="Actualizar datos" data-i18n="nav.actualizar">↻ Actualizar</button>
 
     <button class="btn-run" id="btn-run" onclick="openUploadModal()">
       <div class="spin" id="spin"></div>
@@ -2448,8 +2432,10 @@ button, a { touch-action: manipulation; }
           <button class="menu-item" onclick="cambiarRol('jefe_otras')">🛠️ Jefe Servicios</button>
         </div>
         <div class="menu-sep"></div>
+        <button class="menu-item" onclick="loadAll();document.getElementById('main-menu').classList.remove('open')">↻ Actualizar datos</button>
         <a href="/configuracion/" class="menu-item" data-i18n="nav.config">⚙️ Configuración</a>
         <a href="/admin/" class="menu-item" style="display:__ADMIN_DISPLAY__" data-i18n="menu.admin">👥 Administración</a>
+        <button class="menu-item" onclick="toggleLightMode();document.getElementById('main-menu').classList.remove('open')">☀️ Cambiar tema</button>
         <div class="menu-sep"></div>
         <a href="/logout" class="menu-item" data-i18n="nav.salir" style="color:#f87171">↩ Cerrar sesión</a>
       </div>
@@ -4585,12 +4571,12 @@ function applyMobileLite() {
     document.body.classList.add('mobile-lite');
     if (btn) btn.innerHTML = '📊 Vista completa';
     if (btn) btn.style.color = 'var(--acc2)';
-    if (btn) btn.style.borderColor = 'rgba(59,130,246,.3)';
+    document.body.style.paddingBottom = IS_MOBILE ? '100px' : '0';
   } else {
     document.body.classList.remove('mobile-lite');
     if (btn) btn.innerHTML = '📱 Vista lite';
     if (btn) btn.style.color = 'var(--mut)';
-    if (btn) btn.style.borderColor = 'var(--s2)';
+    document.body.style.paddingBottom = IS_MOBILE ? '100px' : '0';
   }
 }
 
@@ -7551,12 +7537,12 @@ if (window.innerWidth <= 768) {
   if (mbn) mbn.style.display = 'block';
   // Add padding to main content to avoid overlap
   var mainContent = document.querySelector('.tabs');
-  document.body.style.paddingBottom = '60px';
+  document.body.style.paddingBottom = IS_MOBILE ? '100px' : '0';
 }
 </script>
 
-<button id="mobile-lite-toggle" onclick="toggleMobileLite()" title="Cambiar entre vista resumida y completa">
-  📱 Vista completa
+<button id="mobile-lite-toggle" onclick="toggleMobileLite()" title="Cambiar vista">
+  📊 Vista completa
 </button>
 <button id="back-top" onclick="window.scrollTo({top:0,behavior:'smooth'})" 
   style="display:none;position:fixed;bottom:88px;right:20px;background:var(--s1);border:1px solid var(--s2);color:var(--mut);width:36px;height:36px;border-radius:50%;font-size:16px;cursor:pointer;z-index:500;transition:.2s;box-shadow:0 2px 8px rgba(0,0,0,.3)"
