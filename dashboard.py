@@ -432,11 +432,12 @@ def api_procesar_batch_stream():
                 yield f'data: >> [{i+1}/{total}] {fname}...\n\n'
 
                 # Detectar archivos que claramente no son facturas
-                _fname_lower = fname.lower()
-                _palabras_no_factura = ['rooming', 'sow', 'contract', 'signed', 'agreement',
-                    'nda', 'proposal', 'quote', 'presupuesto', 'convenio', 'protocolo']
+                _fname_lower = fname.lower().replace(' ', '_').replace('-', '_')
+                _palabras_no_factura = ['rooming', 'sow_', 'contract', 'signed', 'agreement',
+                    'nda', 'proposal', 'presupuesto', 'convenio', 'protocolo',
+                    'quote', 'order_form', 'purchase_order', 'new_rooming']
                 if any(p in _fname_lower for p in _palabras_no_factura):
-                    yield f'data: ⚠ {fname}: no parece una factura (saltando)\n\n'
+                    yield f'data: ⚠ {fname}: no es una factura — saltando\n\n'
                     _mark(fname, 'SKIP:NOT_INVOICE')
                     continue
 
