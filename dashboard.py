@@ -2208,10 +2208,21 @@ button, a { touch-action: manipulation; }
     <!-- DESKTOP: fecha + instalar + tema + atajos + usuario -->
     <span class="pill hide-mobile" id="date-pill">—</span>
     <button id="btn-install-pwa" onclick="if(_deferredInstall){_deferredInstall.prompt();}" style="display:none;background:rgba(34,197,94,.1);border:1px solid rgba(34,197,94,.2);color:#22c55e;padding:4px 10px;border-radius:8px;font-size:11px;cursor:pointer">📲 Instalar</button>
-    <button id="btn-theme-nav" onclick="toggleLightMode()" title="Cambiar tema" class="hide-mobile" style="background:rgba(148,163,184,.08);border:1px solid rgba(148,163,184,.2);color:var(--mut);padding:6px 10px;border-radius:8px;font-size:14px;cursor:pointer;transition:.15s">☀️</button>
     <button id="btn-atajos" onclick="toggleAtajos()" class="hide-mobile" style="background:rgba(59,130,246,.1);border:1px solid rgba(59,130,246,.2);color:#60a5fa;padding:5px 12px;border-radius:8px;font-size:12px;cursor:pointer;font-weight:500" title="Ver atajos (?)">⌨ Atajos</button>
     <span class="pill hide-mobile" style="color:var(--acc2)">👤 __USER_NAME__</span>
 
+    <div class="dropdown">
+      <button class="btn-ref" onclick="toggleMenu('reportes-menu')" title="Descargar reportes">📄 Reportes</button>
+      <div id="reportes-menu" class="menu">
+        <div class="menu-head">Reportes PDF</div>
+        <a href="/api/reportes/diario" class="menu-item">📄 Diario</a>
+        <a href="/api/reportes/semanal" class="menu-item">📊 Semanal</a>
+        <a href="/api/reportes/mensual" class="menu-item">📈 Mensual</a>
+        <div class="menu-sep"></div>
+        <a href="/api/reportes/ejecutivo.pdf" class="menu-item">🎯 Ejecutivo PDF</a>
+        <a href="/api/reportes/consolidado.xlsx" class="menu-item">📊 Consolidado Excel</a>
+      </div>
+    </div>
     <button class="btn-ref" onclick="toggleChat()" style="background:linear-gradient(135deg,rgba(124,58,237,.15),rgba(59,130,246,.15));border-color:rgba(124,58,237,.35);color:#a78bfa;font-weight:700" title="Pregunta a Yve IA">💬 Yve</button>
     <button onclick="openUploadModal()" title="Procesar Facturas" style="background:rgba(59,130,246,.1);border:1px solid rgba(59,130,246,.25);color:#60a5fa;padding:7px 11px;border-radius:8px;font-size:16px;cursor:pointer;line-height:1;transition:.15s" onmouseover="this.style.background='rgba(59,130,246,.2)'" onmouseout="this.style.background='rgba(59,130,246,.1)'">⚡</button>
     <button id="btn-lite-nav" onclick="toggleMobileLite()" title="Vista lite / completa" style="background:rgba(34,197,94,.08);border:1px solid rgba(34,197,94,.2);color:#22c55e;padding:7px 11px;border-radius:8px;font-size:16px;cursor:pointer;line-height:1;transition:.15s" onmouseover="this.style.background='rgba(34,197,94,.15)'" onmouseout="this.style.background='rgba(34,197,94,.08)'">📊</button>
@@ -2848,13 +2859,8 @@ button, a { touch-action: manipulation; }
   </div>
 </div>
 
-<!-- Chat AI — Yve Copilot -->
-<button id="chat-fab" onclick="toggleChat()">
-  <span style="font-size:1.3rem">💬</span>
-  <span data-i18n="chat.pregunta" data-i18n="chat.pregunta">Pregunta a Yve</span>
-  <div class="fab-dot"></div>
-</button>
 
+<!-- Chat Yve: se abre desde el botón 💬 Yve del nav -->
 <div id="chat-panel">
   <div id="chat-header">
     <div class="chat-title">
@@ -3891,7 +3897,7 @@ function toggleLightMode() {
   localStorage.setItem('yve_theme', isLight ? 'light' : 'dark');
   var btn = document.getElementById('btn-theme');
   if (btn) btn.textContent = isLight ? '🌙 Modo oscuro' : '☀️ Modo claro';
-  var navBtn = document.getElementById('btn-theme-nav');
+  var navBtn = null; // btn-theme-nav removed
   if (navBtn) navBtn.textContent = isLight ? '🌙' : '☀️';
 }
 // Apply saved theme on load
@@ -3899,7 +3905,7 @@ if (localStorage.getItem('yve_theme') === 'light') {
   document.body.classList.add('light-mode');
   var btn = document.getElementById('btn-theme');
   if (btn) btn.textContent = '🌙 Modo oscuro';
-  var navBtn = document.getElementById('btn-theme-nav');
+  var navBtn = null; // btn-theme-nav removed
   if (navBtn) navBtn.textContent = '🌙';
 }
 
@@ -5787,7 +5793,6 @@ var chatGreeted  = false;
 function toggleChat() {
   chatOpen = !chatOpen;
   var panel    = document.getElementById('chat-panel');
-  var fab      = document.getElementById('chat-fab');
   var backdrop = document.getElementById('chat-backdrop');
   panel.classList.toggle('open', chatOpen);
   // Mobile: show backdrop + lock body scroll
@@ -5795,9 +5800,14 @@ function toggleChat() {
     if (backdrop) backdrop.style.display = chatOpen ? 'block' : 'none';
     document.body.style.overflow = chatOpen ? 'hidden' : '';
   }
-  // FAB: hide when open
-  if (fab) fab.style.opacity = chatOpen ? '0' : '1';
-  if (fab) fab.style.pointerEvents = chatOpen ? 'none' : 'auto';
+  // Update 💬 Yve nav button to reflect state
+  var navYve = document.querySelector('button[onclick="toggleChat()"]');
+  if (navYve) {
+    navYve.style.background = chatOpen
+      ? 'linear-gradient(135deg,rgba(124,58,237,.35),rgba(59,130,246,.35))'
+      : 'linear-gradient(135deg,rgba(124,58,237,.15),rgba(59,130,246,.15))';
+    navYve.textContent = chatOpen ? '✕ Cerrar' : '💬 Yve';
+  }
 }
 
 function renderMarkdown(text) {
