@@ -51,7 +51,7 @@ HTML = r"""<!DOCTYPE html>
 :root{--bg:#0f172a;--s1:#1e293b;--s2:#334155;--s3:#475569;--acc:#3b82f6;--acc2:#60a5fa;--tx:#f1f5f9;--mut:#94a3b8;--dim:#64748b;--red:#ef4444;--grn:#22c55e}
 *{box-sizing:border-box;margin:0;padding:0}
 body{background:var(--bg);color:var(--tx);font-family:'Inter',-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif;
-  min-height:100vh;display:flex;align-items:center;justify-content:center;padding:20px;position:relative;overflow:hidden}
+  min-height:100vh;display:flex;align-items:center;justify-content:center;padding:24px 16px;position:relative;overflow-x:hidden;overflow-y:auto}
 @media(max-width:480px){
   body{padding:16px;align-items:flex-start;padding-top:40px}
   .login-card{padding:28px 22px;border-radius:16px}
@@ -104,14 +104,14 @@ input:focus{border-color:var(--acc);box-shadow:0 0 0 3px rgba(59,130,246,.18)}
 .btn-login:focus-visible{outline:2px solid var(--acc2);outline-offset:3px}
 .btn-login:active{transform:translateY(0)}
 .btn-login:disabled{opacity:.6;cursor:not-allowed;transform:none}
-.error{display:none;margin-top:14px;padding:11px 14px;background:rgba(239,68,68,.1);
-  border:1px solid rgba(239,68,68,.28);border-radius:10px;color:#fca5a5;font-size:13px;text-align:center}
+.error{display:none;margin-top:14px;padding:12px 16px;background:rgba(239,68,68,.12);
+  border:1px solid rgba(239,68,68,.35);border-radius:10px;color:#fca5a5;font-size:13px;text-align:center;font-weight:500}
 .error.on{display:block;animation:rise .2s ease}
 .demo{margin-top:26px;padding-top:22px;border-top:1px solid var(--s2)}
 .demo-h{font-size:10.5px;color:var(--dim);text-transform:uppercase;letter-spacing:.7px;margin-bottom:11px;font-weight:600}
 .chips{display:grid;grid-template-columns:1fr 1fr;gap:8px}
-.chip{background:rgba(51,65,85,.45);border:1px solid var(--s2);border-radius:10px;padding:9px 11px;
-  cursor:pointer;text-align:left;font-family:inherit;transition:.15s}
+.chip{background:rgba(51,65,85,.45);border:1px solid var(--s2);border-radius:10px;padding:12px 14px;
+  cursor:pointer;text-align:left;font-family:inherit;transition:.15s;-webkit-tap-highlight-color:rgba(59,130,246,.2)}
 .chip:hover{border-color:var(--acc);background:rgba(59,130,246,.1);box-shadow:0 0 12px rgba(59,130,246,.15)}
 .chip-role{font-size:12px;font-weight:700;color:var(--acc2);display:block}
 .chip-user{font-size:10.5px;color:var(--mut);margin-top:1px}
@@ -180,9 +180,17 @@ input:focus{border-color:var(--acc);box-shadow:0 0 0 3px rgba(59,130,246,.18)}
 
 <script>
 function fill(u,p){
-  document.getElementById('username').value=u;
-  document.getElementById('password').value=p;
-  document.getElementById('btn-login').focus();
+  var un = document.getElementById('username');
+  var pw = document.getElementById('password');
+  var btn = document.getElementById('btn-login');
+  un.value=u; pw.value=p;
+  // Flash green to confirm fill
+  un.style.transition='border-color .2s';
+  pw.style.transition='border-color .2s';
+  un.style.borderColor='var(--grn)';
+  pw.style.borderColor='var(--grn)';
+  setTimeout(function(){ un.style.borderColor=''; pw.style.borderColor=''; }, 800);
+  btn.focus();
 }
 async function loginDemo() {
   document.getElementById('username').value = 'admin';
@@ -192,7 +200,7 @@ async function loginDemo() {
   doLogin();
 }
 
-function doLogin() {
+async function doLogin() {
   const btn = document.getElementById('btn-login');
   const err = document.getElementById('error');
   const username = document.getElementById('username').value.trim();
@@ -210,8 +218,9 @@ function doLogin() {
       const next = new URLSearchParams(window.location.search).get('next') || '/';
       setTimeout(function() { window.location.href = next; }, 600);
     } else {
-      err.textContent = (data.error || 'Credenciales incorrectas') + ' — Prueba: admin / admin123';
+      err.textContent = data.error || 'Usuario o contraseña incorrectos';
       err.classList.add('on'); btn.disabled = false; btn.textContent = 'Entrar al panel';
+    btn.style.animation='shake .3s ease'; setTimeout(function(){ btn.style.animation=''; }, 400);
     }
   } catch(e) {
     err.textContent = 'Error de conexión'; err.classList.add('on');
