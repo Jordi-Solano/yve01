@@ -1920,7 +1920,21 @@ body.mobile-lite #activity,
 body.mobile-lite #ar-chart-wrap,
 body.mobile-lite #ap-chart-wrap,
 body.mobile-lite #banco-alerts-card,
-body.mobile-lite .hide-lite { display: none !important; }
+body.mobile-lite .hide-lite,
+/* F&B, Real AR, Calipolis, Multi-Hotel lite mode */
+body.mobile-lite #fb-inventario,
+body.mobile-lite #fb-recetas,
+body.mobile-lite #fb-mermas-panel,
+body.mobile-lite #ar-real-grid > .card:not(.lite-visible),
+body.mobile-lite #cal-tendencias,
+body.mobile-lite #cal-ap-chart,
+body.mobile-lite #cal-hotel-cards .card > div[style*="height"],
+body.mobile-lite #mh-trend-chart,
+body.mobile-lite #mh-gop-chart,
+body.mobile-lite #mh-rev-chart,
+body.mobile-lite #mh-hotel-cards .card > div[style*="height"],
+body.mobile-lite .chart-container,
+body.mobile-lite canvas:not(.lite-visible) { display: none !important; }
 body.mobile-lite .mobile-lite-hint { display: block !important; }
 body.mobile-lite #mobile-kpi-bar { display: block !important; }
 body.mobile-lite .panel > .stats { grid-template-columns: repeat(2,1fr) !important; gap: 8px !important; }
@@ -1931,14 +1945,7 @@ body.mobile-lite #exec-summary { font-size: 11px; padding: 6px 12px; }
   display: none;
 }
 @media(max-width:768px){
-  #mobile-lite-toggle {
-    display: flex;align-items:center;gap:6px;
-    position: fixed; bottom: 56px; left: 0; right: 0; z-index: 499;
-    background: var(--s1); border-top: 1px solid var(--s2); border-bottom:none;
-    padding: 8px 20px; font-size: 12px; font-weight:600;
-    color: var(--mut); cursor:pointer; justify-content:center;
-  }
-  #mobile-lite-toggle:active { background: var(--s2); }
+  #mobile-lite-toggle { display: none; }
 }
 
 
@@ -2119,12 +2126,7 @@ tr:hover td{background:rgba(255,255,255,.025)}
   box-shadow:0 4px 24px rgba(124,58,237,.5);transition:.2s}
 #chat-fab:hover{transform:scale(1.04);box-shadow:0 6px 32px rgba(124,58,237,.65)}
 @media(max-width:768px){
-  #chat-fab{
-    bottom:0;right:0;left:0;border-radius:0;
-    width:100%;justify-content:center;
-    padding:14px 20px;border-top:1px solid rgba(124,58,237,.3);
-    position:fixed;z-index:500;font-size:1rem;
-  }
+  #chat-fab{ display:none; }
 }
 #chat-fab:hover{transform:translateY(-2px);box-shadow:0 8px 32px rgba(124,58,237,.6)}
 #chat-fab .fab-dot{width:9px;height:9px;border-radius:50%;
@@ -2390,27 +2392,12 @@ button, a { touch-action: manipulation; }
     <button id="btn-atajos" onclick="toggleAtajos()" class="hide-mobile" style="background:rgba(59,130,246,.1);border:1px solid rgba(59,130,246,.2);color:#60a5fa;padding:5px 12px;border-radius:8px;font-size:12px;cursor:pointer;font-weight:500" title="Ver atajos (?)">⌨ Atajos</button>
     <span class="pill hide-mobile" style="color:var(--acc2)">👤 __USER_NAME__</span>
 
-    <div class="dropdown">
-      <button class="btn-ref" onclick="toggleMenu('reportes-menu')" title="Descargar reportes" data-i18n="nav.reportes">📄 Reportes</button>
-      <div id="reportes-menu" class="menu">
-        <div class="menu-head">Reportes PDF</div>
-        <a href="/api/reportes/diario" class="menu-item">📄 Diario</a>
-        <a href="/api/reportes/semanal" class="menu-item">📊 Semanal</a>
-        <a href="/api/reportes/mensual" class="menu-item">📈 Mensual</a>
-        <div class="menu-sep"></div>
-        <button class="menu-item" onclick="startTour()">🎯 Tour guiado</button>
-        <button class="menu-item" onclick="showSetupChecklist()">✅ Checklist setup</button>
-        <button class="menu-item" onclick="showChangelog()">🆕 Novedades</button>
-        <button class="menu-item" onclick="toggleLightMode()" id="btn-theme">🌙 Modo oscuro</button>
-        <div class="menu-head">Ejecutivos</div>
-        <a href="/api/reportes/ejecutivo.pdf" class="menu-item">🎯 Ejecutivo PDF</a>
-        <a href="/api/reportes/consolidado.xlsx" class="menu-item">📊 Consolidado Excel</a>
-      </div>
-    </div>
+    <button class="btn-ref" onclick="toggleChat()" style="background:linear-gradient(135deg,rgba(124,58,237,.15),rgba(59,130,246,.15));border-color:rgba(124,58,237,.35);color:#a78bfa;font-weight:700" title="Pregunta a Yve IA">💬 Yve</button>
+
 
     <button class="btn-ref hide-mobile" onclick="loadAll()" title="Actualizar datos" data-i18n="nav.actualizar">↻ Actualizar</button>
 
-    <button class="btn-run" id="btn-run" onclick="openUploadModal()">
+    <button class="btn-run hide-mobile" id="btn-run" onclick="openUploadModal()">
       <div class="spin" id="spin"></div>
       <span id="run-lbl" data-i18n="nav.procesar">⚡ Procesar Facturas</span>
     </button>
@@ -2418,6 +2405,13 @@ button, a { touch-action: manipulation; }
     <div class="dropdown">
       <button class="btn-ref" onclick="toggleMenu('main-menu')" title="Más opciones" style="font-size:17px;line-height:1;padding:5px 12px">⋯</button>
       <div id="main-menu" class="menu">
+        <div class="menu-head">Reportes</div>
+        <a href="/api/reportes/diario" class="menu-item">📄 Diario</a>
+        <a href="/api/reportes/semanal" class="menu-item">📊 Semanal</a>
+        <a href="/api/reportes/mensual" class="menu-item">📈 Mensual</a>
+        <a href="/api/reportes/ejecutivo.pdf" class="menu-item">🎯 Ejecutivo PDF</a>
+        <a href="/api/reportes/consolidado.xlsx" class="menu-item">📊 Consolidado Excel</a>
+        <div class="menu-sep"></div>
         <div class="menu-head" data-i18n="menu.presentacion">Presentación</div>
         <button class="menu-item" data-i18n="nav.tour" onclick="tourStart();document.getElementById('main-menu').classList.remove('open')">🎯 Tour guiado</button>
         <button class="menu-item" id="btn-demo" onclick="toggleDemoMode()"><span data-i18n="nav.demo">🎭 Demo Mode</span></button>
@@ -2436,6 +2430,7 @@ button, a { touch-action: manipulation; }
         <a href="/configuracion/" class="menu-item" data-i18n="nav.config">⚙️ Configuración</a>
         <a href="/admin/" class="menu-item" style="display:__ADMIN_DISPLAY__" data-i18n="menu.admin">👥 Administración</a>
         <button class="menu-item" onclick="toggleLightMode();document.getElementById('main-menu').classList.remove('open')">☀️ Cambiar tema</button>
+        <button class="menu-item" onclick="toggleMobileLite();document.getElementById('main-menu').classList.remove('open')" id="menu-lite-btn">📱 Vista lite</button>
         <div class="menu-sep"></div>
         <a href="/logout" class="menu-item" data-i18n="nav.salir" style="color:#f87171">↩ Cerrar sesión</a>
       </div>
@@ -2694,10 +2689,10 @@ button, a { touch-action: manipulation; }
       <div class="card-title" data-i18n="card.alertasBanco">Alertas Bancarias</div>
       <div id="bk-alertas"><div class="empty"><p>Cargando...</p></div></div>
     </div>
-    <div style="margin-top:16px">
+    <div style="margin-top:16px;display:flex;flex-wrap:wrap;gap:8px;align-items:center">
       <a href="/api/exportar/banco" class="btn-ref" style="text-decoration:none;font-size:12px">⬇️ Excel</a>
-        <button class="btn-run" onclick="runConciliacion()" style="font-size:12px">⚡ Conciliar</button>
-      <a href="/conciliacion/" class="btn-run" style="text-decoration:none;display:inline-flex;font-size:13px;padding:10px 20px" data-i18n="btn.verConciliacion">🏦 Ver conciliación completa</a>
+      <button class="btn-run" onclick="runConciliacion()" style="font-size:12px">⚡ Conciliar</button>
+      <a href="/conciliacion/" class="btn-ref" style="text-decoration:none;font-size:12px" data-i18n="btn.verConciliacion">🏦 Ver conciliación</a>
     </div>
   </div><!-- /panel-banco -->
 
@@ -2902,7 +2897,7 @@ button, a { touch-action: manipulation; }
   </div>
 
   <!-- KPIs consolidados -->
-  <div id="cal-kpis" style="display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-bottom:20px"></div>
+  <div id="cal-kpis" style="display:grid;grid-template-columns:repeat(auto-fit,minmax(min(200px,45%),1fr));gap:10px;margin-bottom:20px;overflow:hidden"></div>
   <div id="cal-insights"></div>
 
   <!-- Trend row: GOP y Facturas pendientes últimos 6 meses -->
@@ -2924,7 +2919,7 @@ button, a { touch-action: manipulation; }
   <div id="cal-detail" style="display:none;margin-top:4px"></div>
   </div><!-- /panel-calipolis -->
 
-  <div id="panel-multi_hotel" class="panel">
+  <div id="panel-multi_hotel" class="panel" style="overflow-x:hidden">
 
     <!-- Header -->
     <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:22px;flex-wrap:wrap;gap:12px">
@@ -2954,7 +2949,7 @@ button, a { touch-action: manipulation; }
     </div>
 
     <!-- Hotel cards grid -->
-    <div id="mh-hotel-cards" style="display:grid;grid-template-columns:repeat(auto-fit,minmax(290px,1fr));gap:16px"></div>
+    <div id="mh-hotel-cards" style="display:grid;grid-template-columns:repeat(auto-fit,minmax(min(290px,100%),1fr));gap:16px;overflow:hidden"></div>
 
   </div><!-- /panel-multi_hotel -->
 
@@ -4571,12 +4566,12 @@ function applyMobileLite() {
     document.body.classList.add('mobile-lite');
     if (btn) btn.innerHTML = '📊 Vista completa';
     if (btn) btn.style.color = 'var(--acc2)';
-    document.body.style.paddingBottom = IS_MOBILE ? '100px' : '0';
+    document.body.style.paddingBottom = IS_MOBILE ? '0' : '0';
   } else {
     document.body.classList.remove('mobile-lite');
     if (btn) btn.innerHTML = '📱 Vista lite';
     if (btn) btn.style.color = 'var(--mut)';
-    document.body.style.paddingBottom = IS_MOBILE ? '100px' : '0';
+    document.body.style.paddingBottom = IS_MOBILE ? '0' : '0';
   }
 }
 
@@ -4584,6 +4579,8 @@ function toggleMobileLite() {
   _mobileLite = !_mobileLite;
   localStorage.setItem('mobile_lite', _mobileLite ? '1' : '0');
   applyMobileLite();
+  var menuBtn = document.getElementById('menu-lite-btn');
+  if (menuBtn) menuBtn.textContent = _mobileLite ? '📊 Vista completa' : '📱 Vista lite';
   // Reload current tab data if switching to full
   if (!_mobileLite) {
     showNotification('Vista completa activada', 'info');
@@ -6535,7 +6532,7 @@ async function loadMultiHotel() {
     var gopC = k.avg_gop_pct >= 22 ? '#22c55e' : k.avg_gop_pct >= 16 ? '#f59e0b' : '#ef4444';
     var kEl  = document.getElementById('mh-kpis');
     if (kEl) kEl.innerHTML =
-      '<div style="display:grid;grid-template-columns:1fr 1fr;gap:12px">' +
+      '<div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(min(200px,45%),1fr));gap:10px">' +
       [
         {l:'REVENUE MTD',     v:'€' + Math.round((k.total_revenue||0)/1000) + 'K',
          s:(k.n_hoteles||0)+' propiedades · Grupo Calipolis', c:'#60a5fa'},
@@ -7511,33 +7508,10 @@ function showSetupChecklist() {
 <!-- Floating Action Button - Ask Yve AI -->
 
 <!-- Mobile bottom nav -->
-<div id="mobile-bottom-nav" style="display:none;position:fixed;bottom:0;left:0;right:0;background:var(--s1);border-top:1px solid var(--s2);z-index:600;padding:6px 0 env(safe-area-inset-bottom,0)">
-  <div style="display:flex;justify-content:space-around;max-width:500px;margin:0 auto">
-    <button onclick="switchTab('ar',document.getElementById('tab-ar'))" style="background:none;border:none;color:var(--mut);padding:6px 12px;cursor:pointer;flex:1;text-align:center;font-size:10px">
-      <div style="font-size:18px">💳</div><div>AR</div>
-    </button>
-    <button onclick="switchTab('ap',document.getElementById('tab-ap'))" style="background:none;border:none;color:var(--mut);padding:6px 12px;cursor:pointer;flex:1;text-align:center;font-size:10px">
-      <div style="font-size:18px">📦</div><div>AP</div>
-    </button>
-    <button onclick="switchTab('drr',document.getElementById('tab-drr'))" style="background:none;border:none;color:var(--mut);padding:6px 12px;cursor:pointer;flex:1;text-align:center;font-size:10px">
-      <div style="font-size:18px">📊</div><div>DRR</div>
-    </button>
-    <button onclick="switchTab('calipolis',document.getElementById('tab-calipolis'))" style="background:none;border:none;color:var(--mut);padding:6px 12px;cursor:pointer;flex:1;text-align:center;font-size:10px">
-      <div style="font-size:18px">🏨</div><div>Grupo</div>
-    </button>
-    <button onclick="toggleChat()" style="background:none;border:none;color:var(--mut);padding:6px 12px;cursor:pointer;flex:1;text-align:center;font-size:10px">
-      <div style="font-size:18px">💬</div><div>Yve</div>
-    </button>
-  </div>
-</div>
+<!-- mobile bottom nav removed -->
 <script>
-// Show mobile nav on small screens
 if (window.innerWidth <= 768) {
-  var mbn = document.getElementById('mobile-bottom-nav');
-  if (mbn) mbn.style.display = 'block';
-  // Add padding to main content to avoid overlap
-  var mainContent = document.querySelector('.tabs');
-  document.body.style.paddingBottom = IS_MOBILE ? '100px' : '0';
+  document.body.style.paddingBottom = '0';
 }
 </script>
 
