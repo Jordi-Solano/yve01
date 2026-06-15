@@ -3551,7 +3551,26 @@ function runPipeline() {
 
 function closeModalAndRefresh() {
   closeModal();
-  setTimeout(loadAll, 300);
+  setTimeout(function() {
+    loadAll();
+    // Detectar dónde hay nuevos datos y cambiar al tab correcto
+    fetch('/api/stats_ap').then(r=>r.json()).then(ap=>{
+      fetch('/api/stats').then(r=>r.json()).then(ar=>{
+        var apCount = ap.total || 0;
+        var arCount = ar.total || 0;
+        // Si hay más datos en AP que en AR, cambiar al tab AP
+        if (apCount > arCount && apCount > 0) {
+          var apTab = document.getElementById('tab-ap') || document.querySelector('[onclick*="ap_proveedores"]') || document.querySelector('[onclick*="switchTab(\'ap\'"]');
+          if (apTab) {
+            apTab.click();
+            showNotification && showNotification('✓ ' + apCount + ' factura(s) AP procesada(s)', 'success');
+          }
+        } else if (arCount > 0) {
+          showNotification && showNotification('✓ ' + arCount + ' factura(s) AR procesada(s)', 'success');
+        }
+      }).catch(()=>{});
+    }).catch(()=>{});
+  }, 300);
 }
 
 var _lastBatchFiles = [];
