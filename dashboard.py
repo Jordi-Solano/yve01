@@ -2475,6 +2475,8 @@ button, a { touch-action: manipulation; }
     <span class="pill hide-mobile" style="color:var(--acc2)">👤 __USER_NAME__</span>
 
     <button class="btn-ref" onclick="toggleChat()" style="background:linear-gradient(135deg,rgba(124,58,237,.15),rgba(59,130,246,.15));border-color:rgba(124,58,237,.35);color:#a78bfa;font-weight:700" title="Pregunta a Yve IA">💬 Yve</button>
+    <button onclick="openUploadModal()" title="Procesar Facturas" style="background:rgba(59,130,246,.1);border:1px solid rgba(59,130,246,.25);color:#60a5fa;padding:7px 11px;border-radius:8px;font-size:16px;cursor:pointer;line-height:1;transition:.15s" onmouseover="this.style.background='rgba(59,130,246,.2)'" onmouseout="this.style.background='rgba(59,130,246,.1)'">⚡</button>
+    <button id="btn-lite-nav" onclick="toggleMobileLite()" title="Vista lite / completa" style="background:rgba(34,197,94,.08);border:1px solid rgba(34,197,94,.2);color:#22c55e;padding:7px 11px;border-radius:8px;font-size:16px;cursor:pointer;line-height:1;transition:.15s" onmouseover="this.style.background='rgba(34,197,94,.15)'" onmouseout="this.style.background='rgba(34,197,94,.08)'">📊</button>
 
 
     <button class="btn-ref hide-mobile" onclick="loadAll()" title="Actualizar datos" data-i18n="nav.actualizar">↻ Actualizar</button>
@@ -4643,17 +4645,19 @@ function initMobileLite() {
 }
 
 function applyMobileLite() {
-  var btn = document.getElementById('mobile-lite-toggle');
+  var btn     = document.getElementById('mobile-lite-toggle');
+  var menuBtn = document.getElementById('menu-lite-btn');
+  var navBtn  = document.getElementById('btn-lite-nav');
   if (_mobileLite) {
     document.body.classList.add('mobile-lite');
-    if (btn) btn.innerHTML = '📊 Vista completa';
-    if (btn) btn.style.color = 'var(--acc2)';
-    document.body.style.paddingBottom = IS_MOBILE ? '0' : '0';
+    if (btn)     { btn.innerHTML = '📊 Vista completa'; btn.style.color = 'var(--acc2)'; }
+    if (menuBtn) menuBtn.textContent = '📊 Vista completa';
+    if (navBtn)  { navBtn.textContent = '📊'; navBtn.style.color = '#22c55e'; navBtn.title = 'Vista completa'; }
   } else {
     document.body.classList.remove('mobile-lite');
-    if (btn) btn.innerHTML = '📱 Vista lite';
-    if (btn) btn.style.color = 'var(--mut)';
-    document.body.style.paddingBottom = IS_MOBILE ? '0' : '0';
+    if (btn)     { btn.innerHTML = '📱 Vista lite'; btn.style.color = 'var(--mut)'; }
+    if (menuBtn) menuBtn.textContent = '📱 Vista lite';
+    if (navBtn)  { navBtn.textContent = '📱'; navBtn.style.color = 'var(--mut)'; navBtn.title = 'Vista lite'; }
   }
 }
 
@@ -7394,12 +7398,7 @@ setTimeout(() => {
 
 </script>
 
-<!-- Search result keyboard hint -->
-<div id="search-hint-bar" style="display:none;position:fixed;bottom:0;left:0;right:0;background:#0f172a;border-top:1px solid #1e293b;padding:8px 16px;font-size:11px;color:#64748b;z-index:8999;display:flex;gap:16px">
-  <span>↑↓ Navegar</span>
-  <span>↵ Abrir</span>
-  <span>Esc Cerrar</span>
-</div>
+
 
 <!-- Keyboard Shortcuts Modal -->
 <div id="atajos-modal" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,.6);z-index:9500;align-items:center;justify-content:center">
