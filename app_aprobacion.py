@@ -251,9 +251,23 @@ let facturas = [];
 let aprobaciones = [];
 
 async function init() {
-  const [fRes, aRes] = await Promise.all([fetch('/aprobaciones-ar/api/facturas'), fetch('/aprobaciones-ar/api/aprobaciones')]);
-  facturas = await fRes.json();
-  aprobaciones = await aRes.json();
+  const [fRes, aRes] = await Promise.all([
+    fetch('/aprobaciones-ar/api/facturas'),
+    fetch('/aprobaciones-ar/api/aprobaciones')
+  ]);
+  // If not authenticated, server redirects to /login — detect and redirect
+  if (fRes.status === 401 || fRes.redirected || fRes.url.includes('/login')) {
+    window.location.href = '/login?next=' + encodeURIComponent(window.location.pathname);
+    return;
+  }
+  try {
+    facturas = await fRes.json();
+    aprobaciones = await aRes.json();
+  } catch(e) {
+    // JSON parse failed — probably got login HTML redirect
+    window.location.href = '/login?next=' + encodeURIComponent(window.location.pathname);
+    return;
+  }
   renderFacturas();
   renderHistorial();
   updateStats();
@@ -446,6 +460,7 @@ def index():
 
 
 @bp.route("/api/facturas")
+@login_required
 def api_facturas():
     df = cargar_facturas()
     if df.empty:
@@ -454,6 +469,7 @@ def api_facturas():
 
 
 @bp.route("/api/aprobaciones")
+@login_required
 def api_aprobaciones():
     df = cargar_aprobaciones()
     if df.empty:
@@ -462,6 +478,7 @@ def api_aprobaciones():
 
 
 @bp.route("/api/accion", methods=["POST"])
+@login_required
 def api_accion():
     data = request.get_json()
     indice    = int(data.get("indice", 0))

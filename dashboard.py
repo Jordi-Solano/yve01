@@ -610,21 +610,6 @@ def api_invoice_pdf(numero):
     except Exception as e:
         return jsonify({"error": str(e)}), 500
 
-@app.route("/api/test_telegram", methods=["POST"])
-@login_required
-def api_test_telegram():
-    """Test Telegram Bot connection."""
-    import os as _os
-    token = _os.environ.get("TELEGRAM_BOT_TOKEN", "")
-    chat_id = _os.environ.get("TELEGRAM_CHAT_ID", "")
-    if not token or not chat_id:
-        return jsonify({"ok": False, "message": "TELEGRAM_BOT_TOKEN o TELEGRAM_CHAT_ID no configurados en Render"})
-    try:
-        from notificaciones import enviar_telegram
-        ok = enviar_telegram("✅ Test de conexión desde Yve.01 — funcionando correctamente")
-        return jsonify({"ok": ok, "message": "✓ Telegram Bot conectado y mensaje enviado" if ok else "✗ Error enviando mensaje"})
-    except Exception as e:
-        return jsonify({"ok": False, "error": str(e)[:200]})
 
 @app.route("/api/test_stripe", methods=["POST"])
 @login_required
@@ -666,8 +651,6 @@ def api_health():
     # SMTP configured
     smtp_ok = bool(os.environ.get('SMTP_USER') and os.environ.get('SMTP_PASSWORD'))
     
-    # Telegram configured
-    tg_ok = bool(os.environ.get('TELEGRAM_BOT_TOKEN') and os.environ.get('TELEGRAM_CHAT_ID'))
     
     health['components'] = {
         'drr':      {'ok': has_drr,   'msg': 'DRR procesado' if has_drr else 'Sin DRR'},
@@ -676,7 +659,7 @@ def api_health():
         'config':   {'ok': has_cfg,   'msg': 'Hotel configurado' if has_cfg else 'Sin configuración'},
         'oracle':   {'ok': True,      'msg': f'Oracle {oracle_mode}', 'mode': oracle_mode},
         'smtp':     {'ok': smtp_ok,   'msg': 'SMTP configurado' if smtp_ok else 'SMTP no configurado'},
-        'telegram': {'ok': tg_ok,     'msg': 'Telegram OK' if tg_ok else 'Telegram no configurado'},
+
     }
     
     # Overall status
@@ -1659,8 +1642,8 @@ def api_notif_config_get():
     """Devuelve la configuración de notificaciones."""
     path = os.path.join(BASE_DIR, "datos-referencia", "notif_config.json")
     default = {
-        "canales": {"email": True, "whatsapp": False, "telegram": False, "slack": False, "push": True},
-        "email": "", "whatsapp": "", "telegram_chat": "", "slack_webhook": "",
+        "canales": {"email": True, "whatsapp": False, "slack": False, "push": True},
+        "email": "", "whatsapp": "", "slack_webhook": "",
         "alertas": {
             "ar_discrepancia": True, "ar_falta_di": True,
             "ap_discrepancia": True, "drr_oob": True,
@@ -2419,6 +2402,7 @@ button, a { touch-action: manipulation; }
   <div class="nav-right">
     <span class="pill" id="date-pill">—</span>
   <button id="btn-install-pwa" onclick="if(_deferredInstall){_deferredInstall.prompt();}" style="display:none;background:rgba(34,197,94,.1);border:1px solid rgba(34,197,94,.2);color:#22c55e;padding:4px 10px;border-radius:8px;font-size:11px;cursor:pointer">📲 Instalar</button>
+  <button id="btn-theme-nav" onclick="toggleLightMode()" title="Cambiar tema" style="background:rgba(148,163,184,.08);border:1px solid rgba(148,163,184,.2);color:var(--mut);padding:6px 10px;border-radius:8px;font-size:14px;cursor:pointer;transition:.15s" onmouseover="this.style.color='var(--tx)'" onmouseout="this.style.color='var(--mut)'">☀️</button>
   <button id="btn-atajos" onclick="toggleAtajos()" class="hide-mobile" style="background:rgba(59,130,246,.1);border:1px solid rgba(59,130,246,.2);color:#60a5fa;padding:5px 12px;border-radius:8px;font-size:12px;cursor:pointer;font-weight:500" title="Ver atajos (?)">⌨ Atajos</button>
     <span class="pill" style="color:var(--acc2)">👤 __USER_NAME__</span>
 
@@ -4100,16 +4084,20 @@ function applyI18n(data) {
 }
 
 function toggleLightMode() {
-  const isLight = document.body.classList.toggle('light-mode');
+  var isLight = document.body.classList.toggle('light-mode');
   localStorage.setItem('yve_theme', isLight ? 'light' : 'dark');
-  const btn = document.getElementById('btn-theme');
+  var btn = document.getElementById('btn-theme');
   if (btn) btn.textContent = isLight ? '🌙 Modo oscuro' : '☀️ Modo claro';
+  var navBtn = document.getElementById('btn-theme-nav');
+  if (navBtn) navBtn.textContent = isLight ? '🌙' : '☀️';
 }
 // Apply saved theme on load
 if (localStorage.getItem('yve_theme') === 'light') {
   document.body.classList.add('light-mode');
-  const btn = document.getElementById('btn-theme');
+  var btn = document.getElementById('btn-theme');
   if (btn) btn.textContent = '🌙 Modo oscuro';
+  var navBtn = document.getElementById('btn-theme-nav');
+  if (navBtn) navBtn.textContent = '🌙';
 }
 
 async function cambiarIdioma(lang) {
@@ -6336,7 +6324,6 @@ async function loadDRR() {
 const NOTIF_CHANNELS = [
   {key:'email',    icon:'📧', name:'Email'},
   {key:'whatsapp', icon:'💬', name:'WhatsApp', hint:'Requiere cuenta Twilio (TWILIO_ACCOUNT_SID, TWILIO_AUTH_TOKEN)'},
-  {key:'telegram', icon:'✈️', name:'Telegram', hint:'Requiere TELEGRAM_BOT_TOKEN y TELEGRAM_CHAT_ID en variables de entorno'},
   {key:'slack',    icon:'💼', name:'Slack'},
   {key:'push',     icon:'🔔', name:'Push'},
 ];
@@ -6358,7 +6345,7 @@ async function loadNotifConfig() {
     _notifConfig = await r.json();
     if (ch) ch.dataset.loaded = '1';
   } catch(e) {
-    _notifConfig = {canales:{email:true,push:true},email:'',whatsapp:'',telegram_chat:'',alertas:{}};
+    _notifConfig = {canales:{email:true,push:true},email:'',whatsapp:'',alertas:{}};
   }
   renderNotifConfig();
 }
@@ -6388,8 +6375,7 @@ function renderNotifConfig() {
     if (c.canales && c.canales.whatsapp)
       html += notifField('whatsapp', 'Número WhatsApp destino (+34...)', '+34600123456', c.whatsapp || '') +
               '<div style="font-size:11px;color:var(--dim);margin-top:4px">Necesita TWILIO_ACCOUNT_SID + TWILIO_AUTH_TOKEN + TWILIO_WHATSAPP_FROM en Render</div>';
-    if (c.canales && c.canales.telegram)
-      html += notifField('telegram_chat', 'Telegram Chat ID', '123456789', c.telegram_chat || '');
+
     if (c.canales && c.canales.slack)
       html += notifField('slack_webhook', 'Slack Webhook URL', 'https://hooks.slack.com/services/...', c.slack_webhook || '');
     fields.innerHTML = html;

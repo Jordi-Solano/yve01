@@ -81,6 +81,7 @@ def facturas_a_lista(df):
         })
     return filas
 
+@login_required
 @bp.route("/api/facturas")
 def api_facturas():
     df   = cargar_facturas_ap()
@@ -109,6 +110,7 @@ def api_stats():
         "pendientes":    sum(1 for r in rows if not r.get("accion","")),
     })
 
+@login_required
 @bp.route("/api/accion", methods=["POST"])
 def api_accion():
     data = request.get_json(force=True)
