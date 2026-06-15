@@ -143,15 +143,28 @@ def cargar_datos():
     En todos los casos usa el archivo más reciente por fecha de modificación.
     """
     print(f"[cargar_datos] BASE_DIR={BASE_DIR}")
-    print(f"[cargar_datos] REPORTES_DIR={REPORTES_DIR} (existe: {os.path.isdir(REPORTES_DIR)})")
-    print(f"[cargar_datos] PROCESADAS_DIR={PROCESADAS_DIR} (existe: {os.path.isdir(PROCESADAS_DIR)})")
-    df, ruta = cargar_ultimo_excel("doble_imposicion_*.xlsx", REPORTES_DIR)
-    if df is None:
-        df, ruta = cargar_ultimo_excel("verificacion_*.xlsx", REPORTES_DIR)
-    if df is None:
-        df, ruta = cargar_ultimo_excel("facturas_procesadas_*.xlsx", PROCESADAS_DIR)
-    if df is None:
+    # Buscar todos los archivos AR posibles y usar el MÁS RECIENTE
+    import glob as _glob
+    candidatos = []
+    for patron, dir_ in [
+        ("doble_imposicion_*.xlsx", REPORTES_DIR),
+        ("verificacion_*.xlsx", REPORTES_DIR),
+        ("facturas_procesadas_*.xlsx", PROCESADAS_DIR),
+    ]:
+        for f in _glob.glob(os.path.join(dir_, patron)):
+            candidatos.append((os.path.getmtime(f), f))
+    if not candidatos:
         print("[cargar_datos] ADVERTENCIA: no se encontró ningún Excel AR")
+        return pd.DataFrame(), {}
+    candidatos.sort(reverse=True)
+    ruta = candidatos[0][1]
+    print(f"[cargar_datos] Usando archivo más reciente: {os.path.basename(ruta)}")
+    try:
+        df = pd.read_excel(ruta)
+    except Exception as e:
+        print(f"[cargar_datos] ERROR leyendo {ruta}: {e}")
+        return pd.DataFrame(), {}
+    if df is None or df.empty:
         return pd.DataFrame(), {}
 
     apro_path = os.path.join(APROBACIONES_DIR, "aprobaciones.xlsx")
@@ -1015,11 +1028,22 @@ FACTURAS_AP_DIR      = os.path.join(BASE_DIR, "facturas-procesadas")
 APROBACIONES_AP_DIR  = os.path.join(BASE_DIR, "aprobaciones")
 
 def cargar_datos_ap():
-    """Carga facturas AP contabilizadas o procesadas."""
-    df, _ = cargar_ultimo_excel("facturas_contabilizadas_*.xlsx", FACTURAS_AP_DIR)
-    if df is None:
-        df, _ = cargar_ultimo_excel("facturas_ap_*.xlsx", FACTURAS_AP_DIR)
-    if df is None:
+    """Carga facturas AP — usa el archivo MÁS RECIENTE entre contabilizadas y procesadas."""
+    import glob
+    candidatos = []
+    for patron in ["facturas_contabilizadas_*.xlsx", "facturas_ap_*.xlsx"]:
+        for f in glob.glob(os.path.join(FACTURAS_AP_DIR, patron)):
+            candidatos.append((os.path.getmtime(f), f))
+    if not candidatos:
+        return pd.DataFrame()
+    # El más reciente
+    candidatos.sort(reverse=True)
+    ruta = candidatos[0][1]
+    try:
+        df = pd.read_excel(ruta)
+    except Exception:
+        return pd.DataFrame()
+    if df is None or df.empty:
         return pd.DataFrame()
 
     # Merge con aprobaciones AP
