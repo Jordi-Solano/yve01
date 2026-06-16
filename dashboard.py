@@ -1913,67 +1913,348 @@ body::before{
 @media(max-width:1200px){.stats{grid-template-columns:repeat(3,1fr)}}
 /* ── Mobile lite mode ─────────────────────────────────────────────── */
 /* ── Mobile Lite Mode ─────────────────────────────────── */
-/* AR — ocultar charts, tabla, actividad, toolbar de botones */
+/* AR — ocultar charts, tabla, actividad, toolbar */
 body.mobile-lite #ota-chart,
 body.mobile-lite #activity,
 body.mobile-lite #tbl-body,
-body.mobile-lite .tbl-wrap,
+body.mobile-lite #tbl-count,
 body.mobile-lite #ar-select-all,
+body.mobile-lite .tbl-wrap,
 body.mobile-lite #panel-ar > div[style*="flex-end"],
 body.mobile-lite #panel-ar > .card { display: none !important; }
 
-/* AP — ocultar tabla, filtros, charts */
+/* AP — ocultar tabla, filtros, toolbar */
 body.mobile-lite #ap-tbody,
+body.mobile-lite #ap-count,
 body.mobile-lite #ap-chart-wrap,
 body.mobile-lite #btn-filter-ap,
 body.mobile-lite #ap-estado-filter,
 body.mobile-lite #panel-ap > div[style*="flex-end"],
 body.mobile-lite #panel-ap > .card { display: none !important; }
 
-/* DRR — ocultar charts, tabla, alertas */
+/* DRR — ocultar charts, tabla días, alertas, presupuesto */
 body.mobile-lite #drr-chart-card,
 body.mobile-lite #drr-days,
 body.mobile-lite #drr-alerts,
-body.mobile-lite #drr-budget-bar { display: none !important; }
+body.mobile-lite #drr-budget-bar,
+body.mobile-lite #drr-revenue-chart { display: none !important; }
 body.mobile-lite #drr-metrics { grid-template-columns: repeat(2,1fr) !important; }
 
-/* Banco — ocultar alertas y acciones */
+/* Banco — ocultar alertas y botones extras */
 body.mobile-lite #banco-alerts-card,
 body.mobile-lite #panel-banco > div[style*="margin-top:16px"] { display: none !important; }
 
-/* Notif — ocultar historial y tabla */
+/* Notificaciones — ocultar tabla historial */
 body.mobile-lite #notif-tbody,
-body.mobile-lite #panel-notif .card:not(.lite-visible) { display: none !important; }
+body.mobile-lite #panel-notif > .card { display: none !important; }
 
-/* F&B — ocultar toolbar (sub-tabs + botones) + secciones */
-body.mobile-lite #fb-toolbar,
-body.mobile-lite #fb-upload-msg,
+/* F&B — solo mostrar resumen KPIs */
 body.mobile-lite #fb-inventario,
 body.mobile-lite #fb-recetas,
 body.mobile-lite #fb-mermas-panel { display: none !important; }
 
-/* Real AR — ocultar grid completo + botones de acción */
-body.mobile-lite #ar-real-actions,
-body.mobile-lite #ar-real-grid { display: none !important; }
+/* Real AR — ocultar tabla, lista, aging */
+body.mobile-lite #ar-clientes-list,
+body.mobile-lite #ar-facturas-tbody,
+body.mobile-lite #ar-aging-bar,
+body.mobile-lite #ar-filter-estado,
+body.mobile-lite #ar-real-grid > div:last-child { display: none !important; }
 
-/* Calipolis — ocultar gráficos, hotel cards, detalle */
-body.mobile-lite #cal-trend-row,
+/* Calipolis — solo KPI cards */
+body.mobile-lite #cal-tendencias,
+body.mobile-lite #cal-ap-chart,
 body.mobile-lite #cal-hoteles,
-body.mobile-lite #cal-detail { display: none !important; }
+body.mobile-lite #cal-detail,
+body.mobile-lite #cal-insights { display: none !important; }
 body.mobile-lite #cal-kpis { grid-template-columns: repeat(2,1fr) !important; }
-body.mobile-lite #cal-insights > div { grid-template-columns: 1fr !important; }
 
-/* Multi-Hotel — ocultar gráficos y hotel cards */
-body.mobile-lite #mh-trend-row,
+/* Multi-Hotel — solo KPI cards */
+body.mobile-lite #mh-gop-chart,
+body.mobile-lite #mh-rev-chart,
 body.mobile-lite #mh-hotel-cards,
 body.mobile-lite #mh-insights { display: none !important; }
-body.mobile-lite #mh-kpis > div { grid-template-columns: repeat(2,1fr) !important; }
 
-/* Global lite: stats 2 cols, texto menor */
+/* Ocultar class genéricas */
 body.mobile-lite .hide-lite { display: none !important; }
+
+/* Stats siempre en 2 columnas en lite */
 body.mobile-lite .stats { grid-template-columns: repeat(2,1fr) !important; gap: 8px !important; }
 body.mobile-lite .sc-val { font-size: 22px !important; }
 body.mobile-lite .panel { padding: 12px !important; }
+
+
+@media(max-width:900px){
+  #ar-real-grid{grid-template-columns:1fr}
+  .metrics{grid-template-columns:repeat(2,1fr)}
+}
+@media(max-width:768px){
+  /* Nav */
+  .nav{padding:0 10px;gap:4px;height:52px}
+  .logo-name{font-size:15px}
+  .logo-tag{display:none}
+  .nav-right{gap:4px}
+  .btn-ref{font-size:11px;padding:5px 8px}
+  .btn-run{font-size:12px;padding:7px 12px}
+  #btn-install-pwa{display:none}
+  .hide-mobile{display:none!important}
+  /* Tabs */
+  .tabs{gap:0;overflow-x:auto;-webkit-overflow-scrolling:touch;scrollbar-width:none;padding:0 4px}
+  .tabs::-webkit-scrollbar{display:none}
+  .tab-btn{white-space:nowrap;flex-shrink:0;font-size:11px;padding:8px 10px;min-width:auto}
+  /* Panels */
+  .panel{padding:14px 12px}
+  .card{padding:12px}
+  /* Stats */
+  .stats{grid-template-columns:repeat(2,1fr);gap:8px}
+  .sc-val{font-size:20px}
+  .sc-lbl{font-size:9px}
+  /* AR Real */
+  #ar-real-grid{grid-template-columns:1fr}
+  /* DRR metrics */
+  .drr-mc{padding:10px}
+  /* Tables: horizontal scroll */
+  .tbl-wrap{overflow-x:auto;-webkit-overflow-scrolling:touch}
+  table{min-width:500px}
+  /* Hide secondary columns on mobile */
+  .hide-mobile{display:none}
+  /* Calipolis cards */
+  #cal-grid{grid-template-columns:1fr!important}
+  /* Multi-hotel table */
+  #mh-kpis .sc-lbl{font-size:9px}
+  /* Status bar */
+  .status-bar{font-size:10px;padding:5px 10px}
+  /* Demo banner */
+  #demo-banner{font-size:10px;padding:4px 8px}
+  /* Back to top */
+  #back-top{bottom:70px;right:12px;width:32px;height:32px}
+}
+@media(max-width:600px){
+  .stats{grid-template-columns:repeat(2,1fr)}
+  /* Tabs: icon-only on very small screens */
+  .tab-btn .tab-txt{display:none}
+  .tab-btn{font-size:16px;padding:8px 10px}
+  /* Modal fix */
+  #modal-emitir > div, #checklist-modal > div, #changelog-modal > div{
+    max-width:100%;width:calc(100% - 20px);margin:10px;max-height:calc(100vh - 40px)
+  }
+  /* AR Real two-col → one col */
+  #ef-cliente{font-size:12px}
+  /* Grids to 1 col */
+  .metrics{grid-template-columns:1fr}
+}
+@media(max-width:600px){
+  .stats{grid-template-columns:repeat(2,1fr)}
+  .tab-btn span{display:none}
+  .tab-btn{font-size:16px;padding:8px}
+}
+.sc{background:var(--s1);border:1px solid var(--s2);border-radius:14px;padding:18px 16px;transition:.2s}
+.sc:hover{border-color:var(--s3);transform:translateY(-1px)}
+.sc.hl{border-color:rgba(59,130,246,.4);background:rgba(59,130,246,.05)}
+.sc-lbl{font-size:10px;color:var(--mut);text-transform:uppercase;letter-spacing:.6px;margin-bottom:10px}
+.sc-val{font-size:28px;font-weight:800;line-height:1;letter-spacing:-1px}
+.sc-sub{font-size:11px;color:var(--dim);margin-top:6px}
+.sc.c-blu .sc-val{color:var(--acc2)}
+.sc.c-grn .sc-val{color:var(--grn)}
+.sc.c-red .sc-val{color:var(--red)}
+.sc.c-ora .sc-val{color:var(--ora)}
+.sc.c-yel .sc-val{color:var(--yel)}
+.sc.c-pur .sc-val{color:var(--pur)}
+
+/* ── MID ROW ── */
+.mid{display:grid;grid-template-columns:1fr 300px;gap:16px;margin-bottom:24px}
+@media(max-width:960px){.mid{grid-template-columns:1fr}}
+
+/* ── CARDS ── */
+.card{background:var(--s1);border:1px solid var(--s2);border-radius:14px;padding:22px}
+.card-title{font-size:11px;font-weight:700;color:var(--mut);text-transform:uppercase;letter-spacing:.6px;margin-bottom:18px}
+.chart-wrap{height:190px;position:relative}
+
+/* ── ACTIVITY ── */
+.act-item{display:flex;align-items:flex-start;gap:10px;padding:10px 0;border-bottom:1px solid var(--s2)}
+.act-item:last-child{border-bottom:none}
+.adot{width:8px;height:8px;border-radius:50%;flex-shrink:0;margin-top:5px}
+.adot.g{background:var(--grn)}.adot.r{background:var(--red)}.adot.o{background:var(--ora)}
+.adot.b{background:var(--acc2)}.adot.m{background:var(--mut)}
+.atxt{font-size:12px;color:var(--tx);line-height:1.5}
+.atxt b{color:var(--acc3);font-weight:700}
+
+/* ── TABLE ── */
+.tbl-wrap{overflow-x:auto;-webkit-overflow-scrolling:touch}
+table{width:100%;border-collapse:collapse;font-size:12px;min-width:800px}
+th{background:rgba(51,65,85,.6);color:var(--mut);font-size:10px;text-transform:uppercase;letter-spacing:.5px;padding:10px 14px;text-align:left;white-space:nowrap;border-bottom:1px solid var(--s2)}
+th:first-child{border-radius:8px 0 0 0}th:last-child{border-radius:0 8px 0 0}
+td{padding:10px 14px;border-bottom:1px solid rgba(51,65,85,.4);white-space:nowrap;vertical-align:middle}
+tr:last-child td{border-bottom:none}
+tr:hover td{background:rgba(255,255,255,.025)}
+.td-dim{color:var(--dim);font-size:11px}
+.td-b{font-weight:700}
+.td-red{color:#f87171;font-weight:700}
+
+/* ── BADGES ── */
+.badge{display:inline-flex;align-items:center;gap:4px;font-size:9px;font-weight:700;padding:3px 9px;border-radius:20px;text-transform:uppercase;letter-spacing:.4px;white-space:nowrap}
+.b-ok{background:rgba(34,197,94,.12);color:#4ade80;border:1px solid rgba(34,197,94,.2)}
+.b-disc{background:rgba(239,68,68,.12);color:#f87171;border:1px solid rgba(239,68,68,.2)}
+.b-fdi{background:rgba(249,115,22,.12);color:#fb923c;border:1px solid rgba(249,115,22,.2)}
+.b-cok{background:rgba(59,130,246,.12);color:#60a5fa;border:1px solid rgba(59,130,246,.2)}
+.b-na{background:rgba(148,163,184,.08);color:#94a3b8;border:1px solid rgba(148,163,184,.12)}
+.b-unk{background:rgba(234,179,8,.12);color:#facc15;border:1px solid rgba(234,179,8,.2)}
+.b-apr{background:rgba(34,197,94,.12);color:#4ade80;border:1px solid rgba(34,197,94,.2)}
+.b-rec{background:rgba(239,68,68,.12);color:#f87171;border:1px solid rgba(239,68,68,.2)}
+.b-pen{background:rgba(148,163,184,.07);color:#64748b;border:1px solid rgba(148,163,184,.1)}
+
+/* ── MODAL ── */
+.overlay{display:none;position:fixed;inset:0;background:rgba(0,0,0,.8);backdrop-filter:blur(4px);z-index:500;align-items:center;justify-content:center;padding:20px}
+.overlay.on{display:flex}
+.modal{background:var(--s1);border:1px solid var(--s2);border-radius:18px;width:100%;max-width:560px;padding:26px}
+.modal-h{display:flex;align-items:center;gap:10px;margin-bottom:18px}
+.modal-h h3{font-size:16px;font-weight:700;flex:1}
+.log{background:#060c1a;border:1px solid var(--s2);border-radius:10px;padding:16px;height:280px;overflow-y:auto;font-family:'JetBrains Mono','Cascadia Code','Fira Code',monospace;font-size:11px;line-height:1.8;scroll-behavior:smooth}
+.log p{margin:0}
+.l-ok{color:#4ade80}.l-err{color:#f87171}.l-info{color:#60a5fa;font-weight:700}.l-warn{color:#facc15}.l-dim{color:#475569}
+.modal-f{margin-top:16px;display:flex;justify-content:flex-end;gap:10px}
+.btn-cl{background:var(--s2);color:var(--tx);border:none;padding:9px 20px;border-radius:9px;font-size:13px;font-weight:600;cursor:pointer;transition:.15s}
+.btn-cl:hover:not(:disabled){background:var(--s3)}
+.btn-cl:disabled{opacity:.35;cursor:not-allowed}
+
+/* ── SPINNER ── */
+.spin{width:15px;height:15px;border:2px solid rgba(255,255,255,.25);border-top-color:#fff;border-radius:50%;animation:sp .65s linear infinite;display:none}
+@keyframes sp{to{transform:rotate(360deg)}}
+
+/* ── EMPTY ── */
+.empty{text-align:center;padding:48px 20px;color:var(--mut)}
+.empty .ei{font-size:36px;margin-bottom:10px}
+.empty p{font-size:13px;line-height:1.6}
+
+/* ── STATUS BAR ── */
+.status-bar{display:flex;align-items:center;gap:8px;font-size:11px;color:var(--dim);margin-bottom:20px}
+.status-dot{width:6px;height:6px;border-radius:50%;background:var(--grn);box-shadow:0 0 6px var(--grn);animation:pulse 2s infinite}
+@keyframes pulse{0%,100%{opacity:1}50%{opacity:.4}}
+
+/* ── TABS ────────────────────────────────────────────── */
+.tabs{display:flex;gap:2px;margin-bottom:24px;border-bottom:1px solid var(--s2);padding-bottom:0;overflow-x:auto}
+.tabs::-webkit-scrollbar{height:3px}
+.tabs::-webkit-scrollbar-thumb{background:var(--s3);border-radius:2px}
+.tab{padding:10px 18px;background:none;border:none;color:var(--mut);cursor:pointer;font-size:.85rem;font-weight:600;border-bottom:2px solid transparent;transition:.18s;white-space:nowrap}
+.tab:hover{color:var(--tx)}
+.tab.active{color:var(--acc2);border-bottom-color:var(--acc)}
+.panel{display:none}.panel.active{display:block;animation:fadeIn .18s ease}
+@keyframes fadeIn{from{opacity:0;transform:translateY(3px)}to{opacity:1;transform:none}}
+/* ── AP Cards ─────────────────────────────────────────── */
+.ap-badge{display:inline-block;padding:2px 8px;border-radius:4px;font-size:.75rem;font-weight:700;letter-spacing:.04em}
+.ap-badge.fb{background:rgba(139,92,246,.2);color:#c4b5fd}
+.ap-badge.otras{background:rgba(59,130,246,.2);color:#93c5fd}
+.ap-badge.ok{background:rgba(34,197,94,.2);color:#86efac}
+.ap-badge.disc{background:rgba(239,68,68,.2);color:#fca5a5}
+.ap-badge.alerta{background:rgba(59,130,246,.15);color:#93c5fd}
+.ap-badge.sinpo{background:rgba(234,179,8,.2);color:#fde047}
+.ap-badge.manual{background:rgba(249,115,22,.2);color:#fed7aa}
+.alerta-box{background:rgba(59,130,246,.1);border:1px solid rgba(59,130,246,.3);border-radius:6px;padding:8px 12px;margin-top:8px;font-size:.8rem;color:var(--acc3)}
+.disc-box{background:rgba(239,68,68,.1);border:1px solid rgba(239,68,68,.3);border-radius:6px;padding:8px 12px;margin-top:8px;font-size:.8rem;color:#fca5a5}
+
+/* ── Chat AI — Yve Copilot ─────────────────────────────── */
+/* ── Chat / Ask Yve ─────────────────────────────────── */
+#chat-fab{
+  position:fixed;bottom:24px;right:24px;z-index:1000;
+  display:flex;align-items:center;gap:10px;
+  background:linear-gradient(135deg,#7c3aed,#3b82f6);
+  color:#fff;border:none;border-radius:50px;
+  padding:13px 20px 13px 16px;cursor:pointer;
+  font-size:.9rem;font-weight:700;
+  box-shadow:0 4px 20px rgba(124,58,237,.5);transition:.2s;
+}
+#chat-fab:hover{transform:translateY(-2px);box-shadow:0 8px 32px rgba(124,58,237,.6)}
+#chat-fab .fab-dot{
+  width:9px;height:9px;border-radius:50%;
+  background:#22c55e;box-shadow:0 0 6px #22c55e;
+  animation:pulse-dot 2s infinite;flex-shrink:0;
+}
+@keyframes pulse-dot{0%,100%{opacity:1}50%{opacity:.4}}
+@media(max-width:768px){#chat-fab{display:none}}
+
+#chat-panel{
+  position:fixed;top:0;right:0;width:420px;height:100%;
+  background:#0f172a;border-left:1px solid #1e293b;
+  z-index:1200;display:flex;flex-direction:column;
+  transform:translateX(100%);
+  transition:transform .3s cubic-bezier(.4,0,.2,1);
+  box-shadow:-8px 0 40px rgba(0,0,0,.5);
+}
+#chat-panel.open{transform:translateX(0)}
+@media(max-width:768px){
+  #chat-panel{
+    width:100%;height:100%;
+    top:0;left:0;right:0;bottom:0;
+    border-left:none;
+    transform:translateY(100%);
+  }
+  #chat-panel.open{transform:translateY(0)}
+}
+
+#chat-header{
+  padding:16px 18px;border-bottom:1px solid #1e293b;
+  display:flex;align-items:center;justify-content:space-between;
+  flex-shrink:0;background:#0f172a;
+}
+.chat-title{display:flex;align-items:center;gap:12px}
+.chat-title span{font-size:1.8rem;line-height:1}
+.chat-title h3{font-size:1rem;font-weight:700;color:#f1f5f9;margin:0}
+.chat-title p{font-size:.75rem;color:#64748b;margin:0;margin-top:2px}
+#chat-close{
+  background:rgba(255,255,255,.06);border:1px solid rgba(255,255,255,.1);
+  color:#94a3b8;width:34px;height:34px;border-radius:50%;
+  cursor:pointer;font-size:1.1rem;display:flex;align-items:center;justify-content:center;
+  transition:.15s;flex-shrink:0;
+}
+#chat-close:hover{background:rgba(239,68,68,.15);border-color:rgba(239,68,68,.3);color:#f87171}
+
+#chat-msgs{
+  flex:1;overflow-y:auto;padding:16px;
+  display:flex;flex-direction:column;gap:12px;
+  scroll-behavior:smooth;
+}
+#chat-msgs::-webkit-scrollbar{width:4px}
+#chat-msgs::-webkit-scrollbar-thumb{background:#334155;border-radius:2px}
+
+.msg-user{align-self:flex-end;max-width:80%;background:#3b82f6;color:#fff;border-radius:16px 16px 4px 16px;padding:10px 14px;font-size:.88rem;line-height:1.5}
+.msg-bot{align-self:flex-start;max-width:88%;background:#1e293b;color:#e2e8f0;border-radius:16px 16px 16px 4px;padding:12px 14px;font-size:.88rem;line-height:1.6}
+.msg-bot .msg-label{font-size:.7rem;font-weight:700;color:#60a5fa;margin-bottom:6px;display:block;letter-spacing:.04em}
+.msg-typing{align-self:flex-start;background:#1e293b;border-radius:16px;padding:12px 16px;display:flex;gap:5px}
+.dot-pulse{width:7px;height:7px;border-radius:50%;background:#60a5fa;animation:dotPulse 1.2s infinite}
+.dot-pulse:nth-child(2){animation-delay:.2s}
+.dot-pulse:nth-child(3){animation-delay:.4s}
+@keyframes dotPulse{0%,80%,100%{opacity:.2;transform:scale(.8)}40%{opacity:1;transform:scale(1)}}
+
+#chat-suggestions{
+  padding:0 16px 12px;display:flex;flex-wrap:wrap;gap:7px;flex-shrink:0;
+}
+.sug{
+  background:rgba(59,130,246,.1);border:1px solid rgba(59,130,246,.2);
+  color:#93c5fd;border-radius:20px;padding:7px 13px;font-size:.78rem;
+  cursor:pointer;transition:.15s;white-space:nowrap;font-weight:500;
+}
+.sug:hover{background:rgba(59,130,246,.2);border-color:rgba(59,130,246,.4)}
+
+#chat-input-row{
+  padding:12px 14px;border-top:1px solid #1e293b;
+  display:flex;gap:10px;align-items:flex-end;flex-shrink:0;background:#0f172a;
+  padding-bottom:max(12px, env(safe-area-inset-bottom));
+}
+#chat-input{
+  flex:1;background:#1e293b;border:1px solid #334155;color:#f1f5f9;
+  border-radius:20px;padding:11px 16px;font-size:.9rem;outline:none;
+  resize:none;font-family:inherit;transition:.15s;max-height:120px;
+  line-height:1.5;
+}
+#chat-input:focus{border-color:#60a5fa;box-shadow:0 0 0 2px rgba(96,165,250,.12)}
+#chat-input::placeholder{color:#475569}
+#chat-send{
+  background:linear-gradient(135deg,#7c3aed,#3b82f6);border:none;
+  color:#fff;border-radius:50%;width:42px;height:42px;cursor:pointer;
+  font-size:1.1rem;flex-shrink:0;transition:.15s;
+  display:flex;align-items:center;justify-content:center;
+}
+#chat-send:hover{transform:scale(1.08)}
+#chat-send:disabled{opacity:.4;cursor:not-allowed;transform:none}
 
 
 /* ── DRR Panel ─────────────────────────────────────────── */
@@ -2208,21 +2489,10 @@ button, a { touch-action: manipulation; }
     <!-- DESKTOP: fecha + instalar + tema + atajos + usuario -->
     <span class="pill hide-mobile" id="date-pill">—</span>
     <button id="btn-install-pwa" onclick="if(_deferredInstall){_deferredInstall.prompt();}" style="display:none;background:rgba(34,197,94,.1);border:1px solid rgba(34,197,94,.2);color:#22c55e;padding:4px 10px;border-radius:8px;font-size:11px;cursor:pointer">📲 Instalar</button>
+    <button id="btn-theme-nav" onclick="toggleLightMode()" title="Cambiar tema" class="hide-mobile" style="background:rgba(148,163,184,.08);border:1px solid rgba(148,163,184,.2);color:var(--mut);padding:6px 10px;border-radius:8px;font-size:14px;cursor:pointer;transition:.15s">☀️</button>
     <button id="btn-atajos" onclick="toggleAtajos()" class="hide-mobile" style="background:rgba(59,130,246,.1);border:1px solid rgba(59,130,246,.2);color:#60a5fa;padding:5px 12px;border-radius:8px;font-size:12px;cursor:pointer;font-weight:500" title="Ver atajos (?)">⌨ Atajos</button>
     <span class="pill hide-mobile" style="color:var(--acc2)">👤 __USER_NAME__</span>
 
-    <div class="dropdown">
-      <button class="btn-ref" onclick="toggleMenu('reportes-menu')" title="Descargar reportes">📄 Reportes</button>
-      <div id="reportes-menu" class="menu">
-        <div class="menu-head">Reportes PDF</div>
-        <a href="/api/reportes/diario" class="menu-item">📄 Diario</a>
-        <a href="/api/reportes/semanal" class="menu-item">📊 Semanal</a>
-        <a href="/api/reportes/mensual" class="menu-item">📈 Mensual</a>
-        <div class="menu-sep"></div>
-        <a href="/api/reportes/ejecutivo.pdf" class="menu-item">🎯 Ejecutivo PDF</a>
-        <a href="/api/reportes/consolidado.xlsx" class="menu-item">📊 Consolidado Excel</a>
-      </div>
-    </div>
     <button class="btn-ref" onclick="toggleChat()" style="background:linear-gradient(135deg,rgba(124,58,237,.15),rgba(59,130,246,.15));border-color:rgba(124,58,237,.35);color:#a78bfa;font-weight:700" title="Pregunta a Yve IA">💬 Yve</button>
     <button onclick="openUploadModal()" title="Procesar Facturas" style="background:rgba(59,130,246,.1);border:1px solid rgba(59,130,246,.25);color:#60a5fa;padding:7px 11px;border-radius:8px;font-size:16px;cursor:pointer;line-height:1;transition:.15s" onmouseover="this.style.background='rgba(59,130,246,.2)'" onmouseout="this.style.background='rgba(59,130,246,.1)'">⚡</button>
     <button id="btn-lite-nav" onclick="toggleMobileLite()" title="Vista lite / completa" style="background:rgba(34,197,94,.08);border:1px solid rgba(34,197,94,.2);color:#22c55e;padding:7px 11px;border-radius:8px;font-size:16px;cursor:pointer;line-height:1;transition:.15s" onmouseover="this.style.background='rgba(34,197,94,.15)'" onmouseout="this.style.background='rgba(34,197,94,.08)'">📊</button>
@@ -2575,7 +2845,7 @@ button, a { touch-action: manipulation; }
 
   <div id="panel-fb" class="panel">
     <!-- F&B Sub-tabs -->
-    <div id="fb-toolbar" style="display:flex;align-items:center;justify-content:space-between;margin-bottom:20px;flex-wrap:wrap;gap:10px">
+    <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:20px;flex-wrap:wrap;gap:10px">
       <div style="display:flex;gap:4px;background:var(--s1);border-radius:10px;padding:4px;border:1px solid var(--s2)">
         <button class="fb-sub active" onclick="fbSub('resumen',this)" data-i18n="fb.resumen">📊 Resumen</button>
         <button class="fb-sub" onclick="fbSub('inventario',this)" data-i18n="fb.inventario">📦 Inventario</button>
@@ -2606,7 +2876,7 @@ button, a { touch-action: manipulation; }
         </h2>
         <div style="font-size:12px;color:var(--mut);margin-top:4px">Clientes de crédito · Facturación corporativa · Control de cobros</div>
       </div>
-      <div id="ar-real-actions" style="display:flex;gap:8px;flex-wrap:wrap">
+      <div style="display:flex;gap:8px;flex-wrap:wrap">
         <button class="btn-ref" onclick="abrirEmitirFactura()" style="font-size:12px">📄 Nueva factura</button>
         <button class="btn-ref" onclick="loadARRealData()" style="font-size:12px">🔄 Actualizar</button>
         <a href="/api/exportar/ar_real" class="btn-ref" style="text-decoration:none;font-size:12px">⬇️ Excel</a>
@@ -2734,7 +3004,7 @@ button, a { touch-action: manipulation; }
   <div id="cal-insights"></div>
 
   <!-- Trend row: GOP y Facturas pendientes últimos 6 meses -->
-  <div id="cal-trend-row" style="display:grid;grid-template-columns:1fr 1fr;gap:16px;margin-bottom:22px">
+  <div style="display:grid;grid-template-columns:1fr 1fr;gap:16px;margin-bottom:22px">
     <div class="card">
       <div class="card-title" data-i18n="card.gopEvolucion">GOP% — evolución 6 meses</div>
       <div id="cal-tendencias" style="height:140px;position:relative"></div>
@@ -2770,7 +3040,7 @@ button, a { touch-action: manipulation; }
     <div id="mh-insights" style="margin-bottom:20px"></div>
 
     <!-- Trend charts 2 col -->
-    <div id="mh-trend-row" style="display:grid;grid-template-columns:1fr 1fr;gap:16px;margin-bottom:20px">
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:16px;margin-bottom:20px">
       <div class="card">
         <div class="card-title" style="font-size:11px;letter-spacing:.5px;text-transform:uppercase">GOP% — 6 Month Trend</div>
         <div id="mh-gop-chart" style="height:140px;position:relative"></div>
@@ -2859,8 +3129,13 @@ button, a { touch-action: manipulation; }
   </div>
 </div>
 
+<!-- Chat AI — Yve Copilot -->
+<button id="chat-fab" onclick="toggleChat()">
+  <span style="font-size:1.3rem">💬</span>
+  <span data-i18n="chat.pregunta" data-i18n="chat.pregunta">Pregunta a Yve</span>
+  <div class="fab-dot"></div>
+</button>
 
-<!-- Chat Yve: se abre desde el botón 💬 Yve del nav -->
 <div id="chat-panel">
   <div id="chat-header">
     <div class="chat-title">
@@ -3897,7 +4172,7 @@ function toggleLightMode() {
   localStorage.setItem('yve_theme', isLight ? 'light' : 'dark');
   var btn = document.getElementById('btn-theme');
   if (btn) btn.textContent = isLight ? '🌙 Modo oscuro' : '☀️ Modo claro';
-  var navBtn = null; // btn-theme-nav removed
+  var navBtn = document.getElementById('btn-theme-nav');
   if (navBtn) navBtn.textContent = isLight ? '🌙' : '☀️';
 }
 // Apply saved theme on load
@@ -3905,7 +4180,7 @@ if (localStorage.getItem('yve_theme') === 'light') {
   document.body.classList.add('light-mode');
   var btn = document.getElementById('btn-theme');
   if (btn) btn.textContent = '🌙 Modo oscuro';
-  var navBtn = null; // btn-theme-nav removed
+  var navBtn = document.getElementById('btn-theme-nav');
   if (navBtn) navBtn.textContent = '🌙';
 }
 
@@ -5793,6 +6068,7 @@ var chatGreeted  = false;
 function toggleChat() {
   chatOpen = !chatOpen;
   var panel    = document.getElementById('chat-panel');
+  var fab      = document.getElementById('chat-fab');
   var backdrop = document.getElementById('chat-backdrop');
   panel.classList.toggle('open', chatOpen);
   // Mobile: show backdrop + lock body scroll
@@ -5800,14 +6076,9 @@ function toggleChat() {
     if (backdrop) backdrop.style.display = chatOpen ? 'block' : 'none';
     document.body.style.overflow = chatOpen ? 'hidden' : '';
   }
-  // Update 💬 Yve nav button to reflect state
-  var navYve = document.querySelector('button[onclick="toggleChat()"]');
-  if (navYve) {
-    navYve.style.background = chatOpen
-      ? 'linear-gradient(135deg,rgba(124,58,237,.35),rgba(59,130,246,.35))'
-      : 'linear-gradient(135deg,rgba(124,58,237,.15),rgba(59,130,246,.15))';
-    navYve.textContent = chatOpen ? '✕ Cerrar' : '💬 Yve';
-  }
+  // FAB: hide when open
+  if (fab) fab.style.opacity = chatOpen ? '0' : '1';
+  if (fab) fab.style.pointerEvents = chatOpen ? 'none' : 'auto';
 }
 
 function renderMarkdown(text) {
