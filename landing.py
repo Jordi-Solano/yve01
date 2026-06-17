@@ -195,7 +195,7 @@ footer{background:var(--s1);border-top:1px solid var(--s2);padding:48px 5% 32px;
   <h1 class="fade-up fade-up-delay-1">El sistema operativo<br><span class="accent" id="hero-typed">AI-first para hoteles</span></h1>
   <p class="hero-sub fade-up fade-up-delay-2">Automatiza AR, AP, DRR y conciliación bancaria con IA.<br>Setup en 15 minutos · Sin consultores · Sin permanencia · Desde 400€/mes.</p>
   <div class="hero-btns fade-up fade-up-delay-3">
-    <a href="/signup" class="btn-hero-primary">Empezar gratis 14 días</a>
+    <a href="/unirse" class="btn-hero-primary">Empezar gratis 14 días</a>
     <a href="#roi" class="btn-hero-outline">Calcular mi ahorro →</a>
   </div>
 </section>

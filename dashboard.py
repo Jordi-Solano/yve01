@@ -2545,7 +2545,7 @@ button, a { touch-action: manipulation; }
     <div class="logo-dot"></div>
     <span class="logo-name">Yve<span style="color:var(--acc2)">.01</span></span>
     <span class="logo-tag">__HOTEL_TAG__</span>
-  <span style="font-size:9px;color:#334155;margin-left:4px;font-weight:500">v1.0</span>
+  <span style="font-size:9px;color:#334155;margin-left:4px;font-weight:500">v1.5</span>
   </div>
   <div class="nav-mid"></div>
   <div id="demo-banner" style="display:none;position:fixed;top:0;left:0;right:0;z-index:8000;background:linear-gradient(90deg,#f59e0b,#d97706);color:#000;text-align:center;padding:6px 16px;font-size:13px;font-weight:700;letter-spacing:.3px">
@@ -2990,7 +2990,13 @@ button, a { touch-action: manipulation; }
               <th style="text-align:left;padding:6px 8px;color:var(--mut);font-weight:600">Estado</th>
               <th style="padding:6px 4px;color:var(--mut);font-weight:600">Acciones</th>
             </tr></thead>
-            <tbody id="ar-facturas-tbody"></tbody>
+            <tbody id="ar-facturas-tbody">
+            <tr><td colspan="8" class="empty" style="padding:32px;text-align:center;color:var(--dim)">
+              <div style="font-size:24px;margin-bottom:8px">📋</div>
+              <div style="font-weight:600;margin-bottom:4px">Sin facturas AR todavía</div>
+              <div style="font-size:12px">Usa <b>Nueva factura</b> para emitir a clientes corporativos, grupos o agencias.</div>
+            </td></tr>
+          </tbody>
           </table>
         </div>
       </div>
@@ -3374,7 +3380,7 @@ async function loadAll() {
       hoy.toLocaleTimeString('es-ES', {hour:'2-digit', minute:'2-digit'});
 
     document.getElementById('status-txt').textContent =
-      (t('status.actualizado') || 'Actualizado') + ' · ' + (stats.total || 0) + ' ' + (t('status.facturas') || 'facturas cargadas');
+      'Actualizado' + ' · ' + (stats.total || 0) + ' facturas cargadas';
   // Mobile KPI quick-view bar
   if (IS_MOBILE) {
     var mBar = document.getElementById('mobile-kpi-bar');
@@ -4282,7 +4288,7 @@ setInterval(loadAll, 60000);
 // Init mobile lite mode
 if (IS_MOBILE) initMobileLite();
 // Changelog badge
-if (localStorage.getItem('changelog_seen') !== '2026-06-v2') {
+if (localStorage.getItem('changelog_seen') !== '2026-06-v3') {
   const mb = document.getElementById('menu-badge');
   if (mb) mb.style.display = 'inline-block';
 }
@@ -7622,21 +7628,20 @@ document.addEventListener('keydown', e => {
     </div>
     <div style="display:flex;flex-direction:column;gap:16px;font-size:13px">
       <div>
-        <div style="color:#60a5fa;font-weight:700;font-size:11px;text-transform:uppercase;letter-spacing:.4px;margin-bottom:8px">Junio 2026</div>
+        <div style="color:#60a5fa;font-weight:700;font-size:11px;text-transform:uppercase;letter-spacing:.4px;margin-bottom:8px">Junio 2026 — v1.5</div>
         <ul style="color:#94a3b8;padding-left:16px;line-height:1.8">
+          <li>🔐 Protección CSRF en todas las rutas API autenticadas</li>
+          <li>💳 Billing Stripe — checkout real con plan automático por habitaciones</li>
+          <li>🏨 /unirse — registro self-service para nuevos hoteles</li>
+          <li>📊 DRR GOP% — estimación automática cuando Excel tiene fórmulas</li>
+          <li>🏢 Multi-Hotel — gráficos aislados, KPI cards siempre visibles</li>
+          <li>📱 Vista lite en todos los paneles (F&B, Real AR, Calipolis, Multi)</li>
+          <li>💬 Chat Yve — abre desde nav, panel full-screen en móvil</li>
+          <li>🧾 Signup → redirige a checkout automáticamente</li>
+          <li>💰 Página pricing con CTAs directos a Stripe</li>
           <li>🏢 AR Real: flujo completo — clientes, aging, cobro, recordatorios</li>
-          <li>📄 AR Real: generación de PDF por factura</li>
-          <li>📱 Mobile: barra de navegación inferior, swipe de pestañas</li>
-          <li>🔄 Mobile: pull-to-refresh y KPI quick-view</li>
-          <li>⚡ Banco: botón conciliación automática</li>
-          <li>🎯 Tour guiado de 6 pasos (menú ⋯)</li>
-          <li>📊 Calipolis: gráfico multi-métrica (GOP%+Occ+Revenue)</li>
-          <li>💡 Smart Insights en panel Calipolis</li>
-          <li>🔔 Status bar con briefing matutino y animación</li>
-          <li>🔍 Búsqueda global Ctrl+K</li>
-          <li>⌨ Atajos de teclado 1-9 + swipe</li>
-          <li>⚖️ Páginas legales RGPD completas</li>
-          <li>📝 Blog SEO con 10 artículos</li>
+          <li>🔍 Búsqueda global Ctrl+K · ⌨ Atajos 1-9</li>
+          <li>⚖️ RGPD completo · 📝 Blog SEO 10 artículos</li>
         </ul>
       </div>
       <div>
@@ -7653,7 +7658,7 @@ document.addEventListener('keydown', e => {
   </div>
 </div>
 <script>function showChangelog() {
-  localStorage.setItem('changelog_seen', '2026-06-v2');
+  localStorage.setItem('changelog_seen', '2026-06-v3');
   const badge = document.getElementById('menu-badge');
   if (badge) badge.style.display = 'none';
   document.getElementById('changelog-modal').style.display='flex'; document.getElementById('main-menu').classList.remove('open'); }</script>
