@@ -60,6 +60,36 @@ app = Flask(__name__)
 DEMO_MODE = False
 app.secret_key = os.environ.get("SECRET_KEY") or "yve01-dev-secret-CHANGE-IN-PROD"
 
+# ── CSRF ────────────────────────────────────────────────────────────────────
+import hmac as _hmac, secrets as _sec_mod
+
+def _csrf_token():
+    from flask import session
+    if 'csrf_token' not in session:
+        session['csrf_token'] = _sec_mod.token_hex(32)
+    return session['csrf_token']
+
+@app.before_request
+def _csrf_check():
+    from flask import request as _req, session, jsonify as _jfy
+    if _req.method not in ('POST','PUT','PATCH','DELETE'): return
+    if not _req.path.startswith('/api/'): return
+    if 'user_id' not in session and '_user_id' not in session: return
+    if _req.content_type and 'multipart' in _req.content_type: return
+    tok = (_req.headers.get('X-CSRF-Token') or
+           (_req.get_json(silent=True) or {}).get('csrf_token') or '')
+    sess_tok = session.get('csrf_token', '')
+    if not tok or not _hmac.compare_digest(tok, sess_tok):
+        return _jfy({'error': 'CSRF inválido', 'csrf_error': True}), 403
+
+@app.route('/api/csrf_token')
+def api_csrf_token():
+    from flask_login import current_user
+    if not current_user.is_authenticated:
+        return __import__('flask').jsonify({'error': 'No auth'}), 401
+    return __import__('flask').jsonify({'token': _csrf_token()})
+# ─────────────────────────────────────────────────────────────────────────────
+
 # Auth + módulos: la app es UN solo proceso que sirve todo el producto en un puerto
 sys.path.insert(0, BASE_DIR)
 from auth import init_login, inicializar_usuarios
@@ -78,6 +108,7 @@ from tab_ar_real import ar_real_bp
 from oracle_export_dryrun import oracle_export_bp
 from pricing import pricing_bp
 from tab_multi_hotel import multi_hotel_bp
+from tab_self_service import self_service_bp
 from tab_exportador import exportador_bp
 from tab_calipolis import calipolis_bp
 from tab_demo import demo_bp
@@ -93,7 +124,7 @@ from legal import legal_bp
 from signup import signup_bp
 from about import about_bp
 from exportador_pdf import pdf_bp
-for _bp in (auth_bp, config_bp, admin_bp, aprob_ar_bp, aprob_ap_bp, concil_bp, fb_bp, ar_real_bp, multi_hotel_bp, exportador_bp, calipolis_bp, demo_bp, demo_sim_bp, calipolis_analisis_bp, reportes_pdf_bp, blog_bp, billing_bp, signup_bp, about_bp, pdf_bp, legal_bp):
+for _bp in (auth_bp, config_bp, admin_bp, aprob_ar_bp, aprob_ap_bp, concil_bp, fb_bp, ar_real_bp, multi_hotel_bp, self_service_bp, exportador_bp, calipolis_bp, demo_bp, demo_sim_bp, calipolis_analisis_bp, reportes_pdf_bp, blog_bp, billing_bp, signup_bp, about_bp, pdf_bp, legal_bp):
     app.register_blueprint(_bp)
 
 _pipeline_running = False
@@ -1378,21 +1409,57 @@ def _cargar_drr_procesado():
 
 def _leer_drr_stats(ruta):
     """Lee el Excel procesado del DRR y devuelve stats para el frontend."""
+    def _fmt(v, is_pct=False, is_eur=False):
+        if v is None: return "N/D"
+        s = str(v).strip()
+        if s in ("", "nan", "None", "N/D", "NaT"): return "N/D"
+        if "%" in s or "€" in s or "," in s: return s   # already formatted
+        try:
+            f = float(s)
+            if is_pct:
+                pct = f * 100 if abs(f) <= 1 else f
+                return f"{pct:.1f}%"
+            if is_eur:
+                return f"€{f:,.0f}"
+            return s
+        except ValueError:
+            return s if s else "N/D"
+
+    def _num(s):
+        if not s or s == "N/D": return None
+        try: return float(str(s).replace("€","").replace("%","").replace(",","").strip())
+        except: return None
+
     try:
         # Hoja Resumen — métricas KPI
         df_res = pd.read_excel(ruta, sheet_name="Resumen", header=None)
         metricas = {}
         KEYS = ["Total Revenue", "Occupancy %", "ADR", "Revenue PAR", "GOP", "GOP %",
                 "Rooms Revenue", "F&B Revenue Total", "Rooms Occupied", "Spend PAR"]
+        PCT_KEYS = {"Occupancy %", "GOP %"}
+        EUR_KEYS = {"Total Revenue", "GOP", "Rooms Revenue", "F&B Revenue Total", "ADR", "Revenue PAR", "Spend PAR"}
         for _, row in df_res.iterrows():
             name = str(row.iloc[0]).strip() if pd.notna(row.iloc[0]) else ""
             if name in KEYS:
                 metricas[name] = {
-                    "today":    str(row.iloc[1]) if pd.notna(row.iloc[1]) else "N/D",
-                    "mtd":      str(row.iloc[2]) if pd.notna(row.iloc[2]) else "N/D",
-                    "forecast": str(row.iloc[3]) if pd.notna(row.iloc[3]) else "N/D",
-                    "budget":   str(row.iloc[4]) if len(row) > 4 and pd.notna(row.iloc[4]) else "N/D",
+                    "today":    _fmt(row.iloc[1] if pd.notna(row.iloc[1]) else None, name in PCT_KEYS, name in EUR_KEYS),
+                    "mtd":      _fmt(row.iloc[2] if pd.notna(row.iloc[2]) else None, name in PCT_KEYS, name in EUR_KEYS),
+                    "forecast": _fmt(row.iloc[3] if pd.notna(row.iloc[3]) else None, name in PCT_KEYS, name in EUR_KEYS),
+                    "budget":   _fmt(row.iloc[4] if len(row) > 4 and pd.notna(row.iloc[4]) else None, name in PCT_KEYS, name in EUR_KEYS),
                 }
+        # GOP fallback: estimate from Revenue × GOP% when formula cells return None
+        for period in ("today", "mtd", "forecast"):
+            gop_val  = metricas.get("GOP",   {}).get(period, "N/D")
+            gpct_val = metricas.get("GOP %", {}).get(period, "N/D")
+            rev_val  = _num(metricas.get("Total Revenue", {}).get(period, "N/D"))
+            if gop_val == "N/D" and gpct_val != "N/D" and rev_val:
+                pct = _num(gpct_val)
+                if pct:
+                    p = pct / 100 if pct > 1 else pct
+                    metricas.setdefault("GOP", {})[period] = f"€{rev_val*p:,.0f} ~"
+            if gpct_val == "N/D" and gop_val != "N/D" and rev_val and rev_val > 0:
+                g = _num(gop_val)
+                if g: metricas.setdefault("GOP %", {})[period] = f"{g/rev_val*100:.1f}% ~"
 
         # Hoja Alertas — días y su estado
         dias = []
@@ -4175,6 +4242,23 @@ function toggleLightMode() {
   var navBtn = document.getElementById('btn-theme-nav');
   if (navBtn) navBtn.textContent = isLight ? '🌙' : '☀️';
 }
+// ── CSRF token (fetched after login, attached to all POST calls) ──────────
+var _csrfToken = '';
+(function(){
+  fetch('/api/csrf_token')
+    .then(function(r){ return r.ok ? r.json() : {token:''}; })
+    .then(function(d){ _csrfToken = d.token || ''; })
+    .catch(function(){});
+})();
+function _postJson(url, body) {
+  return fetch(url, {
+    method: 'POST',
+    headers: {'Content-Type': 'application/json', 'X-CSRF-Token': _csrfToken},
+    body: JSON.stringify(body || {})
+  });
+}
+// ─────────────────────────────────────────────────────────────────────────────
+
 // Apply saved theme on load
 if (localStorage.getItem('yve_theme') === 'light') {
   document.body.classList.add('light-mode');
@@ -6683,6 +6767,7 @@ async function loadMultiHotel() {
     }
 
     // ── Trend charts ─────────────────────────────────────────────
+    try {
     if (data.rev_trend && window.Chart) {
       var months = data.rev_trend.map(function(r){ return r.mes.slice(5); });
       var gopData = data.rev_trend.map(function(r){ return r.gop; });
@@ -6716,7 +6801,7 @@ async function loadMultiHotel() {
         backgroundColor:'rgba(96,165,250,.2)', borderColor:'#60a5fa', borderWidth:1.5, borderRadius:4
       }], 'k€');
     }
-
+ } catch(chartErr) { console.warn('MH chart:', chartErr); }
     // ── Hotel cards (MISMO ESTILO QUE SCREENSHOT Calipolis) ──────
     var cardsEl = document.getElementById('mh-hotel-cards');
     if (cardsEl && hs.length) {

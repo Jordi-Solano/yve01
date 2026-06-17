@@ -112,7 +112,8 @@ body{background:var(--bg);color:var(--tx);font-family:Inter,system-ui,sans-serif
       <li class="no">Oracle Fusion</li>
       <li class="no">API acceso</li>
     </ul>
-    <a href="/signup?plan=starter" class="btn-plan outline">Empezar gratis</a>
+    <a href="/checkout/starter" class="btn-plan outline">Empezar — €400/mes</a>
+<p style="font-size:11px;color:#64748b;text-align:center;margin-top:6px">14 días de prueba · Sin tarjeta hasta confirmar</p>
   </div>
   
   <!-- Pro (featured) -->
@@ -131,7 +132,8 @@ body{background:var(--bg);color:var(--tx);font-family:Inter,system-ui,sans-serif
       <li>AR Real — grupos corporativos</li>
       <li>PDF facturas + recordatorios</li>
     </ul>
-    <a href="/signup?plan=pro" class="btn-plan primary">Empezar prueba</a>
+    <a href="/checkout/pro" class="btn-plan primary">Empezar — €600/mes</a>
+<p style="font-size:11px;color:#64748b;text-align:center;margin-top:6px">14 días de prueba · Sin tarjeta hasta confirmar</p>
   </div>
 
   <!-- Business -->

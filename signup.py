@@ -66,7 +66,11 @@ def api_signup():
     except Exception as e:
         print(f"[SIGNUP] hotel registration warning: {e}")
 
-    return jsonify({'ok': True, 'username': username})
+    # Auto-select plan based on room count
+    rooms_int = int(rooms) if str(rooms).isdigit() else 0
+    plan = 'multi' if (grupo and grupo.strip().lower() not in ('', hotel.lower()))            else ('pro' if rooms_int > 150 else 'starter')
+    return jsonify({'ok': True, 'username': username,
+                    'plan': plan, 'checkout_url': f'/checkout/{plan}'})
 
 
 SIGNUP_HTML = r"""<!DOCTYPE html>
@@ -179,8 +183,10 @@ async function doSignup(){
         '<div class="success"><div class="ic">✓</div>'
         +'<h2>¡Cuenta creada!</h2>'
         +'<p>Tu usuario es <b style="color:var(--acc2)">'+res.username+'</b>.<br>'
-        +'Inicia sesión y configura tu hotel en 15 minutos.</p>'
-        +'<a class="btn" style="display:block;text-decoration:none" href="/login">Iniciar sesión →</a></div>';
+        +'Redirigiendo al pago...</p>'
+        +'<p style="font-size:12px;color:#64748b;margin-top:8px">Si no quieres pagar ahora, '
+        +'<a href="/login" style="color:var(--acc2)">inicia sesión</a> con 14 días de prueba.</p></div>';
+      setTimeout(function(){ window.location.href = res.checkout_url || '/login'; }, 2000);
     }else{
       btn.disabled=false;btn.textContent='Crear cuenta gratis →';
       showErr(res.error||'Error al crear la cuenta.');
