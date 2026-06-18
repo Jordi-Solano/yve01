@@ -17,7 +17,12 @@ LANDING_HTML = r"""<!DOCTYPE html>
 <meta property="og:title" content="Yve.01 — El sistema operativo AI para hoteles">
 <meta property="og:description" content="Automatiza AP, AR, DRR y conciliación bancaria con IA. Setup en 15 min. Desde 400€/mes. Sin permanencia.">
 <meta property="og:site_name" content="Yve.01">
-<meta name="twitter:card" content="summary">
+  <meta property="og:image" content="https://yve01.onrender.com/og-image.png">
+  <meta property="og:image:width" content="1200">
+  <meta property="og:image:height" content="630">
+  <meta property="og:locale" content="es_ES">
+<meta name="twitter:card" content="summary_large_image">
+  <meta name="twitter:image" content="https://yve01.onrender.com/og-image.png">
 <meta name="twitter:title" content="Yve.01 — El sistema operativo AI para hoteles">
 <meta name="twitter:description" content="Automatiza AP, AR, DRR y conciliación bancaria con IA. Desde 400€/mes.">
 <link rel="canonical" href="https://yve01.onrender.com/">

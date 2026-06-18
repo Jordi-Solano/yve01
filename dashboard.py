@@ -375,6 +375,8 @@ Allow: /
 Allow: /blog
 Allow: /about
 Allow: /casos
+Allow: /precios
+Allow: /unirse
 Allow: /terminos
 Allow: /privacidad
 Disallow: /api/
@@ -382,6 +384,32 @@ Disallow: /admin/
 Disallow: /onboarding
 Sitemap: https://yve01.onrender.com/sitemap.xml
 """, mimetype="text/plain")
+
+@app.route("/og-image.png")
+def og_image():
+    """Social share card (SVG served as image)."""
+    svg = """<svg xmlns="http://www.w3.org/2000/svg" width="1200" height="630" viewBox="0 0 1200 630">
+  <defs>
+    <linearGradient id="bg" x1="0" y1="0" x2="1200" y2="630" gradientUnits="userSpaceOnUse">
+      <stop offset="0" stop-color="#0f172a"/>
+      <stop offset="1" stop-color="#1e293b"/>
+    </linearGradient>
+    <linearGradient id="accent" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0" stop-color="#3b82f6"/>
+      <stop offset="1" stop-color="#7c3aed"/>
+    </linearGradient>
+  </defs>
+  <rect width="1200" height="630" fill="url(#bg)"/>
+  <circle cx="80" cy="90" r="14" fill="url(#accent)"/>
+  <text x="110" y="100" font-family="Arial,sans-serif" font-size="40" font-weight="900" fill="#f1f5f9">Yve<tspan fill="#60a5fa">.01</tspan></text>
+  <text x="80" y="290" font-family="Arial,sans-serif" font-size="68" font-weight="900" fill="#f1f5f9">El sistema operativo</text>
+  <text x="80" y="370" font-family="Arial,sans-serif" font-size="68" font-weight="900" fill="url(#accent)">AI para hoteles</text>
+  <text x="80" y="450" font-family="Arial,sans-serif" font-size="32" fill="#94a3b8">Automatiza AP · AR · DRR · Conciliación bancaria</text>
+  <text x="80" y="500" font-family="Arial,sans-serif" font-size="32" fill="#94a3b8">Setup en 15 minutos · Sin consultores</text>
+  <rect x="80" y="540" width="280" height="56" rx="28" fill="url(#accent)"/>
+  <text x="220" y="577" font-family="Arial,sans-serif" font-size="26" font-weight="700" fill="#fff" text-anchor="middle">yve01.onrender.com</text>
+</svg>"""
+    return Response(svg, mimetype="image/svg+xml")
 
 @app.route("/sitemap.xml")
 def sitemap_xml():
@@ -405,6 +433,8 @@ def sitemap_xml():
         ("https://yve01.onrender.com/casos",      "0.8",  "monthly"),
         ("https://yve01.onrender.com/blog",       "0.9",  "weekly"),
         ("https://yve01.onrender.com/signup",     "0.9",  "monthly"),
+        ("https://yve01.onrender.com/unirse",     "0.9",  "monthly"),
+        ("https://yve01.onrender.com/precios",    "0.9",  "monthly"),
         ("https://yve01.onrender.com/terminos",   "0.3",  "yearly"),
         ("https://yve01.onrender.com/privacidad", "0.3",  "yearly"),
     ] + [(f"https://yve01.onrender.com/blog/{s}", "0.7", "monthly") for s in BLOG_SLUGS]

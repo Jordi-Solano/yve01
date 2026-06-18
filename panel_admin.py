@@ -254,6 +254,15 @@ input,select{width:100%;background:var(--bg);border:1px solid var(--s2);color:va
       </div>
       <div id="audit-log" style="max-height:200px;overflow-y:auto;font-size:11px;color:#94a3b8;font-family:monospace"></div>
     </div>
+
+    <!-- LEADS / Solicitudes self-service -->
+    <div class="card" style="border-color:rgba(34,197,94,.2)">
+      <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:12px">
+        <div class="ct" style="margin:0">🎯 Solicitudes de hoteles (leads)</div>
+        <button class="btn bsm" onclick="loadLeads()" style="font-size:11px">↺ Actualizar</button>
+      </div>
+      <div id="leads-list" style="max-height:300px;overflow-y:auto"><div style="color:#64748b;font-size:13px;padding:12px">Cargando...</div></div>
+    </div>
     <div class="card" style="border-color:rgba(59,130,246,.2)">
       <div class="ct" style="color:#60a5fa">Conexiones</div>
       <div style="display:flex;flex-direction:column;gap:8px">
@@ -287,6 +296,36 @@ input,select{width:100%;background:var(--bg);border:1px solid var(--s2);color:va
 async function ls(){const r=await fetch('/admin/api/stats'),d=await r.json();['u','a','h','r','up','v'].forEach((k,i)=>{const el=document.getElementById('s'+k);if(el)el.textContent=[d.usuarios,d.usuarios_activos,d.hoteles,d.reportes_generados,d.uptime,d.version][i];});}
 async function lu(){const r=await fetch('/admin/api/usuarios'),us=await r.json();document.getElementById('utb').innerHTML=us.map(u=>'<tr><td><b>'+u.username+'</b></td><td>'+(u.nombre||'-')+'</td><td style="color:#60a5fa">'+u.rol+'</td><td><span class="'+(u.activo!==false?'ok':'off')+'">'+(u.activo!==false?'Activo':'Inactivo')+'</span></td><td><button class="btn bd bsm" onclick="tU(\''+u.username+'\')">Toggle</button></td></tr>').join('');}
 async function lh(){const r=await fetch('/admin/api/hoteles'),d=await r.json();if(!d.ok)return;document.getElementById('htb').innerHTML=d.hoteles.map(h=>'<tr><td><b>'+h.nombre+'</b></td><td style="color:#94a3b8">'+(h.ciudad||'-')+'</td><td>'+(h.habitaciones||'-')+'</td><td style="color:#94a3b8">'+(h.categoria||'-')+'</td><td><button class="btn bd bsm" onclick="dH(\''+h.id+'\')">×</button></td></tr>').join('');}
+async function loadLeads() {
+  const el = document.getElementById('leads-list');
+  try {
+    const r = await fetch('/api/admin/leads');
+    const d = await r.json();
+    if (!d.ok || !d.leads || !d.leads.length) {
+      el.innerHTML = '<div style="color:#64748b;font-size:13px;padding:12px">Sin solicitudes todavía. Aparecerán aquí cuando un hotel use /unirse.</div>';
+      return;
+    }
+    el.innerHTML = d.leads.reverse().map(function(l){
+      var planColor = {starter:'#60a5fa', pro:'#a78bfa', multi:'#22c55e'}[l.plan_sugerido] || '#64748b';
+      var fecha = l.fecha ? new Date(l.fecha).toLocaleDateString('es-ES',{day:'2-digit',month:'short',hour:'2-digit',minute:'2-digit'}) : '';
+      return '<div style="border:1px solid #334155;border-radius:8px;padding:12px;margin-bottom:8px;font-size:12px">' +
+        '<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:6px">' +
+          '<b style="color:#f1f5f9;font-size:13px">'+l.hotel+'</b>' +
+          '<span style="background:'+planColor+'22;color:'+planColor+';padding:2px 8px;border-radius:10px;font-size:10px;font-weight:700;text-transform:uppercase">'+l.plan_sugerido+'</span>' +
+        '</div>' +
+        '<div style="color:#94a3b8;line-height:1.6">' +
+          '👤 '+l.nombre+' · <a href="mailto:'+l.email+'" style="color:#60a5fa">'+l.email+'</a>'+(l.telefono?' · 📞 '+l.telefono:'')+'<br>' +
+          '📍 '+(l.ciudad||'—')+' · 🏨 '+(l.habitaciones||0)+' hab'+(l.grupo?' · Grupo: '+l.grupo:'')+'<br>' +
+          (l.notas?'<span style="color:#64748b">📝 '+l.notas+'</span><br>':'') +
+          '<span style="color:#475569;font-size:11px">'+fecha+'</span>' +
+        '</div>' +
+      '</div>';
+    }).join('');
+  } catch(e) {
+    el.innerHTML = '<div style="color:#ef4444;font-size:13px;padding:12px">Error cargando leads</div>';
+  }
+}
+
 async function loadAudit() {
   const el = document.getElementById('audit-log');
   if (!el) return;
@@ -314,7 +353,7 @@ async function resetPw(u) {
   const d = await r.json();
   showMsg(d.ok ? '✓ Contraseña cambiada para ' + u : '✗ ' + (d.error||'Error'), d.ok);
 }
-async function tU(u){await fetch('/admin/api/toggle_usuario',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({username:u})});lu();ls();}
+async function tU(u){await fetch('/admin/api/toggle_usuario',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({username:u})});lu();ls();loadLeads();}
 async function dH(id){if(!confirm('Eliminar '+id+'?'))return;await fetch('/admin/api/hoteles/eliminar',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({id})});lh();ls();}
 async function crearU(){const d={username:document.getElementById('nu').value.trim(),password:document.getElementById('np').value,nombre:document.getElementById('nn').value.trim(),email:document.getElementById('ne').value.trim(),rol:document.getElementById('nr').value};const m=document.getElementById('mu');if(!d.username||!d.password){m.style.color='#ef4444';m.textContent='Faltan campos.';return;}const r=await fetch('/admin/api/crear_usuario',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(d)});const res=await r.json();m.style.color=res.ok?'#22c55e':'#ef4444';m.textContent=res.ok?'Creado: '+d.username:(res.error||'Error');if(res.ok){lu();ls();}}
 async function crearHotel(){
