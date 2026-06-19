@@ -1378,8 +1378,12 @@ def api_chat():
 
     contexto = _cargar_contexto_chat()
 
-    system_prompt = f"""Eres Yve, el asistente financiero inteligente del hotel integrado en el dashboard Yve.01.
-Tienes acceso en tiempo real a todos los datos financieros del hotel: facturas AR (OTAs), facturas AP (proveedores), aprobaciones, discrepancias, importes reclamables y estados de contabilización Oracle.
+    system_prompt = f"""Eres Yve, copiloto financiero de Yve.01 integrado en el dashboard del hotel.
+Tienes acceso COMPLETO y en tiempo real a todos los módulos: AR (comisiones OTA), AP (facturas proveedores con 3-way matching), DRR (Revenue Report), Banco (conciliación), F&B Cost y Grupos Calipolis.
+
+Tu misión: dar respuestas ACCIONABLES. No solo describir el estado — decir QUÉ hacer a continuación.
+Ejemplo bueno: "Tienes 3 discrepancias con Expedia por €847. Puedes reclamarlas desde AR → botón Reclamar, o te genero el email ahora."
+Ejemplo malo: "Hay 3 discrepancias con Expedia."
 
 DATOS ACTUALES DEL HOTEL:
 {contexto}
@@ -1950,6 +1954,13 @@ body.light-mode{--bg:#f8fafc;--s1:#fff;--s2:#e2e8f0;--s3:#cbd5e1;--tx:#0f172a;--
 body.light-mode .nav{background:rgba(248,250,252,.9);border-bottom-color:#e2e8f0}
 body.light-mode .tab-btn{color:#475569}
 body.light-mode .tab-btn.active{color:#2563eb}
+/* ── Skeleton loading ─────────────────────────────── */
+@keyframes shimmer{0%{background-position:-400px 0}100%{background-position:400px 0}}
+.skeleton{background:linear-gradient(90deg,var(--s1) 25%,var(--s2) 50%,var(--s1) 75%);
+  background-size:800px 100%;animation:shimmer 1.4s infinite;border-radius:6px;
+  color:transparent!important;pointer-events:none}
+.skeleton *{visibility:hidden}
+/* ─────────────────────────────────────────────────── */
 :root{
   --bg:#0f172a;--s1:#1e293b;--s2:#334155;--s3:#475569;
   --acc:#3b82f6;--acc2:#60a5fa;--acc3:#93c5fd;
@@ -2384,54 +2395,36 @@ tr:hover td{background:rgba(255,255,255,.025)}
   background:transparent;transition:background .35s;
 }
 #tour-overlay.active{pointer-events:all;background:rgba(4,9,20,.72)}
-#tour-spotlight{
-  position:fixed;z-index:9001;
-  border-radius:14px;
-  box-shadow:0 0 0 9999px rgba(4,9,20,.72);
-  transition:left .38s cubic-bezier(.4,0,.2,1),
-             top .38s cubic-bezier(.4,0,.2,1),
-             width .38s cubic-bezier(.4,0,.2,1),
-             height .38s cubic-bezier(.4,0,.2,1);
-  pointer-events:none;
-  border:2px solid rgba(59,130,246,.65);
-  animation:spotGlow 2s ease-in-out infinite;
-}
+
 @keyframes spotGlow{
   0%,100%{border-color:rgba(59,130,246,.55);box-shadow:0 0 0 9999px rgba(4,9,20,.72),0 0 0 4px rgba(59,130,246,.12)}
   50%{border-color:rgba(96,165,250,.9);box-shadow:0 0 0 9999px rgba(4,9,20,.72),0 0 0 6px rgba(59,130,246,.22)}
 }
-#tour-card{
-  position:fixed;z-index:9002;
-  background:linear-gradient(160deg,rgba(30,41,59,.98),rgba(10,18,35,.98));
-  border:1px solid rgba(59,130,246,.35);
-  border-radius:18px;padding:24px 26px;width:330px;
-  box-shadow:0 24px 64px rgba(0,0,0,.7),0 0 0 1px rgba(59,130,246,.08) inset;
-  transition:left .38s cubic-bezier(.4,0,.2,1),top .38s cubic-bezier(.4,0,.2,1);
-}
+
 #tour-card.entering{animation:cardEnter .28s cubic-bezier(.2,.8,.2,1)}
 @keyframes cardEnter{from{opacity:0;transform:translateY(8px) scale(.97)}to{opacity:1;transform:none}}
-.tour-content-wrap{transition:opacity .18s;min-height:56px}
-.tour-content-wrap.fading{opacity:0}
+
+.tour-content-wrap
 #tour-card h3{font-size:15px;font-weight:800;margin-bottom:8px;color:var(--tx);letter-spacing:-.2px}
 #tour-card p{font-size:13.5px;color:var(--mut);line-height:1.65;margin-bottom:0}
-.tour-progress-bar{height:2px;background:var(--s2);border-radius:1px;margin-bottom:16px;overflow:hidden}
-.tour-progress-fill{height:100%;background:linear-gradient(90deg,var(--acc),var(--pur));border-radius:1px;transition:width .38s cubic-bezier(.4,0,.2,1)}
-.tour-footer{display:flex;align-items:center;justify-content:space-between;gap:10px;margin-top:18px}
-.tour-counter{font-size:11px;color:var(--dim);font-weight:600;letter-spacing:.3px}
-.tour-dots{display:flex;gap:5px;align-items:center}
-.tour-dot{width:6px;height:6px;border-radius:50%;background:var(--s3);transition:all .25s}
-.tour-dot.active{background:var(--acc);width:20px;border-radius:3px}
-.tour-btns{display:flex;gap:7px;align-items:center}
-.tour-btn-skip{background:none;border:none;font-size:11px;color:var(--dim);cursor:pointer;padding:5px 7px;border-radius:6px;transition:.15s;letter-spacing:.2px}
+
+
+
+
+
+
+
+
+
 .tour-btn-skip:hover{color:var(--mut)}
-.tour-btn-prev{background:rgba(51,65,85,.6);border:1px solid var(--s2);color:var(--mut);font-size:12px;font-weight:600;padding:7px 13px;border-radius:9px;cursor:pointer;transition:.15s}
+
 .tour-btn-prev:hover{background:var(--s2);color:var(--tx)}
-.tour-btn-next{background:linear-gradient(135deg,var(--acc),#2563eb);border:none;color:#fff;font-size:12px;font-weight:700;padding:8px 18px;border-radius:9px;cursor:pointer;box-shadow:0 0 14px rgba(59,130,246,.4);transition:.15s;white-space:nowrap}
+
 .tour-btn-next:hover{box-shadow:0 0 22px rgba(59,130,246,.6);transform:translateY(-1px)}
 .tour-target{outline:2px solid var(--acc)!important;outline-offset:4px!important;border-radius:10px!important;animation:tourPulse 2s ease-in-out infinite!important;position:relative!important;z-index:9001!important}
 @keyframes tourPulse{0%,100%{outline-color:rgba(59,130,246,.6)}50%{outline-color:rgba(96,165,250,1)}}
 @media(max-width:600px){
-  #tour-card{width:calc(100vw - 24px)!important;left:12px!important;bottom:16px!important;top:auto!important}
+  
 }
 
 /* ── F&B Sub-tabs ─────────────────────────────────── */
@@ -3015,10 +3008,11 @@ button, a { touch-action: manipulation; }
         <div style="overflow-x:auto">
           <table style="width:100%;border-collapse:collapse;font-size:12px">
             <thead><tr style="border-bottom:2px solid var(--s2)">
-              <th style="text-align:left;padding:6px 8px;color:var(--mut);font-weight:600">Nº / Cliente</th>
-              <th style="text-align:right;padding:6px 8px;color:var(--mut);font-weight:600">Importe</th>
-              <th style="text-align:left;padding:6px 8px;color:var(--mut);font-weight:600">Estado</th>
-              <th style="padding:6px 4px;color:var(--mut);font-weight:600">Acciones</th>
+              <th style="text-align:left;padding:8px;color:var(--mut);font-weight:600;font-size:11px;text-transform:uppercase;letter-spacing:.4px">Nº / Cliente</th>
+              <th style="text-align:right;padding:8px;color:var(--mut);font-weight:600;font-size:11px;text-transform:uppercase;letter-spacing:.4px">Importe</th>
+              <th style="text-align:center;padding:8px;color:var(--mut);font-weight:600;font-size:11px;text-transform:uppercase;letter-spacing:.4px">Días</th>
+              <th style="text-align:left;padding:8px;color:var(--mut);font-weight:600;font-size:11px;text-transform:uppercase;letter-spacing:.4px">Estado</th>
+              <th style="padding:8px;color:var(--mut);font-weight:600;font-size:11px;text-transform:uppercase;letter-spacing:.4px">Acciones</th>
             </tr></thead>
             <tbody id="ar-facturas-tbody">
             <tr><td colspan="8" class="empty" style="padding:32px;text-align:center;color:var(--dim)">
@@ -3291,10 +3285,10 @@ button, a { touch-action: manipulation; }
   </div>
   <div id="chat-msgs"></div>
   <div id="chat-suggestions">
-    <button class="sug" onclick="askSug(this)">📊 Resumen del estado financiero</button>
-    <button class="sug" onclick="askSug(this)">⚠️ ¿Qué discrepancias hay abiertas?</button>
-    <button class="sug" onclick="askSug(this)">💰 ¿Cuánto podemos reclamar?</button>
-    <button class="sug" onclick="askSug(this)">📋 ¿Qué facturas faltan por firmar?</button>
+    <button class="sug" onclick="askSug(this)">🌅 Briefing de hoy</button>
+    <button class="sug" onclick="askSug(this)">⚠️ ¿Qué discrepancias tengo abiertas?</button>
+    <button class="sug" onclick="askSug(this)">💰 ¿Cuánto puedo reclamar este mes?</button>
+    <button class="sug" onclick="askSug(this)">📋 ¿Qué necesita mi firma hoy?</button>
   </div>
   <div id="chat-input-row">
     <textarea id="chat-input" rows="1" placeholder="Pregunta sobre el estado financiero del hotel…"
@@ -4027,6 +4021,33 @@ document.getElementById('tour-overlay').addEventListener('click', function(e) {
 
 
 
+// ── Inline action confirmation (replaces confirm() dialogs) ─────────
+function _dismissConfirm() { var c=document.getElementById('yve-confirm'); if(c) c.remove(); }
+function showConfirmAction(title, subtitle, btnLabel, onConfirm) {
+  var existing = document.getElementById('yve-confirm');
+  if (existing) existing.remove();
+  var el = document.createElement('div');
+  el.id = 'yve-confirm';
+  el.style.cssText = 'position:fixed;bottom:24px;left:50%;transform:translateX(-50%);' +
+    'background:#1e293b;border:1px solid rgba(245,158,11,.4);border-radius:14px;' +
+    'padding:14px 18px;z-index:9500;display:flex;align-items:center;gap:14px;' +
+    'box-shadow:0 8px 32px rgba(0,0,0,.5);max-width:420px;width:calc(100% - 32px);' +
+    'animation:slideUp .2s ease';
+  el.innerHTML =
+    '<div style="flex:1"><div style="font-weight:600;color:#f1f5f9;font-size:13px">' + title + '</div>' +
+    '<div style="font-size:11px;color:#94a3b8;margin-top:2px">' + subtitle + '</div></div>' +
+    '<button onclick="_dismissConfirm()" ' +
+      'style="background:transparent;border:1px solid #334155;color:#64748b;padding:6px 12px;border-radius:8px;font-size:12px;cursor:pointer;flex-shrink:0">Cancelar</button>' +
+    '<button id="yve-confirm-yes" ' +
+      'style="background:#f59e0b;border:none;color:#fff;padding:6px 14px;border-radius:8px;font-size:12px;font-weight:600;cursor:pointer;flex-shrink:0">' + btnLabel + '</button>';
+  document.body.appendChild(el);
+  document.getElementById('yve-confirm-yes').onclick = function() {
+    el.remove();
+    onConfirm();
+  };
+  setTimeout(function() { if (el.parentNode) el.remove(); }, 8000);
+}
+
 // ── Skeleton helpers ──────────────────────────────────────
 function skelCards(n=4, extraStyle='') {
   return '<div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(160px,1fr));gap:12px;' + extraStyle + '">' +
@@ -4115,6 +4136,21 @@ function _postJson(url, body) {
   });
 }
 // ─────────────────────────────────────────────────────────────────────────────
+
+// ── Skeleton helpers ───────────────────────────────
+function _skelOn(ids) {
+  ids.forEach(function(id) {
+    var el = document.getElementById(id);
+    if (el) { el._origTxt = el.textContent; el.textContent = '——'; el.classList.add('skeleton'); }
+  });
+}
+function _skelOff(ids) {
+  ids.forEach(function(id) {
+    var el = document.getElementById(id);
+    if (el) el.classList.remove('skeleton');
+  });
+}
+// ───────────────────────────────────────────────────
 
 // Apply saved theme on load
 if (localStorage.getItem('yve_theme') === 'light') {
@@ -5829,6 +5865,7 @@ function estadoBadgeAP(est) {
 }
 
 async function loadAP() {
+  _skelOn(['ap-total','ap-importe','ap-matches','ap-disc','ap-sinpo','ap-aprobadas']);
   try {
     const [stats, facts] = await Promise.all([
       fetch('/api/stats_ap').then(r=>r.json()),
@@ -7015,6 +7052,8 @@ async function loadARRealData() {
   cargarARRealData();
 }
 async function cargarARRealData() {
+  // Show skeleton on KPIs while loading
+  _skelOn(['arp-pendiente','arp-vencido','arp-cobrado','arp-nclientes']);
   try {
     // Load clients and invoices in parallel
     const [rClientes, rFacturas] = await Promise.all([
@@ -7121,6 +7160,9 @@ function _renderFacturasAR(facturas, stats) {
         (f.aging_bucket && f.aging_bucket !== 'N/A' ? '<div style="font-size:10px;color:' + (f.days_pending > 60 ? 'var(--red)' : 'var(--dim)') + '">' + f.aging_bucket + '</div>' : '') +
       '</td>' +
       '<td style="text-align:right;padding:8px;font-weight:700">\u20AC' + (f.total||0).toLocaleString('es-ES',{minimumFractionDigits:2}) + '</td>' +
+      '<td style="text-align:center;padding:8px">' +
+        (f.days_pending > 0 ? '<span style="font-size:13px;font-weight:700;color:' + (f.days_pending > 60 ? 'var(--red)' : f.days_pending > 30 ? 'var(--ora)' : 'var(--grn)') + '">' + f.days_pending + 'd</span>' : '<span style="color:var(--dim)">—</span>') +
+      '</td>' +
       '<td style="padding:8px"><span style="background:' + stateColor + '20;color:' + stateColor + ';padding:2px 8px;border-radius:6px;font-size:10px;font-weight:700">' + stateLabel + '</span></td>' +
       '<td style="padding:8px;white-space:nowrap">' +
         (f.estado === 'FACTURADO' ? '<button onclick="cobrarFacturaAR(\'' + f.numero + '\')" class="btn bsm" style="font-size:10px;margin-right:4px;background:rgba(34,197,94,.1);color:var(--grn);border-color:rgba(34,197,94,.3)" title="Marcar como cobrada">💰</button>' : '') +
@@ -7145,13 +7187,20 @@ function filtrarFacturasAR(estado) {
 }
 
 async function cobrarFacturaAR(numero) {
-  if (!confirm('¿Marcar factura ' + numero + ' como COBRADA?')) return;
-  try {
-    const r = await fetch('/api/ar_real/cobrar', {method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({numero})});
-    const d = await r.json();
-    if (d.ok) { showNotification('✓ ' + d.message, 'success'); cargarARRealData(); }
-    else showNotification('✗ ' + (d.error||'Error'), 'error');
-  } catch(e) { showNotification('✗ Error de conexión', 'error'); }
+  // Inline confirmation — no blocking dialog
+  showConfirmAction(
+    '¿Marcar como cobrada?',
+    'Factura ' + numero,
+    '💰 Confirmar cobro',
+    async function() {
+      try {
+        const r = await fetch('/api/ar_real/cobrar', {method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({numero})});
+        const d = await r.json();
+        if (d.ok) { showNotification('✓ Factura ' + numero + ' cobrada', 'success'); cargarARRealData(); }
+        else showNotification('✗ ' + (d.error||'Error'), 'error');
+      } catch(e) { showNotification('✗ Error de conexión', 'error'); }
+    }
+  );
 }
 
 async function recordatorioAR(numero) {
