@@ -2614,7 +2614,7 @@ button, a { touch-action: manipulation; }
         <a href="/api/reportes/consolidado.xlsx" class="menu-item">📊 Consolidado Excel</a>
         <div class="menu-sep"></div>
         <div class="menu-head" data-i18n="menu.presentacion">Presentación</div>
-        <button class="menu-item" data-i18n="nav.tour" onclick="tourStart();document.getElementById('main-menu').classList.remove('open')">🎯 Tour guiado</button>
+        <button class="menu-item" data-i18n="nav.tour" onclick="startTour();document.getElementById('main-menu').classList.remove('open')">🎯 Tour guiado</button>
         <button class="menu-item" id="btn-demo" onclick="toggleDemoMode()"><span data-i18n="nav.demo">🎭 Demo Mode</span></button>
         <div class="menu-sep"></div>
         <div class="menu-head" data-i18n="menu.cambiarRol">Cambiar rol</div>
@@ -4012,6 +4012,7 @@ function renderMHMap(hoteles) {
 // ══════════════════════════════════════════════════════════════
 
 // ── Tour stubs (old system removed) ─────────────────────────────────
+function tourStart() { startTour(); }   // alias — button in nav calls this
 function tourPrev()  { prevTourStep(); }
 function tourNext()  { nextTourStep(); }
 function tourEnd()   { endTour(); }
@@ -5299,7 +5300,7 @@ async function toggleDemoMode() {
         setTimeout(() => {
           const tourMsg = document.createElement('div');
           tourMsg.style.cssText = 'position:fixed;bottom:80px;right:20px;background:linear-gradient(135deg,#1e293b,#0d1827);border:1px solid rgba(245,158,11,.4);border-radius:14px;padding:18px 20px;z-index:8500;max-width:280px;box-shadow:0 8px 32px rgba(0,0,0,.5)';
-          tourMsg.innerHTML = '<div style="font-size:14px;font-weight:700;margin-bottom:8px;color:#f59e0b">🎭 Demo Calipolis</div><div style="font-size:13px;color:#94a3b8;line-height:1.5;margin-bottom:14px">Estás viendo los datos reales del Grupo Calipolis Hotels (3 propiedades, 307 hab.).</div><button onclick="tourStart();this.parentElement.remove()" style="background:linear-gradient(135deg,#3b82f6,#2563eb);border:none;color:#fff;padding:8px 16px;border-radius:8px;cursor:pointer;font-size:12px;font-weight:700;width:100%">🎯 Iniciar Tour Guiado →</button><button onclick="this.parentElement.remove()" style="background:none;border:none;color:#64748b;font-size:11px;margin-top:8px;cursor:pointer;width:100%">Explorar sin tour</button>';
+          tourMsg.innerHTML = '<div style="font-size:14px;font-weight:700;margin-bottom:8px;color:#f59e0b">🎭 Demo Calipolis</div><div style="font-size:13px;color:#94a3b8;line-height:1.5;margin-bottom:14px">Estás viendo los datos reales del Grupo Calipolis Hotels (3 propiedades, 307 hab.).</div><button onclick="startTour();this.parentElement.remove()" style="background:linear-gradient(135deg,#3b82f6,#2563eb);border:none;color:#fff;padding:8px 16px;border-radius:8px;cursor:pointer;font-size:12px;font-weight:700;width:100%">🎯 Iniciar Tour Guiado →</button><button onclick="this.parentElement.remove()" style="background:none;border:none;color:#64748b;font-size:11px;margin-top:8px;cursor:pointer;width:100%">Explorar sin tour</button>';
           document.body.appendChild(tourMsg);
           setTimeout(() => tourMsg.remove(), 12000);
         }, 1500);
