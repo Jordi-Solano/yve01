@@ -2588,11 +2588,12 @@ button, a { touch-action: manipulation; }
     <button id="btn-install-pwa" onclick="if(_deferredInstall){_deferredInstall.prompt();}" style="display:none;background:rgba(34,197,94,.1);border:1px solid rgba(34,197,94,.2);color:#22c55e;padding:4px 10px;border-radius:8px;font-size:11px;cursor:pointer">📲 Instalar</button>
     <button id="btn-theme-nav" onclick="toggleLightMode()" title="Cambiar tema" class="hide-mobile" style="background:rgba(148,163,184,.08);border:1px solid rgba(148,163,184,.2);color:var(--mut);padding:6px 10px;border-radius:8px;font-size:14px;cursor:pointer;transition:.15s">☀️</button>
     <button id="btn-atajos" onclick="toggleAtajos()" class="hide-mobile" style="background:rgba(59,130,246,.1);border:1px solid rgba(59,130,246,.2);color:#60a5fa;padding:5px 12px;border-radius:8px;font-size:12px;cursor:pointer;font-weight:500" title="Ver atajos (?)">⌨ Atajos</button>
+    <button id="btn-lite-nav" onclick="toggleMobileLite()" style="background:rgba(34,197,94,.1);border:1px solid rgba(34,197,94,.2);color:#22c55e;padding:5px 12px;border-radius:8px;font-size:12px;cursor:pointer;font-weight:500;transition:.15s" title="Cambiar entre vista resumida y completa">📊 Vista lite</button>
     <span class="pill hide-mobile" style="color:var(--acc2)">👤 __USER_NAME__</span>
 
     <button class="btn-ref" onclick="toggleChat()" style="background:linear-gradient(135deg,rgba(124,58,237,.15),rgba(59,130,246,.15));border-color:rgba(124,58,237,.35);color:#a78bfa;font-weight:700" title="Pregunta a Yve IA">💬 Yve</button>
     <button onclick="openUploadModal()" title="Procesar Facturas" style="background:rgba(59,130,246,.1);border:1px solid rgba(59,130,246,.25);color:#60a5fa;padding:7px 11px;border-radius:8px;font-size:16px;cursor:pointer;line-height:1;transition:.15s" onmouseover="this.style.background='rgba(59,130,246,.2)'" onmouseout="this.style.background='rgba(59,130,246,.1)'">⚡</button>
-    <button id="btn-lite-nav" onclick="toggleMobileLite()" title="Vista lite / completa" style="background:rgba(34,197,94,.08);border:1px solid rgba(34,197,94,.2);color:#22c55e;padding:7px 11px;border-radius:8px;font-size:16px;cursor:pointer;line-height:1;transition:.15s" onmouseover="this.style.background='rgba(34,197,94,.15)'" onmouseout="this.style.background='rgba(34,197,94,.08)'">📊</button>
+
 
 
     <button class="btn-ref hide-mobile" onclick="loadAll()" title="Actualizar datos" data-i18n="nav.actualizar">↻ Actualizar</button>
@@ -2630,7 +2631,6 @@ button, a { touch-action: manipulation; }
         <a href="/configuracion/" class="menu-item" data-i18n="nav.config">⚙️ Configuración</a>
         <a href="/admin/" class="menu-item" style="display:__ADMIN_DISPLAY__" data-i18n="menu.admin">👥 Administración</a>
         <button class="menu-item" onclick="toggleLightMode();document.getElementById('main-menu').classList.remove('open')">☀️ Cambiar tema</button>
-        <button class="menu-item" onclick="toggleMobileLite();document.getElementById('main-menu').classList.remove('open')" id="menu-lite-btn">📱 Vista lite</button>
         <div class="menu-sep"></div>
         <a href="/logout" class="menu-item" data-i18n="nav.salir" style="color:#f87171">↩ Cerrar sesión</a>
       </div>
@@ -3133,29 +3133,68 @@ button, a { touch-action: manipulation; }
         <h2 style="font-size:20px;font-weight:800;margin:0">🌍 Multi-Hotel Dashboard</h2>
         <div style="font-size:12px;color:var(--mut);margin-top:3px">Vista consolidada del grupo</div>
       </div>
-      <a href="/api/exportar/multihotel" class="btn-ref" style="text-decoration:none;font-size:12px">⬇️ Excel</a>
-    </div>
-
-    <!-- KPI Cards 2x2 -->
-    <div id="mh-kpis" class="lite-visible" style="margin-bottom:20px"></div>
-
-    <!-- Smart Insights row -->
-    <div id="mh-insights" style="margin-bottom:20px"></div>
-
-    <!-- Trend charts 2 col -->
-    <div style="display:grid;grid-template-columns:1fr 1fr;gap:16px;margin-bottom:20px">
-      <div class="card">
-        <div class="card-title" style="font-size:11px;letter-spacing:.5px;text-transform:uppercase">GOP% — 6 Month Trend</div>
-        <div id="mh-gop-chart" style="height:140px;position:relative"></div>
-      </div>
-      <div class="card">
-        <div class="card-title" style="font-size:11px;letter-spacing:.5px;text-transform:uppercase">Revenue — 6 Month Trend</div>
-        <div id="mh-rev-chart" style="height:140px;position:relative"></div>
+      <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap">
+        <!-- Perspectiva toggle -->
+        <div style="display:inline-flex;background:var(--s1);border:1px solid var(--s2);border-radius:9px;padding:3px;gap:2px">
+          <button id="mh-view-cards" onclick="setMHView('cards')" style="background:var(--acc2);color:#fff;border:none;padding:6px 13px;border-radius:6px;font-size:12px;cursor:pointer;font-weight:500;transition:.15s">📊 Resumen</button>
+          <button id="mh-view-ranking" onclick="setMHView('ranking')" style="background:transparent;color:var(--mut);border:none;padding:6px 13px;border-radius:6px;font-size:12px;cursor:pointer;font-weight:500;transition:.15s">🏆 Ranking</button>
+        </div>
+        <a href="/api/exportar/multihotel" class="btn-ref" style="text-decoration:none;font-size:12px">⬇️ Excel</a>
       </div>
     </div>
 
-    <!-- Hotel cards grid -->
-    <div id="mh-hotel-cards" style="display:grid;grid-template-columns:repeat(auto-fit,minmax(min(290px,100%),1fr));gap:16px;overflow:hidden"></div>
+    <!-- ═══ VISTA RESUMEN (cards + gráficos) ═══ -->
+    <div id="mh-view-resumen">
+      <!-- KPI Cards 2x2 -->
+      <div id="mh-kpis" class="lite-visible" style="margin-bottom:20px"></div>
+
+      <!-- Smart Insights row -->
+      <div id="mh-insights" style="margin-bottom:20px"></div>
+
+      <!-- Trend charts 2 col -->
+      <div id="mh-trend-row" style="display:grid;grid-template-columns:1fr 1fr;gap:16px;margin-bottom:20px">
+        <div class="card">
+          <div class="card-title" style="font-size:11px;letter-spacing:.5px;text-transform:uppercase">GOP% — 6 Month Trend</div>
+          <div id="mh-gop-chart" style="height:140px;position:relative"></div>
+        </div>
+        <div class="card">
+          <div class="card-title" style="font-size:11px;letter-spacing:.5px;text-transform:uppercase">Revenue — 6 Month Trend</div>
+          <div id="mh-rev-chart" style="height:140px;position:relative"></div>
+        </div>
+      </div>
+
+      <!-- Hotel cards grid -->
+      <div id="mh-hotel-cards" style="display:grid;grid-template-columns:repeat(auto-fit,minmax(min(290px,100%),1fr));gap:16px;overflow:hidden"></div>
+    </div>
+
+    <!-- ═══ VISTA RANKING (clásica: status + top performers + tabla) ═══ -->
+    <div id="mh-view-clasica" style="display:none">
+      <!-- Status cards -->
+      <div id="mh-status" style="display:grid;grid-template-columns:repeat(3,1fr);gap:12px;margin-bottom:20px"></div>
+
+      <!-- Top performers + Alertas -->
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:16px;margin-bottom:20px">
+        <div class="card">
+          <div class="card-title">🏆 Top Performers (RevPAR)</div>
+          <div id="mh-rankings"></div>
+        </div>
+        <div class="card">
+          <div class="card-title">⚠️ Alertas activas</div>
+          <div id="mh-alertas"></div>
+        </div>
+      </div>
+
+      <!-- Full table -->
+      <div class="card">
+        <div class="card-title">Todos los hoteles</div>
+        <div class="tbl-wrap"><table style="width:100%"><thead><tr>
+          <th>Hotel</th><th>Categoría</th><th style="text-align:right">Hab.</th>
+          <th style="text-align:right">Ocup.</th><th style="text-align:right">ADR</th>
+          <th style="text-align:right">RevPAR</th><th style="text-align:right">Revenue</th>
+          <th style="text-align:right">GOP%</th><th style="text-align:center">Estado</th>
+        </tr></thead><tbody id="mh-tbody-full"></tbody></table></div>
+      </div>
+    </div>
 
   </div><!-- /panel-multi_hotel -->
 
@@ -4776,27 +4815,27 @@ function closeTourBox() {
 var _mobileLite = true;  // default ON on mobile
 
 function initMobileLite() {
-  if (!IS_MOBILE) return;
-  // Check stored preference
+  // Lite is opt-in on desktop, default-on for mobile
   var stored = localStorage.getItem('mobile_lite');
-  _mobileLite = stored === null ? true : stored === '1';
+  if (stored === null) {
+    _mobileLite = IS_MOBILE ? true : false;
+  } else {
+    _mobileLite = stored === '1';
+  }
   applyMobileLite();
 }
 
 function applyMobileLite() {
-  var btn     = document.getElementById('mobile-lite-toggle');
   var menuBtn = document.getElementById('menu-lite-btn');
   var navBtn  = document.getElementById('btn-lite-nav');
   if (_mobileLite) {
     document.body.classList.add('mobile-lite');
-    if (btn)     { btn.innerHTML = '📊 Vista completa'; btn.style.color = 'var(--acc2)'; }
     if (menuBtn) menuBtn.textContent = '📊 Vista completa';
-    if (navBtn)  { navBtn.textContent = '📊'; navBtn.style.color = '#22c55e'; navBtn.title = 'Vista completa'; }
+    if (navBtn)  { navBtn.textContent = '📊 Vista completa'; navBtn.title = 'Cambiar a vista completa'; }
   } else {
     document.body.classList.remove('mobile-lite');
-    if (btn)     { btn.innerHTML = '📱 Vista lite'; btn.style.color = 'var(--mut)'; }
     if (menuBtn) menuBtn.textContent = '📱 Vista lite';
-    if (navBtn)  { navBtn.textContent = '📱'; navBtn.style.color = 'var(--mut)'; navBtn.title = 'Vista lite'; }
+    if (navBtn)  { navBtn.textContent = '📱 Vista lite'; navBtn.title = 'Cambiar a vista resumida'; }
   }
 }
 
@@ -5675,31 +5714,33 @@ async function loadFBResumen() {
     const fcDiff  = (r.fc_real_pct - r.fc_teorico_pct).toFixed(2);
     const fcSign  = fcDiff > 0 ? '+' : '';
 
-    let html = '<div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:18px;flex-wrap:wrap;gap:10px">';
-    html += '<div><h2 style="font-size:17px;font-weight:700;margin:0">F&B Cost Control</h2>';
-    html += '<div style="font-size:12px;color:var(--mut);margin-top:3px">' + (t('fb.datosReales')||'Datos calculados desde ventas reales') + ' · ' + data.ventas_diarias.fechas.length + ' ' + (t('fb.dias')||'días') + '</div>';
-    html += '<button class="btn-ref" onclick="runFB()" style="font-size:12px" data-i18n="btn.recalcular">↺ Recalcular</button></div>';
+    // ── Header: título a la izquierda, botón recalcular a la derecha ──
+    let html = '<div style="display:flex;align-items:flex-start;justify-content:space-between;margin-bottom:18px;gap:12px">';
+    html += '<div><h2 style="font-size:18px;font-weight:700;margin:0">F&B Cost Control</h2>';
+    html += '<div style="font-size:12px;color:var(--mut);margin-top:4px">' + (t('fb.datosReales')||'Datos calculados desde ventas reales') + ' · ' + data.ventas_diarias.fechas.length + ' ' + (t('fb.dias')||'días') + '</div></div>';
+    html += '<button class="btn-ref" onclick="runFB()" style="font-size:12px;flex-shrink:0" data-i18n="btn.recalcular">↺ Recalcular</button>';
+    html += '</div>';
 
-    // KPIs
-    html += '<div style="display:grid;grid-template-columns:repeat(4,1fr);gap:14px;margin-bottom:20px">';
+    // ── KPIs: 4 cards en fila ──
+    html += '<div style="display:grid;grid-template-columns:repeat(4,1fr);gap:12px;margin-bottom:16px">';
     html += _fbKpi(t('fb.ventasFb')||'Ventas F&B', '€' + Math.round(r.total_ventas).toLocaleString('es-ES'), t('fb.periodoCompleto')||'período completo', 'var(--acc2)');
     html += _fbKpi(t('fb.fcTeorico')||'FC Teórico', r.fc_teorico_pct + '%', t('fb.objetivoCalc')||'objetivo calculado', 'var(--grn)');
     html += _fbKpi(t('fb.fcReal')||'FC Real', r.fc_real_pct + '%', fcSign + fcDiff + ' ' + (t('fb.vsObjetivo')||'pp vs objetivo'), fcColor);
     html += _fbKpi(t('fb.mermasLabel')||'Mermas', '€' + r.coste_mermas.toLocaleString('es-ES'), r.alerta ? t('fb.revisar')||'⚠ Revisar' : t('fb.bajoControl')||'bajo control', r.alerta ? 'var(--red)' : 'var(--mut)');
     html += '</div>';
 
-    // FC% gauge
+    // ── Fila: gráfico ventas (izq, ancho) + gauge FC% (der, estrecho) ──
     const maxG = Math.max(r.fc_teorico_pct, r.fc_real_pct) * 1.35;
-    html += '<div class="card" style="margin-bottom:16px"><div class="card-title" style="margin-bottom:14px" data-i18n="fb.gaugeTitle">Food Cost % — Teórico vs Real</div>';
+    html += '<div style="display:grid;grid-template-columns:1.5fr 1fr;gap:16px;margin-bottom:16px">';
+    html += '<div class="card"><div class="card-title" data-i18n="card.ventasDiarias">Ventas diarias F&B</div>';
+    html += '<div style="height:200px;position:relative"><canvas id="fb-ventas-chart"></canvas></div></div>';
+    html += '<div class="card"><div class="card-title" style="margin-bottom:16px" data-i18n="fb.gaugeTitle">Food Cost % — Teórico vs Real</div>';
     html += _fcBar(t('fb.gaugeTeorico')||'Teórico', r.fc_teorico_pct, maxG, 'var(--grn)');
+    html += '<div style="height:14px"></div>';
     html += _fcBar(t('fb.gaugeReal')||'Real',    r.fc_real_pct,    maxG, fcColor);
-    html += '</div>';
+    html += '</div></div>';
 
-    // Ventas diarias chart
-    html += '<div class="card" style="margin-bottom:16px"><div class="card-title" data-i18n="card.ventasDiarias">Ventas diarias F&B</div>';
-    html += '<div style="height:160px;position:relative"><canvas id="fb-ventas-chart"></canvas></div></div>';
-
-    // Categories + ranking
+    // ── Fila: categorías (izq) + top platos (der) ──
     html += '<div style="display:grid;grid-template-columns:1.2fr 0.8fr;gap:16px">';
     html += '<div class="card"><div class="card-title" data-i18n="card.fcCategoria">Food Cost por Categoría</div>';
     html += '<div class="tbl-wrap"><table style="min-width:0;width:100%"><thead><tr>';
@@ -6747,6 +6788,120 @@ async function enviarNotificaciones() {
 
 // ══ MULTI-HOTEL ══════════════════════════════════
 
+var _mhView = 'cards';
+var _mhClasicaLoaded = false;
+
+function setMHView(view) {
+  _mhView = view;
+  localStorage.setItem('mh_view', view);
+  var resumen = document.getElementById('mh-view-resumen');
+  var clasica = document.getElementById('mh-view-clasica');
+  var btnC = document.getElementById('mh-view-cards');
+  var btnR = document.getElementById('mh-view-ranking');
+  if (view === 'ranking') {
+    if (resumen) resumen.style.display = 'none';
+    if (clasica) clasica.style.display = 'block';
+    if (btnC) { btnC.style.background = 'transparent'; btnC.style.color = 'var(--mut)'; }
+    if (btnR) { btnR.style.background = 'var(--acc2)'; btnR.style.color = '#fff'; }
+    loadMHClasica();
+  } else {
+    if (resumen) resumen.style.display = 'block';
+    if (clasica) clasica.style.display = 'none';
+    if (btnC) { btnC.style.background = 'var(--acc2)'; btnC.style.color = '#fff'; }
+    if (btnR) { btnR.style.background = 'transparent'; btnR.style.color = 'var(--mut)'; }
+  }
+}
+
+async function loadMHClasica() {
+  if (_mhClasicaLoaded) return;
+  try {
+    var [ovRes, rkRes, alRes] = await Promise.all([
+      fetch('/api/multi_hotel/overview'),
+      fetch('/api/multi_hotel/rankings'),
+      fetch('/api/multi_hotel/alertas')
+    ]);
+    var ov = await ovRes.json();
+    var rk = await rkRes.json();
+    var al = await alRes.json();
+    if (ov.ok) { renderMHStatus(ov); renderMHTableFull(ov.hoteles || []); }
+    if (rk.ok) renderMHRankings(rk.revpar || []);
+    if (al.ok) renderMHAlertasClasica(al.alertas || []);
+    _mhClasicaLoaded = true;
+  } catch(e) { console.warn('MH clásica:', e); }
+}
+
+function renderMHStatus(ov) {
+  var cont = document.getElementById('mh-status');
+  if (!cont) return;
+  var hoteles = ov.hoteles || [];
+  var ok = hoteles.filter(function(h){ return (h.alertas||0) === 0; }).length;
+  var warn = hoteles.filter(function(h){ return (h.alertas||0) >= 1 && (h.alertas||0) <= 2; }).length;
+  var crit = hoteles.filter(function(h){ return (h.alertas||0) > 2; }).length;
+  cont.innerHTML =
+    '<div style="background:rgba(34,197,94,.08);border:1px solid rgba(34,197,94,.25);border-radius:12px;padding:16px;display:flex;align-items:center;gap:12px">' +
+      '<span style="font-size:26px">✅</span>' +
+      '<div><div style="font-size:24px;font-weight:800;color:#22c55e">' + ok + '</div>' +
+      '<div style="font-size:12px;color:var(--mut)">Hoteles OK</div></div></div>' +
+    '<div style="background:rgba(245,158,11,.08);border:1px solid rgba(245,158,11,.25);border-radius:12px;padding:16px;display:flex;align-items:center;gap:12px">' +
+      '<span style="font-size:26px">⚠️</span>' +
+      '<div><div style="font-size:24px;font-weight:800;color:#f59e0b">' + warn + '</div>' +
+      '<div style="font-size:12px;color:var(--mut)">Con avisos</div></div></div>' +
+    '<div style="background:rgba(239,68,68,.08);border:1px solid rgba(239,68,68,.25);border-radius:12px;padding:16px;display:flex;align-items:center;gap:12px">' +
+      '<span style="font-size:26px">🚨</span>' +
+      '<div><div style="font-size:24px;font-weight:800;color:#ef4444">' + crit + '</div>' +
+      '<div style="font-size:12px;color:var(--mut)">Críticos</div></div></div>';
+}
+
+function renderMHRankings(top) {
+  var cont = document.getElementById('mh-rankings');
+  if (!cont) return;
+  if (!top.length) { cont.innerHTML = '<div style="color:var(--dim);font-size:13px;padding:8px">Sin datos</div>'; return; }
+  cont.innerHTML = top.map(function(h, i) {
+    var medal = i === 0 ? '#FFD700' : i === 1 ? '#C0C0C0' : i === 2 ? '#CD7F32' : 'var(--dim)';
+    var rev = h.revpar_eur || h.revpar || 0;
+    return '<div style="display:flex;justify-content:space-between;align-items:center;padding:10px 0;border-bottom:1px solid var(--s2)">' +
+      '<div style="display:flex;align-items:center;gap:12px">' +
+        '<span style="font-size:17px;font-weight:800;color:' + medal + ';min-width:20px">' + (i+1) + '</span>' +
+        '<div style="font-weight:600;font-size:13px">' + (h.hotel_nombre || h.nombre || '') + '</div>' +
+      '</div>' +
+      '<div style="font-weight:700;color:#22c55e">€' + Math.round(rev) + '</div>' +
+    '</div>';
+  }).join('');
+}
+
+function renderMHAlertasClasica(alertas) {
+  var cont = document.getElementById('mh-alertas');
+  if (!cont) return;
+  if (!alertas.length) { cont.innerHTML = '<div style="color:#22c55e;font-size:13px;padding:8px">✓ Sin alertas activas</div>'; return; }
+  cont.innerHTML = alertas.slice(0,8).map(function(a) {
+    return '<div style="display:flex;align-items:center;gap:10px;padding:9px 0;border-bottom:1px solid var(--s2)">' +
+      '<span style="color:#f59e0b">▲</span>' +
+      '<div style="font-size:12px"><span style="font-weight:600">' + (a.hotel || a.hotel_nombre || '') + '</span> ' +
+      '<span style="color:var(--mut)">' + (a.msg || a.mensaje || a.tipo || 'Alerta') + '</span></div></div>';
+  }).join('');
+}
+
+function renderMHTableFull(hoteles) {
+  var tbody = document.getElementById('mh-tbody-full');
+  if (!tbody) return;
+  tbody.innerHTML = hoteles.map(function(h) {
+    var alertas = h.alertas || 0;
+    var stColor = alertas === 0 ? '#22c55e' : alertas <= 2 ? '#f59e0b' : '#ef4444';
+    var stIcon = alertas === 0 ? '●' : alertas <= 2 ? '▲' : '■';
+    return '<tr>' +
+      '<td style="font-weight:600">' + (h.nombre || h.hotel_nombre || '') + '</td>' +
+      '<td style="color:var(--mut)">' + (h.stars ? '★'.repeat(h.stars) : '—') + '</td>' +
+      '<td style="text-align:right">' + (h.habitaciones || 0) + '</td>' +
+      '<td style="text-align:right">' + (h.ocupacion_pct || 0) + '%</td>' +
+      '<td style="text-align:right">€' + Math.round(h.adr_eur || h.adr || 0) + '</td>' +
+      '<td style="text-align:right;font-weight:600">€' + Math.round(h.revpar_eur || h.revpar || 0) + '</td>' +
+      '<td style="text-align:right;font-weight:600;color:#22c55e">€' + Math.round((h.total_ingresos || h.revenue_mtd || 0)/1000) + 'K</td>' +
+      '<td style="text-align:right">' + (h.gop_pct || 0) + '%</td>' +
+      '<td style="text-align:center;color:' + stColor + '">' + stIcon + '</td>' +
+    '</tr>';
+  }).join('');
+}
+
 async function loadMultiHotel() {
   if (_mh_loaded) return;
   try {
@@ -6891,6 +7046,9 @@ async function loadMultiHotel() {
     }
 
     _mh_loaded = true;
+    // Restaurar perspectiva guardada
+    var savedView = localStorage.getItem('mh_view');
+    if (savedView === 'ranking') setMHView('ranking');
     if (_i18nLang && _i18nLang !== 'es') applyI18n(_i18nData);
   } catch(e) {
     console.error('MH Error:', e);
@@ -7738,9 +7896,6 @@ if (window.innerWidth <= 768) {
 }
 </script>
 
-<button id="mobile-lite-toggle" onclick="toggleMobileLite()" title="Cambiar vista">
-  📊 Vista completa
-</button>
 <button id="back-top" onclick="window.scrollTo({top:0,behavior:'smooth'})" 
   style="display:none;position:fixed;bottom:88px;right:20px;background:var(--s1);border:1px solid var(--s2);color:var(--mut);width:36px;height:36px;border-radius:50%;font-size:16px;cursor:pointer;z-index:500;transition:.2s;box-shadow:0 2px 8px rgba(0,0,0,.3)"
   onmouseover="this.style.borderColor='var(--acc)';this.style.color='var(--acc)'"
