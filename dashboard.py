@@ -3548,6 +3548,10 @@ async function loadAll() {
     console.error('Error en loadAll:', e);
     document.getElementById('status-txt').textContent = t('status.error') || 'Error al cargar datos';
   }
+  // Re-apply string map after all data has rendered
+  if (_i18nLang && _i18nLang !== 'es') {
+    setTimeout(function() { _applyStrMap(_i18nLang); }, 500);
+  }
 }
 
 function renderStats(s) {
@@ -5009,7 +5013,7 @@ function applyI18n(data) {
   // After translating data-i18n elements, also walk text nodes
   if (_i18nLang && _i18nLang !== 'es') {
     // Small delay to let any pending renders finish
-    setTimeout(function() { _applyStrMap(_i18nLang); }, 150);
+    setTimeout(function() { _applyStrMap(_i18nLang); }, 800);
   }
 }
 
