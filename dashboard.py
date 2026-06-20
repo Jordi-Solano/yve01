@@ -4311,40 +4311,47 @@ var _arRealLoaded = false;
 var _TOUR_VER = '3';  // increment to re-offer after updates
 var _tourSteps = [
   {
-    el: '#app-header',
+    // Step 1: ALWAYS centered, welcome screen
+    el: null,
     tab: null,
+    pos: 'center',
     title: '👋 Bienvenido a Yve.01',
-    text: 'El sistema de finanzas hoteleras que automatiza AR, AP, DRR y reporting para el Grupo Calipolis. Este tour te lleva por cada módulo — 3 minutos y ya lo dominas todo.'
+    text: 'El sistema de finanzas hoteleras que automatiza AR, AP, DRR y reporting. Este tour te lleva por cada módulo en 3 minutos — puedes moverlo si te molesta con los botones de posición.'
   },
   {
     el: '#ar-stats-section',
     tab: 'ar',
-    title: '💳 AR — Comisiones OTA',
-    text: 'Verifica automáticamente las comisiones de Booking.com y Expedia. De un vistazo: facturas procesadas, importe total, discrepancias reclamables y certificados de Doble Imposición pendientes. El número rojo son euros que puedes recuperar.'
+    pos: 'auto',
+    title: '📥 AR — Comisiones OTA',
+    text: 'Verifica automáticamente las comisiones de Booking.com y Expedia. De un vistazo: facturas procesadas, importe total, discrepancias reclamables y certificados DI pendientes. El número rojo son euros que puedes recuperar.'
   },
   {
     el: '#stats-ap-grid',
     tab: 'ap',
+    pos: 'auto',
     title: '📦 AP — 3-way Matching',
     text: 'Para cada factura de proveedor, Yve cruza 3 documentos: la factura, el pedido (PO) y el albarán. Si cuadra todo → Match OK automático. Si hay diferencia → alerta y email al proveedor generado con IA.'
   },
   {
     el: '#drr-metrics',
     tab: 'drr',
+    pos: 'auto',
     title: '📊 DRR — Daily Revenue Report',
     text: 'Arrastra tu archivo .xlsm aquí. Yve extrae RevPAR, ADR, GOP%, ocupación y las 7.000+ líneas del Trial Balance en segundos. Detecta Out of Balance automáticamente y te avisa al instante.'
   },
   {
     el: '#ar-real-stats',
     tab: 'ar_real',
+    pos: 'auto',
     title: '🏢 AR Real — Grupos Corporativos',
-    text: 'Gestión completa de clientes como Telefónica o Accenture: emite facturas, controla el aging (0-30 / 31-60 / +90 días), cobra con un clic y envía recordatorios automáticos por email.'
+    text: 'Gestión completa de clientes corporativos: emite facturas, controla el aging (0-30 / 31-60 / +90 días), cobra con un clic y envía recordatorios automáticos por email.'
   },
   {
     el: '#cal-kpis',
     tab: 'calipolis',
+    pos: 'auto',
     title: '🏨 Grupo Calipolis',
-    text: 'Dashboard consolidado de las 3 propiedades: Sitges, Mar y Boutique. GOP%, RevPAR, ocupación y tendencias de 6 meses. €2M de revenue gestionados desde aquí.',
+    text: 'Dashboard consolidado de las 3 propiedades: Sitges, Mar y Boutique. GOP%, RevPAR, ocupación y tendencias de 6 meses gestionados desde una sola pantalla.',
     action: function() {
       if (typeof loadCalipolis === 'function' && !document.getElementById('cal-kpis').dataset.loaded) {
         loadCalipolis();
@@ -4354,6 +4361,7 @@ var _tourSteps = [
   {
     el: '#mh-kpis',
     tab: 'multi_hotel',
+    pos: 'auto',
     title: '🌍 Multi-Hotel — Vista de Grupo',
     text: 'Para el Financial Controller del grupo: KPIs consolidados, ranking de performance por hotel, tendencia de 6 meses y alertas centralizadas. Una pantalla, todo el grupo.',
     action: function() {
@@ -4365,253 +4373,265 @@ var _tourSteps = [
   }
 ];
 
-function _launchConfetti() {
-  var canvas = document.createElement('canvas');
-  canvas.id = 'confetti-canvas';
-  canvas.style.cssText = 'position:fixed;inset:0;width:100%;height:100%;z-index:9998;pointer-events:none';
-  document.body.appendChild(canvas);
-  canvas.width = window.innerWidth;
-  canvas.height = window.innerHeight;
-  var ctx = canvas.getContext('2d');
-  var pieces = [];
-  var colors = ['#3b82f6','#22c55e','#f59e0b','#ec4899','#a78bfa','#06b6d4','#f97316','#ef4444'];
-  for (var i = 0; i < 180; i++) {
-    pieces.push({
-      x: Math.random() * canvas.width, y: -20 - Math.random() * canvas.height * 0.4,
-      w: Math.random() * 12 + 5, h: Math.random() * 7 + 3,
-      r: Math.random() * Math.PI * 2, vx: (Math.random() - 0.5) * 4,
-      vy: Math.random() * 5 + 2, vr: (Math.random() - 0.5) * 0.18,
-      color: colors[Math.floor(Math.random() * colors.length)], opacity: 1
-    });
+// ── Tour state ────────────────────────────────────────────────────────
+var _tourActive = false;
+var _tourStep   = 0;
+var _tourBoxPos = 'center';  // current position: center|tl|tr|bl|br
+var _tourScrollHandler = null;
+var _tourResizeHandler = null;
+var _tourCurrentTarget = null;
+
+// ── Position presets ──────────────────────────────────────────────────
+var _TOUR_POSITIONS = ['center', 'tl', 'tr', 'bl', 'br'];
+var _TOUR_POS_LABELS = {
+  center: '⊙', tl: '↖', tr: '↗', bl: '↙', br: '↘'
+};
+
+function _tourBoxCoords(pos, bw, bh) {
+  var vw = window.innerWidth, vh = window.innerHeight;
+  var pad = 20, navH = 56;
+  switch(pos) {
+    case 'center': return { top: Math.round((vh - bh)/2), left: Math.round((vw - bw)/2) };
+    case 'tl':     return { top: navH + pad, left: pad };
+    case 'tr':     return { top: navH + pad, left: vw - bw - pad };
+    case 'bl':     return { top: vh - bh - pad, left: pad };
+    case 'br':     return { top: vh - bh - pad, left: vw - bw - pad };
+    default:       return { top: Math.round((vh - bh)/2), left: Math.round((vw - bw)/2) };
   }
-  var frame = 0;
-  (function draw() {
-    ctx.clearRect(0, 0, canvas.width, canvas.height);
-    var alive = false;
-    pieces.forEach(function(p) {
-      p.x += p.vx; p.y += p.vy; p.r += p.vr;
-      if (frame > 70) p.opacity -= 0.012;
-      if (p.opacity > 0 && p.y < canvas.height + 30) {
-        alive = true;
-        ctx.save(); ctx.globalAlpha = Math.max(0, p.opacity);
-        ctx.translate(p.x, p.y); ctx.rotate(p.r);
-        ctx.fillStyle = p.color;
-        ctx.fillRect(-p.w/2, -p.h/2, p.w, p.h);
-        ctx.restore();
-      }
-    });
-    frame++;
-    if (alive && frame < 200) requestAnimationFrame(draw);
-    else canvas.remove();
-  })();
 }
 
-function startTour() {
-  _tourActive = true; _tourStep = 0;
-  // Close menu if open
-  var mm = document.getElementById('main-menu');
-  if (mm) mm.classList.remove('open');
-  // Reset old elements
-  var oldBox = document.getElementById('tour-box');
-  if (oldBox) oldBox.remove();
+// ── Choose best auto-position avoiding the highlighted element ────────
+function _autoPickPos(targetRect) {
+  if (!targetRect) return 'center';
+  var vw = window.innerWidth, vh = window.innerHeight;
+  var bw = 360, bh = 280;
+  var cx = targetRect.left + targetRect.width/2;
+  var cy = targetRect.top  + targetRect.height/2;
+  // Pick position in opposite quadrant from target
+  var inLeft  = cx < vw/2;
+  var inTop   = cy < vh/2;
+  if (inLeft  && inTop)  return 'br';
+  if (!inLeft && inTop)  return 'bl';
+  if (inLeft  && !inTop) return 'tr';
+  return 'tl';
+}
+
+// ── Redraw the spotlight canvas ───────────────────────────────────────
+function _drawSpotlight(target) {
   var canvas = document.getElementById('tour-spotlight-canvas');
-  if (canvas) { canvas.style.display='block'; var c2=canvas.getContext('2d'); c2.clearRect(0,0,canvas.width,canvas.height); }
-  _showTourStep();
-}
-
-function _showTourStep() {
-  if (_tourStep >= _tourSteps.length) { endTour(); return; }
-  var step = _tourSteps[_tourStep];
-
-  // ── 1. Switch tab first, then action ─────────────────────────────────
-  if (step.tab) {
-    var tabEl = document.getElementById('tab-' + step.tab);
-    if (tabEl) switchTab(step.tab, tabEl);
-  }
-  if (step.action && typeof step.action === 'function') {
-    setTimeout(function() { try { step.action(); } catch(e) {} }, 300);
-  }
-
-  // ── 2. Clear previous highlight ────────────────────────────────────
-  document.querySelectorAll('[data-tour-active]').forEach(function(el) {
-    el.style.outline = '';
-    el.style.outlineOffset = '';
-    el.style.zIndex = '';
-    el.removeAttribute('data-tour-active');
-  });
-
-  // ── 3. Find target + highlight ─────────────────────────────────────
-  var target = null;
-  if (step.el) {
-    // Wait a tick for tab switch to render
-    setTimeout(function() {
-      target = document.querySelector(step.el);
-      _positionTour(target, step);
-    }, step.tab ? 500 : 0);
-  } else {
-    _positionTour(null, step);
-  }
-}
-
-function _positionTour(target, step) {
-  // ── Overlay with spotlight ────────────────────────────────────────
-  var overlay = document.getElementById('tour-overlay');
-  if (!overlay) {
-    overlay = document.createElement('div');
-    overlay.id = 'tour-overlay';
-    document.body.appendChild(overlay);
-  }
-  overlay.style.cssText = 'position:fixed;inset:0;z-index:9900;pointer-events:all;cursor:default;display:block';
-  overlay.onclick = null; // Click outside does nothing — use Siguiente button
-  overlay.style.display = 'block';
-
-  // Create spotlight canvas overlay
-  var canvas = document.getElementById('tour-spotlight-canvas');
-  if (!canvas) {
-    canvas = document.createElement('canvas');
-    canvas.id = 'tour-spotlight-canvas';
-    canvas.style.cssText = 'position:fixed;inset:0;width:100%;height:100%;pointer-events:none;z-index:9901';
-    document.body.appendChild(canvas);
-  }
-  canvas.width = window.innerWidth;
+  if (!canvas) return;
+  canvas.width  = window.innerWidth;
   canvas.height = window.innerHeight;
   var ctx = canvas.getContext('2d');
   ctx.clearRect(0, 0, canvas.width, canvas.height);
 
   if (target) {
-    target.scrollIntoView({behavior:'smooth', block:'nearest', inline:'center'});
-    target.setAttribute('data-tour-active', '1');
-    target.style.position = 'relative';
-    target.style.zIndex = '9950';
-
-    setTimeout(function() {
-      // Re-query target in case DOM updated after tab switch
-      if (step && step.el) { var freshTarget = document.querySelector(step.el); if (freshTarget) target = freshTarget; }
-      var rect = target.getBoundingClientRect();
-      // If rect is 0,0,0,0 (element not visible yet) — fall back to full dim
-      if (rect.width === 0 && rect.height === 0) {
-        ctx.fillStyle = 'rgba(0,0,0,0.78)'; ctx.fillRect(0,0,canvas.width,canvas.height);
-        _placeTourBox(null, 0); return;
-      }
-      var pad = 10;
-      var x = rect.left - pad, y = rect.top - pad;
-      var w = rect.width + pad*2, h = rect.height + pad*2;
-
-      // Dark overlay with hole
-      var extraPad = (step && step.el && (step.el.includes('stats') || step.el.includes('panel') || step.el.includes('metrics') || step.el.includes('grid'))) ? 24 : 8;
+    var rect = target.getBoundingClientRect();
+    if (rect.width === 0 && rect.height === 0) {
+      // Element not visible - full dim
       ctx.fillStyle = 'rgba(0,0,0,0.78)';
       ctx.fillRect(0, 0, canvas.width, canvas.height);
-      ctx.clearRect(x - extraPad, y - extraPad, w + extraPad*2, h + extraPad*2);
+      return;
+    }
+    var pad = 12;
+    var x = rect.left - pad, y = rect.top - pad;
+    var w = rect.width + pad*2, h = rect.height + pad*2;
+    var r = 12; // border radius
 
-      // Blue glow around hole
-      // Outer glow
-      ctx.shadowColor = '#3b82f6';
-      ctx.shadowBlur = 30;
-      ctx.strokeStyle = 'rgba(59,130,246,0.8)';
-      ctx.lineWidth = 3;
-      ctx.beginPath();
-      if (ctx.roundRect) ctx.roundRect(x, y, w, h, 10); else ctx.rect(x, y, w, h);
-      ctx.stroke();
-      ctx.shadowBlur = 0;
-      // Inner highlight
-      ctx.strokeStyle = 'rgba(96,165,250,0.4)';
-      ctx.lineWidth = 1;
-      ctx.beginPath();
-      if (ctx.roundRect) ctx.roundRect(x+2, y+2, w-4, h-4, 8); else ctx.rect(x+2, y+2, w-4, h-4);
-      ctx.stroke();
+    // Full dark overlay
+    ctx.fillStyle = 'rgba(0,0,0,0.78)';
+    ctx.fillRect(0, 0, canvas.width, canvas.height);
 
-      _placeTourBox(rect, pad);
-    }, step.tab ? 800 : 150);
+    // Cut hole with rounded corners
+    ctx.save();
+    ctx.globalCompositeOperation = 'destination-out';
+    ctx.beginPath();
+    if (ctx.roundRect) {
+      ctx.roundRect(x, y, w, h, r);
+    } else {
+      ctx.moveTo(x + r, y);
+      ctx.lineTo(x + w - r, y); ctx.arcTo(x+w, y, x+w, y+r, r);
+      ctx.lineTo(x + w, y + h - r); ctx.arcTo(x+w, y+h, x+w-r, y+h, r);
+      ctx.lineTo(x + r, y + h); ctx.arcTo(x, y+h, x, y+h-r, r);
+      ctx.lineTo(x, y + r); ctx.arcTo(x, y, x+r, y, r);
+      ctx.closePath();
+    }
+    ctx.fill();
+    ctx.restore();
+
+    // Blue glow ring
+    ctx.shadowColor = '#3b82f6';
+    ctx.shadowBlur = 20;
+    ctx.strokeStyle = 'rgba(59,130,246,0.9)';
+    ctx.lineWidth = 2;
+    ctx.beginPath();
+    if (ctx.roundRect) ctx.roundRect(x, y, w, h, r);
+    else ctx.rect(x, y, w, h);
+    ctx.stroke();
+    ctx.shadowBlur = 0;
   } else {
-    // No target → full dim, box centered
+    // No target: just dim
     ctx.fillStyle = 'rgba(0,0,0,0.72)';
     ctx.fillRect(0, 0, canvas.width, canvas.height);
-    // Show box in top-left area when no target
-    var box2 = document.getElementById('tour-box');
-    if (box2) { box2.style.top = '80px'; box2.style.left = '20px'; box2.style.transform = ''; }
   }
+}
 
-  // ── Build / update tooltip box ────────────────────────────────────
+// ── Build/update the tour box HTML ───────────────────────────────────
+function _renderTourBox(step) {
   var box = document.getElementById('tour-box');
   if (!box) {
     box = document.createElement('div');
     box.id = 'tour-box';
     document.body.appendChild(box);
   }
-  box.setAttribute('style',
+  box.style.cssText =
     'position:fixed;background:#0f172a;border:2px solid #3b82f6;border-radius:16px;' +
-    'padding:22px 26px 18px;max-width:360px;width:calc(100vw - 32px);z-index:10000;' +
-    'box-shadow:0 20px 60px rgba(0,0,0,.85),0 0 0 1px rgba(59,130,246,.35),0 0 60px rgba(59,130,246,.08);' +
+    'padding:18px 20px 16px;max-width:360px;width:calc(100vw - 32px);z-index:10000;' +
+    'box-shadow:0 20px 60px rgba(0,0,0,.85),0 0 60px rgba(59,130,246,.08);' +
     'pointer-events:all;font-family:Inter,system-ui,sans-serif;color:#f1f5f9;' +
-    'animation:tourBoxIn .3s cubic-bezier(.34,1.56,.64,1)');
+    'animation:tourBoxIn .3s cubic-bezier(.34,1.56,.64,1);user-select:none';
+
+  // Position switcher row
+  var posButtons = _TOUR_POSITIONS.map(function(p) {
+    var active = p === _tourBoxPos;
+    return '<button onclick="_setTourPos(\'' + p + '\')" title="Mover aquí" ' +
+      'style="background:' + (active ? 'rgba(59,130,246,.3)' : 'rgba(255,255,255,.06)') + ';' +
+      'border:1px solid ' + (active ? '#3b82f6' : 'rgba(255,255,255,.1)') + ';' +
+      'color:' + (active ? '#60a5fa' : '#475569') + ';' +
+      'width:26px;height:26px;border-radius:6px;font-size:13px;cursor:pointer;line-height:1;' +
+      'display:inline-flex;align-items:center;justify-content:center;transition:.15s">' +
+      _TOUR_POS_LABELS[p] + '</button>';
+  }).join('');
+
   box.innerHTML =
-    // Close button
-    '<button onclick="endTour()" style="position:absolute;top:10px;right:12px;background:none;border:none;' +
-      'color:#475569;font-size:22px;cursor:pointer;line-height:1;padding:0;transition:.15s" ' +
-      'onmouseover="this.style.color=\'#94a3b8\'" onmouseout="this.style.color=\'#475569\'">×</button>' +
-    // Title  
-    '<div style="font-size:17px;font-weight:800;color:#f1f5f9;padding-right:24px;margin-bottom:10px;line-height:1.3">' + step.title + '</div>' +
-    // Body text
-    '<div style="font-size:14px;color:#94a3b8;line-height:1.7;margin-bottom:20px">' + step.text + '</div>' +
-    // Dots + buttons row
+    // Header row: position controls + close
+    '<div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:12px">' +
+      '<div style="display:flex;gap:4px;align-items:center">' + posButtons + '</div>' +
+      '<button onclick="endTour()" style="background:none;border:none;color:#475569;font-size:20px;' +
+        'cursor:pointer;padding:0 2px;line-height:1;transition:.15s" ' +
+        'onmouseover="this.style.color=\'#94a3b8\'" onmouseout="this.style.color=\'#475569\'">×</button>' +
+    '</div>' +
+    // Title
+    '<div style="font-size:17px;font-weight:800;color:#f1f5f9;margin-bottom:8px;line-height:1.3">' +
+      step.title + '</div>' +
+    // Body
+    '<div style="font-size:13px;color:#94a3b8;line-height:1.7;margin-bottom:16px">' +
+      step.text + '</div>' +
+    // Progress dots + nav buttons
     '<div style="display:flex;align-items:center;justify-content:space-between">' +
-      '<div style="display:flex;gap:6px;align-items:center">' +
+      '<div style="display:flex;gap:5px;align-items:center">' +
         _tourSteps.map(function(_,i) {
-          return '<div style="transition:.2s;border-radius:50%;background:' +
-            (i === _tourStep ? '#3b82f6' : 'rgba(59,130,246,.25)') +
-            ';width:' + (i === _tourStep ? '20px' : '8px') +
-            ';height:8px;border-radius:' + (i === _tourStep ? '4px' : '50%') + '"></div>';
+          var active = i === _tourStep;
+          return '<div style="transition:.25s;border-radius:' + (active ? '4px' : '50%') + ';' +
+            'background:' + (active ? '#3b82f6' : 'rgba(59,130,246,.25)') + ';' +
+            'width:' + (active ? '18px' : '7px') + ';height:7px"></div>';
         }).join('') +
       '</div>' +
-      '<div style="display:flex;gap:8px">' +
+      '<div style="display:flex;gap:6px">' +
         (_tourStep > 0 ?
-          '<button onclick="prevTourStep()" style="background:rgba(255,255,255,.06);border:1px solid rgba(255,255,255,.1);color:#94a3b8;' +
-          'padding:8px 14px;border-radius:10px;font-size:13px;cursor:pointer;font-weight:500">← Atrás</button>' : '') +
+          '<button onclick="prevTourStep()" style="background:rgba(255,255,255,.06);border:1px solid rgba(255,255,255,.1);' +
+          'color:#94a3b8;padding:7px 13px;border-radius:9px;font-size:13px;cursor:pointer">← Atrás</button>' : '') +
         '<button onclick="nextTourStep()" style="background:#3b82f6;border:none;color:#fff;' +
-          'padding:8px 18px;border-radius:10px;font-size:13px;font-weight:700;cursor:pointer;' +
+          'padding:7px 16px;border-radius:9px;font-size:13px;font-weight:700;cursor:pointer;' +
           'box-shadow:0 4px 12px rgba(59,130,246,.4)">' +
-          (_tourStep === _tourSteps.length-1 ? '✓ Finalizar' : 'Siguiente →') +
+          (_tourStep === _tourSteps.length - 1 ? '✓ Finalizar' : 'Siguiente →') +
         '</button>' +
       '</div>' +
     '</div>';
 }
 
-function _placeTourBox(targetRect, pad) {
+// ── Apply position to box ─────────────────────────────────────────────
+function _applyTourBoxPos(targetRect) {
   var box = document.getElementById('tour-box');
   if (!box) return;
-  var bw = 336, bh = 260;
-  var vw = window.innerWidth, vh = window.innerHeight;
-  var top, left;
+  var bw = box.offsetWidth  || 360;
+  var bh = box.offsetHeight || 280;
 
-  if (targetRect) {
-    var rect = targetRect;
-    var isSmall = rect.width < 200;  // tab button vs panel section
-    if (isSmall) {
-      // Small target (tab button): show below
-      top  = rect.bottom + pad + 12;
-      left = Math.max(10, Math.min(rect.left, vw - bw - 10));
-      if (top + bh > vh - 16) top = rect.top - bh - 16;
-    } else {
-      // Large target (panel section): show beside or below
-      top  = Math.max(10, rect.bottom + 16);
-      left = Math.max(10, Math.min(rect.left, vw - bw - 10));
-      // If goes off bottom → show in top-left of screen
-      if (top + bh > vh - 16) top = Math.max(10, (vh - bh) / 2);
-    }
-    if (top < 10) top = 10;
-  } else {
-    top  = Math.max(10, (vh - bh) / 2);
-    left = Math.max(10, (vw - bw) / 2);
-  }
-  box.style.top  = Math.round(top)  + 'px';
-  box.style.left = Math.round(left) + 'px';
+  // For step 0 always center; for others auto or stored pos
+  var pos = _tourBoxPos;
+  if (pos === 'auto' && targetRect) pos = _autoPickPos(targetRect);
+  else if (pos === 'auto') pos = 'center';
+
+  var coords = _tourBoxCoords(pos, bw, bh);
+  box.style.top  = coords.top  + 'px';
+  box.style.left = coords.left + 'px';
   box.style.transform = '';
 }
 
+function _setTourPos(pos) {
+  _tourBoxPos = pos;
+  var target = _tourCurrentTarget;
+  _renderTourBox(_tourSteps[_tourStep]);
+  setTimeout(function() { _applyTourBoxPos(target ? target.getBoundingClientRect() : null); }, 10);
+}
 
+// ── Main step renderer ────────────────────────────────────────────────
+function _showTourStep() {
+  if (_tourStep >= _tourSteps.length) { endTour(); return; }
+  var step = _tourSteps[_tourStep];
+  _tourCurrentTarget = null;
+
+  // Set position for this step
+  if (_tourStep === 0) {
+    _tourBoxPos = 'center';  // Always center for welcome
+  } else if (step.pos && step.pos !== 'auto') {
+    _tourBoxPos = step.pos;
+  } else {
+    _tourBoxPos = 'auto';    // Will auto-pick after finding target
+  }
+
+  // Clear previous highlight
+  document.querySelectorAll('[data-tour-active]').forEach(function(el) {
+    el.style.outline = '';
+    el.style.zIndex = '';
+    el.style.position = '';
+    el.removeAttribute('data-tour-active');
+  });
+
+  // Switch tab first
+  if (step.tab) {
+    var tabEl = document.getElementById('tab-' + step.tab);
+    if (tabEl) switchTab(step.tab, tabEl);
+  }
+
+  // Run step action
+  if (step.action && typeof step.action === 'function') {
+    setTimeout(function() { try { step.action(); } catch(e) {} }, 300);
+  }
+
+  var delay = step.tab ? 600 : 50;
+  setTimeout(function() {
+    var target = step.el ? document.querySelector(step.el) : null;
+    _tourCurrentTarget = target;
+
+    if (target) {
+      // Scroll target into view
+      target.scrollIntoView({ behavior: 'smooth', block: 'nearest', inline: 'nearest' });
+      target.setAttribute('data-tour-active', '1');
+      target.style.position = 'relative';
+      target.style.zIndex   = '9950';
+    }
+
+    // Wait for scroll to settle, then draw
+    setTimeout(function() {
+      // Re-query target after scroll/render
+      if (step.el) {
+        var fresh = document.querySelector(step.el);
+        if (fresh) { _tourCurrentTarget = fresh; target = fresh; }
+      }
+      _drawSpotlight(target);
+      _renderTourBox(step);
+      // Apply position after box is in DOM (need its size)
+      requestAnimationFrame(function() {
+        _applyTourBoxPos(target ? target.getBoundingClientRect() : null);
+      });
+    }, target ? 400 : 0);
+  }, delay);
+}
+
+// ── Navigation ────────────────────────────────────────────────────────
 function nextTourStep() {
   _tourStep++;
-  if (_tourStep >= _tourSteps.length) { endTour(); return; }
   _showTourStep();
 }
 
@@ -4619,50 +4639,104 @@ function prevTourStep() {
   if (_tourStep > 0) { _tourStep--; _showTourStep(); }
 }
 
-function endTour() {
-  _tourActive = false; _tourStep = 0;
-  var ov = document.getElementById('tour-overlay'); if (ov) ov.style.display = 'none';
-  // Clear spotlight canvas
+// ── Start / End ───────────────────────────────────────────────────────
+function startTour() {
+  _tourActive = true;
+  _tourStep   = 0;
+  _tourBoxPos = 'center';
+
+  // Close menu
+  var mm = document.getElementById('main-menu');
+  if (mm) mm.classList.remove('open');
+
+  // Remove old elements
+  var oldBox = document.getElementById('tour-box');
+  if (oldBox) oldBox.remove();
+
+  // Overlay
+  var overlay = document.getElementById('tour-overlay');
+  if (!overlay) {
+    overlay = document.createElement('div');
+    overlay.id = 'tour-overlay';
+    document.body.appendChild(overlay);
+  }
+  overlay.style.cssText = 'position:fixed;inset:0;z-index:9900;pointer-events:all;cursor:default;display:block;background:transparent';
+  overlay.onclick = null;  // clicking outside does NOTHING
+
+  // Spotlight canvas
   var canvas = document.getElementById('tour-spotlight-canvas');
-  if (canvas) { var ctx2 = canvas.getContext('2d'); ctx2.clearRect(0,0,canvas.width,canvas.height); canvas.style.display='none'; }
-  // Clear all highlights
+  if (!canvas) {
+    canvas = document.createElement('canvas');
+    canvas.id = 'tour-spotlight-canvas';
+    canvas.style.cssText = 'position:fixed;inset:0;width:100%;height:100%;pointer-events:none;z-index:9901';
+    document.body.appendChild(canvas);
+  }
+  canvas.style.display = 'block';
+
+  // Scroll listener — redraw spotlight when user scrolls
+  if (_tourScrollHandler) window.removeEventListener('scroll', _tourScrollHandler, true);
+  _tourScrollHandler = function() {
+    if (!_tourActive || !_tourCurrentTarget) return;
+    _drawSpotlight(_tourCurrentTarget);
+    _applyTourBoxPos(_tourCurrentTarget.getBoundingClientRect());
+  };
+  window.addEventListener('scroll', _tourScrollHandler, { passive: true, capture: true });
+
+  // Resize listener — redraw on window resize
+  if (_tourResizeHandler) window.removeEventListener('resize', _tourResizeHandler);
+  _tourResizeHandler = function() {
+    if (!_tourActive) return;
+    var canvas = document.getElementById('tour-spotlight-canvas');
+    if (canvas) { canvas.width = window.innerWidth; canvas.height = window.innerHeight; }
+    _drawSpotlight(_tourCurrentTarget);
+    _applyTourBoxPos(_tourCurrentTarget ? _tourCurrentTarget.getBoundingClientRect() : null);
+  };
+  window.addEventListener('resize', _tourResizeHandler);
+
+  _showTourStep();
+}
+
+function endTour() {
+  _tourActive = false;
+  _tourStep   = 0;
+  _tourCurrentTarget = null;
+
+  // Remove listeners
+  if (_tourScrollHandler) { window.removeEventListener('scroll', _tourScrollHandler, true); _tourScrollHandler = null; }
+  if (_tourResizeHandler) { window.removeEventListener('resize', _tourResizeHandler); _tourResizeHandler = null; }
+
+  // Clear highlights
   document.querySelectorAll('[data-tour-active]').forEach(function(el) {
     el.style.outline = '';
-    el.style.outlineOffset = '';
-    el.style.boxShadow = '';
-    el.style.zIndex = '';
+    el.style.zIndex  = '';
+    el.style.position = '';
     el.removeAttribute('data-tour-active');
   });
-  // Launch confetti + show completion screen
-  _launchConfetti();
-  var box = document.getElementById('tour-box');
-  if (box) {
-    box.setAttribute('style',
-      'position:fixed;background:#0f172a;border:2px solid #22c55e;border-radius:20px;' +
-      'padding:30px 28px 24px;max-width:340px;width:calc(100vw - 32px);z-index:10000;' +
-      'box-shadow:0 24px 60px rgba(0,0,0,.85),0 0 0 1px rgba(34,197,94,.25),0 0 40px rgba(34,197,94,.1);' +
-      'pointer-events:all;font-family:Inter,system-ui,sans-serif;color:#f1f5f9;' +
-      'top:50%;left:50%;transform:translate(-50%,-50%);text-align:center;' +
-      'animation:tourBoxIn .4s cubic-bezier(.34,1.56,.64,1)');
-    box.innerHTML =
-      '<div style="font-size:56px;margin-bottom:12px;line-height:1">🎉</div>' +
-      '<div style="font-size:22px;font-weight:900;color:#f1f5f9;margin-bottom:10px;letter-spacing:-.3px">\u00A1Tour completado!</div>' +
-      '<div style="font-size:14px;color:#94a3b8;line-height:1.7;margin-bottom:24px">' +
-        'Ya conoces los 7 m\u00F3dulos de Yve.01.<br>Empieza procesando tus primeras facturas.' +
-      '</div>' +
-      '<div style="display:flex;gap:10px;justify-content:center">' +
-        '<button onclick="closeTourBox()" style="background:rgba(255,255,255,.07);border:1px solid rgba(255,255,255,.12);' +
-          'color:#94a3b8;padding:11px 20px;border-radius:10px;font-size:13px;cursor:pointer;font-weight:500">Cerrar</button>' +
-        '<button onclick="goToARPanel()" style="background:#22c55e;border:none;color:#fff;' +
-          'padding:11px 24px;border-radius:10px;font-size:13px;font-weight:700;cursor:pointer;' +
-          'box-shadow:0 4px 20px rgba(34,197,94,.4);transition:.15s">' +
-          'Empezar con AR \u2192' +
-        '</button>' +
-      '</div>';
-    setTimeout(function(){ closeTourBox(); }, 9000);
+
+  // Hide overlay + canvas
+  var ov = document.getElementById('tour-overlay');
+  if (ov) ov.style.display = 'none';
+  var canvas = document.getElementById('tour-spotlight-canvas');
+  if (canvas) {
+    var ctx = canvas.getContext('2d');
+    ctx.clearRect(0, 0, canvas.width, canvas.height);
+    canvas.style.display = 'none';
   }
+
+  // Remove tour box
+  var box = document.getElementById('tour-box');
+  if (box) box.remove();
+
+  // Mark done
   localStorage.setItem('tour_done', _TOUR_VER);
+
+  // Confetti + congrats toast
+  _launchConfetti();
+  setTimeout(function() {
+    showNotification('🎉 ¡Tour completado! Ya dominas Yve.01', 'success');
+  }, 500);
 }
+
 
 function goToARPanel(){ closeTourBox(); switchTab('ar', document.getElementById('tab-ar')); }
 function closeTourBox() {
