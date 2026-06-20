@@ -2581,7 +2581,7 @@ button, a { touch-action: manipulation; }
     <span class="pill hide-mobile" id="date-pill">—</span>
     <button id="btn-install-pwa" onclick="if(_deferredInstall){_deferredInstall.prompt();}" style="display:none;background:rgba(34,197,94,.1);border:1px solid rgba(34,197,94,.2);color:#22c55e;padding:4px 10px;border-radius:8px;font-size:11px;cursor:pointer">📲 Instalar</button>
     <button id="btn-theme-nav" onclick="toggleLightMode()" title="Cambiar tema" class="hide-mobile" style="background:rgba(148,163,184,.08);border:1px solid rgba(148,163,184,.2);color:var(--mut);padding:6px 10px;border-radius:8px;font-size:14px;cursor:pointer;transition:.15s">☀️</button>
-    <button id="btn-atajos" onclick="toggleAtajos()" class="hide-mobile" style="background:rgba(59,130,246,.1);border:1px solid rgba(59,130,246,.2);color:#60a5fa;padding:5px 12px;border-radius:8px;font-size:12px;cursor:pointer;font-weight:500" title="Ver atajos (?)">⌨ Atajos</button>
+    <button id="btn-atajos" onclick="toggleAtajos()" class="hide-mobile" data-i18n="nav.atajos" style="background:rgba(59,130,246,.1);border:1px solid rgba(59,130,246,.2);color:#60a5fa;padding:5px 12px;border-radius:8px;font-size:12px;cursor:pointer;font-weight:500" title="Ver atajos (?)">⌨ Atajos</button>
     <button id="btn-lite-nav" onclick="toggleMobileLite()" style="background:rgba(34,197,94,.1);border:1px solid rgba(34,197,94,.2);color:#22c55e;padding:5px 12px;border-radius:8px;font-size:12px;cursor:pointer;font-weight:500;transition:.15s" title="Cambiar entre vista resumida y completa">📊 Vista lite</button>
     <span class="pill hide-mobile" style="color:var(--acc2)">👤 __USER_NAME__</span>
 
@@ -4203,7 +4203,34 @@ var _i18nStrMap = {
     '¿Hacemos el tour?': 'Take the tour?',
     '← Atrás': '← Back',
     '✓ Finalizar': '✓ Finish',
-  },
+  
+    '⌨ Atajos': '⌨ Shortcuts',
+    '📊 Vista lite': '📊 Lite view',
+    '📊 Vista completa': '📊 Full view',
+    '📱 Vista lite': '📱 Lite view',
+    '⚡ Procesar Facturas': '⚡ Process Invoices',
+    '⚡ Procesar archivos nuevos': '⚡ Process new files',
+    '▶ Procesar pendientes del servidor': '▶ Process server pending',
+    '✅ Aprobar Match OK': '✅ Approve Match OK',
+    '📲 Aprobar facturas AR': '📲 Approve AR invoices',
+    '⚡ Conciliar': '⚡ Reconcile',
+    '🔍 Filtrar': '🔍 Filter',
+    'Sin facturas AR todavía': 'No AR invoices yet',
+    'Sin datos.': 'No data.',
+    'Pendiente emitir': 'Pending issue',
+    'Pendientes': 'Pending',
+    'Todas las facturas del ciclo': 'All cycle invoices',
+    'Pulsa ⚡ Procesar Facturas AP': 'Press ⚡ Process AP Invoices',
+    'Pulsa ⚡ Procesar Facturas.': 'Press ⚡ Process Invoices.',
+    '📊 Resumen': '📊 Summary',
+    'Vista consolidada del grupo': 'Group consolidated view',
+    '⚠️ Alertas activas': '⚠️ Active alerts',
+    '⌨ Atajos de teclado': '⌨ Keyboard shortcuts',
+    '🔍 Búsqueda global Ctrl+K · ⌨ Atajos 1-9': '🔍 Global search Ctrl+K · ⌨ Shortcuts 1-9',
+    '📱 Vista lite en todos los paneles (F&B, Real AR, Calipolis, Multi)': '📱 Lite view on all panels',
+    'PDF (facturas) · XLSM (DRR)': 'PDF (invoices) · XLSM (DRR)',
+    'Actualizado': 'Updated',
+    'facturas cargadas': 'invoices loaded',},
   ca: {
     '0 ya procesados (se saltarán)': '0 ja processats (s\'ometran)',
     '2 minutos para conocer todo Yve': '2 minuts per conèixer Yve',
@@ -4321,7 +4348,31 @@ var _i18nStrMap = {
     '¿Hacemos el tour?': 'Fem el tour?',
     '← Atrás': '← Enrere',
     '✓ Finalizar': '✓ Finalitzar',
-  },
+  
+    '⌨ Atajos': '⌨ Dreceres',
+    '📊 Vista lite': '📊 Vista reduïda',
+    '📱 Vista lite': '📱 Vista reduïda',
+    '⚡ Procesar Facturas': '⚡ Processar Factures',
+    '⚡ Procesar archivos nuevos': '⚡ Processar arxius nous',
+    '▶ Procesar pendientes del servidor': '▶ Processar pendents servidor',
+    '✅ Aprobar Match OK': '✅ Aprovar Match OK',
+    '📲 Aprobar facturas AR': '📲 Aprovar factures AR',
+    'Sin facturas AR todavía': 'Sense factures AR encara',
+    'Sin datos.': 'Sense dades.',
+    'Pendiente emitir': 'Pendent d\'emetre',
+    'Pendientes': 'Pendents',
+    'Todas las facturas del ciclo': 'Totes les factures del cicle',
+    'Pulsa ⚡ Procesar Facturas AP': 'Prem ⚡ Processar Factures AP',
+    'Pulsa ⚡ Procesar Facturas.': 'Prem ⚡ Processar Factures.',
+    '📊 Resumen': '📊 Resum',
+    'Vista consolidada del grupo': 'Vista consolidada del grup',
+    '⚠️ Alertas activas': '⚠️ Alertes actives',
+    '⌨ Atajos de teclado': '⌨ Dreceres de teclat',
+    '🔍 Búsqueda global Ctrl+K · ⌨ Atajos 1-9': '🔍 Cerca global Ctrl+K · ⌨ Dreceres 1-9',
+    '📱 Vista lite en todos los paneles (F&B, Real AR, Calipolis, Multi)': '📱 Vista reduïda a tots els panells',
+    'PDF (facturas) · XLSM (DRR)': 'PDF (factures) · XLSM (DRR)',
+    'Actualizado': 'Actualitzat',
+    'facturas cargadas': 'factures carregades',},
   fr: {
     '0 ya procesados (se saltarán)': '0 déjà traités (seront ignorés)',
     '2 minutos para conocer todo Yve': '2 minutes pour découvrir Yve',
@@ -4445,7 +4496,34 @@ var _i18nStrMap = {
     '¿Hacemos el tour?': 'Faire la visite?',
     '← Atrás': '← Retour',
     '✓ Finalizar': '✓ Terminer',
-  },
+  
+    '⌨ Atajos': '⌨ Raccourcis',
+    '📊 Vista lite': '📊 Vue réduite',
+    '📊 Vista completa': '📊 Vue complète',
+    '📱 Vista lite': '📱 Vue réduite',
+    '⚡ Procesar Facturas': '⚡ Traiter Factures',
+    '⚡ Procesar archivos nuevos': '⚡ Traiter nouveaux fichiers',
+    '▶ Procesar pendientes del servidor': '▶ Traiter en attente serveur',
+    '✅ Aprobar Match OK': '✅ Approuver Match OK',
+    '📲 Aprobar facturas AR': '📲 Approuver factures AR',
+    '⚡ Conciliar': '⚡ Rapprocher',
+    '🔍 Filtrar': '🔍 Filtrer',
+    'Sin facturas AR todavía': 'Aucune facture AR encore',
+    'Sin datos.': 'Pas de données.',
+    'Pendiente emitir': 'En attente d\'émission',
+    'Pendientes': 'En attente',
+    'Todas las facturas del ciclo': 'Toutes les factures du cycle',
+    'Pulsa ⚡ Procesar Facturas AP': 'Appuyez ⚡ Traiter Factures AP',
+    'Pulsa ⚡ Procesar Facturas.': 'Appuyez ⚡ Traiter Factures.',
+    '📊 Resumen': '📊 Résumé',
+    'Vista consolidada del grupo': 'Vue consolidée du groupe',
+    '⚠️ Alertas activas': '⚠️ Alertes actives',
+    '⌨ Atajos de teclado': '⌨ Raccourcis clavier',
+    '🔍 Búsqueda global Ctrl+K · ⌨ Atajos 1-9': '🔍 Recherche globale Ctrl+K · ⌨ Raccourcis 1-9',
+    '📱 Vista lite en todos los paneles (F&B, Real AR, Calipolis, Multi)': '📱 Vue réduite sur tous les panneaux',
+    'PDF (facturas) · XLSM (DRR)': 'PDF (factures) · XLSM (DRR)',
+    'Actualizado': 'Mis à jour',
+    'facturas cargadas': 'factures chargées',},
   de: {
     '% Com.': '% Prov.',
     '0 ya procesados (se saltarán)': '0 bereits verarbeitet (werden übersprungen)',
@@ -4573,7 +4651,34 @@ var _i18nStrMap = {
     '¿Hacemos el tour?': 'Tour machen?',
     '← Atrás': '← Zurück',
     '✓ Finalizar': '✓ Fertig',
-  },
+  
+    '⌨ Atajos': '⌨ Tastenkürzel',
+    '📊 Vista lite': '📊 Kompaktansicht',
+    '📊 Vista completa': '📊 Vollansicht',
+    '📱 Vista lite': '📱 Kompaktansicht',
+    '⚡ Procesar Facturas': '⚡ Rechnungen verarbeiten',
+    '⚡ Procesar archivos nuevos': '⚡ Neue Dateien verarbeiten',
+    '▶ Procesar pendientes del servidor': '▶ Server-Ausstehende verarbeiten',
+    '✅ Aprobar Match OK': '✅ Match OK genehmigen',
+    '📲 Aprobar facturas AR': '📲 AR genehmigen',
+    '⚡ Conciliar': '⚡ Abstimmen',
+    '🔍 Filtrar': '🔍 Filtern',
+    'Sin facturas AR todavía': 'Noch keine AR-Rechnungen',
+    'Sin datos.': 'Keine Daten.',
+    'Pendiente emitir': 'Ausstehend',
+    'Pendientes': 'Ausstehend',
+    'Todas las facturas del ciclo': 'Alle Rechnungen des Zyklus',
+    'Pulsa ⚡ Procesar Facturas AP': '⚡ AP-Rechnungen verarbeiten',
+    'Pulsa ⚡ Procesar Facturas.': '⚡ Rechnungen verarbeiten.',
+    '📊 Resumen': '📊 Übersicht',
+    'Vista consolidada del grupo': 'Konsolidierte Gruppenansicht',
+    '⚠️ Alertas activas': '⚠️ Aktive Warnungen',
+    '⌨ Atajos de teclado': '⌨ Tastenkürzel',
+    '🔍 Búsqueda global Ctrl+K · ⌨ Atajos 1-9': '🔍 Globale Suche Ctrl+K · ⌨ Tastenkürzel 1-9',
+    '📱 Vista lite en todos los paneles (F&B, Real AR, Calipolis, Multi)': '📱 Kompaktansicht auf allen Panels',
+    'PDF (facturas) · XLSM (DRR)': 'PDF (Rechnungen) · XLSM (DRR)',
+    'Actualizado': 'Aktualisiert',
+    'facturas cargadas': 'Rechnungen geladen',},
   it: {
     '% Com.': '% Comm.',
     '0 ya procesados (se saltarán)': '0 già elaborati (verranno saltati)',
@@ -4693,7 +4798,33 @@ var _i18nStrMap = {
     '¿Hacemos el tour?': 'Fare il tour?',
     '← Atrás': '← Indietro',
     '✓ Finalizar': '✓ Fine',
-  },
+  
+    '⌨ Atajos': '⌨ Scorciatoie',
+    '📊 Vista lite': '📊 Vista compatta',
+    '📱 Vista lite': '📱 Vista compatta',
+    '⚡ Procesar Facturas': '⚡ Elabora Fatture',
+    '⚡ Procesar archivos nuevos': '⚡ Elabora nuovi file',
+    '▶ Procesar pendientes del servidor': '▶ Elabora in attesa server',
+    '✅ Aprobar Match OK': '✅ Approva Match OK',
+    '📲 Aprobar facturas AR': '📲 Approva fatture AR',
+    '⚡ Conciliar': '⚡ Riconcilia',
+    '🔍 Filtrar': '🔍 Filtra',
+    'Sin facturas AR todavía': 'Ancora nessuna fattura AR',
+    'Sin datos.': 'Nessun dato.',
+    'Pendiente emitir': 'In attesa emissione',
+    'Pendientes': 'In attesa',
+    'Todas las facturas del ciclo': 'Tutte le fatture del ciclo',
+    'Pulsa ⚡ Procesar Facturas AP': 'Premi ⚡ Elabora Fatture AP',
+    'Pulsa ⚡ Procesar Facturas.': 'Premi ⚡ Elabora Fatture.',
+    '📊 Resumen': '📊 Riepilogo',
+    'Vista consolidada del grupo': 'Vista consolidata del gruppo',
+    '⚠️ Alertas activas': '⚠️ Avvisi attivi',
+    '⌨ Atajos de teclado': '⌨ Scorciatoie',
+    '🔍 Búsqueda global Ctrl+K · ⌨ Atajos 1-9': '🔍 Ricerca globale Ctrl+K · ⌨ Scorciatoie 1-9',
+    '📱 Vista lite en todos los paneles (F&B, Real AR, Calipolis, Multi)': '📱 Vista compatta su tutti i pannelli',
+    'PDF (facturas) · XLSM (DRR)': 'PDF (fatture) · XLSM (DRR)',
+    'Actualizado': 'Aggiornato',
+    'facturas cargadas': 'fatture caricate',},
   pt: {
     '0 ya procesados (se saltarán)': '0 já processados (serão ignorados)',
     '2 minutos para conocer todo Yve': '2 minutos para conhecer Yve',
@@ -4797,7 +4928,31 @@ var _i18nStrMap = {
     'Yve — Copiloto Financiero': 'Yve — Copiloto Financeiro',
     '¿Hacemos el tour?': 'Fazer o tour?',
     '← Atrás': '← Voltar',
-  },
+  
+    '⌨ Atajos': '⌨ Atalhos',
+    '📊 Vista lite': '📊 Vista compacta',
+    '📱 Vista lite': '📱 Vista compacta',
+    '⚡ Procesar Facturas': '⚡ Processar Faturas',
+    '⚡ Procesar archivos nuevos': '⚡ Processar novos arquivos',
+    '▶ Procesar pendientes del servidor': '▶ Processar pendentes servidor',
+    '✅ Aprobar Match OK': '✅ Aprovar Match OK',
+    '📲 Aprobar facturas AR': '📲 Aprovar faturas AR',
+    'Sin facturas AR todavía': 'Sem faturas AR ainda',
+    'Sin datos.': 'Sem dados.',
+    'Pendiente emitir': 'Pendente emitir',
+    'Pendientes': 'Pendentes',
+    'Todas las facturas del ciclo': 'Todas as faturas do ciclo',
+    'Pulsa ⚡ Procesar Facturas AP': 'Pressione ⚡ Processar Faturas AP',
+    'Pulsa ⚡ Procesar Facturas.': 'Pressione ⚡ Processar Faturas.',
+    '📊 Resumen': '📊 Resumo',
+    'Vista consolidada del grupo': 'Vista consolidada do grupo',
+    '⚠️ Alertas activas': '⚠️ Alertas ativos',
+    '⌨ Atajos de teclado': '⌨ Atalhos de teclado',
+    '🔍 Búsqueda global Ctrl+K · ⌨ Atajos 1-9': '🔍 Pesquisa global Ctrl+K · ⌨ Atalhos 1-9',
+    '📱 Vista lite en todos los paneles (F&B, Real AR, Calipolis, Multi)': '📱 Vista compacta em todos os painéis',
+    'PDF (facturas) · XLSM (DRR)': 'PDF (faturas) · XLSM (DRR)',
+    'Actualizado': 'Atualizado',
+    'facturas cargadas': 'faturas carregadas',},
 };
 
 
@@ -4962,6 +5117,7 @@ async function cambiarIdioma(lang) {
     b.style.borderRadius = active ? '6px' : '';
     b.style.color = active ? 'var(--acc2)' : 'var(--tx)';
   });
+  applyMobileLite();
 }
 
 loadAll();
@@ -5583,13 +5739,14 @@ function initMobileLite() {
 function applyMobileLite() {
   var menuBtn = document.getElementById('menu-lite-btn');
   var navBtn  = document.getElementById('btn-lite-nav');
+  var _tLite = function(es) { return (_i18nStrMap[_i18nLang] && _i18nStrMap[_i18nLang][es]) ? _i18nStrMap[_i18nLang][es] : es; };
   if (_mobileLite) {
     document.body.classList.add('mobile-lite');
-    if (menuBtn) menuBtn.textContent = '📊 Vista completa';
-    if (navBtn)  { navBtn.textContent = '📊 Vista completa'; navBtn.title = 'Cambiar a vista completa'; }
+    if (menuBtn) menuBtn.textContent = _tLite('📊 Vista completa');
+    if (navBtn)  { navBtn.textContent = _tLite('📊 Vista completa'); navBtn.title = _tLite('Cambiar a vista completa') || 'Full view'; }
   } else {
     document.body.classList.remove('mobile-lite');
-    if (menuBtn) menuBtn.textContent = '📱 Vista lite';
+    if (menuBtn) menuBtn.textContent = _tLite('📱 Vista lite');
     if (navBtn)  { navBtn.textContent = '📱 Vista lite'; navBtn.title = 'Cambiar a vista resumida'; }
   }
 }
