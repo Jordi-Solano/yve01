@@ -1962,6 +1962,7 @@ body.light-mode .tab-btn.active{color:#2563eb}
   color:transparent!important;pointer-events:none}
 .skeleton *{visibility:hidden}
 /* ─────────────────────────────────────────────────── */
+.show-mobile{display:none!important}
 :root{
   --bg:#0f172a;--s1:#1e293b;--s2:#334155;--s3:#475569;
   --acc:#3b82f6;--acc2:#60a5fa;--acc3:#93c5fd;
@@ -2105,7 +2106,7 @@ body.mobile-lite .panel { padding: 12px !important; }
   .btn-ref{font-size:11px;padding:5px 8px}
   .btn-run{font-size:12px;padding:7px 12px}
   #btn-install-pwa{display:none}
-  .hide-mobile{display:none!important}.show-mobile{display:none!important}
+  .hide-mobile{display:none!important}
   /* Tabs */
   .tabs{gap:0;overflow-x:auto;-webkit-overflow-scrolling:touch;scrollbar-width:none;padding:0 4px}
   .tabs::-webkit-scrollbar{display:none}
@@ -2601,7 +2602,7 @@ button, a { touch-action: manipulation; }
     <div class="dropdown">
       <button class="btn-ref" onclick="toggleMenu('main-menu')" title="Más opciones" style="font-size:17px;line-height:1;padding:5px 12px">⋯</button>
       <div id="main-menu" class="menu">
-        <div class="menu-head">Reportes</div>
+        <div class="menu-head" data-i18n="menu.reportes">Reportes</div>
         <a href="/api/reportes/diario" class="menu-item">📄 Diario</a>
         <a href="/api/reportes/semanal" class="menu-item">📊 Semanal</a>
         <a href="/api/reportes/mensual" class="menu-item">📈 Mensual</a>
@@ -4255,7 +4256,10 @@ var _i18nStrMap = {
     'Ingrediente': 'Ingredient',
     'Receta': 'Recipe',
     '▶ Ejecutar Análisis': '▶ Run Analysis',
-    'Sin datos F&B.': 'No F&B data.',},
+    'Sin datos F&B.': 'No F&B data.',
+    'Reportes': 'Reports',
+    'Administrador': 'Administrator',
+    '👤 Administrador': '👤 Administrator',},
   ca: {
     '0 ya procesados (se saltarán)': '0 ja processats (s\'ometran)',
     '2 minutos para conocer todo Yve': '2 minuts per conèixer Yve',
@@ -4410,7 +4414,8 @@ var _i18nStrMap = {
     'Ingrediente': 'Ingredient',
     'Receta': 'Recepta',
     '▶ Ejecutar Análisis': '▶ Executar Anàlisi',
-    'Sin datos F&B.': 'Sense dades F&B.',},
+    'Sin datos F&B.': 'Sense dades F&B.',
+    'Reportes': 'Informes',},
   fr: {
     '0 ya procesados (se saltarán)': '0 déjà traités (seront ignorés)',
     '2 minutos para conocer todo Yve': '2 minutes pour découvrir Yve',
@@ -4574,7 +4579,10 @@ var _i18nStrMap = {
     'Ingrediente': 'Ingrédient',
     'Receta': 'Recette',
     '▶ Ejecutar Análisis': '▶ Lancer Analyse',
-    'Sin datos F&B.': 'Pas de données F&B.',},
+    'Sin datos F&B.': 'Pas de données F&B.',
+    'Reportes': 'Rapports',
+    'Administrador': 'Administrateur',
+    '👤 Administrador': '👤 Administrateur',},
   de: {
     '% Com.': '% Prov.',
     '0 ya procesados (se saltarán)': '0 bereits verarbeitet (werden übersprungen)',
@@ -4742,7 +4750,10 @@ var _i18nStrMap = {
     'Ingrediente': 'Zutat',
     'Receta': 'Rezept',
     '▶ Ejecutar Análisis': '▶ Analyse ausführen',
-    'Sin datos F&B.': 'Keine F&B-Daten.',},
+    'Sin datos F&B.': 'Keine F&B-Daten.',
+    'Reportes': 'Berichte',
+    'Administrador': 'Administrator',
+    '👤 Administrador': '👤 Administrator',},
   it: {
     '% Com.': '% Comm.',
     '0 ya procesados (se saltarán)': '0 già elaborati (verranno saltati)',
@@ -4900,7 +4911,10 @@ var _i18nStrMap = {
     'Historial de notificaciones enviadas': 'Storico notifiche inviate',
     'Receta': 'Ricetta',
     '▶ Ejecutar Análisis': '▶ Esegui Analisi',
-    'Sin datos F&B.': 'Nessun dato F&B.',},
+    'Sin datos F&B.': 'Nessun dato F&B.',
+    'Reportes': 'Report',
+    'Administrador': 'Amministratore',
+    '👤 Administrador': '👤 Amministratore',},
   pt: {
     '0 ya procesados (se saltarán)': '0 já processados (serão ignorados)',
     '2 minutos para conocer todo Yve': '2 minutos para conhecer Yve',
@@ -5039,7 +5053,8 @@ var _i18nStrMap = {
     'Historial de notificaciones enviadas': 'Histórico de notificações enviadas',
     'Receta': 'Receita',
     '▶ Ejecutar Análisis': '▶ Executar Análise',
-    'Sin datos F&B.': 'Sem dados F&B.',},
+    'Sin datos F&B.': 'Sem dados F&B.',
+    'Reportes': 'Relatórios',},
 };
 
 
