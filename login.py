@@ -158,6 +158,15 @@ input:focus{border-color:var(--acc);box-shadow:0 0 0 3px rgba(59,130,246,.18)}
     <div class="error" id="error"></div>
 
     <div style="text-align:center;margin-top:12px;font-size:11px;color:#475569">
+      <div style="display:flex;justify-content:center;gap:12px;margin-bottom:8px">
+        <button onclick="setLoginLang('es')" style="background:none;border:none;cursor:pointer;font-size:20px;opacity:.6;transition:.15s" title="Español" onmouseover="this.style.opacity=1" onmouseout="this.style.opacity=.6">🇪🇸</button>
+        <button onclick="setLoginLang('en')" style="background:none;border:none;cursor:pointer;font-size:20px;opacity:.6;transition:.15s" title="English" onmouseover="this.style.opacity=1" onmouseout="this.style.opacity=.6">🇬🇧</button>
+        <button onclick="setLoginLang('ca')" style="background:none;border:none;cursor:pointer;font-size:20px;opacity:.6;transition:.15s" title="Català" onmouseover="this.style.opacity=1" onmouseout="this.style.opacity=.6">🏴󠁥󠁳󠁣󠁴󠁿</button>
+        <button onclick="setLoginLang('fr')" style="background:none;border:none;cursor:pointer;font-size:20px;opacity:.6;transition:.15s" title="Français" onmouseover="this.style.opacity=1" onmouseout="this.style.opacity=.6">🇫🇷</button>
+        <button onclick="setLoginLang('de')" style="background:none;border:none;cursor:pointer;font-size:20px;opacity:.6;transition:.15s" title="Deutsch" onmouseover="this.style.opacity=1" onmouseout="this.style.opacity=.6">🇩🇪</button>
+        <button onclick="setLoginLang('it')" style="background:none;border:none;cursor:pointer;font-size:20px;opacity:.6;transition:.15s" title="Italiano" onmouseover="this.style.opacity=1" onmouseout="this.style.opacity=.6">🇮🇹</button>
+        <button onclick="setLoginLang('pt')" style="background:none;border:none;cursor:pointer;font-size:20px;opacity:.6;transition:.15s" title="Português" onmouseover="this.style.opacity=1" onmouseout="this.style.opacity=.6">🇵🇹</button>
+      </div>
       <span>¿Problemas? Credenciales demo: <strong>admin</strong> / <strong>admin123</strong></span>
     </div>
     <div style="text-align:center;margin-top:8px;font-size:13px;color:var(--dim)">¿No tienes cuenta? <a href="/signup" style="color:var(--acc2);text-decoration:none" data-i18n="login.crearCuenta">Crear cuenta gratis</a></div>
@@ -179,6 +188,28 @@ input:focus{border-color:var(--acc);box-shadow:0 0 0 3px rgba(59,130,246,.18)}
 </div>
 
 <script>
+function setLoginLang(lang) {
+  localStorage.setItem('yve_lang', lang);
+  // Translate login labels
+  var labels = {
+    es: {t:'Iniciar sesión', u:'USUARIO', p:'CONTRASEÑA', b:'Entrar al panel'},
+    en: {t:'Log in', u:'USERNAME', p:'PASSWORD', b:'Enter panel'},
+    ca: {t:'Iniciar sessió', u:'USUARI', p:'CONTRASENYA', b:'Entrar al tauler'},
+    fr: {t:'Se connecter', u:'UTILISATEUR', p:'MOT DE PASSE', b:'Accéder au tableau'},
+    de: {t:'Anmelden', u:'BENUTZER', p:'PASSWORT', b:'Dashboard öffnen'},
+    it: {t:'Accedi', u:'UTENTE', p:'PASSWORD', b:'Accedi al pannello'},
+    pt: {t:'Entrar', u:'USUÁRIO', p:'SENHA', b:'Acessar painel'},
+  };
+  var l = labels[lang] || labels.es;
+  var title = document.querySelector('h1');
+  if (title) title.textContent = l.t;
+  var pu = document.querySelector('label[for="username"], label:first-of-type');
+  var pp = document.querySelector('label[for="password"]');
+  var btn = document.getElementById('btn-login');
+  if (pu) pu.textContent = l.u;
+  if (pp) pp.textContent = l.p;
+  if (btn) btn.textContent = l.b;
+}
 function fill(u,p){
   var un = document.getElementById('username');
   var pw = document.getElementById('password');

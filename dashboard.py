@@ -2606,6 +2606,20 @@ button, a { touch-action: manipulation; }
         <a href="/api/reportes/ejecutivo.pdf" class="menu-item">🎯 Ejecutivo PDF</a>
         <a href="/api/reportes/consolidado.xlsx" class="menu-item">📊 Consolidado Excel</a>
         <div class="menu-sep"></div>
+        <!-- Language switcher -->
+        <div class="menu-head" data-i18n="nav.idioma" style="margin-top:0">Idioma</div>
+        <div style="display:grid;grid-template-columns:repeat(4,1fr);gap:4px;padding:0 4px;margin-bottom:4px">
+          <button class="lang-btn menu-item" data-lang="es" onclick="cambiarIdioma('es');document.getElementById('main-menu').classList.remove('open')" style="text-align:center;padding:7px 4px;font-size:18px;line-height:1;justify-content:center;display:flex" title="Español">🇪🇸</button>
+          <button class="lang-btn menu-item" data-lang="en" onclick="cambiarIdioma('en');document.getElementById('main-menu').classList.remove('open')" style="text-align:center;padding:7px 4px;font-size:18px;line-height:1;justify-content:center;display:flex" title="English">🇬🇧</button>
+          <button class="lang-btn menu-item" data-lang="ca" onclick="cambiarIdioma('ca');document.getElementById('main-menu').classList.remove('open')" style="text-align:center;padding:7px 4px;font-size:18px;line-height:1;justify-content:center;display:flex" title="Català">🏴󠁥󠁳󠁣󠁴󠁿</button>
+          <button class="lang-btn menu-item" data-lang="fr" onclick="cambiarIdioma('fr');document.getElementById('main-menu').classList.remove('open')" style="text-align:center;padding:7px 4px;font-size:18px;line-height:1;justify-content:center;display:flex" title="Français">🇫🇷</button>
+        </div>
+        <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:4px;padding:0 4px;margin-bottom:8px">
+          <button class="lang-btn menu-item" data-lang="de" onclick="cambiarIdioma('de');document.getElementById('main-menu').classList.remove('open')" style="text-align:center;padding:7px 4px;font-size:18px;line-height:1;justify-content:center;display:flex" title="Deutsch">🇩🇪</button>
+          <button class="lang-btn menu-item" data-lang="it" onclick="cambiarIdioma('it');document.getElementById('main-menu').classList.remove('open')" style="text-align:center;padding:7px 4px;font-size:18px;line-height:1;justify-content:center;display:flex" title="Italiano">🇮🇹</button>
+          <button class="lang-btn menu-item" data-lang="pt" onclick="cambiarIdioma('pt');document.getElementById('main-menu').classList.remove('open')" style="text-align:center;padding:7px 4px;font-size:18px;line-height:1;justify-content:center;display:flex" title="Português">🇵🇹</button>
+        </div>
+        <div class="menu-sep"></div>
         <div class="menu-head" data-i18n="menu.presentacion">Presentación</div>
         <button class="menu-item" data-i18n="nav.tour" onclick="startTour();document.getElementById('main-menu').classList.remove('open')">🎯 Tour guiado</button>
         <button class="menu-item" id="btn-demo" onclick="toggleDemoMode()"><span data-i18n="nav.demo">🎭 Demo Mode</span></button>
@@ -4165,8 +4179,11 @@ async function cambiarIdioma(lang) {
   fetch('/api/set_lang/' + lang);   // fire-and-forget, no await
   await loadI18n(lang);
   document.querySelectorAll('.lang-btn').forEach(b => {
-    b.style.fontWeight = b.dataset.lang === lang ? '700' : '400';
-    b.style.color = b.dataset.lang === lang ? 'var(--acc2)' : 'var(--tx)';
+    var active = b.dataset.lang === lang;
+    b.style.fontWeight = active ? '700' : '400';
+    b.style.background = active ? 'rgba(59,130,246,.15)' : 'transparent';
+    b.style.borderRadius = active ? '6px' : '';
+    b.style.color = active ? 'var(--acc2)' : 'var(--tx)';
   });
 }
 
@@ -4174,6 +4191,13 @@ loadAll();
 setInterval(loadAll, 60000);
 // Init mobile lite mode
 if (IS_MOBILE) initMobileLite();
+// Auto-apply saved language preference
+(function() {
+  var _savedLang = localStorage.getItem('yve_lang');
+  if (_savedLang && _savedLang !== 'es') {
+    loadI18n(_savedLang);
+  }
+})();
 // Changelog badge
 if (localStorage.getItem('changelog_seen') !== '2026-06-v3') {
   const mb = document.getElementById('menu-badge');
