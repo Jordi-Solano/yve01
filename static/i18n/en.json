@@ -277,6 +277,8 @@
   "res.discrepancia": "{n} invoice with commission discrepancy",
   "res.noReconocida": "{n} unrecognized OTA invoices",
   "res.sinDI": "{n} invoices without DI certificate",
+  "rol.admin": "🔑 Administrator",
+  "rol.fc": "💼 Financial Controller",
   "sc.aprFirma": "approved · rejected",
   "sc.ciclo": "last AR cycle",
   "sc.conFactura": "with invoice",

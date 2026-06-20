@@ -277,6 +277,8 @@
   "res.discrepancia": "{n} fattura con discrepanza commissione",
   "res.noReconocida": "{n} fatture OTA non riconosciute",
   "res.sinDI": "{n} fatture senza certificato DI",
+  "rol.admin": "🔑 Amministratore",
+  "rol.fc": "💼 Financial Controller",
   "sc.aprFirma": "approvate · rifiutate",
   "sc.ciclo": "ultimo ciclo AR",
   "sc.conFactura": "con fattura",

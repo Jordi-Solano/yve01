@@ -22,12 +22,18 @@ def _latest_month(df):
 
 @multi_hotel_bp.route('/api/multi_hotel/overview')
 def api_multi_overview():
-    """Consolidated overview for all hotels."""
+    """Consolidated overview for all hotels. Accepts ?mes=YYYY-MM."""
+    from flask import request as _freq
     df = _load_kpis()
     if df.empty:
         return jsonify({'ok': False, 'error': 'Sin datos KPI'}), 404
     
-    latest = _latest_month(df)
+    all_months = sorted(df['mes'].unique().tolist())
+    mes_param = _freq.args.get('mes', '').strip()
+    if mes_param and mes_param in all_months:
+        latest = df[df['mes'] == mes_param].copy()
+    else:
+        latest = _latest_month(df)
     all_months = sorted(df['mes'].unique())
     
     # Consolidado
@@ -91,6 +97,8 @@ def api_multi_overview():
     return jsonify({
         'ok': True,
         'mes_actual': latest['mes'].iloc[0] if len(latest) else '',
+        'meses_disponibles': all_months,
+        'meses_disponibles': all_months,
         'consolidado': {
             'total_habitaciones': total_hab,
             'total_revenue': round(total_rev, 2),

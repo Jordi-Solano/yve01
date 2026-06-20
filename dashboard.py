@@ -2105,7 +2105,7 @@ body.mobile-lite .panel { padding: 12px !important; }
   .btn-ref{font-size:11px;padding:5px 8px}
   .btn-run{font-size:12px;padding:7px 12px}
   #btn-install-pwa{display:none}
-  .hide-mobile{display:none!important}
+  .hide-mobile{display:none!important}.show-mobile{display:none!important}
   /* Tabs */
   .tabs{gap:0;overflow-x:auto;-webkit-overflow-scrolling:touch;scrollbar-width:none;padding:0 4px}
   .tabs::-webkit-scrollbar{display:none}
@@ -2126,6 +2126,7 @@ body.mobile-lite .panel { padding: 12px !important; }
   table{min-width:500px}
   /* Hide secondary columns on mobile */
   .hide-mobile{display:none}
+  .show-mobile{display:inline-flex!important}
   /* Calipolis cards */
   #cal-grid{grid-template-columns:1fr!important}
   /* Multi-hotel table */
@@ -2580,12 +2581,12 @@ button, a { touch-action: manipulation; }
     <!-- DESKTOP: fecha + instalar + tema + atajos + usuario -->
     <span class="pill hide-mobile" id="date-pill">—</span>
     <button id="btn-install-pwa" onclick="if(_deferredInstall){_deferredInstall.prompt();}" style="display:none;background:rgba(34,197,94,.1);border:1px solid rgba(34,197,94,.2);color:#22c55e;padding:4px 10px;border-radius:8px;font-size:11px;cursor:pointer">📲 Instalar</button>
-    <button id="btn-theme-nav" onclick="toggleLightMode()" title="Cambiar tema" class="hide-mobile" style="background:rgba(148,163,184,.08);border:1px solid rgba(148,163,184,.2);color:var(--mut);padding:6px 10px;border-radius:8px;font-size:14px;cursor:pointer;transition:.15s">☀️</button>
+    
     <button id="btn-atajos" onclick="toggleAtajos()" class="hide-mobile" data-i18n="nav.atajos" style="background:rgba(59,130,246,.1);border:1px solid rgba(59,130,246,.2);color:#60a5fa;padding:5px 12px;border-radius:8px;font-size:12px;cursor:pointer;font-weight:500" title="Ver atajos (?)">⌨ Atajos</button>
     <button id="btn-lite-nav" onclick="toggleMobileLite()" style="background:rgba(34,197,94,.1);border:1px solid rgba(34,197,94,.2);color:#22c55e;padding:5px 12px;border-radius:8px;font-size:12px;cursor:pointer;font-weight:500;transition:.15s" title="Cambiar entre vista resumida y completa">📊 Vista lite</button>
     <span class="pill hide-mobile" style="color:var(--acc2)">👤 __USER_NAME__</span>
 
-    <button class="btn-ref" onclick="toggleChat()" style="background:linear-gradient(135deg,rgba(124,58,237,.15),rgba(59,130,246,.15));border-color:rgba(124,58,237,.35);color:#a78bfa;font-weight:700" title="Pregunta a Yve IA">💬 Yve</button>
+    <button class="btn-ref show-mobile" onclick="toggleChat()" style="background:linear-gradient(135deg,rgba(124,58,237,.15),rgba(59,130,246,.15));border-color:rgba(124,58,237,.35);color:#a78bfa;font-weight:700" title="Pregunta a Yve IA">💬 Yve</button>
     <button onclick="openUploadModal()" title="Procesar Facturas" style="background:rgba(59,130,246,.1);border:1px solid rgba(59,130,246,.25);color:#60a5fa;padding:7px 11px;border-radius:8px;font-size:16px;cursor:pointer;line-height:1;transition:.15s" onmouseover="this.style.background='rgba(59,130,246,.2)'" onmouseout="this.style.background='rgba(59,130,246,.1)'">⚡</button>
 
 
@@ -2628,8 +2629,8 @@ button, a { touch-action: manipulation; }
         <div class="menu-head" data-i18n="menu.cambiarRol">Cambiar rol</div>
         <button class="menu-item" id="rol-btn">👤 Admin</button>
         <div id="rol-menu" class="rol-sub" style="display:none">
-          <button class="menu-item" onclick="cambiarRol('admin')">🔑 Administrador</button>
-          <button class="menu-item" onclick="cambiarRol('financial_controller')">💰 Controller Financiero</button>
+          <button class="menu-item" onclick="cambiarRol('admin')" data-i18n="rol.admin">🔑 Administrador</button>
+          <button class="menu-item" onclick="cambiarRol('financial_controller')" data-i18n="rol.fc">💰 Controller Financiero</button>
           <button class="menu-item" onclick="cambiarRol('income_auditor')">📊 Income Auditor</button>
           <button class="menu-item" onclick="cambiarRol('fb_manager')">🍽️ Jefe F&B</button>
           <button class="menu-item" onclick="cambiarRol('jefe_otras')">🛠️ Jefe Servicios</button>
@@ -2638,7 +2639,8 @@ button, a { touch-action: manipulation; }
         <button class="menu-item" onclick="loadAll();document.getElementById('main-menu').classList.remove('open')">↻ Actualizar datos</button>
         <a href="/configuracion/" class="menu-item" data-i18n="nav.config">⚙️ Configuración</a>
         <a href="/admin/" class="menu-item" style="display:__ADMIN_DISPLAY__" data-i18n="menu.admin">👥 Administración</a>
-        <button class="menu-item" onclick="toggleLightMode();document.getElementById('main-menu').classList.remove('open')">☀️ Cambiar tema</button>
+        <!-- Colores personalizados -->
+        <button class="menu-item" onclick="_openColorPicker();document.getElementById('main-menu').classList.remove('open')" id="btn-color-picker">🎨 Personalizar colores</button>
         <div class="menu-sep"></div>
         <a href="/logout" class="menu-item" data-i18n="nav.salir" style="color:#f87171">↩ Cerrar sesión</a>
       </div>
@@ -3142,7 +3144,14 @@ button, a { touch-action: manipulation; }
         <h2 style="font-size:20px;font-weight:800;margin:0">🌍 Multi-Hotel Dashboard</h2>
         <div style="font-size:12px;color:var(--mut);margin-top:3px">Vista consolidada del grupo</div>
       </div>
+      <!-- Month selector + perspective toggle + export -->
+      <div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap">
+        <select id="mh-mes-select" onchange="_mh_loaded=false;loadMultiHotel()"
+          style="background:var(--s1);border:1px solid var(--s2);color:var(--txt);padding:7px 10px;border-radius:9px;font-size:12px;cursor:pointer;outline:none">
+          <option value="">Mes actual</option>
+        </select>
       <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap">
+      </div>
         <!-- Perspectiva toggle -->
         <div style="display:inline-flex;background:var(--s1);border:1px solid var(--s2);border-radius:9px;padding:3px;gap:2px">
           <button id="mh-view-cards" onclick="setMHView('cards')" style="background:var(--acc2);color:#fff;border:none;padding:6px 13px;border-radius:6px;font-size:12px;cursor:pointer;font-weight:500;transition:.15s">📊 Resumen</button>
@@ -3434,8 +3443,7 @@ async function loadAll() {
     renderActivity(facturas);
 
     const hoy = new Date();
-    document.getElementById('date-pill').textContent =
-      hoy.toLocaleDateString('es-ES', {day:'2-digit', month:'short', year:'numeric'}) + ' · ' +
+    // clock handled by _startClock()
       hoy.toLocaleTimeString('es-ES', {hour:'2-digit', minute:'2-digit'});
 
     document.getElementById('status-txt').textContent =
@@ -5145,6 +5153,103 @@ function toggleLightMode() {
   var navBtn = document.getElementById('btn-theme-nav');
   if (navBtn) navBtn.textContent = isLight ? '🌙' : '☀️';
 }
+// ── Custom color picker ───────────────────────────────────────────────────────
+var _customColors = {
+  accent: localStorage.getItem('yve_accent') || '#3b82f6',
+  bg:     localStorage.getItem('yve_bg')     || '#0f172a',
+};
+
+function _applyCustomColors() {
+  var r = document.documentElement;
+  r.style.setProperty('--acc2', _customColors.accent);
+  r.style.setProperty('--acc',  _customColors.accent);
+  r.style.setProperty('--bg',   _customColors.bg);
+  r.style.setProperty('--s0',   _customColors.bg);
+  // Derive --s1 as slightly lighter bg
+  var hex = _customColors.bg.replace('#','');
+  var rgb = [parseInt(hex.substr(0,2),16), parseInt(hex.substr(2,2),16), parseInt(hex.substr(4,2),16)];
+  var s1 = rgb.map(function(v){ return Math.min(255, v+18).toString(16).padStart(2,'0'); }).join('');
+  var s2 = rgb.map(function(v){ return Math.min(255, v+36).toString(16).padStart(2,'0'); }).join('');
+  r.style.setProperty('--s1', '#'+s1);
+  r.style.setProperty('--s2', '#'+s2);
+}
+
+function _cpSwatch(id, c, cur) {
+  return '<div onclick="_cpSet(\''+id+'\',\''+c+'\')" ' +
+    'style="width:22px;height:22px;border-radius:50%;background:'+c+';cursor:pointer;' +
+    'border:2px solid '+(cur===c?'#fff':'transparent')+'"></div>';
+}
+function _cpSet(id, color) {
+  var el = document.getElementById(id);
+  if (el) { el.value = color; }
+}
+function _openColorPicker() {
+  var existing = document.getElementById('color-picker-modal');
+  if (existing) { existing.remove(); return; }
+  var accentSwatches = ['#3b82f6','#7c3aed','#ec4899','#22c55e','#f59e0b','#ef4444','#06b6d4','#8b5cf6'];
+  var bgSwatches     = ['#0f172a','#1a1a2e','#0d1117','#1e1e2e','#111827','#0a0f1e','#13111c','#1c1917'];
+  var modal = document.createElement('div');
+  modal.id = 'color-picker-modal';
+  modal.style.cssText = 'position:fixed;inset:0;z-index:9800;display:flex;align-items:center;' +
+    'justify-content:center;background:rgba(0,0,0,.6)';
+  modal.innerHTML =
+    '<div style="background:var(--s1);border:1px solid var(--s2);border-radius:18px;padding:28px 28px 22px;width:320px;max-width:calc(100vw - 32px)">' +
+      '<div style="font-size:16px;font-weight:700;margin-bottom:20px">🎨 Personalizar colores</div>' +
+      '<div style="margin-bottom:16px">' +
+        '<label style="font-size:12px;color:var(--mut);font-weight:600;display:block;margin-bottom:6px;' +
+          'text-transform:uppercase;letter-spacing:.04em">Color de burbujas / acento</label>' +
+        '<div style="display:flex;gap:10px;align-items:center">' +
+          '<input type="color" id="cp-accent" value="'+_customColors.accent+'" ' +
+            'style="width:48px;height:36px;border:none;border-radius:8px;cursor:pointer;background:none">' +
+          '<div style="display:flex;gap:6px;flex-wrap:wrap">' +
+            accentSwatches.map(function(c){ return _cpSwatch('cp-accent',c,_customColors.accent); }).join('') +
+          '</div>' +
+        '</div>' +
+      '</div>' +
+      '<div style="margin-bottom:22px">' +
+        '<label style="font-size:12px;color:var(--mut);font-weight:600;display:block;margin-bottom:6px;' +
+          'text-transform:uppercase;letter-spacing:.04em">Color de fondo</label>' +
+        '<div style="display:flex;gap:10px;align-items:center">' +
+          '<input type="color" id="cp-bg" value="'+_customColors.bg+'" ' +
+            'style="width:48px;height:36px;border:none;border-radius:8px;cursor:pointer;background:none">' +
+          '<div style="display:flex;gap:6px;flex-wrap:wrap">' +
+            bgSwatches.map(function(c){ return _cpSwatch('cp-bg',c,_customColors.bg); }).join('') +
+          '</div>' +
+        '</div>' +
+      '</div>' +
+      '<div style="display:flex;gap:10px">' +
+        '<button onclick="_resetColors()" style="flex:1;background:rgba(255,255,255,.06);border:1px solid var(--s2);' +
+          'color:var(--mut);padding:9px;border-radius:10px;cursor:pointer;font-size:13px">Restablecer</button>' +
+        '<button onclick="_saveColors()" style="flex:1;background:var(--acc);border:none;color:#fff;' +
+          'padding:9px;border-radius:10px;cursor:pointer;font-size:13px;font-weight:700">Aplicar</button>' +
+      '</div>' +
+    '</div>';
+  modal.addEventListener('click', function(e){ if(e.target===modal) modal.remove(); });
+  document.body.appendChild(modal);
+}
+
+function _saveColors() {
+  _customColors.accent = document.getElementById('cp-accent').value;
+  _customColors.bg     = document.getElementById('cp-bg').value;
+  localStorage.setItem('yve_accent', _customColors.accent);
+  localStorage.setItem('yve_bg',     _customColors.bg);
+  _applyCustomColors();
+  var m = document.getElementById('color-picker-modal');
+  if (m) m.remove();
+  showNotification('🎨 Colores guardados', 'success');
+}
+
+function _resetColors() {
+  _customColors = { accent: '#3b82f6', bg: '#0f172a' };
+  localStorage.removeItem('yve_accent');
+  localStorage.removeItem('yve_bg');
+  document.documentElement.removeAttribute('style');  // remove all inline CSS vars
+  var m = document.getElementById('color-picker-modal');
+  if (m) m.remove();
+  showNotification('Colores restablecidos', 'info');
+}
+// ─────────────────────────────────────────────────────────────────────────────
+
 // ── CSRF token (fetched after login, attached to all POST calls) ──────────
 var _csrfToken = '';
 (function(){
@@ -5176,6 +5281,9 @@ function _skelOff(ids) {
   });
 }
 // ───────────────────────────────────────────────────
+
+// Apply saved custom colors on load
+_applyCustomColors();
 
 // Apply saved theme on load
 if (localStorage.getItem('yve_theme') === 'light') {
@@ -5209,6 +5317,21 @@ async function cambiarIdioma(lang) {
 
 loadAll();
 setInterval(loadAll, 60000);
+
+// ── Live clock ────────────────────────────────────────────────
+function _updateClock() {
+  var el = document.getElementById('date-pill');
+  if (!el) return;
+  var now = new Date();
+  var days = ['domingo','lunes','martes','miércoles','jueves','viernes','sábado'];
+  var months = ['ene','feb','mar','abr','may','jun','jul','ago','sep','oct','nov','dic'];
+  el.textContent = days[now.getDay()] + ' ' + now.getDate() + ' ' + months[now.getMonth()] +
+    ' · ' + String(now.getHours()).padStart(2,'0') + ':' + String(now.getMinutes()).padStart(2,'0') +
+    ':' + String(now.getSeconds()).padStart(2,'0');
+}
+_updateClock();
+setInterval(_updateClock, 1000);
+// ─────────────────────────────────────────────────────────────
 // Init mobile lite mode
 if (IS_MOBILE) initMobileLite();
 // Auto-apply saved language preference
@@ -7943,7 +8066,10 @@ function renderMHTableFull(hoteles) {
 async function loadMultiHotel() {
   if (_mh_loaded) return;
   try {
-    var r = await fetch('/api/multi_hotel/overview');
+    // Build URL with selected month
+var selMes = document.getElementById('mh-mes-select');
+var mesPar = selMes && selMes.value ? '?mes=' + encodeURIComponent(selMes.value) : '';
+var r = await fetch('/api/multi_hotel/overview' + mesPar);
     var data = await r.json();
     if (!data.ok) throw new Error(data.error || 'Sin datos');
     var k   = data.consolidado || {};
@@ -8084,6 +8210,17 @@ async function loadMultiHotel() {
     }
 
     _mh_loaded = true;
+    // Populate month selector from available months
+    var mhSel = document.getElementById('mh-mes-select');
+    if (mhSel && data.meses_disponibles && mhSel.options.length <= 1) {
+      mhSel.innerHTML = '<option value="">Mes actual</option>';
+      (data.meses_disponibles || []).forEach(function(m) {
+        var opt = document.createElement('option');
+        opt.value = m; opt.textContent = m;
+        if (m === data.mes_actual) opt.selected = true;
+        mhSel.appendChild(opt);
+      });
+    }
     // Restaurar perspectiva guardada
     var savedView = localStorage.getItem('mh_view');
     if (savedView === 'ranking') setMHView('ranking');

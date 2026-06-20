@@ -277,6 +277,8 @@
   "res.discrepancia": "{n} factura amb discrepància de comissió",
   "res.noReconocida": "{n} factures OTA no reconegudes",
   "res.sinDI": "{n} factures sense certificat DI",
+  "rol.admin": "🔑 Administrador",
+  "rol.fc": "💼 Financial Controller",
   "sc.aprFirma": "aprovades · rebutjades",
   "sc.ciclo": "últim cicle AR",
   "sc.conFactura": "amb factura",

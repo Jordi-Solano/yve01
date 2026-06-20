@@ -277,6 +277,8 @@
   "res.discrepancia": "{n} facture avec écart de commission",
   "res.noReconocida": "{n} factures OTA non reconnues",
   "res.sinDI": "{n} factures sans certificat DI",
+  "rol.admin": "🔑 Administrateur",
+  "rol.fc": "💼 Contrôleur Financier",
   "sc.aprFirma": "approuvées · rejetées",
   "sc.ciclo": "dernier cycle AR",
   "sc.conFactura": "avec facture",

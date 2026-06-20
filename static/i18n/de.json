@@ -277,6 +277,8 @@
   "res.discrepancia": "{n} Rechnung mit Provisionsabweichung",
   "res.noReconocida": "{n} nicht erkannte OTA-Rechnungen",
   "res.sinDI": "{n} Rechnungen ohne DI-Zertifikat",
+  "rol.admin": "🔑 Administrator",
+  "rol.fc": "💼 Finanzcontroller",
   "sc.aprFirma": "genehmigt · abgelehnt",
   "sc.ciclo": "letzter AR-Zyklus",
   "sc.conFactura": "mit Rechnung",
