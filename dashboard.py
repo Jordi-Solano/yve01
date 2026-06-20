@@ -1955,6 +1955,7 @@ body.light-mode .nav{background:rgba(248,250,252,.9);border-bottom-color:#e2e8f0
 body.light-mode .tab-btn{color:#475569}
 body.light-mode .tab-btn.active{color:#2563eb}
 /* ── Skeleton loading ─────────────────────────────── */
+@keyframes confettiFall{0%{transform:translateY(0) rotate(0);opacity:1}100%{transform:translateY(110vh) rotate(720deg);opacity:0}}
 @keyframes shimmer{0%{background-position:-400px 0}100%{background-position:400px 0}}
 .skeleton{background:linear-gradient(90deg,var(--s1) 25%,var(--s2) 50%,var(--s1) 75%);
   background-size:800px 100%;animation:shimmer 1.4s infinite;border-radius:6px;
@@ -4028,12 +4029,6 @@ function tourGo(n)   { startTour(); }
 // ─────────────────────────────────────────────────────────────────────
 
 
-// Close tour on overlay click (if clicking outside card and spotlight)
-document.getElementById('tour-overlay').addEventListener('click', function(e) {
-  if (e.target === this) tourEnd();
-});
-
-
 
 // ── Inline action confirmation (replaces confirm() dialogs) ─────────
 function _dismissConfirm() { var c=document.getElementById('yve-confirm'); if(c) c.remove(); }
@@ -5204,51 +5199,74 @@ function _drawSpotlight(target) {
   ctx.clearRect(0, 0, canvas.width, canvas.height);
 
   if (target) {
-    var rect = target.getBoundingClientRect();
+    // ── Expand to the nearest full panel/section ─────────────────────
+    // Walk up from the target to find a panel-level container
+    var highlight = target;
+    var el = target.parentElement;
+    while (el && el !== document.body) {
+      var id = el.id || '';
+      var cls = el.className || '';
+      // Stop at panel-*, card, or tab content containers
+      if (/^panel-/.test(id) || cls.indexOf('panel') >= 0 ||
+          id === 'app-body' || el.tagName === 'MAIN') {
+        highlight = el;
+        break;
+      }
+      // Also stop if the element is wide enough to be a section
+      var r0 = el.getBoundingClientRect();
+      if (r0.width > window.innerWidth * 0.7 && r0.height > 100) {
+        highlight = el;
+        break;
+      }
+      el = el.parentElement;
+    }
+
+    var rect = highlight.getBoundingClientRect();
     if (rect.width === 0 && rect.height === 0) {
-      // Element not visible - full dim
       ctx.fillStyle = 'rgba(0,0,0,0.78)';
       ctx.fillRect(0, 0, canvas.width, canvas.height);
       return;
     }
-    var pad = 12;
-    var x = rect.left - pad, y = rect.top - pad;
-    var w = rect.width + pad*2, h = rect.height + pad*2;
-    var r = 12; // border radius
 
-    // Full dark overlay
-    ctx.fillStyle = 'rgba(0,0,0,0.78)';
+    var pad = 8;
+    // Clamp to viewport
+    var x = Math.max(0, rect.left - pad);
+    var y = Math.max(0, rect.top - pad);
+    var w = Math.min(canvas.width  - x, rect.width  + pad*2);
+    var h = Math.min(canvas.height - y, rect.height + pad*2);
+    var r = 16;
+
+    // Dark overlay
+    ctx.fillStyle = 'rgba(0,0,0,0.72)';
     ctx.fillRect(0, 0, canvas.width, canvas.height);
 
-    // Cut hole with rounded corners
+    // Cut hole for the highlighted section
     ctx.save();
     ctx.globalCompositeOperation = 'destination-out';
     ctx.beginPath();
     if (ctx.roundRect) {
       ctx.roundRect(x, y, w, h, r);
     } else {
-      ctx.moveTo(x + r, y);
-      ctx.lineTo(x + w - r, y); ctx.arcTo(x+w, y, x+w, y+r, r);
-      ctx.lineTo(x + w, y + h - r); ctx.arcTo(x+w, y+h, x+w-r, y+h, r);
-      ctx.lineTo(x + r, y + h); ctx.arcTo(x, y+h, x, y+h-r, r);
-      ctx.lineTo(x, y + r); ctx.arcTo(x, y, x+r, y, r);
+      ctx.moveTo(x+r,y); ctx.lineTo(x+w-r,y); ctx.arcTo(x+w,y,x+w,y+r,r);
+      ctx.lineTo(x+w,y+h-r); ctx.arcTo(x+w,y+h,x+w-r,y+h,r);
+      ctx.lineTo(x+r,y+h); ctx.arcTo(x,y+h,x,y+h-r,r);
+      ctx.lineTo(x,y+r); ctx.arcTo(x,y,x+r,y,r);
       ctx.closePath();
     }
     ctx.fill();
     ctx.restore();
 
-    // Blue glow ring
+    // Blue glow ring around the section
     ctx.shadowColor = '#3b82f6';
-    ctx.shadowBlur = 20;
-    ctx.strokeStyle = 'rgba(59,130,246,0.9)';
-    ctx.lineWidth = 2;
+    ctx.shadowBlur = 24;
+    ctx.strokeStyle = 'rgba(59,130,246,0.85)';
+    ctx.lineWidth = 2.5;
     ctx.beginPath();
     if (ctx.roundRect) ctx.roundRect(x, y, w, h, r);
     else ctx.rect(x, y, w, h);
     ctx.stroke();
     ctx.shadowBlur = 0;
   } else {
-    // No target: just dim
     ctx.fillStyle = 'rgba(0,0,0,0.72)';
     ctx.fillRect(0, 0, canvas.width, canvas.height);
   }
@@ -5474,6 +5492,24 @@ function startTour() {
   _showTourStep();
 }
 
+// ── Confetti celebration ─────────────────────────────────────────────
+function _launchConfetti() {
+  var colors = ['#3b82f6','#a78bfa','#22c55e','#f59e0b','#ec4899','#60a5fa'];
+  var count = 0, max = 80;
+  var interval = setInterval(function() {
+    if (count++ > max) { clearInterval(interval); return; }
+    var el = document.createElement('div');
+    el.style.cssText = 'position:fixed;top:-10px;left:' + (Math.random()*100) + '%;' +
+      'width:' + (6+Math.random()*8) + 'px;height:' + (6+Math.random()*8) + 'px;' +
+      'border-radius:' + (Math.random()>.5?'50%':'2px') + ';' +
+      'background:' + colors[Math.floor(Math.random()*colors.length)] + ';' +
+      'opacity:1;z-index:99999;pointer-events:none;' +
+      'animation:confettiFall ' + (1.5+Math.random()) + 's linear forwards';
+    document.body.appendChild(el);
+    setTimeout(function(){ el.remove(); }, 3000);
+  }, 30);
+}
+// ─────────────────────────────────────────────────────────────────────
 function endTour() {
   _tourActive = false;
   _tourStep   = 0;
