@@ -2807,7 +2807,7 @@ button, a { touch-action: manipulation; }
         <button class="btn-ref" onclick="aprobarMatchOK()" style="font-size:12px" title="Aprueba automáticamente todas las facturas con 3-way match correcto">✅ Aprobar Match OK</button>
         <button class="btn-ref" onclick="filtrarAPPorEstado()" id="btn-filter-ap" style="font-size:12px">🔍 Filtrar</button>
         <select id="ap-estado-filter" onchange="filtrarAPPorEstado(this.value)" style="background:var(--s1);border:1px solid var(--s2);color:var(--tx);padding:6px 10px;border-radius:8px;font-size:12px;cursor:pointer">
-          <option value="">Todos</option>
+          <option value="" data-i18n-opt="lbl.todos">Todos</option>
           <option value="PENDIENTE">Pendientes</option>
           <option value="MATCH_3WAY_OK">Match OK</option>
           <option value="DISCREPANCIA_PO">Discrepancias</option>
@@ -2839,7 +2839,7 @@ button, a { touch-action: manipulation; }
       <div class="drr-upload">
         <label for="drr-file-input" class="btn-run" style="cursor:pointer;font-size:13px" data-i18n="btn.uploadDrr">📂 Subir DRR (.xlsm)</label>
         <input type="file" id="drr-file-input" accept=".xlsm,.xlsx" style="display:none" onchange="uploadDRR(this)">
-        <span class="drr-status" id="drr-status" style="font-size:12px;color:var(--mut);margin-left:10px">Sin archivo cargado</span>
+        <span class="drr-status" id="drr-status" style="font-size:12px;color:var(--mut);margin-left:10px" data-i18n="drr.sinArchivo">Sin archivo cargado</span>
       </div>
       <div style="display:flex;gap:8px">
         <div id="drr-oob-badge" style="display:none;background:rgba(239,68,68,.1);border:1px solid rgba(239,68,68,.25);color:var(--red);border-radius:8px;padding:5px 12px;font-size:12px;font-weight:700"></div>
@@ -2858,7 +2858,7 @@ button, a { touch-action: manipulation; }
     onclick="document.getElementById('drr-file-input').click()">
   <div class="ei">📊</div>
   <p style="margin-bottom:6px">Arrastra tu DRR aquí o</p>
-  <p style="font-size:12px;color:var(--acc2);font-weight:600">haz clic para seleccionar (.xlsm/.xlsx)</p>
+  <p style="font-size:12px;color:var(--acc2);font-weight:600" data-i18n="drr.hazClic">haz clic para seleccionar (.xlsm/.xlsx)</p>
 </div>
     </div>
     <div id="drr-budget-bar" style="display:none;background:rgba(15,23,42,.5);border-radius:10px;padding:10px 14px;margin-bottom:16px;border:1px solid var(--s2)"></div>
@@ -4234,7 +4234,20 @@ var _i18nStrMap = {
     '📱 Vista lite en todos los paneles (F&B, Real AR, Calipolis, Multi)': '📱 Lite view on all panels',
     'PDF (facturas) · XLSM (DRR)': 'PDF (invoices) · XLSM (DRR)',
     'Actualizado': 'Updated',
-    'facturas cargadas': 'invoices loaded',},
+    'facturas cargadas': 'invoices loaded',
+    'Todos': 'All',
+    'Sin archivo cargado': 'No file loaded',
+    'haz clic para seleccionar (.xlsm/.xlsx)': 'click to select (.xlsm/.xlsx)',
+    'Revenue Diario': 'Daily Revenue',
+    'Trial Balance — Estado Diario': 'Trial Balance — Daily Status',
+    'Sin alertas.': 'No alerts.',
+    'Historial de Notificaciones': 'Notification History',
+    'Sin notificaciones.': 'No notifications.',
+    'Historial de notificaciones enviadas': 'Sent notifications history',
+    'Ingrediente': 'Ingredient',
+    'Receta': 'Recipe',
+    '▶ Ejecutar Análisis': '▶ Run Analysis',
+    'Sin datos F&B.': 'No F&B data.',},
   ca: {
     '0 ya procesados (se saltarán)': '0 ja processats (s\'ometran)',
     '2 minutos para conocer todo Yve': '2 minuts per conèixer Yve',
@@ -4376,7 +4389,20 @@ var _i18nStrMap = {
     '📱 Vista lite en todos los paneles (F&B, Real AR, Calipolis, Multi)': '📱 Vista reduïda a tots els panells',
     'PDF (facturas) · XLSM (DRR)': 'PDF (factures) · XLSM (DRR)',
     'Actualizado': 'Actualitzat',
-    'facturas cargadas': 'factures carregades',},
+    'facturas cargadas': 'factures carregades',
+    'Todos': 'Tots',
+    'Sin archivo cargado': 'Sense arxiu carregat',
+    'haz clic para seleccionar (.xlsm/.xlsx)': 'fes clic per seleccionar (.xlsm/.xlsx)',
+    'Revenue Diario': 'Ingressos Diaris',
+    'Trial Balance — Estado Diario': 'Balanç — Estat Diari',
+    'Sin alertas.': 'Sense alertes.',
+    'Historial de Notificaciones': 'Historial Notificacions',
+    'Sin notificaciones.': 'Sense notificacions.',
+    'Historial de notificaciones enviadas': 'Historial notificacions enviades',
+    'Ingrediente': 'Ingredient',
+    'Receta': 'Recepta',
+    '▶ Ejecutar Análisis': '▶ Executar Anàlisi',
+    'Sin datos F&B.': 'Sense dades F&B.',},
   fr: {
     '0 ya procesados (se saltarán)': '0 déjà traités (seront ignorés)',
     '2 minutos para conocer todo Yve': '2 minutes pour découvrir Yve',
@@ -4527,7 +4553,20 @@ var _i18nStrMap = {
     '📱 Vista lite en todos los paneles (F&B, Real AR, Calipolis, Multi)': '📱 Vue réduite sur tous les panneaux',
     'PDF (facturas) · XLSM (DRR)': 'PDF (factures) · XLSM (DRR)',
     'Actualizado': 'Mis à jour',
-    'facturas cargadas': 'factures chargées',},
+    'facturas cargadas': 'factures chargées',
+    'Todos': 'Tous',
+    'Sin archivo cargado': 'Aucun fichier chargé',
+    'haz clic para seleccionar (.xlsm/.xlsx)': 'cliquez pour sélectionner (.xlsm/.xlsx)',
+    'Revenue Diario': 'Revenus Journaliers',
+    'Trial Balance — Estado Diario': 'Balance — État Journalier',
+    'Sin alertas.': 'Aucune alerte.',
+    'Historial de Notificaciones': 'Historique Notifications',
+    'Sin notificaciones.': 'Aucune notification.',
+    'Historial de notificaciones enviadas': 'Historique notifications envoyées',
+    'Ingrediente': 'Ingrédient',
+    'Receta': 'Recette',
+    '▶ Ejecutar Análisis': '▶ Lancer Analyse',
+    'Sin datos F&B.': 'Pas de données F&B.',},
   de: {
     '% Com.': '% Prov.',
     '0 ya procesados (se saltarán)': '0 bereits verarbeitet (werden übersprungen)',
@@ -4682,7 +4721,20 @@ var _i18nStrMap = {
     '📱 Vista lite en todos los paneles (F&B, Real AR, Calipolis, Multi)': '📱 Kompaktansicht auf allen Panels',
     'PDF (facturas) · XLSM (DRR)': 'PDF (Rechnungen) · XLSM (DRR)',
     'Actualizado': 'Aktualisiert',
-    'facturas cargadas': 'Rechnungen geladen',},
+    'facturas cargadas': 'Rechnungen geladen',
+    'Todos': 'Alle',
+    'Sin archivo cargado': 'Keine Datei geladen',
+    'haz clic para seleccionar (.xlsm/.xlsx)': 'klicken zum Auswählen (.xlsm/.xlsx)',
+    'Revenue Diario': 'Tagesumsatz',
+    'Trial Balance — Estado Diario': 'Probebilanz — Tagesstatus',
+    'Sin alertas.': 'Keine Warnungen.',
+    'Historial de Notificaciones': 'Benachrichtigungsverlauf',
+    'Sin notificaciones.': 'Keine Benachrichtigungen.',
+    'Historial de notificaciones enviadas': 'Gesendete Benachrichtigungen',
+    'Ingrediente': 'Zutat',
+    'Receta': 'Rezept',
+    '▶ Ejecutar Análisis': '▶ Analyse ausführen',
+    'Sin datos F&B.': 'Keine F&B-Daten.',},
   it: {
     '% Com.': '% Comm.',
     '0 ya procesados (se saltarán)': '0 già elaborati (verranno saltati)',
@@ -4828,7 +4880,19 @@ var _i18nStrMap = {
     '📱 Vista lite en todos los paneles (F&B, Real AR, Calipolis, Multi)': '📱 Vista compatta su tutti i pannelli',
     'PDF (facturas) · XLSM (DRR)': 'PDF (fatture) · XLSM (DRR)',
     'Actualizado': 'Aggiornato',
-    'facturas cargadas': 'fatture caricate',},
+    'facturas cargadas': 'fatture caricate',
+    'Todos': 'Tutti',
+    'Sin archivo cargado': 'Nessun file caricato',
+    'haz clic para seleccionar (.xlsm/.xlsx)': 'clicca per selezionare (.xlsm/.xlsx)',
+    'Revenue Diario': 'Ricavi Giornalieri',
+    'Trial Balance — Estado Diario': 'Bilancio — Stato Giornaliero',
+    'Sin alertas.': 'Nessun avviso.',
+    'Historial de Notificaciones': 'Storico Notifiche',
+    'Sin notificaciones.': 'Nessuna notifica.',
+    'Historial de notificaciones enviadas': 'Storico notifiche inviate',
+    'Receta': 'Ricetta',
+    '▶ Ejecutar Análisis': '▶ Esegui Analisi',
+    'Sin datos F&B.': 'Nessun dato F&B.',},
   pt: {
     '0 ya procesados (se saltarán)': '0 já processados (serão ignorados)',
     '2 minutos para conocer todo Yve': '2 minutos para conhecer Yve',
@@ -4956,7 +5020,18 @@ var _i18nStrMap = {
     '📱 Vista lite en todos los paneles (F&B, Real AR, Calipolis, Multi)': '📱 Vista compacta em todos os painéis',
     'PDF (facturas) · XLSM (DRR)': 'PDF (faturas) · XLSM (DRR)',
     'Actualizado': 'Atualizado',
-    'facturas cargadas': 'faturas carregadas',},
+    'facturas cargadas': 'faturas carregadas',
+    'Sin archivo cargado': 'Nenhum arquivo carregado',
+    'haz clic para seleccionar (.xlsm/.xlsx)': 'clique para selecionar (.xlsm/.xlsx)',
+    'Revenue Diario': 'Receita Diária',
+    'Trial Balance — Estado Diario': 'Balancete — Estado Diário',
+    'Sin alertas.': 'Sem alertas.',
+    'Historial de Notificaciones': 'Histórico de Notificações',
+    'Sin notificaciones.': 'Sem notificações.',
+    'Historial de notificaciones enviadas': 'Histórico de notificações enviadas',
+    'Receta': 'Receita',
+    '▶ Ejecutar Análisis': '▶ Executar Análise',
+    'Sin datos F&B.': 'Sem dados F&B.',},
 };
 
 
@@ -5122,6 +5197,14 @@ async function cambiarIdioma(lang) {
     b.style.color = active ? 'var(--acc2)' : 'var(--tx)';
   });
   applyMobileLite();
+  // Translate select option text (can't use data-i18n on options reliably)
+  var apFilter = document.getElementById('ap-filter-estado');
+  if (apFilter && _i18nStrMap[_i18nLang]) {
+    var m = _i18nStrMap[_i18nLang];
+    Array.from(apFilter.options).forEach(function(opt) {
+      if (m[opt.textContent]) opt.textContent = m[opt.textContent];
+    });
+  }
 }
 
 loadAll();
@@ -5555,7 +5638,9 @@ function _showTourStep() {
     setTimeout(function() { try { step.action(); } catch(e) {} }, 300);
   }
 
-  var delay = step.tab ? 600 : 50;
+  // Tabs with async data loading need longer delays
+  var _asyncTabs = {'ar_real': 1400, 'multi_hotel': 1800, 'calipolis': 1200};
+  var delay = step.tab ? (_asyncTabs[step.tab] || 700) : 50;
   setTimeout(function() {
     var target = step.el ? document.querySelector(step.el) : null;
     _tourCurrentTarget = target;
@@ -5568,20 +5653,25 @@ function _showTourStep() {
       target.style.zIndex   = '9950';
     }
 
-    // Wait for scroll to settle, then draw
-    setTimeout(function() {
-      // Re-query target after scroll/render
+    // Wait for scroll to settle, then draw (retry if el not populated yet)
+    var _drawAttempt = function(attemptsLeft) {
       if (step.el) {
         var fresh = document.querySelector(step.el);
+        // For async tabs, wait until the element has visible content
+        var isEmpty = fresh && (fresh.children.length === 0 || fresh.innerHTML.trim() === '');
+        if ((!fresh || isEmpty) && attemptsLeft > 0) {
+          setTimeout(function() { _drawAttempt(attemptsLeft - 1); }, 300);
+          return;
+        }
         if (fresh) { _tourCurrentTarget = fresh; target = fresh; }
       }
       _drawSpotlight(target);
       _renderTourBox(step);
-      // Apply position after box is in DOM (need its size)
       requestAnimationFrame(function() {
         _applyTourBoxPos(target ? target.getBoundingClientRect() : null);
       });
-    }, target ? 400 : 0);
+    };
+    setTimeout(function() { _drawAttempt(6); }, target ? 400 : 0);
   }, delay);
 }
 
@@ -5704,11 +5794,42 @@ function endTour() {
   // Mark done
   localStorage.setItem('tour_done', _TOUR_VER);
 
-  // Confetti + congrats toast
-  _launchConfetti();
+  function _closeCongrats() { var c=document.getElementById('tour-congrats'); if(c) c.remove(); }
+function _startAR() { _closeCongrats(); var t=document.getElementById('tab-ar'); if(t) switchTab('ar',t); }
+// ── Celebración final: tarjeta de bienvenida sobre el dashboard ──
   setTimeout(function() {
-    showNotification('🎉 ¡Tour completado! Ya dominas Yve.01', 'success');
-  }, 500);
+    var card = document.createElement('div');
+    card.id = 'tour-congrats';
+    card.style.cssText = 'position:fixed;inset:0;z-index:10001;display:flex;align-items:center;' +
+      'justify-content:center;background:rgba(0,0,0,.7);animation:tourBoxIn .4s ease';
+    card.innerHTML =
+      '<div style="background:#0f172a;border:2px solid #3b82f6;border-radius:20px;padding:36px 40px;' +
+        'text-align:center;max-width:420px;width:calc(100% - 40px);' +
+        'box-shadow:0 24px 80px rgba(0,0,0,.9),0 0 60px rgba(59,130,246,.15)">' +
+        '<div style="font-size:52px;margin-bottom:12px">🎉</div>' +
+        '<div style="font-size:22px;font-weight:800;color:#f1f5f9;margin-bottom:8px">¡Ya conoces Yve.01!</div>' +
+        '<div style="font-size:14px;color:#94a3b8;line-height:1.7;margin-bottom:24px">' +
+          'El sistema está listo para automatizar las finanzas de tu hotel.<br>' +
+          'El primer paso: procesa las facturas OTA del mes en <b style="color:#60a5fa">AR — OTAs</b>.' +
+        '</div>' +
+        '<div style="display:flex;gap:10px;justify-content:center">' +
+          '<button onclick="_closeCongrats()" ' +
+            'style="background:transparent;border:1px solid #334155;color:#64748b;' +
+            'padding:10px 20px;border-radius:10px;font-size:13px;cursor:pointer">Cerrar</button>' +
+          '<button onclick="_closeCongrats()" ' +
+          '<button onclick="_startAR()" ' +
+            'style="background:linear-gradient(135deg,#3b82f6,#7c3aed);border:none;color:#fff;' +
+            'padding:10px 22px;border-radius:10px;font-size:13px;font-weight:700;cursor:pointer">' +
+            'Empezar con AR →</button>' +
+        '</div>' +
+      '</div>';
+    document.body.appendChild(card);
+    card.addEventListener('click', function(e) {
+      if (e.target === card) card.remove();
+    });
+    // Auto-close after 12s
+    setTimeout(function() { if (card.parentNode) card.remove(); }, 12000);
+  }, 300);
 }
 
 
