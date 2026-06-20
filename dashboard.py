@@ -1950,7 +1950,7 @@ HTML = r"""<!DOCTYPE html>
 <script async src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
 <style>
 /* Light mode */
-body.light-mode{--bg:#f8fafc;--s1:#fff;--s2:#e2e8f0;--s3:#cbd5e1;--tx:#0f172a;--mut:#475569;--dim:#64748b;--acc:#2563eb;--acc2:#1d4ed8;--grn:#16a34a;--red:#dc2626;--ora:#ea580c;--pur:#7c3aed}
+body.light-mode{--bg:#f8fafc;--s1:#fff;--s2:#e2e8f0;--s3:#cbd5e1;--tx:var(--bg);--mut:#475569;--dim:#64748b;--acc:#2563eb;--acc2:#1d4ed8;--grn:#16a34a;--red:#dc2626;--ora:#ea580c;--pur:#7c3aed}
 body.light-mode .nav{background:rgba(248,250,252,.9);border-bottom-color:#e2e8f0}
 body.light-mode .tab-btn{color:#475569}
 body.light-mode .tab-btn.active{color:#2563eb}
@@ -1964,8 +1964,8 @@ body.light-mode .tab-btn.active{color:#2563eb}
 /* ─────────────────────────────────────────────────── */
 .show-mobile{display:none!important}
 :root{
-  --bg:#0f172a;--s1:#1e293b;--s2:#334155;--s3:#475569;
-  --acc:#3b82f6;--acc2:#60a5fa;--acc3:#93c5fd;
+  --bg:var(--bg);--s1:var(--s1);--s2:var(--s2);--s3:#475569;
+  --acc:var(--acc);--acc2:#60a5fa;--acc3:#93c5fd;
   --tx:#f1f5f9;--mut:#94a3b8;--dim:#64748b;
   --grn:#22c55e;--red:#ef4444;--ora:#f97316;--yel:#eab308;--pur:#8b5cf6;
 }
@@ -1987,7 +1987,7 @@ body::before{
 
 /* ── NAV ── */
 .nav{
-  background:rgba(15,23,42,.92);
+  background:rgba(var(--bg-r,15),var(--bg-g,23),var(--bg-b,42),.92);
   backdrop-filter:blur(12px);-webkit-backdrop-filter:blur(12px);
   border-bottom:1px solid var(--s2);
   padding:0 24px;height:60px;
@@ -2267,7 +2267,7 @@ tr:hover td{background:rgba(255,255,255,.025)}
 #chat-fab{
   position:fixed;bottom:24px;right:24px;z-index:1000;
   display:flex;align-items:center;gap:10px;
-  background:linear-gradient(135deg,#7c3aed,#3b82f6);
+  background:linear-gradient(135deg,#7c3aed,var(--acc));
   color:#fff;border:none;border-radius:50px;
   padding:13px 20px 13px 16px;cursor:pointer;
   font-size:.9rem;font-weight:700;
@@ -2284,7 +2284,7 @@ tr:hover td{background:rgba(255,255,255,.025)}
 
 #chat-panel{
   position:fixed;top:0;right:0;width:420px;height:100%;
-  background:#0f172a;border-left:1px solid #1e293b;
+  background:var(--bg);border-left:1px solid var(--s1);
   z-index:1200;display:flex;flex-direction:column;
   transform:translateX(100%);
   transition:transform .3s cubic-bezier(.4,0,.2,1);
@@ -2302,9 +2302,9 @@ tr:hover td{background:rgba(255,255,255,.025)}
 }
 
 #chat-header{
-  padding:16px 18px;border-bottom:1px solid #1e293b;
+  padding:16px 18px;border-bottom:1px solid var(--s1);
   display:flex;align-items:center;justify-content:space-between;
-  flex-shrink:0;background:#0f172a;
+  flex-shrink:0;background:var(--bg);
 }
 .chat-title{display:flex;align-items:center;gap:12px}
 .chat-title span{font-size:1.8rem;line-height:1}
@@ -2324,12 +2324,12 @@ tr:hover td{background:rgba(255,255,255,.025)}
   scroll-behavior:smooth;
 }
 #chat-msgs::-webkit-scrollbar{width:4px}
-#chat-msgs::-webkit-scrollbar-thumb{background:#334155;border-radius:2px}
+#chat-msgs::-webkit-scrollbar-thumb{background:var(--s2);border-radius:2px}
 
-.msg-user{align-self:flex-end;max-width:80%;background:#3b82f6;color:#fff;border-radius:16px 16px 4px 16px;padding:10px 14px;font-size:.88rem;line-height:1.5}
-.msg-bot{align-self:flex-start;max-width:88%;background:#1e293b;color:#e2e8f0;border-radius:16px 16px 16px 4px;padding:12px 14px;font-size:.88rem;line-height:1.6}
+.msg-user{align-self:flex-end;max-width:80%;background:var(--acc);color:#fff;border-radius:16px 16px 4px 16px;padding:10px 14px;font-size:.88rem;line-height:1.5}
+.msg-bot{align-self:flex-start;max-width:88%;background:var(--s1);color:#e2e8f0;border-radius:16px 16px 16px 4px;padding:12px 14px;font-size:.88rem;line-height:1.6}
 .msg-bot .msg-label{font-size:.7rem;font-weight:700;color:#60a5fa;margin-bottom:6px;display:block;letter-spacing:.04em}
-.msg-typing{align-self:flex-start;background:#1e293b;border-radius:16px;padding:12px 16px;display:flex;gap:5px}
+.msg-typing{align-self:flex-start;background:var(--s1);border-radius:16px;padding:12px 16px;display:flex;gap:5px}
 .dot-pulse{width:7px;height:7px;border-radius:50%;background:#60a5fa;animation:dotPulse 1.2s infinite}
 .dot-pulse:nth-child(2){animation-delay:.2s}
 .dot-pulse:nth-child(3){animation-delay:.4s}
@@ -2346,12 +2346,12 @@ tr:hover td{background:rgba(255,255,255,.025)}
 .sug:hover{background:rgba(59,130,246,.2);border-color:rgba(59,130,246,.4)}
 
 #chat-input-row{
-  padding:12px 14px;border-top:1px solid #1e293b;
-  display:flex;gap:10px;align-items:flex-end;flex-shrink:0;background:#0f172a;
+  padding:12px 14px;border-top:1px solid var(--s1);
+  display:flex;gap:10px;align-items:flex-end;flex-shrink:0;background:var(--bg);
   padding-bottom:max(12px, env(safe-area-inset-bottom));
 }
 #chat-input{
-  flex:1;background:#1e293b;border:1px solid #334155;color:#f1f5f9;
+  flex:1;background:var(--s1);border:1px solid var(--s2);color:#f1f5f9;
   border-radius:20px;padding:11px 16px;font-size:.9rem;outline:none;
   resize:none;font-family:inherit;transition:.15s;max-height:120px;
   line-height:1.5;
@@ -2359,7 +2359,7 @@ tr:hover td{background:rgba(255,255,255,.025)}
 #chat-input:focus{border-color:#60a5fa;box-shadow:0 0 0 2px rgba(96,165,250,.12)}
 #chat-input::placeholder{color:#475569}
 #chat-send{
-  background:linear-gradient(135deg,#7c3aed,#3b82f6);border:none;
+  background:linear-gradient(135deg,#7c3aed,var(--acc));border:none;
   color:#fff;border-radius:50%;width:42px;height:42px;cursor:pointer;
   font-size:1.1rem;flex-shrink:0;transition:.15s;
   display:flex;align-items:center;justify-content:center;
@@ -2537,7 +2537,7 @@ tr:hover td{background:rgba(255,255,255,.025)}
 
 /* Tooltips */
 [data-tip]{position:relative}
-[data-tip]::after{content:attr(data-tip);position:absolute;bottom:calc(100% + 8px);left:50%;transform:translateX(-50%);background:#1e293b;color:#f1f5f9;padding:7px 12px;border-radius:8px;font-size:11px;line-height:1.4;max-width:240px;white-space:normal;text-align:center;border:1px solid #334155;pointer-events:none;opacity:0;transition:opacity .15s;z-index:5000;box-shadow:0 4px 12px rgba(0,0,0,.3)}
+[data-tip]::after{content:attr(data-tip);position:absolute;bottom:calc(100% + 8px);left:50%;transform:translateX(-50%);background:var(--s1);color:#f1f5f9;padding:7px 12px;border-radius:8px;font-size:11px;line-height:1.4;max-width:240px;white-space:normal;text-align:center;border:1px solid var(--s2);pointer-events:none;opacity:0;transition:opacity .15s;z-index:5000;box-shadow:0 4px 12px rgba(0,0,0,.3)}
 [data-tip]:hover::after{opacity:1}
 .sr-item{padding:14px 18px;cursor:pointer;border-bottom:1px solid var(--s2);display:flex;align-items:center;gap:12px;transition:background .15s}.sr-item:hover{background:var(--s2)}
 @media print {
@@ -5176,17 +5176,51 @@ var _customColors = {
 
 function _applyCustomColors() {
   var r = document.documentElement;
-  r.style.setProperty('--acc2', _customColors.accent);
-  r.style.setProperty('--acc',  _customColors.accent);
-  r.style.setProperty('--bg',   _customColors.bg);
-  r.style.setProperty('--s0',   _customColors.bg);
-  // Derive --s1 as slightly lighter bg
-  var hex = _customColors.bg.replace('#','');
-  var rgb = [parseInt(hex.substr(0,2),16), parseInt(hex.substr(2,2),16), parseInt(hex.substr(4,2),16)];
-  var s1 = rgb.map(function(v){ return Math.min(255, v+18).toString(16).padStart(2,'0'); }).join('');
-  var s2 = rgb.map(function(v){ return Math.min(255, v+36).toString(16).padStart(2,'0'); }).join('');
-  r.style.setProperty('--s1', '#'+s1);
-  r.style.setProperty('--s2', '#'+s2);
+  var acc = _customColors.accent;
+  var bg  = _customColors.bg;
+
+  // Parse bg hex → r,g,b components
+  var bgHex = bg.replace('#','');
+  var bgR = parseInt(bgHex.substr(0,2),16);
+  var bgG = parseInt(bgHex.substr(2,2),16);
+  var bgB = parseInt(bgHex.substr(4,2),16);
+
+  // Derive s1, s2, s3 as progressively lighter bg
+  function derive(base, amount) {
+    return [
+      Math.min(255, base[0]+amount),
+      Math.min(255, base[1]+amount),
+      Math.min(255, base[2]+amount)
+    ];
+  }
+  function toHex(rgb) { return '#'+rgb.map(function(v){return v.toString(16).padStart(2,'0');}).join(''); }
+
+  var bgArr = [bgR, bgG, bgB];
+  var s1 = derive(bgArr, 20); var s2 = derive(bgArr, 40); var s3 = derive(bgArr, 60);
+
+  // Parse accent hex
+  var aHex = acc.replace('#','');
+  var aR = parseInt(aHex.substr(0,2),16);
+  var aG = parseInt(aHex.substr(2,2),16);
+  var aB = parseInt(aHex.substr(4,2),16);
+  // acc2 = lighter accent, acc3 = very light accent
+  function blendWhite(rgb, t) { return rgb.map(function(v){ return Math.round(v + (255-v)*t); }); }
+  var acc2 = blendWhite([aR,aG,aB], 0.25);
+  var acc3 = blendWhite([aR,aG,aB], 0.5);
+
+  // Apply all CSS variables
+  r.style.setProperty('--bg',    bg);
+  r.style.setProperty('--s0',    bg);
+  r.style.setProperty('--s1',    toHex(s1));
+  r.style.setProperty('--s2',    toHex(s2));
+  r.style.setProperty('--s3',    toHex(s3));
+  r.style.setProperty('--acc',   acc);
+  r.style.setProperty('--acc2',  toHex(acc2));
+  r.style.setProperty('--acc3',  toHex(acc3));
+  // RGB components for rgba() rules in CSS
+  r.style.setProperty('--bg-r', String(bgR));
+  r.style.setProperty('--bg-g', String(bgG));
+  r.style.setProperty('--bg-b', String(bgB));
 }
 
 function _cpSwatch(id, c, cur) {
