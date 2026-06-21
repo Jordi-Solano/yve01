@@ -1964,8 +1964,6 @@ body.light-mode .tab-btn.active{color:var(--acc-dark)}
 /* ─────────────────────────────────────────────────── */
 .show-mobile{display:none!important}
 :root{
-  --bg:var(--bg);--s1:var(--s1);--s2:var(--s2);--s3:#475569;
-  --acc:var(--acc);--acc2:var(--acc2);--acc3:#93c5fd;
   --tx:#f1f5f9;--mut:#94a3b8;--dim:#64748b;
   --grn:#22c55e;--red:#ef4444;--ora:#f97316;--yel:#eab308;--pur:#8b5cf6;
 }
