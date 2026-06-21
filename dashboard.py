@@ -3873,16 +3873,16 @@ function injectSparklines(cardIds) {
 }
 
 const AR_SPARKS = [
-  {valId:'s-tot',  color:'#60a5fa'},
-  {valId:'s-imp',  color:'#60a5fa'},
+  {valId:'s-tot',  color:'#60a5fa', accent:true},
+  {valId:'s-imp',  color:'#60a5fa', accent:true},
   {valId:'s-ok',   color:'#22c55e'},
   {valId:'s-disc', color:'#ef4444'},
   {valId:'s-di',   color:'#f97316'},
   {valId:'s-pend', color:'#8b5cf6'},
 ];
 const AP_SPARKS = [
-  {valId:'ap-total',    color:'#60a5fa'},
-  {valId:'ap-importe',  color:'#60a5fa'},
+  {valId:'ap-total',    color:'#60a5fa', accent:true},
+  {valId:'ap-importe',  color:'#60a5fa', accent:true},
   {valId:'ap-matches',  color:'#22c55e'},
   {valId:'ap-disc',     color:'#ef4444'},
   {valId:'ap-sinpo',    color:'#f97316'},
@@ -5217,6 +5217,18 @@ function _applyCustomColors() {
   r.style.setProperty('--acc-r', String(aR));
   r.style.setProperty('--acc-g', String(aG));
   r.style.setProperty('--acc-b', String(aB));
+
+  // ── Sparklines: canvas no lee CSS vars — re-dibujar con nuevo color ─────
+  var newAcc2 = '#'+toHex(blendW(aR,.25))+toHex(blendW(aG,.25))+toHex(blendW(aB,.25));
+  [typeof AR_SPARKS!=='undefined' && AR_SPARKS,
+   typeof AP_SPARKS!=='undefined' && AP_SPARKS].forEach(function(sparks){
+    if (!sparks) return;
+    sparks.forEach(function(s){ if (s.accent) s.color = newAcc2; });
+  });
+  if (typeof injectSparklines === 'function') {
+    if (typeof AR_SPARKS !== 'undefined') injectSparklines(AR_SPARKS);
+    if (typeof AP_SPARKS !== 'undefined') injectSparklines(AP_SPARKS);
+  }
 }
 
 function _cpSwatch(id, c, cur) {
