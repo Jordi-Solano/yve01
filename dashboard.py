@@ -5195,10 +5195,8 @@ function _applyCustomColors() {
   r.style.setProperty('--bg-r', String(bgR));
   r.style.setProperty('--bg-g', String(bgG));
   r.style.setProperty('--bg-b', String(bgB));
-  // Superficies: siempre relativas al fondo elegido (jerarquía de profundidad)
-  r.style.setProperty('--s1', '#'+toHex(lighter(bgR,22))+toHex(lighter(bgG,22))+toHex(lighter(bgB,22)));
-  r.style.setProperty('--s2', '#'+toHex(lighter(bgR,44))+toHex(lighter(bgG,44))+toHex(lighter(bgB,44)));
-  r.style.setProperty('--s3', '#'+toHex(lighter(bgR,68))+toHex(lighter(bgG,68))+toHex(lighter(bgB,68)));
+  // Superficies (--s1/s2/s3) NO se tocan — mantienen su valor CSS por defecto
+  // así las tarjetas no cambian de color al cambiar el fondo
 
   // ── ACENTO: cambia burbujas de chat, botones, tabs, badges ──────────────
   var acc = _customColors.accent;
