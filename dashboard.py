@@ -1790,7 +1790,7 @@ def api_test_notif():
             "ok": True,
             "resultados": resultados,
             "canales_activos": canales_activos,
-            "message": ("Enviado por: " + ", ".join(resultados.keys())) if resultados else "Sin canales configurados. Activa Email, Slack o WhatsApp en el panel de Notificaciones."
+            "message": ("✓ Enviado por: " + ", ".join(resultados.keys())) if resultados else "No se pudo enviar. Verifica que el email de destino está configurado y guardado en el panel de Notificaciones."
         })
     except Exception as e:
         return jsonify({"ok": False, "error": str(e)}), 500
@@ -5197,7 +5197,7 @@ async function loadI18n(lang) {
   } catch(e) { console.warn('i18n error:', e); }
 }
 
-function t(key) { return _i18nData[key] || _i18nOriginal[key] || key; }
+function t(key) { var v = _i18nData[key] || _i18nOriginal[key]; return (v && v !== key) ? v : null; }
 
 function applyI18n(data) {
   document.querySelectorAll('[data-i18n]').forEach(el => {
@@ -8038,7 +8038,7 @@ function renderNotifConfig() {
         (on ? 'var(--acc)' : 'var(--s2)') + ';border-radius:12px;padding:14px;text-align:center;transition:.15s">' +
         '<div style="font-size:22px;margin-bottom:6px">' + ch.icon + '</div>' +
         '<div style="font-size:13px;font-weight:600;color:' + (on ? 'var(--acc2)' : 'var(--mut)') + '">' + ch.name + '</div>' +
-        '<div style="font-size:10px;color:' + (on ? 'var(--grn)' : 'var(--dim)') + ';margin-top:4px">' + (on ? '● ' + (t('notif.activo')||'Activo') : '○ ' + (t('notif.inactivo')||'Inactivo')) + '</div>' +
+        '<div style="font-size:10px;color:' + (on ? 'var(--grn)' : 'var(--dim)') + ';margin-top:4px">' + (on ? '● Activo' : '○ Inactivo') + '</div>' +
         '</div>';
     }).join('');
   }
@@ -8047,7 +8047,7 @@ function renderNotifConfig() {
   if (fields) {
     let html = '';
     if (c.canales && c.canales.email)
-      html += notifField('email', t('notif.emailLabel') || 'Email de notificaciones', 'controller@hotel.com', c.email || '');
+      html += notifField('email', 'Email de notificaciones', 'controller@hotel.com', c.email || '');
     if (c.canales && c.canales.whatsapp)
       html += notifField('whatsapp', 'Número WhatsApp destino (+34...)', '+34600123456', c.whatsapp || '') +
               '<div style="font-size:11px;color:var(--dim);margin-top:4px">Necesita TWILIO_ACCOUNT_SID + TWILIO_AUTH_TOKEN + TWILIO_WHATSAPP_FROM en Render</div>';
@@ -8063,7 +8063,7 @@ function renderNotifConfig() {
       const on = c.alertas && c.alertas[a.key];
       return '<label style="display:flex;align-items:center;gap:10px;cursor:pointer;font-size:13px;color:var(--tx)">' +
         '<input type="checkbox" data-alerta="' + a.key + '"' + (on ? ' checked' : '') +
-        ' style="width:17px;height:17px;accent-color:var(--acc)">' + (t(a.labelKey)||a.label) + '</label>';
+        ' style="width:17px;height:17px;accent-color:var(--acc)">' + a.label + '</label>';
     }).join('');
   }
 }
