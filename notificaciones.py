@@ -93,9 +93,46 @@ def _registrar(tipo, asunto, destinatario, estado, detalle=""):
 
 # ── Email ─────────────────────────────────────────────────────────────────
 
-def enviar_email(destinatario, asunto, cuerpo_html, tipo="general"):
-    """Envía un email vía SMTP. Devuelve True/False."""
+def _enviar_via_resend(destinatario, asunto, cuerpo_html):
+    """Envía email via Resend HTTP API. Funciona en Render free tier (no bloquea SMTP)."""
+    import urllib.request, urllib.error, json as _json
+    api_key = os.environ.get("RESEND_API_KEY", "")
+    if not api_key:
+        return False, "RESEND_API_KEY no configurado"
     env = _load_env()
+    nombre_hotel = env.get("HOTEL_NOMBRE", "Hotel")
+    payload = _json.dumps({
+        "from": f"Yve.01 · {nombre_hotel} <onboarding@resend.dev>",
+        "to": [destinatario],
+        "subject": asunto,
+        "html": cuerpo_html,
+    }).encode()
+    req = urllib.request.Request(
+        "https://api.resend.com/emails",
+        data=payload,
+        headers={"Authorization": f"Bearer {api_key}", "Content-Type": "application/json"},
+        method="POST"
+    )
+    try:
+        with urllib.request.urlopen(req, timeout=10) as resp:
+            return True, f"OK ({resp.status})"
+    except urllib.error.HTTPError as e:
+        return False, f"Resend {e.code}: {e.read().decode()[:150]}"
+    except Exception as e:
+        return False, str(e)[:120]
+
+
+def enviar_email(destinatario, asunto, cuerpo_html, tipo="general"):
+    """Envía un email. Usa Resend si hay RESEND_API_KEY, sino SMTP."""
+    env = _load_env()
+
+    # Prioridad 1: Resend (HTTP API — funciona en Render free tier)
+    if os.environ.get("RESEND_API_KEY"):
+        ok, msg = _enviar_via_resend(destinatario, asunto, cuerpo_html)
+        _registrar(tipo, asunto, destinatario, "enviado" if ok else "error", msg)
+        return ok
+
+    # Prioridad 2: SMTP directo (no funciona en Render free tier)
     smtp_server = env.get("SMTP_SERVER", "smtp.gmail.com")
     smtp_port   = int(env.get("SMTP_PORT", "587"))
     smtp_user   = env.get("SMTP_USER", "")

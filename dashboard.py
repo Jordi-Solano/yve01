@@ -1746,28 +1746,33 @@ def api_stats_banco():
 
 @app.route("/api/smtp_status")
 def api_smtp_status():
-    """Devuelve si SMTP está configurado y hace un test básico."""
-    smtp_user = os.environ.get("SMTP_USER", "")
-    smtp_pass = os.environ.get("SMTP_PASSWORD", "")
-    smtp_server = os.environ.get("SMTP_SERVER", "smtp.gmail.com")
-    smtp_port = int(os.environ.get("SMTP_PORT", "587"))
-    configured = bool(smtp_user and smtp_pass)
-    result = {"configured": configured, "server": smtp_server, "user": smtp_user if configured else ""}
-    if configured:
-        try:
-            import smtplib
-            with smtplib.SMTP(smtp_server, smtp_port, timeout=5) as s:
-                s.starttls()
-                s.login(smtp_user, smtp_pass)
-            result["ok"] = True
-            result["msg"] = f"SMTP conectado como {smtp_user}"
-        except Exception as e:
-            result["ok"] = False
-            result["msg"] = str(e)[:120]
-    else:
-        result["ok"] = False
-        result["msg"] = "SMTP_USER o SMTP_PASSWORD no configurados en Render"
-    return jsonify(result)
+    """Comprueba si el email está configurado (Resend o SMTP)."""
+    resend_key = os.environ.get("RESEND_API_KEY", "")
+    smtp_user  = os.environ.get("SMTP_USER", "")
+    smtp_pass  = os.environ.get("SMTP_PASSWORD", "")
+
+    # Prioridad: Resend
+    if resend_key:
+        return jsonify({
+            "configured": True, "method": "resend",
+            "user": smtp_user or "Resend API",
+            "ok": True,
+            "msg": f"Resend configurado — enviará desde onboarding@resend.dev"
+        })
+
+    # Fallback: SMTP (bloqueado en Render free tier)
+    if smtp_user and smtp_pass:
+        return jsonify({
+            "configured": True, "method": "smtp",
+            "user": smtp_user,
+            "ok": False,
+            "msg": "SMTP configurado pero Render free tier bloquea conexiones SMTP. Añade RESEND_API_KEY."
+        })
+
+    return jsonify({
+        "configured": False, "ok": False, "user": "",
+        "msg": "Sin configuración de email. Añade RESEND_API_KEY en Render."
+    })
 
 @app.route("/api/test_notif", methods=["POST"])
 @login_required
