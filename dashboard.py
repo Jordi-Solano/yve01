@@ -2752,7 +2752,7 @@ button, a { touch-action: manipulation; }
     <button class="tab" id="tab-notif" onclick="switchTab('notif',this)" data-i18n="tab.notif">🔔 Notificaciones</button>
     <button class="tab" onclick="switchTab('fb',this)" id="tab-fb" data-i18n="tab.fb">🍽️ F&amp;B Cost</button>
     <button class="tab" onclick="switchTab('ar_real',this)" id="tab-ar-real" data-i18n="tab.arreal">🏢 AR Real</button>
-    <button class="tab" onclick="switchTab('calipolis',this)" id="tab-calipolis" data-i18n="tab.calipolis">🏩 Calipolis</button>
+    <button class="tab" onclick="switchTab('calipolis',this)" id="tab-calipolis" data-i18n="tab.calipolis">🏖️ Calipolis</button>
     <button class="tab" onclick="switchTab('multi_hotel',this)" id="tab-multi-hotel" data-i18n="tab.multihotel">🏨 Multi-Hotel</button>
   </div>
 
@@ -3139,39 +3139,10 @@ button, a { touch-action: manipulation; }
 
 
   <div id="panel-calipolis" class="panel">
-  <!-- Header -->
-  <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:22px;flex-wrap:wrap;gap:12px">
-    <div>
-      <h2 style="font-size:18px;font-weight:700;margin:0">🏩 Calipolis Hotels Group</h2>
-      <div style="font-size:12px;color:var(--mut);margin-top:4px">Sitges · 3 propiedades · 307 habitaciones · Jun 2026</div>
-    </div>
-    <div style="display:flex;align-items:center;gap:10px">
-      <span id="cal-mes-badge" style="font-size:11px;background:var(--s2);color:var(--acc2);border:1px solid var(--s2);border-radius:20px;padding:4px 12px">Junio 2026</span>
-      <a href="/api/exportar/calipolis" class="btn-ref" style="text-decoration:none">⬇️ Descargar Excel</a>
-    </div>
-  </div>
-
-  <!-- KPIs consolidados -->
-  <div id="cal-kpis" class="lite-visible" style="display:grid;grid-template-columns:repeat(auto-fit,minmax(min(200px,45%),1fr));gap:10px;margin-bottom:20px;overflow:hidden"></div>
-  <div id="cal-insights"></div>
-
-  <!-- Trend row: GOP y Facturas pendientes últimos 6 meses -->
-  <div style="display:grid;grid-template-columns:1fr 1fr;gap:16px;margin-bottom:22px">
-    <div class="card">
-      <div class="card-title" data-i18n="card.gopEvolucion">GOP% — evolución 6 meses</div>
-      <div id="cal-tendencias" style="height:140px;position:relative"></div>
-    </div>
-    <div class="card">
-      <div class="card-title" data-i18n="card.apEvolucion">Facturas AP pendientes — evolución 6 meses</div>
-      <div style="height:120px;position:relative"><div id="cal-ap-chart" style="height:140px;position:relative"></div></div>
-    </div>
-  </div>
-
-  <!-- Hotel cards -->
-  <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:16px;margin-bottom:22px" id="cal-hoteles"></div>
-
-  <!-- Detail panel (hidden by default) -->
-  <div id="cal-detail" style="display:none;margin-top:4px"></div>
+    <!-- Calipolis usa el mismo motor que Multi-Hotel con filtro de grupo.
+         El contenido se renderiza en panel-multi_hotel cuando el tab activo es calipolis.
+         Ver: _switchToCalipolisView() en JS -->
+    <div id="cal-redirect-notice" style="display:none"></div>
   </div><!-- /panel-calipolis -->
 
   <div id="panel-multi_hotel" class="panel" style="overflow-x:hidden">
@@ -3585,8 +3556,25 @@ async function loadAll() {
       var pid = activePanel.id || '';
       if (pid === 'panel-drr' && typeof cargarDRR === 'function') cargarDRR();
       if (pid === 'panel-banco' && typeof cargarBanco === 'function') cargarBanco();
-      if (pid === 'panel-calipolis' && typeof loadCalipolis === 'function') loadCalipolis();
-      if (pid === 'panel-multi_hotel' && typeof loadMultiHotel === 'function') loadMultiHotel();
+      if (pid === 'panel-calipolis') {
+        // Calipolis usa el panel multi-hotel con filtro de grupo
+        window._mhGrupo = 'calipolis';
+        window._mhGrupoLabel = '🏖️ Calipolis Hotels Group';
+        window._mhGrupoSub   = 'Sitges · 3 propiedades · 307 habitaciones';
+        // Activar visualmente panel-multi_hotel sin cambiar el tab activo
+        document.querySelectorAll('.panel').forEach(p => p.classList.remove('active'));
+        var mhPanel = document.getElementById('panel-multi_hotel');
+        if (mhPanel) mhPanel.classList.add('active');
+        _mh_loaded = false;
+        if (typeof loadMultiHotel === 'function') loadMultiHotel();
+      }
+      if (pid === 'panel-multi_hotel') {
+        window._mhGrupo = null;
+        window._mhGrupoLabel = null;
+        window._mhGrupoSub   = null;
+        _mh_loaded = false;
+        if (typeof loadMultiHotel === 'function') loadMultiHotel();
+      }
     }
   } catch(e2) { console.warn('Error recargando tabs:', e2); }
 
@@ -8275,10 +8263,20 @@ function renderMHTableFull(hoteles) {
 async function loadMultiHotel() {
   if (_mh_loaded) return;
   try {
-    // Build URL with selected month
-var selMes = document.getElementById('mh-mes-select');
-var mesPar = selMes && selMes.value ? '?mes=' + encodeURIComponent(selMes.value) : '';
-var r = await fetch('/api/multi_hotel/overview' + mesPar);
+    // Adaptar header si estamos en modo grupo (ej: Calipolis)
+    var grupoActivo = window._mhGrupo || null;
+    var mhTitle = document.querySelector('#panel-multi_hotel h2');
+    var mhSub   = document.querySelector('#panel-multi_hotel h2 + div, #panel-multi_hotel .mh-sub');
+    if (mhTitle) mhTitle.textContent = window._mhGrupoLabel || '🌍 Multi-Hotel Dashboard';
+    if (mhSub)   mhSub.textContent   = window._mhGrupoSub   || 'Vista consolidada del grupo';
+
+    // Build URL with selected month + grupo filter
+    var selMes = document.getElementById('mh-mes-select');
+    var params = [];
+    if (selMes && selMes.value) params.push('mes=' + encodeURIComponent(selMes.value));
+    if (grupoActivo) params.push('grupo=' + encodeURIComponent(grupoActivo));
+    var mesPar = params.length ? '?' + params.join('&') : '';
+    var r = await fetch('/api/multi_hotel/overview' + mesPar);
     var data = await r.json();
     if (!data.ok) throw new Error(data.error || 'Sin datos');
     var k   = data.consolidado || {};
@@ -8851,23 +8849,16 @@ async function openHotelDetail(hotelId) {
 var _calCharts = {};
 
 async function loadCalipolis() {
-  try {
-    const kEl = document.getElementById('cal-kpis');
-    const hEl = document.getElementById('cal-hoteles');
-    if (kEl && !kEl.dataset.loaded) kEl.innerHTML = skelCards(4, 'grid-template-columns:repeat(4,1fr)');
-    if (hEl && !hEl.dataset.loaded) hEl.innerHTML = skelCards(3, 'grid-template-columns:repeat(3,1fr)');
-    const res = await fetch('/api/calipolis/kpis');
-    const data = await res.json();
-    renderCalipolisKpis(data.consolidado);
-    renderCalipolisHoteles(data.hoteles);
-    addCalipolisInsights(data.hoteles);
-    if (data.tendencias) renderCalipolisTrends(data.tendencias);
-    const calUpd = document.getElementById('cal-updated');
-    if (calUpd) calUpd.textContent = 'Actualizado ' + new Date().toLocaleTimeString('es-ES', {hour:'2-digit',minute:'2-digit'});
-  } catch(e) {
-    console.error('Error Calipolis:', e);
+  // Delegado a loadMultiHotel con filtro grupo=calipolis
+  window._mhGrupo = 'calipolis';
+  window._mhGrupoLabel = '🏖️ Calipolis Hotels Group';
+  window._mhGrupoSub   = 'Sitges · 3 propiedades · 307 habitaciones';
+  _mh_loaded = false;
+  if (typeof loadMultiHotel === 'function') await loadMultiHotel();
+  // (código antiguo reemplazado — se usa panel-multi_hotel)
+  if (false) { // dead code kept for reference
     const kpiEl = document.getElementById('cal-kpis');
-    if (kpiEl) kpiEl.innerHTML = '<div style="color:var(--red);font-size:12px;padding:10px">⚠ Error cargando datos: ' + (e.message||e) + '</div>';
+    if (kpiEl) kpiEl.innerHTML = '';
   }
 }
 

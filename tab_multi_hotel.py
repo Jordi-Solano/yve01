@@ -22,12 +22,19 @@ def _latest_month(df):
 
 @multi_hotel_bp.route('/api/multi_hotel/overview')
 def api_multi_overview():
-    """Consolidated overview for all hotels. Accepts ?mes=YYYY-MM."""
+    """Consolidated overview. Accepts ?mes=YYYY-MM&grupo=calipolis."""
     from flask import request as _freq
     df = _load_kpis()
     if df.empty:
         return jsonify({'ok': False, 'error': 'Sin datos KPI'}), 404
-    
+
+    # Filtro de grupo (para Calipolis y futuros grupos)
+    grupo_param = _freq.args.get('grupo', '').strip().lower()
+    if grupo_param and 'grupo' in df.columns:
+        df = df[df['grupo'].str.lower() == grupo_param].copy()
+    if df.empty:
+        return jsonify({'ok': False, 'error': f'Sin datos para grupo: {grupo_param}'}), 404
+
     all_months = sorted(df['mes'].unique().tolist())
     mes_param = _freq.args.get('mes', '').strip()
     if mes_param and mes_param in all_months:
