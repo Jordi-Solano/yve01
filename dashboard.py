@@ -8105,7 +8105,7 @@ async function probarNotif() {
   const btn = document.querySelector('[onclick="probarNotif()"]');
   if (btn) { btn.disabled = true; btn.textContent = '⏳ Enviando...'; }
   try {
-    const r = await fetch('/api/test_notif', {method:'POST'});
+    const r = await _postJson('/api/test_notif', {});
     const d = await r.json();
     if (btn) {
       btn.textContent = d.ok ? ('✓ ' + (d.message || 'Enviado')) : ('✗ ' + (d.error || 'Error'));
@@ -8162,7 +8162,7 @@ async function enviarNotificaciones() {
   btn.disabled = true;
   btn.textContent = 'Enviando...';
   try {
-    const r = await fetch('/api/enviar_notificaciones', {method:'POST'});
+    const r = await _postJson('/api/enviar_notificaciones', {});
     const data = await r.json();
     if (data.ok) {
       btn.textContent = '✓ ' + data.enviadas + ' alerta(s) procesadas';
