@@ -5248,13 +5248,25 @@ function _applyCustomColors() {
 }
 
 function _cpSwatch(id, c, cur) {
-  return '<div onclick="_cpSet(\''+id+'\',\''+c+'\')" ' +
-    'style="width:22px;height:22px;border-radius:50%;background:'+c+';cursor:pointer;' +
-    'border:2px solid '+(cur===c?'#fff':'transparent')+'"></div>';
+  // data-sel marca el seleccionado actualmente (puede diferir del guardado)
+  return '<div onclick="_cpSet(\''+id+'\',\''+c+'\')" data-cpid="'+id+'" data-cpc="'+c+'" ' +
+    'style="width:22px;height:22px;border-radius:50%;background:'+c+';cursor:pointer;flex-shrink:0;' +
+    'box-shadow:0 0 0 2px '+(cur===c?'#fff':'transparent')+', 0 0 0 4px '+(cur===c?'rgba(255,255,255,.2)':'transparent')+'"></div>';
 }
 function _cpSet(id, color) {
   var el = document.getElementById(id);
-  if (el) { el.value = color; }
+  if (el) el.value = color;
+  // Actualizar aro blanco en todas las swatches de este input
+  document.querySelectorAll('[data-cpid="'+id+'"]').forEach(function(sw) {
+    var isSelected = sw.getAttribute('data-cpc') === color;
+    sw.style.boxShadow = isSelected
+      ? '0 0 0 2px #fff, 0 0 0 4px rgba(255,255,255,.2)'
+      : '0 0 0 2px transparent, 0 0 0 4px transparent';
+  });
+  // Preview en tiempo real
+  if (id === 'cp-accent') _customColors.accent = color;
+  if (id === 'cp-bg') _customColors.bg = color;
+  _applyCustomColors();
 }
 function _openColorPicker() {
   var existing = document.getElementById('color-picker-modal');
