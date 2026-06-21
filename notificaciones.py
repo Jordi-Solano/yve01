@@ -19,7 +19,8 @@ BASE_DIR       = Path(__file__).parent
 REPORTES_DIR   = BASE_DIR / "reportes"
 PROCESADAS_DIR = BASE_DIR / "facturas-procesadas"
 REFERENCIA_DIR = BASE_DIR / "datos-referencia"
-CONFIG_PATH    = REFERENCIA_DIR / "hotel_config.json"
+CONFIG_PATH       = REFERENCIA_DIR / "hotel_config.json"
+NOTIF_CONFIG_PATH = REFERENCIA_DIR / "notif_config.json"
 HISTORIAL_PATH = REFERENCIA_DIR / "notificaciones_historial.json"
 
 # ── Config helpers ────────────────────────────────────────────────────────
@@ -44,6 +45,24 @@ def _load_config():
         except Exception:
             pass
     return {}
+
+def _load_notif_config():
+    """Carga notif_config.json (canales, email destino, alertas)."""
+    defaults = {
+        "canales": {"email": True, "whatsapp": False, "slack": False, "push": True},
+        "email": "", "whatsapp": "", "slack_webhook": "",
+        "alertas": {"ar_discrepancia": True, "ar_falta_di": True,
+                    "ap_discrepancia": True, "drr_oob": True,
+                    "banco_sin_conciliar": True, "factura_pendiente_firma": False},
+        "frecuencia": "inmediata",
+    }
+    if NOTIF_CONFIG_PATH.exists():
+        try:
+            saved = json.loads(NOTIF_CONFIG_PATH.read_text(encoding="utf-8"))
+            defaults.update(saved)
+        except Exception:
+            pass
+    return defaults
 
 def _get_destinatario(config):
     """Devuelve email del Financial Controller."""
@@ -261,7 +280,7 @@ def enviar_telegram(mensaje: str) -> bool:
 
 def enviar_por_canales(asunto, html, texto, tipo="general"):
     """Envia por todos los canales activos segun notif_config.json."""
-    cfg = _load_config()
+    cfg = _load_notif_config()
     ch  = cfg.get("canales", {})
     res = {}
     if ch.get("email") and cfg.get("email"):

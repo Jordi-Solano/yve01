@@ -1795,6 +1795,16 @@ def api_test_notif():
     except Exception as e:
         return jsonify({"ok": False, "error": str(e)}), 500
 
+@app.route("/api/hotel_config")
+def api_hotel_config():
+    """Devuelve configuración del hotel (nombre, email, etc.)."""
+    path = os.path.join(BASE_DIR, "datos-referencia", "hotel_config.json")
+    try:
+        data = json.load(open(path)) if os.path.exists(path) else {}
+        return jsonify(data)
+    except Exception:
+        return jsonify({})
+
 @app.route("/api/notif_config", methods=["GET"])
 def api_notif_config_get():
     """Devuelve la configuración de notificaciones."""
