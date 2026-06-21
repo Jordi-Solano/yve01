@@ -6856,7 +6856,7 @@ var demoModeActive = false;
 
 async function toggleDemoMode() {
   try {
-    const res = await fetch('/api/demo/toggle', {method: 'POST'});
+    const res = await _postJson('/api/demo/toggle', {});
     const data = await res.json();
     demoModeActive = data.demo_mode;
     const btn = document.getElementById('btn-demo');
@@ -6927,7 +6927,7 @@ function toggleRolMenu() {
 
 async function cambiarRol(newRole) {
   try {
-    const res = await fetch(`/api/rol/cambiar/${newRole}`, {method: 'POST'});
+    const res = await _postJson(`/api/rol/cambiar/${newRole}`, {});
     const data = await res.json();
     
     rolActual = newRole;
@@ -7317,7 +7317,7 @@ async function fbRegistrarMerma() {
   const msg = document.getElementById('mb-msg');
   const data = { ingrediente:g('mb-ing'), cantidad:g('mb-cant'), unidad:g('mb-unidad'), coste_unitario:g('mb-coste'), causa:g('mb-causa') };
   if (!data.ingrediente || !data.cantidad) { if(msg) { msg.style.color='var(--red)'; msg.textContent='Rellena ingrediente y cantidad.'; } return; }
-  const r = await fetch('/fb/api/registrar_merma', {method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify(data)});
+  const r = await _postJson('/fb/api/registrar_merma', data);
   const res = await r.json();
   if (res.ok) {
     if(msg) { msg.style.color='var(--grn)'; msg.textContent='✓ Merma registrada (€' + res.coste.toFixed(2) + ')'; }
@@ -7870,7 +7870,7 @@ async function runConciliacion() {
   const btn = document.querySelector('button[onclick="runConciliacion()"]');
   if (btn) { btn.disabled = true; btn.textContent = '⏳ Conciliando...'; }
   try {
-    const r = await fetch('/api/conciliar', {method:'POST'});
+    const r = await _postJson('/api/conciliar', {});
     const d = await r.json();
     if (d.ok) {
       showNotification(`✓ Conciliación completada: ${d.conciliados} conciliados, ${d.pendientes} pendientes`, 'success');
@@ -8092,7 +8092,7 @@ async function guardarNotifConfig() {
   const btn = document.getElementById('btn-save-notif');
   btn.textContent = 'Guardando...';
   try {
-    await fetch('/api/notif_config', {method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify(_notifConfig)});
+    await _postJson('/api/notif_config', _notifConfig);
     btn.textContent = '✓ Guardado';
     setTimeout(() => { btn.textContent = '💾 Guardar configuración'; }, 2000);
   } catch(e) {
@@ -8152,7 +8152,7 @@ async function loadNotif() {
 
 async function testNotification() {
   try {
-    const r = await fetch('/api/test_smtp', {method:'POST'});
+    const r = await _postJson('/api/test_smtp', {});
     const d = await r.json();
     showNotification(d.ok ? '✓ SMTP funcionando: ' + (d.message||'OK') : '✗ SMTP: ' + (d.error||'Error'), d.ok ? 'success' : 'error');
   } catch(e) { showNotification('✗ Error probando SMTP', 'error'); }
@@ -8823,7 +8823,7 @@ async function cobrarFacturaAR(numero) {
     '💰 Confirmar cobro',
     async function() {
       try {
-        const r = await fetch('/api/ar_real/cobrar', {method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({numero})});
+        const r = await _postJson('/api/ar_real/cobrar', {numero});
         const d = await r.json();
         if (d.ok) { showNotification('✓ Factura ' + numero + ' cobrada', 'success'); cargarARRealData(); }
         else showNotification('✗ ' + (d.error||'Error'), 'error');
@@ -8834,7 +8834,7 @@ async function cobrarFacturaAR(numero) {
 
 async function recordatorioAR(numero) {
   try {
-    const r = await fetch('/api/ar_real/recordatorio', {method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({numero})});
+    const r = await _postJson('/api/ar_real/recordatorio', {numero});
     const d = await r.json();
     showNotification(d.ok ? '✓ ' + d.message : '✗ ' + (d.error||'Error'), d.ok ? 'success' : 'error');
   } catch(e) { showNotification('✗ Error de conexión', 'error'); }
