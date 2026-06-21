@@ -1744,6 +1744,31 @@ def api_stats_banco():
 
 
 
+@app.route("/api/smtp_status")
+def api_smtp_status():
+    """Devuelve si SMTP está configurado y hace un test básico."""
+    smtp_user = os.environ.get("SMTP_USER", "")
+    smtp_pass = os.environ.get("SMTP_PASSWORD", "")
+    smtp_server = os.environ.get("SMTP_SERVER", "smtp.gmail.com")
+    smtp_port = int(os.environ.get("SMTP_PORT", "587"))
+    configured = bool(smtp_user and smtp_pass)
+    result = {"configured": configured, "server": smtp_server, "user": smtp_user if configured else ""}
+    if configured:
+        try:
+            import smtplib
+            with smtplib.SMTP(smtp_server, smtp_port, timeout=5) as s:
+                s.starttls()
+                s.login(smtp_user, smtp_pass)
+            result["ok"] = True
+            result["msg"] = f"SMTP conectado como {smtp_user}"
+        except Exception as e:
+            result["ok"] = False
+            result["msg"] = str(e)[:120]
+    else:
+        result["ok"] = False
+        result["msg"] = "SMTP_USER o SMTP_PASSWORD no configurados en Render"
+    return jsonify(result)
+
 @app.route("/api/test_notif", methods=["POST"])
 @login_required
 def api_test_notif():
@@ -2946,6 +2971,8 @@ button, a { touch-action: manipulation; }
 
   <!-- PANEL NOTIFICACIONES -->
   <div id="panel-notif" class="panel">
+    <!-- Banner de estado SMTP -->
+    <div id="notif-smtp-banner" style="margin-bottom:16px;display:none"></div>
     <!-- Configuración de canales -->
     <div class="card" style="margin-bottom:20px">
       <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:18px;flex-wrap:wrap;gap:10px">
@@ -7947,9 +7974,47 @@ async function loadNotifConfig() {
   try {
     const ch = document.getElementById('notif-canales');
     if (ch && !ch.dataset.loaded) ch.innerHTML = skelCards(5, 'grid-template-columns:repeat(5,1fr)');
-    const r = await fetch('/api/notif_config');
-    _notifConfig = await r.json();
+    const [rCfg, rSmtp] = await Promise.all([
+      fetch('/api/notif_config'), fetch('/api/smtp_status')
+    ]);
+    _notifConfig = await rCfg.json();
+    const smtp = await rSmtp.json();
     if (ch) ch.dataset.loaded = '1';
+
+    // Mostrar banner de estado SMTP
+    const banner = document.getElementById('notif-smtp-banner');
+    if (banner) {
+      if (smtp.ok) {
+        banner.style.display = 'flex';
+        banner.innerHTML = '<div style="background:rgba(34,197,94,.1);border:1px solid rgba(34,197,94,.3);border-radius:12px;padding:14px 18px;display:flex;align-items:center;gap:12px;width:100%">' +
+          '<span style="font-size:20px">✅</span>' +
+          '<div><div style="font-size:13px;font-weight:600;color:#22c55e">Email configurado</div>' +
+          '<div style="font-size:11px;color:var(--mut);margin-top:2px">SMTP conectado como ' + smtp.user + '</div></div>' +
+          '<button onclick="probarNotif()" style="margin-left:auto;background:rgba(34,197,94,.15);border:1px solid rgba(34,197,94,.3);color:#22c55e;padding:6px 14px;border-radius:8px;font-size:12px;cursor:pointer;font-weight:600">🔔 Probar ahora</button></div>';
+      } else {
+        banner.style.display = 'flex';
+        banner.innerHTML = '<div style="background:rgba(245,158,11,.08);border:1px solid rgba(245,158,11,.3);border-radius:12px;padding:14px 18px;width:100%">' +
+          '<div style="display:flex;align-items:center;gap:10px;margin-bottom:10px">' +
+          '<span style="font-size:20px">⚠️</span>' +
+          '<div style="font-size:13px;font-weight:700;color:#f59e0b">SMTP no configurado — el email no funcionará</div></div>' +
+          '<div style="font-size:12px;color:var(--mut);line-height:1.7">' +
+          'Para activar notificaciones por email, añade estas variables en <strong>Render → grupo Yve → Environment</strong>:<br>' +
+          '<code style="background:var(--s2);padding:2px 6px;border-radius:4px;margin:2px 0;display:inline-block">SMTP_SERVER = smtp.gmail.com</code><br>' +
+          '<code style="background:var(--s2);padding:2px 6px;border-radius:4px;margin:2px 0;display:inline-block">SMTP_PORT = 587</code><br>' +
+          '<code style="background:var(--s2);padding:2px 6px;border-radius:4px;margin:2px 0;display:inline-block">SMTP_USER = tu@gmail.com</code><br>' +
+          '<code style="background:var(--s2);padding:2px 6px;border-radius:4px;margin:2px 0;display:inline-block">SMTP_PASSWORD = app_password_gmail</code><br>' +
+          '<span style="font-size:11px;color:var(--dim)">💡 Usa una App Password de Gmail, no tu contraseña normal. ' +
+          '<a href="https://myaccount.google.com/apppasswords" target="_blank" style="color:var(--acc2)">Crear App Password →</a></span></div></div>';
+      }
+    }
+
+    // Pre-fill email from hotel config if empty
+    if (!_notifConfig.email) {
+      try {
+        const cfg = await fetch('/api/hotel_config').then(r=>r.json()).catch(()=>({}));
+        if (cfg.hotel_email) _notifConfig.email = cfg.hotel_email;
+      } catch(e) {}
+    }
   } catch(e) {
     _notifConfig = {canales:{email:true,push:true},email:'',whatsapp:'',alertas:{}};
   }
