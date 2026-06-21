@@ -2169,8 +2169,12 @@ body.mobile-lite .panel { padding: 12px !important; }
 .sc.c-yel .sc-val{color:var(--yel)}
 .sc.c-pur .sc-val{color:var(--pur)}
 /* Modo acento total: todos los contenedores responden al acento */
-body.acentuar-todo .sc{border-color:rgba(var(--acc-r,59),var(--acc-g,130),var(--acc-b,246),.4)!important;background:rgba(var(--acc-r,59),var(--acc-g,130),var(--acc-b,246),.06)!important}
+body.acentuar-todo .sc,
+body.acentuar-todo .card{border-color:rgba(var(--acc-r,59),var(--acc-g,130),var(--acc-b,246),.4)!important;background:rgba(var(--acc-r,59),var(--acc-g,130),var(--acc-b,246),.06)!important}
 body.acentuar-todo .sc .sc-val{color:var(--acc2)!important}
+body.acentuar-todo .card-title{color:var(--acc2)!important}
+/* Modo OFF: neutralizar el .hl del primer card para que sea igual al resto */
+body:not(.acentuar-todo) .sc.hl{border-color:var(--s2)!important;background:var(--s1)!important}
 
 /* ── MID ROW ── */
 .mid{display:grid;grid-template-columns:1fr 300px;gap:16px;margin-bottom:24px}
