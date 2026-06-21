@@ -8260,8 +8260,8 @@ function renderMHTableFull(hoteles) {
 function switchCalipolisTab(tabEl) {
   // Establecer filtro de grupo ANTES de llamar a switchTab
   window._mhGrupo = 'calipolis';
-  window._mhGrupoLabel = '\U0001f3d6\ufe0f Calipolis Hotels Group';
-  window._mhGrupoSub   = 'Sitges \xb7 3 propiedades \xb7 307 habitaciones';
+  window._mhGrupoLabel = '🏖️ Calipolis Hotels Group';
+  window._mhGrupoSub   = 'Sitges · 3 propiedades · 307 habitaciones';
   _mh_loaded = false;
   // Usar el switchTab estándar que maneja correctamente la visibilidad de paneles
   // pero pasando 'multi_hotel' como destino
