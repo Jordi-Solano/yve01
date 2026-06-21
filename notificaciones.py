@@ -121,7 +121,7 @@ def _enviar_via_resend(destinatario, asunto, cuerpo_html):
     env = _load_env()
     nombre_hotel = env.get("HOTEL_NOMBRE", "Hotel")
     payload = _json.dumps({
-        "from": f"Yve.01 · {nombre_hotel} <onboarding@resend.dev>",
+        "from": "Yve.01 <onboarding@resend.dev>",
         "to": [destinatario],
         "subject": asunto,
         "html": cuerpo_html,
@@ -138,8 +138,9 @@ def _enviar_via_resend(destinatario, asunto, cuerpo_html):
             return True, f"OK id={body[:60]}"
     except urllib.error.HTTPError as e:
         body = e.read().decode()
-        _registrar("resend_error", "Resend HTTP error", destinatario, "error", f"{e.code}: {body[:200]}")
-        return False, f"Resend {e.code}: {body[:150]}"
+        print(f"[RESEND ERROR] {e.code}: {body}")  # visible en logs de Render
+        _registrar("resend_error", "Resend HTTP error", destinatario, "error", f"{e.code}: {body[:300]}")
+        return False, f"Resend {e.code}: {body[:200]}"
     except Exception as e:
         _registrar("resend_error", "Resend connection error", destinatario, "error", str(e)[:120])
         return False, str(e)[:120]
