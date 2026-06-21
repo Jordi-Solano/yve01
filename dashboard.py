@@ -5177,24 +5177,30 @@ var _customColors = {
 function _applyCustomColors() {
   var r = document.documentElement;
 
-  // ── FONDO: sólo afecta bg, s0, s1, s2, s3 ─────────────────
+  // helpers (definidos aquí para que acc también los use)
+  function toHex(v) { v=Math.max(0,Math.min(255,Math.round(v))); return ('0'+v.toString(16)).slice(-2); }
+  function lighter(val, amt) { return Math.min(255, val+amt); }
+
+  // ── FONDO: solo cambia el fondo de página y el nav (--bg + componentes RGB)
+  //    Las superficies (--s1/s2/s3) se calculan como offset fijo sobre el bg
+  //    para mantener profundidad, pero NO pintan las burbujas del chat
+  //    (las burbujas de usuario usan --acc, las de bot usan --s1 que se mantiene
+  //    a ~+20/42/65 puntos del fondo, creando el contraste correcto)
   var bg = _customColors.bg;
   var bgHex = bg.replace('#','');
   var bgR = parseInt(bgHex.substr(0,2),16);
   var bgG = parseInt(bgHex.substr(2,2),16);
   var bgB = parseInt(bgHex.substr(4,2),16);
-  function toHex(v) { return ('0'+v.toString(16)).slice(-2); }
-  function lighter(val, amt) { return Math.min(255, val+amt); }
   r.style.setProperty('--bg',   bg);
-  r.style.setProperty('--s0',   bg);
-  r.style.setProperty('--s1',   '#'+toHex(lighter(bgR,20))+toHex(lighter(bgG,20))+toHex(lighter(bgB,20)));
-  r.style.setProperty('--s2',   '#'+toHex(lighter(bgR,42))+toHex(lighter(bgG,42))+toHex(lighter(bgB,42)));
-  r.style.setProperty('--s3',   '#'+toHex(lighter(bgR,65))+toHex(lighter(bgG,65))+toHex(lighter(bgB,65)));
   r.style.setProperty('--bg-r', String(bgR));
   r.style.setProperty('--bg-g', String(bgG));
   r.style.setProperty('--bg-b', String(bgB));
+  // Superficies: siempre relativas al fondo elegido (jerarquía de profundidad)
+  r.style.setProperty('--s1', '#'+toHex(lighter(bgR,22))+toHex(lighter(bgG,22))+toHex(lighter(bgB,22)));
+  r.style.setProperty('--s2', '#'+toHex(lighter(bgR,44))+toHex(lighter(bgG,44))+toHex(lighter(bgB,44)));
+  r.style.setProperty('--s3', '#'+toHex(lighter(bgR,68))+toHex(lighter(bgG,68))+toHex(lighter(bgB,68)));
 
-  // ── ACENTO: sólo afecta acc, acc2, acc3 y bubbles ──────────
+  // ── ACENTO: cambia burbujas de chat, botones, tabs, badges ──────────────
   var acc = _customColors.accent;
   var aHex = acc.replace('#','');
   var aR = parseInt(aHex.substr(0,2),16);
@@ -7460,7 +7466,7 @@ function renderMarkdown(text) {
 function addMsg(role, text, isMarkdown) {
   const msgs = document.getElementById('chat-msgs');
   const div  = document.createElement('div');
-  div.className = `msg ${role}`;
+  div.className = `msg-${role}`;
   if (isMarkdown && role === 'bot') {
     div.innerHTML = renderMarkdown(text);
   } else {
@@ -7485,7 +7491,7 @@ async function sendChat() {
 
   const thinkDiv = addMsg('bot', '');
   thinkDiv.classList.add('thinking');
-  thinkDiv.innerHTML = '<span class="typing"><span></span><span></span><span></span></span>';
+  thinkDiv.innerHTML = '<span class="typing" style="display:flex;gap:5px;padding:2px 0"><span class="dot-pulse"></span><span class="dot-pulse"></span><span class="dot-pulse"></span></span>';
 
   try {
     const resp = await fetch('/api/chat', {
