@@ -134,10 +134,14 @@ def _enviar_via_resend(destinatario, asunto, cuerpo_html):
     )
     try:
         with urllib.request.urlopen(req, timeout=10) as resp:
-            return True, f"OK ({resp.status})"
+            body = resp.read().decode()
+            return True, f"OK id={body[:60]}"
     except urllib.error.HTTPError as e:
-        return False, f"Resend {e.code}: {e.read().decode()[:150]}"
+        body = e.read().decode()
+        _registrar("resend_error", "Resend HTTP error", destinatario, "error", f"{e.code}: {body[:200]}")
+        return False, f"Resend {e.code}: {body[:150]}"
     except Exception as e:
+        _registrar("resend_error", "Resend connection error", destinatario, "error", str(e)[:120])
         return False, str(e)[:120]
 
 

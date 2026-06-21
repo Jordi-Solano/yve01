@@ -1790,7 +1790,7 @@ def api_test_notif():
             "ok": True,
             "resultados": resultados,
             "canales_activos": canales_activos,
-            "message": ("✓ Enviado por: " + ", ".join(resultados.keys())) if resultados else "No se pudo enviar. Verifica que el email de destino está configurado y guardado en el panel de Notificaciones."
+            "message": ("✓ Enviado por: " + ", ".join(k for k,v in resultados.items() if v)) if any(resultados.values()) else ("⚠ Error al enviar por: " + ", ".join(resultados.keys()) + ". Comprueba la configuración de Resend.") if resultados else "No se pudo enviar. Verifica que el email de destino está configurado y guardado."
         })
     except Exception as e:
         return jsonify({"ok": False, "error": str(e)}), 500
