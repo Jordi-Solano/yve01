@@ -5265,10 +5265,11 @@ function _applyCustomColors() {
 
 function _cpSwatch(id, c, cur) {
   var sel = cur === c;
-  return '<div onclick="_cpSet(''+id+'',''+c+'')" data-cpid="'+id+'" data-cpc="'+c+'" ' +
-    'style="width:24px;height:24px;border-radius:50%;background:'+c+';cursor:pointer;flex-shrink:0;transition:.12s;' +
-    'box-shadow:0 0 0 '+(sel?'3px':'0px')+' #0f172a, 0 0 0 '+(sel?'5px':'0px')+' #fff' +
-    (sel?', 0 0 8px 2px '+c:'')+'"></div>';
+  // Usamos data attributes en vez de onclick inline para evitar conflictos de comillas
+  return '<div class="cp-swatch" data-cpid="' + id + '" data-cpc="' + c + '" ' +
+    'style="width:24px;height:24px;border-radius:50%;background:' + c + ';cursor:pointer;flex-shrink:0;transition:.12s;' +
+    'box-shadow:0 0 0 ' + (sel ? '3px' : '0px') + ' #0f172a, 0 0 0 ' + (sel ? '5px' : '0px') + ' #fff' +
+    (sel ? ', 0 0 8px 2px ' + c : '') + '"></div>';
 }
 function _cpSet(id, color) {
   var el = document.getElementById(id);
@@ -5294,6 +5295,12 @@ function _cpSet(id, color) {
   }
   _applyCustomColors();
 }
+// Delegación de eventos para swatches del color picker (evita conflictos de comillas en onclick)
+document.addEventListener('click', function(e) {
+  var sw = e.target.closest('.cp-swatch');
+  if (sw) _cpSet(sw.dataset.cpid, sw.dataset.cpc);
+});
+
 function _openColorPicker() {
   var existing = document.getElementById('color-picker-modal');
   if (existing) { existing.remove(); return; }
