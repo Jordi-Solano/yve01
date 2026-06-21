@@ -5248,60 +5248,90 @@ function _applyCustomColors() {
 }
 
 function _cpSwatch(id, c, cur) {
-  // data-sel marca el seleccionado actualmente (puede diferir del guardado)
-  return '<div onclick="_cpSet(\''+id+'\',\''+c+'\')" data-cpid="'+id+'" data-cpc="'+c+'" ' +
-    'style="width:22px;height:22px;border-radius:50%;background:'+c+';cursor:pointer;flex-shrink:0;' +
-    'box-shadow:0 0 0 2px '+(cur===c?'#fff':'transparent')+', 0 0 0 4px '+(cur===c?'rgba(255,255,255,.2)':'transparent')+'"></div>';
+  var sel = cur === c;
+  return '<div onclick="_cpSet(''+id+'',''+c+'')" data-cpid="'+id+'" data-cpc="'+c+'" ' +
+    'style="width:24px;height:24px;border-radius:50%;background:'+c+';cursor:pointer;flex-shrink:0;transition:.12s;' +
+    'box-shadow:0 0 0 '+(sel?'3px':'0px')+' #0f172a, 0 0 0 '+(sel?'5px':'0px')+' #fff' +
+    (sel?', 0 0 8px 2px '+c:'')+'"></div>';
 }
 function _cpSet(id, color) {
   var el = document.getElementById(id);
   if (el) el.value = color;
   // Actualizar aro blanco en todas las swatches de este input
+  var s1 = getComputedStyle(document.documentElement).getPropertyValue('--s1').trim() || '#1e293b';
   document.querySelectorAll('[data-cpid="'+id+'"]').forEach(function(sw) {
-    var isSelected = sw.getAttribute('data-cpc') === color;
-    sw.style.boxShadow = isSelected
-      ? '0 0 0 2px #fff, 0 0 0 4px rgba(255,255,255,.2)'
-      : '0 0 0 2px transparent, 0 0 0 4px transparent';
+    var isSel = sw.getAttribute('data-cpc') === color;
+    sw.style.boxShadow = isSel
+      ? '0 0 0 3px '+s1+', 0 0 0 5px #fff, 0 0 8px 2px '+color
+      : '';
   });
-  // Preview en tiempo real
-  if (id === 'cp-accent') _customColors.accent = color;
-  if (id === 'cp-bg') _customColors.bg = color;
+  // Preview en tiempo real + actualizar label hex
+  if (id === 'cp-accent') {
+    _customColors.accent = color;
+    var lbl = document.getElementById('cp-accent-label');
+    if (lbl) lbl.textContent = color;
+  }
+  if (id === 'cp-bg') {
+    _customColors.bg = color;
+    var lbl = document.getElementById('cp-bg-label');
+    if (lbl) lbl.textContent = color;
+  }
   _applyCustomColors();
 }
 function _openColorPicker() {
   var existing = document.getElementById('color-picker-modal');
   if (existing) { existing.remove(); return; }
-  var accentSwatches = ['#3b82f6','#7c3aed','#ec4899','#22c55e','#f59e0b','#ef4444','#06b6d4','#8b5cf6'];
-  var bgSwatches     = ['#0f172a','#1a1a2e','#0d1117','#1e1e2e','#111827','#0a0f1e','#13111c','#1c1917'];
+
+  // Guardar estado previo para poder cancelar
+  var _prevColors = { accent: _customColors.accent, bg: _customColors.bg, hlAll: _customColors.hlAll };
+
+  var accentSwatches = [
+    '#3b82f6','#6366f1','#7c3aed','#a855f7','#8b5cf6',
+    '#ec4899','#f43f5e','#ef4444','#f97316','#f59e0b',
+    '#eab308','#22c55e','#10b981','#14b8a6','#06b6d4',
+    '#0ea5e9','#3b82f6','#64748b','#e11d48','#7c3aed'
+  ];
+  // Deduplicar
+  accentSwatches = accentSwatches.filter(function(c,i){ return accentSwatches.indexOf(c)===i; });
+
+  var bgSwatches = [
+    '#0f172a','#1a1a2e','#0d1117','#1e1e2e',
+    '#111827','#0a0f1e','#13111c','#1c1917',
+    '#1a1f2e','#0f2027','#1e1b2e','#0d0d0d'
+  ];
+
   var modal = document.createElement('div');
   modal.id = 'color-picker-modal';
   modal.style.cssText = 'position:fixed;inset:0;z-index:9800;display:flex;align-items:center;' +
-    'justify-content:center;background:rgba(0,0,0,.6)';
+    'justify-content:center;background:rgba(0,0,0,.6);backdrop-filter:blur(2px)';
   modal.innerHTML =
-    '<div style="background:var(--s1);border:1px solid var(--s2);border-radius:18px;padding:28px 28px 22px;width:320px;max-width:calc(100vw - 32px)">' +
-      '<div style="font-size:16px;font-weight:700;margin-bottom:20px">🎨 Personalizar colores</div>' +
+    '<div style="background:var(--s1);border:1px solid var(--s2);border-radius:18px;padding:26px 24px 20px;width:340px;max-width:calc(100vw - 32px)">' +
+      '<div style="font-size:16px;font-weight:700;margin-bottom:18px">🎨 Personalizar colores</div>' +
+
       '<div style="margin-bottom:16px">' +
-        '<label style="font-size:12px;color:var(--mut);font-weight:600;display:block;margin-bottom:6px;' +
-          'text-transform:uppercase;letter-spacing:.04em">Color de burbujas / acento</label>' +
-        '<div style="display:flex;gap:10px;align-items:center">' +
+        '<label style="font-size:11px;color:var(--mut);font-weight:600;display:block;margin-bottom:8px;text-transform:uppercase;letter-spacing:.06em">Color de acento</label>' +
+        '<div style="display:flex;gap:8px;align-items:center;margin-bottom:8px">' +
           '<input type="color" id="cp-accent" value="'+_customColors.accent+'" ' +
-            'style="width:48px;height:36px;border:none;border-radius:8px;cursor:pointer;background:none">' +
-          '<div style="display:flex;gap:6px;flex-wrap:wrap">' +
-            accentSwatches.map(function(c){ return _cpSwatch('cp-accent',c,_customColors.accent); }).join('') +
-          '</div>' +
+            'style="width:40px;height:40px;border:none;border-radius:10px;cursor:pointer;background:none;flex-shrink:0">' +
+          '<span style="font-size:12px;color:var(--mut)" id="cp-accent-label">'+_customColors.accent+'</span>' +
+        '</div>' +
+        '<div style="display:flex;gap:6px;flex-wrap:wrap">' +
+          accentSwatches.map(function(c){ return _cpSwatch('cp-accent',c,_customColors.accent); }).join('') +
         '</div>' +
       '</div>' +
-      '<div style="margin-bottom:22px">' +
-        '<label style="font-size:12px;color:var(--mut);font-weight:600;display:block;margin-bottom:6px;' +
-          'text-transform:uppercase;letter-spacing:.04em">Color de fondo</label>' +
-        '<div style="display:flex;gap:10px;align-items:center">' +
+
+      '<div style="margin-bottom:18px">' +
+        '<label style="font-size:11px;color:var(--mut);font-weight:600;display:block;margin-bottom:8px;text-transform:uppercase;letter-spacing:.06em">Color de fondo</label>' +
+        '<div style="display:flex;gap:8px;align-items:center;margin-bottom:8px">' +
           '<input type="color" id="cp-bg" value="'+_customColors.bg+'" ' +
-            'style="width:48px;height:36px;border:none;border-radius:8px;cursor:pointer;background:none">' +
-          '<div style="display:flex;gap:6px;flex-wrap:wrap">' +
-            bgSwatches.map(function(c){ return _cpSwatch('cp-bg',c,_customColors.bg); }).join('') +
-          '</div>' +
+            'style="width:40px;height:40px;border:none;border-radius:10px;cursor:pointer;background:none;flex-shrink:0">' +
+          '<span style="font-size:12px;color:var(--mut)" id="cp-bg-label">'+_customColors.bg+'</span>' +
+        '</div>' +
+        '<div style="display:flex;gap:6px;flex-wrap:wrap">' +
+          bgSwatches.map(function(c){ return _cpSwatch('cp-bg',c,_customColors.bg); }).join('') +
         '</div>' +
       '</div>' +
+
       '<div style="margin-bottom:18px">' +
         '<label style="display:flex;align-items:center;gap:10px;cursor:pointer;user-select:none">' +
           '<div onclick="_toggleHlAll()" id="cp-hlall-track" style="position:relative;width:40px;height:22px;' +
@@ -5316,22 +5346,28 @@ function _openColorPicker() {
           '</div>' +
         '</label>' +
       '</div>' +
-      '<div style="display:flex;gap:10px">' +
+
+      '<div style="display:flex;gap:8px">' +
+        '<button onclick="_cancelColors()" style="flex:1;background:rgba(255,255,255,.06);border:1px solid var(--s2);' +
+          'color:var(--mut);padding:9px;border-radius:10px;cursor:pointer;font-size:13px">Cancelar</button>' +
         '<button onclick="_resetColors()" style="flex:1;background:rgba(255,255,255,.06);border:1px solid var(--s2);' +
-          'color:var(--mut);padding:9px;border-radius:10px;cursor:pointer;font-size:13px">Restablecer</button>' +
+          'color:var(--mut);padding:9px;border-radius:10px;cursor:pointer;font-size:13px">Resetear</button>' +
         '<button onclick="_saveColors()" style="flex:1;background:var(--acc);border:none;color:#fff;' +
           'padding:9px;border-radius:10px;cursor:pointer;font-size:13px;font-weight:700">Aplicar</button>' +
       '</div>' +
     '</div>';
-  modal.addEventListener('click', function(e){ if(e.target===modal) modal.remove(); });
+
+  modal.addEventListener('click', function(e){
+    if (e.target === modal) _cancelColors(); // click fuera = cancelar
+  });
   document.body.appendChild(modal);
 
-  // ── Live preview: aplicar cambios en tiempo real mientras el usuario elige ──
+  // ── Live preview: aplicar cambios en tiempo real ─────────────────────────
   function _previewColors() {
     var a = document.getElementById('cp-accent');
     var b = document.getElementById('cp-bg');
-    if (a) { _customColors.accent = a.value; }
-    if (b) { _customColors.bg = b.value; }
+    if (a) { _customColors.accent = a.value; document.getElementById('cp-accent-label').textContent = a.value; }
+    if (b) { _customColors.bg = b.value; document.getElementById('cp-bg-label').textContent = b.value; }
     _applyCustomColors();
   }
   var cpA = document.getElementById('cp-accent');
@@ -5347,6 +5383,18 @@ function _toggleHlAll() {
   if (track) track.style.background = _customColors.hlAll ? 'var(--acc)' : 'var(--s3)';
   if (thumb) thumb.style.left = _customColors.hlAll ? '21px' : '3px';
   _applyCustomColors(); // preview en tiempo real
+}
+
+function _cancelColors() {
+  // Restaurar estado previo al abrir el picker
+  if (typeof _prevColors !== 'undefined') {
+    _customColors.accent = _prevColors.accent;
+    _customColors.bg     = _prevColors.bg;
+    _customColors.hlAll  = _prevColors.hlAll;
+    _applyCustomColors();
+  }
+  var m = document.getElementById('color-picker-modal');
+  if (m) m.remove();
 }
 
 function _saveColors() {
