@@ -2168,6 +2168,9 @@ body.mobile-lite .panel { padding: 12px !important; }
 .sc.c-ora .sc-val{color:var(--ora)}
 .sc.c-yel .sc-val{color:var(--yel)}
 .sc.c-pur .sc-val{color:var(--pur)}
+/* Modo acento total: todos los contenedores responden al acento */
+body.acentuar-todo .sc{border-color:rgba(var(--acc-r,59),var(--acc-g,130),var(--acc-b,246),.4)!important;background:rgba(var(--acc-r,59),var(--acc-g,130),var(--acc-b,246),.06)!important}
+body.acentuar-todo .sc .sc-val{color:var(--acc2)!important}
 
 /* ── MID ROW ── */
 .mid{display:grid;grid-template-columns:1fr 300px;gap:16px;margin-bottom:24px}
@@ -3871,20 +3874,20 @@ function injectSparklines(cardIds) {
 }
 
 const AR_SPARKS = [
-  {valId:'s-tot',  color:'#60a5fa', accent:true},
-  {valId:'s-imp',  color:'#60a5fa', accent:true},
-  {valId:'s-ok',   color:'#22c55e'},
-  {valId:'s-disc', color:'#ef4444'},
-  {valId:'s-di',   color:'#f97316'},
-  {valId:'s-pend', color:'#8b5cf6'},
+  {valId:'s-tot',  color:'#60a5fa', baseColor:'#60a5fa', accent:true},
+  {valId:'s-imp',  color:'#60a5fa', baseColor:'#60a5fa', accent:true},
+  {valId:'s-ok',   color:'#22c55e', baseColor:'#22c55e'},
+  {valId:'s-disc', color:'#ef4444', baseColor:'#ef4444'},
+  {valId:'s-di',   color:'#f97316', baseColor:'#f97316'},
+  {valId:'s-pend', color:'#8b5cf6', baseColor:'#8b5cf6'},
 ];
 const AP_SPARKS = [
-  {valId:'ap-total',    color:'#60a5fa', accent:true},
-  {valId:'ap-importe',  color:'#60a5fa', accent:true},
-  {valId:'ap-matches',  color:'#22c55e'},
-  {valId:'ap-disc',     color:'#ef4444'},
-  {valId:'ap-sinpo',    color:'#f97316'},
-  {valId:'ap-aprobadas',color:'#8b5cf6'},
+  {valId:'ap-total',    color:'#60a5fa', baseColor:'#60a5fa', accent:true},
+  {valId:'ap-importe',  color:'#60a5fa', baseColor:'#60a5fa', accent:true},
+  {valId:'ap-matches',  color:'#22c55e', baseColor:'#22c55e'},
+  {valId:'ap-disc',     color:'#ef4444', baseColor:'#ef4444'},
+  {valId:'ap-sinpo',    color:'#f97316', baseColor:'#f97316'},
+  {valId:'ap-aprobadas',color:'#8b5cf6', baseColor:'#8b5cf6'},
 ];
 
 // ══════════════════════════════════════════════════════════════
@@ -5170,6 +5173,7 @@ function toggleLightMode() {
 var _customColors = {
   accent: localStorage.getItem('yve_accent') || '#3b82f6',
   bg:     localStorage.getItem('yve_bg')     || '#0f172a',
+  hlAll:  localStorage.getItem('yve_hl_all') === '1',
 };
 
 function _applyCustomColors() {
@@ -5219,12 +5223,20 @@ function _applyCustomColors() {
   [typeof AR_SPARKS!=='undefined' && AR_SPARKS,
    typeof AP_SPARKS!=='undefined' && AP_SPARKS].forEach(function(sparks){
     if (!sparks) return;
-    sparks.forEach(function(s){ if (s.accent) s.color = newAcc2; });
+    sparks.forEach(function(s){
+      // hlAll: todos usan acento; si no, solo los marcados; si se desactiva hlAll, restaurar color semántico
+      if (_customColors.hlAll) s.color = newAcc2;
+      else if (s.accent) s.color = newAcc2;
+      else if (s.baseColor) s.color = s.baseColor;
+    });
   });
   if (typeof injectSparklines === 'function') {
     if (typeof AR_SPARKS !== 'undefined') injectSparklines(AR_SPARKS);
     if (typeof AP_SPARKS !== 'undefined') injectSparklines(AP_SPARKS);
   }
+  // ── Modo acentuar-todo: body class controla el CSS de los contenedores ──
+  if (_customColors.hlAll) document.body.classList.add('acentuar-todo');
+  else document.body.classList.remove('acentuar-todo');
 }
 
 function _cpSwatch(id, c, cur) {
@@ -5270,6 +5282,20 @@ function _openColorPicker() {
           '</div>' +
         '</div>' +
       '</div>' +
+      '<div style="margin-bottom:18px">' +
+        '<label style="display:flex;align-items:center;gap:10px;cursor:pointer;user-select:none">' +
+          '<div onclick="_toggleHlAll()" id="cp-hlall-track" style="position:relative;width:40px;height:22px;' +
+            'background:'+ (_customColors.hlAll ? 'var(--acc)' : 'var(--s3)') +';' +
+            'border-radius:11px;transition:.2s;flex-shrink:0">' +
+            '<div id="cp-hlall-thumb" style="position:absolute;top:3px;left:'+ (_customColors.hlAll ? '21px' : '3px') +';' +
+              'width:16px;height:16px;background:#fff;border-radius:50%;transition:.2s"></div>' +
+          '</div>' +
+          '<div>' +
+            '<div style="font-size:12px;font-weight:600">Acento en todos los contenedores</div>' +
+            '<div style="font-size:11px;color:var(--mut);margin-top:2px">Los 6 cards usan el color elegido</div>' +
+          '</div>' +
+        '</label>' +
+      '</div>' +
       '<div style="display:flex;gap:10px">' +
         '<button onclick="_resetColors()" style="flex:1;background:rgba(255,255,255,.06);border:1px solid var(--s2);' +
           'color:var(--mut);padding:9px;border-radius:10px;cursor:pointer;font-size:13px">Restablecer</button>' +
@@ -5281,11 +5307,21 @@ function _openColorPicker() {
   document.body.appendChild(modal);
 }
 
+function _toggleHlAll() {
+  _customColors.hlAll = !_customColors.hlAll;
+  var track = document.getElementById('cp-hlall-track');
+  var thumb = document.getElementById('cp-hlall-thumb');
+  if (track) track.style.background = _customColors.hlAll ? 'var(--acc)' : 'var(--s3)';
+  if (thumb) thumb.style.left = _customColors.hlAll ? '21px' : '3px';
+  _applyCustomColors(); // preview en tiempo real
+}
+
 function _saveColors() {
   _customColors.accent = document.getElementById('cp-accent').value;
   _customColors.bg     = document.getElementById('cp-bg').value;
   localStorage.setItem('yve_accent', _customColors.accent);
   localStorage.setItem('yve_bg',     _customColors.bg);
+  localStorage.setItem('yve_hl_all', _customColors.hlAll ? '1' : '0');
   _applyCustomColors();
   var m = document.getElementById('color-picker-modal');
   if (m) m.remove();
@@ -5293,10 +5329,21 @@ function _saveColors() {
 }
 
 function _resetColors() {
-  _customColors = { accent: '#3b82f6', bg: '#0f172a' };
+  _customColors = { accent: '#3b82f6', bg: '#0f172a', hlAll: false };
   localStorage.removeItem('yve_accent');
   localStorage.removeItem('yve_bg');
-  document.documentElement.removeAttribute('style');  // remove all inline CSS vars
+  localStorage.removeItem('yve_hl_all');
+  document.documentElement.removeAttribute('style');
+  document.body.classList.remove('acentuar-todo');
+  // Restaurar colores semánticos en sparklines
+  [typeof AR_SPARKS!=='undefined' && AR_SPARKS, typeof AP_SPARKS!=='undefined' && AP_SPARKS].forEach(function(sparks){
+    if (!sparks) return;
+    sparks.forEach(function(s){ if (s.baseColor) s.color = s.baseColor; });
+  });
+  if (typeof injectSparklines === 'function') {
+    if (typeof AR_SPARKS !== 'undefined') injectSparklines(AR_SPARKS);
+    if (typeof AP_SPARKS !== 'undefined') injectSparklines(AP_SPARKS);
+  }
   var m = document.getElementById('color-picker-modal');
   if (m) m.remove();
   showNotification('Colores restablecidos', 'info');
