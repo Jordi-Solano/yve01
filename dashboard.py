@@ -2752,7 +2752,7 @@ button, a { touch-action: manipulation; }
     <button class="tab" id="tab-notif" onclick="switchTab('notif',this)" data-i18n="tab.notif">🔔 Notificaciones</button>
     <button class="tab" onclick="switchTab('fb',this)" id="tab-fb" data-i18n="tab.fb">🍽️ F&amp;B Cost</button>
     <button class="tab" onclick="switchTab('ar_real',this)" id="tab-ar-real" data-i18n="tab.arreal">🏢 AR Real</button>
-    <button class="tab" onclick="switchTab('calipolis',this)" id="tab-calipolis" data-i18n="tab.calipolis">🏖️ Calipolis</button>
+    <button class="tab" onclick="switchCalipolisTab(this)" id="tab-calipolis" data-i18n="tab.calipolis">🏖️ Calipolis</button>
     <button class="tab" onclick="switchTab('multi_hotel',this)" id="tab-multi-hotel" data-i18n="tab.multihotel">🏨 Multi-Hotel</button>
   </div>
 
@@ -3556,22 +3556,11 @@ async function loadAll() {
       var pid = activePanel.id || '';
       if (pid === 'panel-drr' && typeof cargarDRR === 'function') cargarDRR();
       if (pid === 'panel-banco' && typeof cargarBanco === 'function') cargarBanco();
-      if (pid === 'panel-calipolis') {
-        // Calipolis usa el panel multi-hotel con filtro de grupo
-        window._mhGrupo = 'calipolis';
-        window._mhGrupoLabel = '🏖️ Calipolis Hotels Group';
-        window._mhGrupoSub   = 'Sitges · 3 propiedades · 307 habitaciones';
-        // Activar visualmente panel-multi_hotel sin cambiar el tab activo
-        document.querySelectorAll('.panel').forEach(p => p.classList.remove('active'));
-        var mhPanel = document.getElementById('panel-multi_hotel');
-        if (mhPanel) mhPanel.classList.add('active');
-        _mh_loaded = false;
-        if (typeof loadMultiHotel === 'function') loadMultiHotel();
-      }
       if (pid === 'panel-multi_hotel') {
-        window._mhGrupo = null;
-        window._mhGrupoLabel = null;
-        window._mhGrupoSub   = null;
+        if (!window._mhGrupo) {
+          window._mhGrupoLabel = null;
+          window._mhGrupoSub   = null;
+        }
         _mh_loaded = false;
         if (typeof loadMultiHotel === 'function') loadMultiHotel();
       }
@@ -8267,6 +8256,23 @@ function renderMHTableFull(hoteles) {
   }).join('');
 }
 
+
+function switchCalipolisTab(tabEl) {
+  // Calipolis usa panel-multi_hotel con filtro de grupo
+  window._mhGrupo = 'calipolis';
+  window._mhGrupoLabel = '🏖️ Calipolis Hotels Group';
+  window._mhGrupoSub   = 'Sitges · 3 propiedades · 307 habitaciones';
+  // Activar tab visual
+  document.querySelectorAll('.tab').forEach(function(t){ t.classList.remove('active'); });
+  if (tabEl) tabEl.classList.add('active');
+  // Mostrar panel multi_hotel (no panel-calipolis que está vacío)
+  document.querySelectorAll('.panel').forEach(function(p){ p.classList.remove('active'); });
+  var p = document.getElementById('panel-multi_hotel');
+  if (p) p.classList.add('active');
+  _mh_loaded = false;
+  if (typeof loadMultiHotel === 'function') loadMultiHotel();
+  localStorage.setItem('yve_last_tab', 'calipolis');
+}
 async function loadMultiHotel() {
   if (_mh_loaded) return;
   try {
