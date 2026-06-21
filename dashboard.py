@@ -1496,6 +1496,32 @@ def _leer_drr_stats(ruta):
                 g = _num(gop_val)
                 if g: metricas.setdefault("GOP %", {})[period] = f"{g/rev_val*100:.1f}% ~"
 
+        # GOP fallback 2: si sigue N/D, intentar leer columna Budget del mismo archivo
+        # y si tampoco, estimar con GOP% del budget o con media histórica de 22%
+        for period in ("today", "mtd", "forecast"):
+            gop_val  = metricas.get("GOP",   {}).get(period, "N/D")
+            gpct_val = metricas.get("GOP %", {}).get(period, "N/D")
+            rev_val  = _num(metricas.get("Total Revenue", {}).get(period, "N/D"))
+            if gop_val != "N/D" or not rev_val:
+                continue
+            # Intentar con GOP% Budget si está disponible
+            gop_bgt_pct = _num(metricas.get("GOP %", {}).get("budget", "N/D"))
+            gop_bgt_eur = _num(metricas.get("GOP",   {}).get("budget", "N/D"))
+            if gop_bgt_pct:
+                p = gop_bgt_pct / 100 if gop_bgt_pct > 1 else gop_bgt_pct
+                metricas.setdefault("GOP", {})[period]   = f"€{rev_val*p:,.0f} ~"
+                metricas.setdefault("GOP %", {})[period] = f"{p*100:.1f}% ~"
+            elif gop_bgt_eur:
+                bgt_rev = _num(metricas.get("Total Revenue", {}).get("budget", "N/D"))
+                if bgt_rev and bgt_rev > 0:
+                    p = gop_bgt_eur / bgt_rev
+                    metricas.setdefault("GOP", {})[period]   = f"€{rev_val*p:,.0f} ~"
+                    metricas.setdefault("GOP %", {})[period] = f"{p*100:.1f}% ~"
+            else:
+                # Estimación final: 22% GOP (media industria hotelera España)
+                metricas.setdefault("GOP", {})[period]   = f"€{rev_val*0.22:,.0f} ~"
+                metricas.setdefault("GOP %", {})[period] = "22.0% ~"
+
         # Hoja Alertas — días y su estado
         dias = []
         try:

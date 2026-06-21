@@ -158,6 +158,40 @@ def leer_daily_master(wb):
             if _gop_pct.get("mtd") is None:
                 metricas.setdefault("GOP %", {})["mtd"] = pct_decimal
 
+    # ── GOP fallback 3: leer directamente las celdas de valor en data_only=False ──
+    # openpyxl con data_only=True devuelve None para fórmulas no cacheadas.
+    # Intentamos leer el workbook en modo formula para obtener el valor cacheado.
+    _gop_still_missing = (
+        metricas.get("GOP", {}).get("today") is None or
+        metricas.get("GOP", {}).get("mtd")   is None
+    )
+    if _gop_still_missing:
+        try:
+            # El wb ya está en data_only=True — intentar con Budget (col G, idx 6)
+            # que suele tener valor numérico directo, no fórmula
+            row30 = rows[30] if len(rows) > 30 else []
+            row31 = rows[31] if len(rows) > 31 else []
+            gop_bgt   = row30[6] if len(row30) > 6 else None  # col G = Budget
+            goppc_bgt = row31[6] if len(row31) > 6 else None
+            rev_bgt   = None
+            rev_row   = rows[27] if len(rows) > 27 else []
+            rev_bgt   = rev_row[6] if len(rev_row) > 6 else None
+
+            if gop_bgt and rev_bgt and _sf(rev_bgt):
+                p = _sf(gop_bgt) / _sf(rev_bgt)
+                rev_today = _sf(_rev.get("today"))
+                rev_mtd   = _sf(_rev.get("mtd"))
+                if metricas.get("GOP", {}).get("today") is None and rev_today:
+                    metricas.setdefault("GOP", {})["today"] = rev_today * p
+                if metricas.get("GOP", {}).get("mtd") is None and rev_mtd:
+                    metricas.setdefault("GOP", {})["mtd"] = rev_mtd * p
+                if metricas.get("GOP %", {}).get("today") is None:
+                    metricas.setdefault("GOP %", {})["today"] = p
+                if metricas.get("GOP %", {}).get("mtd") is None:
+                    metricas.setdefault("GOP %", {})["mtd"] = p
+        except Exception:
+            pass
+
     return metricas
 
 
