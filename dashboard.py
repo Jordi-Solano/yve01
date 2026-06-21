@@ -2170,9 +2170,12 @@ body.mobile-lite .panel { padding: 12px !important; }
 .sc.c-pur .sc-val{color:var(--pur)}
 /* Modo acento total: todos los contenedores responden al acento */
 body.acentuar-todo .sc,
-body.acentuar-todo .card{border-color:rgba(var(--acc-r,59),var(--acc-g,130),var(--acc-b,246),.4)!important;background:rgba(var(--acc-r,59),var(--acc-g,130),var(--acc-b,246),.06)!important}
+body.acentuar-todo .card,
+body.acentuar-todo .fb-kpi-card{border-color:rgba(var(--acc-r,59),var(--acc-g,130),var(--acc-b,246),.4)!important;background:rgba(var(--acc-r,59),var(--acc-g,130),var(--acc-b,246),.06)!important}
 body.acentuar-todo .sc .sc-val{color:var(--acc2)!important}
-body.acentuar-todo .card-title{color:var(--acc2)!important}
+body.acentuar-todo .fb-kpi-val{color:var(--acc2)!important}
+body.acentuar-todo .card-title,
+body.acentuar-todo .fb-kpi-lbl{color:var(--acc2)!important;opacity:.8}
 /* Modo OFF: neutralizar el .hl del primer card para que sea igual al resto */
 body:not(.acentuar-todo) .sc.hl{border-color:var(--s2)!important;background:var(--s1)!important}
 
@@ -2593,7 +2596,7 @@ button, a { touch-action: manipulation; }
     <span class="pill hide-mobile" style="color:var(--acc2)">👤 __USER_NAME__</span>
 
     <button class="btn-ref show-mobile" onclick="toggleChat()" style="background:linear-gradient(135deg,rgba(124,58,237,.15),rgba(59,130,246,.15));border-color:rgba(124,58,237,.35);color:#a78bfa;font-weight:700" title="Pregunta a Yve IA">💬 Yve</button>
-    <button onclick="openUploadModal()" title="Procesar Facturas" style="background:rgba(59,130,246,.1);border:1px solid rgba(59,130,246,.25);color:#60a5fa;padding:7px 11px;border-radius:8px;font-size:16px;cursor:pointer;line-height:1;transition:.15s" onmouseover="this.style.background='rgba(59,130,246,.2)'" onmouseout="this.style.background='rgba(59,130,246,.1)'">⚡</button>
+    <button class="show-mobile" onclick="openUploadModal()" title="Procesar Facturas" style="background:rgba(59,130,246,.1);border:1px solid rgba(59,130,246,.25);color:#60a5fa;padding:7px 11px;border-radius:8px;font-size:16px;cursor:pointer;line-height:1;transition:.15s" onmouseover="this.style.background='rgba(59,130,246,.2)'" onmouseout="this.style.background='rgba(59,130,246,.1)'">⚡</button>
 
 
 
@@ -2616,16 +2619,17 @@ button, a { touch-action: manipulation; }
         <div class="menu-sep"></div>
         <!-- Language switcher -->
         <div class="menu-head" data-i18n="nav.idioma" style="margin-top:0">Idioma</div>
-        <div style="display:grid;grid-template-columns:repeat(4,1fr);gap:4px;padding:0 4px;margin-bottom:4px">
-          <button class="lang-btn menu-item" data-lang="es" onclick="cambiarIdioma('es');document.getElementById('main-menu').classList.remove('open')" style="text-align:center;padding:7px 4px;font-size:18px;line-height:1;justify-content:center;display:flex" title="Español">🇪🇸</button>
-          <button class="lang-btn menu-item" data-lang="en" onclick="cambiarIdioma('en');document.getElementById('main-menu').classList.remove('open')" style="text-align:center;padding:7px 4px;font-size:18px;line-height:1;justify-content:center;display:flex" title="English">🇬🇧</button>
-          <button class="lang-btn menu-item" data-lang="ca" onclick="cambiarIdioma('ca');document.getElementById('main-menu').classList.remove('open')" style="text-align:center;padding:7px 4px;font-size:18px;line-height:1;justify-content:center;display:flex" title="Català">🏴󠁥󠁳󠁣󠁴󠁿</button>
-          <button class="lang-btn menu-item" data-lang="fr" onclick="cambiarIdioma('fr');document.getElementById('main-menu').classList.remove('open')" style="text-align:center;padding:7px 4px;font-size:18px;line-height:1;justify-content:center;display:flex" title="Français">🇫🇷</button>
+        <div style="display:grid;grid-template-columns:repeat(4,1fr);gap:3px;padding:0 4px;margin-bottom:3px">
+          <button class="lang-btn menu-item" data-lang="es" onclick="cambiarIdioma('es');document.getElementById('main-menu').classList.remove('open')" style="text-align:center;padding:6px 2px;font-size:17px;line-height:1;justify-content:center;display:flex;border-radius:7px" title="Español">🇪🇸</button>
+          <button class="lang-btn menu-item" data-lang="en" onclick="cambiarIdioma('en');document.getElementById('main-menu').classList.remove('open')" style="text-align:center;padding:6px 2px;font-size:17px;line-height:1;justify-content:center;display:flex;border-radius:7px" title="English">🇬🇧</button>
+          <button class="lang-btn menu-item" data-lang="fr" onclick="cambiarIdioma('fr');document.getElementById('main-menu').classList.remove('open')" style="text-align:center;padding:6px 2px;font-size:17px;line-height:1;justify-content:center;display:flex;border-radius:7px" title="Français">🇫🇷</button>
+          <button class="lang-btn menu-item" data-lang="de" onclick="cambiarIdioma('de');document.getElementById('main-menu').classList.remove('open')" style="text-align:center;padding:6px 2px;font-size:17px;line-height:1;justify-content:center;display:flex;border-radius:7px" title="Deutsch">🇩🇪</button>
         </div>
-        <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:4px;padding:0 4px;margin-bottom:8px">
-          <button class="lang-btn menu-item" data-lang="de" onclick="cambiarIdioma('de');document.getElementById('main-menu').classList.remove('open')" style="text-align:center;padding:7px 4px;font-size:18px;line-height:1;justify-content:center;display:flex" title="Deutsch">🇩🇪</button>
-          <button class="lang-btn menu-item" data-lang="it" onclick="cambiarIdioma('it');document.getElementById('main-menu').classList.remove('open')" style="text-align:center;padding:7px 4px;font-size:18px;line-height:1;justify-content:center;display:flex" title="Italiano">🇮🇹</button>
-          <button class="lang-btn menu-item" data-lang="pt" onclick="cambiarIdioma('pt');document.getElementById('main-menu').classList.remove('open')" style="text-align:center;padding:7px 4px;font-size:18px;line-height:1;justify-content:center;display:flex" title="Português">🇵🇹</button>
+        <div style="display:grid;grid-template-columns:repeat(4,1fr);gap:3px;padding:0 4px;margin-bottom:8px">
+          <button class="lang-btn menu-item" data-lang="it" onclick="cambiarIdioma('it');document.getElementById('main-menu').classList.remove('open')" style="text-align:center;padding:6px 2px;font-size:17px;line-height:1;justify-content:center;display:flex;border-radius:7px" title="Italiano">🇮🇹</button>
+          <button class="lang-btn menu-item" data-lang="pt" onclick="cambiarIdioma('pt');document.getElementById('main-menu').classList.remove('open')" style="text-align:center;padding:6px 2px;font-size:17px;line-height:1;justify-content:center;display:flex;border-radius:7px" title="Português">🇵🇹</button>
+          <button class="lang-btn menu-item" data-lang="ca" onclick="cambiarIdioma('ca');document.getElementById('main-menu').classList.remove('open')" style="text-align:center;padding:6px 2px;font-size:11px;font-weight:800;line-height:1;justify-content:center;display:flex;border-radius:7px;letter-spacing:.5px;color:var(--acc2)" title="Català">CAT</button>
+          <button class="lang-btn menu-item" data-lang="es" style="visibility:hidden;pointer-events:none"></button>
         </div>
         <div class="menu-sep"></div>
         <div class="menu-head" data-i18n="menu.presentacion">Presentación</div>
@@ -2903,7 +2907,7 @@ button, a { touch-action: manipulation; }
     </div>
     <div class="card">
       <div class="card-title" data-i18n="card.alertasBanco">Alertas Bancarias</div>
-      <div id="bk-alertas"><div class="empty"><p>Cargando...</p></div></div>
+      <div id="bk-alertas"><div class="empty"><p>—</p></div></div>
     </div>
     <div style="margin-top:16px;display:flex;flex-wrap:wrap;gap:8px;align-items:center">
       <a href="/api/exportar/banco" class="btn-ref" style="text-decoration:none;font-size:12px">⬇️ Excel</a>
@@ -5309,6 +5313,19 @@ function _openColorPicker() {
     '</div>';
   modal.addEventListener('click', function(e){ if(e.target===modal) modal.remove(); });
   document.body.appendChild(modal);
+
+  // ── Live preview: aplicar cambios en tiempo real mientras el usuario elige ──
+  function _previewColors() {
+    var a = document.getElementById('cp-accent');
+    var b = document.getElementById('cp-bg');
+    if (a) { _customColors.accent = a.value; }
+    if (b) { _customColors.bg = b.value; }
+    _applyCustomColors();
+  }
+  var cpA = document.getElementById('cp-accent');
+  var cpB = document.getElementById('cp-bg');
+  if (cpA) cpA.addEventListener('input', _previewColors);
+  if (cpB) cpB.addEventListener('input', _previewColors);
 }
 
 function _toggleHlAll() {
@@ -7251,9 +7268,9 @@ async function loadFBRecetas() {
 }
 
 function _fbKpi(lbl, val, sub, color) {
-  return '<div style="background:var(--s1);border:1px solid var(--s2);border-radius:13px;padding:18px 16px">' +
-    '<div style="font-size:10px;color:var(--mut);text-transform:uppercase;letter-spacing:.6px;margin-bottom:10px;font-weight:600">' + lbl + '</div>' +
-    '<div style="font-size:24px;font-weight:800;color:' + color + ';line-height:1;letter-spacing:-.5px">' + val + '</div>' +
+  return '<div class="fb-kpi-card" style="background:var(--s1);border:1px solid var(--s2);border-radius:13px;padding:18px 16px">' +
+    '<div class="fb-kpi-lbl" style="font-size:10px;color:var(--mut);text-transform:uppercase;letter-spacing:.6px;margin-bottom:10px;font-weight:600">' + lbl + '</div>' +
+    '<div class="fb-kpi-val" style="font-size:24px;font-weight:800;color:' + color + ';line-height:1;letter-spacing:-.5px">' + val + '</div>' +
     '<div style="font-size:11px;color:var(--dim);margin-top:7px">' + sub + '</div></div>';
 }
 
@@ -8363,6 +8380,13 @@ async function loadBanco() {
     }
   } catch(e) {
     console.warn('Error banco:', e);
+    var el = document.getElementById('bk-alertas');
+    if (el && el.innerHTML.includes('—')) {
+      el.innerHTML = '<div class="empty"><p>Sin alertas bancarias.</p></div>';
+    }
+    ['bk-total','bk-conc','bk-pend','bk-diff'].forEach(function(id){
+      var el2 = document.getElementById(id); if (el2 && el2.textContent === '—') el2.textContent = '0';
+    });
   }
 }
 
