@@ -506,24 +506,8 @@ def api_procesar_batch_stream():
                 tipo = _detect_file_type(fname)
                 yield f'data: >> [{i+1}/{total}] {fname}...\n\n'
 
-                # Detectar archivos que claramente no son facturas
-                _fname_lower = fname.lower().replace(' ', '_').replace('-', '_')
-                _palabras_no_factura = ['rooming', 'sow_', 'contract', 'signed', 'agreement',
-                    'nda', 'proposal', 'presupuesto', 'convenio', 'protocolo',
-                    'quote', 'order_form', 'purchase_order', 'new_rooming']
-                if any(p in _fname_lower for p in _palabras_no_factura):
-                    yield f'data: ⚠ {fname}: no es una factura — saltando\n\n'
-                    _mark(fname, 'SKIP:NOT_INVOICE')
-                    continue
-
                 try:
                     import subprocess as _sp
-                    if tipo == 'DRR':
-                        import shutil as _sh
-                        _sh.copy2(fpath, os.path.join(BASE_DIR, 'reportes', 'drr_upload.xlsm'))
-                        yield f'data: ✓ DRR {fname}: copiado\n\n'
-                        _mark(fname, 'DRR_OK')
-                        continue
 
                     fl = fname.lower()
                     # Clasificación inteligente por tipo de documento

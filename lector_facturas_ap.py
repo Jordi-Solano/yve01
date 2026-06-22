@@ -38,13 +38,45 @@ def cargar_proveedores():
 # ── Extracción de texto ───────────────────────────────────────────────────
 
 def extraer_texto(pdf_path):
+    """Extrae texto de PDF. Si el PDF es escaneado (sin texto), intenta OCR."""
     textos = []
     with pdfplumber.open(pdf_path) as pdf:
         for pag in pdf.pages:
             t = pag.extract_text()
             if t:
                 textos.append(t)
-    return "\n".join(textos)
+    texto = "\n".join(textos)
+    
+    # Si el PDF tiene poco texto, puede ser escaneado — intentar OCR
+    if len(texto.strip()) < 100:
+        try:
+            import subprocess
+            # pytesseract via subprocess (más compatible)
+            r = subprocess.run(
+                ['python3', '-c', f'''
+import pdfplumber, io
+from PIL import Image
+with pdfplumber.open("{pdf_path}") as pdf:
+    for p in pdf.pages:
+        img = p.to_image(resolution=200)
+        # Guardar como imagen temporal
+        img.save("/tmp/yve_ocr_page.png")
+        break
+'''],
+                capture_output=True, text=True, timeout=15
+            )
+            if os.path.exists("/tmp/yve_ocr_page.png"):
+                r2 = subprocess.run(
+                    ['tesseract', '/tmp/yve_ocr_page.png', 'stdout', '-l', 'spa+eng'],
+                    capture_output=True, text=True, timeout=15
+                )
+                if r2.stdout.strip():
+                    texto = r2.stdout.strip()
+                os.remove("/tmp/yve_ocr_page.png")
+        except Exception:
+            pass  # OCR no disponible — continuar con lo que tengamos
+    
+    return texto
 
 def es_ota(texto):
     txt_lower = texto.lower()
@@ -99,13 +131,13 @@ def es_no_factura_por_contenido(texto):
     if any(s in txt_lower for s in factura_signals):
         return False, ""
     
-    # Indicadores de que NO es factura
-    no_factura_signals = ['banquet event order', 'beo', 'rooming list', 'guest list',
-                          'room block', 'agenda', 'meeting room setup', 'floor plan',
+    # Indicadores de que NO es factura (solo si NO hay señales de factura)
+    no_factura_signals = ['banquet event order', 'rooming list', 'guest list',
+                          'room block', 'meeting room setup', 'floor plan',
                           'technical requirements', 'statement of work', 'scope of work',
-                          'proposal for', 'presupuesto para', 'quotation', 'menu del día',
-                          'wine list', 'carta de vinos', 'event program', 'programme',
-                          'check-in list', 'attendee list', 'lista de asistentes']
+                          'event program', 'programme',
+                          'check-in list', 'attendee list', 'lista de asistentes',
+                          'running order', 'event schedule']
     for s in no_factura_signals:
         if s in txt_lower:
             return True, f"contiene '{s}'"
@@ -122,36 +154,40 @@ def extraer_con_claude(texto, nombre_archivo):
     try:
         import anthropic
         client = anthropic.Anthropic(api_key=api_key)
+        # Enviar más texto si el documento es largo (facturas grandes)
+        max_chars = min(len(texto), 6000)
         prompt = (
-            "Eres un experto en contabilidad hotelera española/europea. "
-            "Analiza este documento y extrae los datos de factura.\n\n"
-            "PRIMERO: ¿Es este documento realmente una factura/invoice? "
-            "Si NO es una factura (es un contrato, presupuesto, BEO, rooming list, agenda, "
-            'email, logo, manual técnico, etc.), devuelve exactamente: {"es_factura": false}\n\n'
-            "Si SÍ es una factura, devuelve un JSON con TODAS estas claves:\n"
-            "{\n"
-            "  \"es_factura\": true,\n"
-            "  \"numero_factura\": \"FRA-2024-001\",\n"
-            "  \"fecha\": \"15/03/2024\",\n"
-            "  \"nombre_proveedor\": \"Empresa SL\",\n"
-            "  \"NIF_proveedor\": \"B12345678\",\n"
-            "  \"descripcion_concepto\": \"Servicio de catering evento\",\n"
-            "  \"base_imponible\": 1000.00,\n"
-            "  \"porcentaje_iva\": 21,\n"
-            "  \"cuota_iva\": 210.00,\n"
-            "  \"total_factura\": 1210.00,\n"
-            "  \"moneda\": \"EUR\"\n"
-            "}\n\n"
-            "REGLAS IMPORTANTES:\n"
-            "- Importes como números decimales (float), NO strings\n"
-            "- porcentaje_iva como número entero (21, no 0.21 ni '21%')\n"
-            "- fecha en formato DD/MM/YYYY\n"
-            "- Si el documento está en otro idioma (inglés, alemán, polaco), traduce el proveedor pero extrae los números tal cual\n"
-            "- Si hay varios tipos de IVA, usa el principal\n"
-            "- Si no encuentras un campo concreto, usa null (no inventes)\n"
-            "- SOLO devuelve el JSON, sin markdown, sin explicaciones\n\n"
-            f"NOMBRE DEL ARCHIVO: {nombre_archivo}\n\n"
-            f"TEXTO DEL DOCUMENTO:\n{texto[:4000]}"
+            "Eres un experto en contabilidad hotelera. Analiza este documento.\n\n"
+            "PASO 1: ¿Es una factura real (invoice) con importes económicos?\n"
+            "Un documento ES factura si tiene: número de factura, fecha, importes, IVA/VAT.\n"
+            "Un documento NO es factura si es: email, contrato, BEO, rooming list, agenda, "
+            "manual técnico, propuesta, presupuesto sin comprometer, certificado, acta.\n"
+            "Un depósito/anticipo (deposit/advance payment) SÍ es factura.\n"
+            "Una factura proforma SÍ es factura.\n\n"
+            'Si NO es factura, devuelve SOLO: {"es_factura": false, "tipo_documento": "descripcion breve"}\n\n'
+            "PASO 2: Si SÍ es factura, extrae TODOS los campos posibles:\n"
+            '{"es_factura": true, '
+            '"numero_factura": "string o null", '
+            '"fecha": "DD/MM/YYYY o null", '
+            '"nombre_proveedor": "nombre empresa emisora", '
+            '"NIF_proveedor": "NIF/CIF/VAT ID o null", '
+            '"descripcion_concepto": "resumen en español de qué se factura", '
+            '"base_imponible": 0.00, '
+            '"porcentaje_iva": 21, '
+            '"cuota_iva": 0.00, '
+            '"total_factura": 0.00, '
+            '"moneda": "EUR"}\n\n'
+            "REGLAS:\n"
+            "- Importes SIEMPRE como float (1234.56), nunca strings\n"
+            "- Si solo ves el total sin desglose IVA: base=total/1.21, iva=21, cuota=total-base\n"
+            "- Si el IVA es 0% (intracomunitaria/export): base=total, iva=0, cuota=0\n"
+            "- porcentaje_iva: número entero (21, 10, 0), no decimal ni string\n"
+            "- Monedas: EUR, USD, GBP, PLN, etc. — extrae los números sin convertir\n"
+            "- Si hay un depósito parcial (1st deposit, anticipo), el total es el depósito\n"
+            "- Si no encuentras un campo, pon null — NUNCA inventes datos\n"
+            "- SOLO JSON, sin markdown, sin explicaciones, sin ```\n\n"
+            f"ARCHIVO: {nombre_archivo}\n"
+            f"TEXTO:\n{texto[:max_chars]}"
         )
         resp = client.messages.create(
             model="claude-sonnet-4-6",
