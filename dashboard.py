@@ -532,7 +532,7 @@ def api_procesar_batch_stream():
                     ))
                     is_bank = any(x in fl for x in ['extracto','bank','statement','movimientos','bancario'])
                     is_rooming = any(x in fl for x in ['rooming','room list','guest list','room block'])
-                    is_drr_file = fl.endswith('.xlsm') and any(x in fl for x in ['drr','revenue','daily'])
+                    is_drr_file = fl.endswith('.xlsm') and any(x in fl for x in ['drr','revenue report','daily report','daily_report'])
                     is_fb = any(x in fl for x in ['pos','ventas','sales','tpv','food','beverage','f&b','fnb','restaurante','bar ','menu_mix','product_mix','ticket'])
                     is_inventory = any(x in fl for x in ['inventario','inventory','stock','almacen','merma','waste'])
 
@@ -862,13 +862,15 @@ def _save_proc_log(log):
 def _detect_file_type(filename):
     """Detect what section a file belongs to."""
     name = filename.lower()
-    if name.endswith('.xlsm') or 'drr' in name or 'daily' in name or 'revenue' in name:
+    # DRR: solo si tiene keyword explícito de DRR (no cualquier .xlsm)
+    if any(x in name for x in ['drr', 'daily revenue', 'daily_revenue', 'revenue report']):
         return 'DRR'
-    if any(ota in name for ota in ['booking', 'expedia', 'hotelbeds', 'hotusa', 'ota']):
+    if any(ota in name for ota in ['booking', 'expedia', 'hotelbeds', 'hotusa', 'ota', 'comision', 'commission']):
         return 'AR'
     if name.endswith('.pdf'):
-        # Check if it looks like OTA or AP
-        return 'AR_o_AP'  # Will need user to clarify or auto-detect
+        return 'AR_o_AP'
+    if name.endswith(('.xlsx', '.xls', '.csv', '.xlsm')):
+        return 'AR_o_AP'  # Podría ser extracto, ventas, inventario...
     return 'AP'
 
 @app.route('/api/archivos_estado', methods=['GET'])
@@ -4229,7 +4231,7 @@ function skelSection() {
 setTimeout(async () => {
   const preloads = [
     '/api/stats_drr', '/api/drr_daily_chart',
-    '/api/ar_real_data', '/api/calipolis/kpis',
+    '/api/ar_real/data', '/api/calipolis/kpis',
     '/api/stats_banco',
   ];
   preloads.forEach(url => fetch(url).catch(() => {}));
@@ -6569,7 +6571,7 @@ function _addFilesToList(newFiles) {
 
 function _detectType(fname) {
   var n = fname.toLowerCase();
-  if (n.endsWith('.xlsm') || n.includes('drr') || n.includes('daily')) return 'DRR';
+  if (n.includes('drr') || n.includes('daily revenue') || n.includes('revenue report')) return 'DRR';
   if (n.includes('booking') || n.includes('expedia') || n.includes('hotelbeds') || n.includes('ota')) return 'AR — OTA';
   if (n.endsWith('.pdf')) return 'AP / AR';
   return 'Otro';

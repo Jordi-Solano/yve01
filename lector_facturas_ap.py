@@ -53,16 +53,24 @@ def es_ota(texto):
 
 # Documentos que NO son facturas — pre-filtro por nombre de archivo
 NO_FACTURA_KEYWORDS = {
-    'rooming', 'room list', 'agenda', 'logo', 'signage', 'beo ',
-    'banquet event', 'sow ', 'statement of work', 'contract',
-    'proposal', 'presupuesto', 'quotation', 'quote', 'menu',
-    'floorplan', 'floor plan', 'setup', 'technical manual',
-    'resume', 'cv ', 'presentation', 'powerpoint', 'meeting notes',
-    'acta ', 'minuta', 'checklist', 'planning', 'schedule',
-    'itinerary', 'itinerario', 'programa', 'certificate',
+    'rooming', 'room list', 'room block', 'guest list',
+    'agenda', 'logo', 'signage', 'banner',
+    'beo', 'banquet event', 'banquet order',
+    'sow', 'statement of work', 'scope of work',
+    'contract', 'contrato', 'acuerdo',
+    'proposal', 'presupuesto', 'quotation', 'quote',
+    'menu ', 'wine list', 'carta de',
+    'floorplan', 'floor plan', 'setup', 'plano',
+    'technical manual', ' tm ', '_tm_', ' tm.',
+    'resume', 'presentation', 'powerpoint', 'ppt',
+    'meeting notes', 'acta ', 'minuta',
+    'checklist', 'planning', 'schedule', 'timeline',
+    'itinerary', 'itinerario', 'programa',
+    'certificate', 'certificado', 'diploma',
+    'running order', 'master onsite', 'event order',
 }
 
-NO_FACTURA_EXTENSIONS = {'.xlsx', '.xls', '.xlsm', '.doc', '.docx', '.ppt', '.pptx', '.png', '.jpg', '.jpeg', '.gif', '.svg'}
+NO_FACTURA_EXTENSIONS = {'.doc', '.docx', '.ppt', '.pptx', '.png', '.jpg', '.jpeg', '.gif', '.svg', '.mp4', '.zip', '.rar'}
 
 
 def es_no_factura_por_nombre(nombre_archivo):

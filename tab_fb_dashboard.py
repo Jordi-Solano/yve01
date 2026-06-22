@@ -65,6 +65,19 @@ def _calc_recipe_costs(df_rec, df_inv):
 @fb_bp.route("/api/resultados")
 def api_resultados():
     try:
+        # Early check: si no hay datos, devolver respuesta vacía
+        import os as _os
+        ventas_path = _os.path.join(_os.path.dirname(_os.path.abspath(__file__)), "datos-referencia", "ventas_fb_diarias.xlsx")
+        _df_check = pd.read_excel(ventas_path)
+        if _df_check.empty or len(_df_check) < 1:
+            return jsonify({
+                "data": [], "chart": {"data": [], "labels": []},
+                "total": 0, "fc_teorico": 0, "fc_real": 0, "mermas": 0,
+                "correctas": 0, "discrepancias": 0, "di_pendientes": 0,
+                "importe_reclamable": 0, "importe_total": 0,
+                "pendientes_firma": {}, "rechazadas": 0, "sin_accion": 0,
+                "meta": {}
+            })
         df_rec = _xlsx("recetas.xlsx")
         df_inv = _xlsx("inventario.xlsx")
         df_mer = _xlsx("mermas.xlsx")
@@ -160,6 +173,11 @@ def api_resultados():
 @fb_bp.route("/api/inventario")
 def api_inventario():
     try:
+        import os as _os2
+        inv_path = _os2.path.join(_os2.path.dirname(_os2.path.abspath(__file__)), "datos-referencia", "inventario.xlsx")
+        _df_inv_check = pd.read_excel(inv_path)
+        if _df_inv_check.empty or len(_df_inv_check) < 1:
+            return jsonify({"items": [], "total_valor": 0, "categorias": {}})
         df = _xlsx("inventario.xlsx")
         df['stock_actual_kg_l'] = pd.to_numeric(df['stock_actual_kg_l'], errors='coerce').fillna(0)
         df['stock_inicial_kg_l'] = pd.to_numeric(df['stock_inicial_kg_l'], errors='coerce').fillna(0)
@@ -193,6 +211,11 @@ def api_inventario():
 @fb_bp.route("/api/mermas")
 def api_mermas():
     try:
+        import os as _os3
+        mer_path = _os3.path.join(_os3.path.dirname(_os3.path.abspath(__file__)), "datos-referencia", "mermas.xlsx")
+        _df_mer_check = pd.read_excel(mer_path)
+        if _df_mer_check.empty or len(_df_mer_check) < 1:
+            return jsonify({"mermas": [], "total": 0})
         df = _xlsx("mermas.xlsx")
         df['coste_merma'] = pd.to_numeric(df['coste_merma'], errors='coerce').fillna(0)
         total_coste  = float(df['coste_merma'].sum())
