@@ -8523,8 +8523,8 @@ async function loadMultiHotel() {
     if (grupoActivo) params.push('grupo=' + encodeURIComponent(grupoActivo));
     var mesPar = params.length ? '?' + params.join('&') : '';
     var r = await fetch('/api/multi_hotel/overview' + mesPar);
-    var data = await r.json();
-    if (!data.ok) throw new Error(data.error || 'Sin datos');
+    var data = await r.json().catch(function(){ return {ok:false, error:'Sin hoteles configurados'}; });
+    if (!data.ok) throw new Error(data.error || 'Sin hoteles configurados');
     var k   = data.consolidado || {};
     var hs  = data.hoteles     || [];
 
@@ -8681,7 +8681,20 @@ async function loadMultiHotel() {
   } catch(e) {
     console.error('MH Error:', e);
     var el = document.getElementById('mh-kpis');
-    if (el) el.innerHTML = '<div style="color:#ef4444;padding:20px;font-size:13px">⚠ Error cargando datos: '+(e.message||e)+'</div>';
+    // Estado vacío amigable (sin hoteles configurados es esperado, no un error)
+    var msg = (e.message||e);
+    var esEstadoVacio = msg.indexOf('Sin hoteles') >= 0 || msg.indexOf('Sin datos') >= 0;
+    if (el) {
+      if (esEstadoVacio) {
+        el.innerHTML = '<div style="text-align:center;padding:48px 20px;color:#64748b">'+
+          '<div style="font-size:40px;margin-bottom:12px;opacity:.5">🏨</div>'+
+          '<div style="font-size:15px;font-weight:600;color:#94a3b8;margin-bottom:6px">No hay hoteles en el grupo</div>'+
+          '<div style="font-size:13px">El dashboard Multi-Hotel consolida varios hoteles de un grupo.<br>Añade hoteles desde administración o consulta el grupo Calipolis como ejemplo.</div>'+
+          '</div>';
+      } else {
+        el.innerHTML = '<div style="color:#ef4444;padding:20px;font-size:13px">⚠ Error cargando datos: '+msg+'</div>';
+      }
+    }
   }
 }
 
