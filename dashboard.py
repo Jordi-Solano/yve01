@@ -527,31 +527,63 @@ def api_procesar_batch_stream():
                         _mark(fname, 'DRR_OK')
                         continue
                     if is_bank:
-                        import shutil as _sh3
-                        dest = os.path.join(BASE_DIR, 'datos-referencia', 'extracto_banco_upload' + os.path.splitext(fname)[1])
-                        _sh3.copy2(fpath, dest)
-                        yield f'data: ✓ Banco {fname}: extracto bancario cargado\n\n'
+                        ext = os.path.splitext(fname)[1].lower()
+                        try:
+                            import pandas as _pdb
+                            if ext == '.csv':
+                                _df_bank = _pdb.read_csv(fpath)
+                            elif ext in ('.xlsx', '.xls'):
+                                _df_bank = _pdb.read_excel(fpath)
+                            else:
+                                import shutil as _sh3b
+                                _sh3b.copy2(fpath, os.path.join(BASE_DIR, 'datos-referencia', 'extracto_banco_upload' + ext))
+                                yield f'data: ✓ Banco {fname}: archivo copiado (formato {ext})\n\n'
+                                _mark(fname, 'BANK_OK')
+                                continue
+                            
+                            # Integrar con extracto existente
+                            banco_path = os.path.join(BASE_DIR, 'datos-referencia', 'extracto_banco.xlsx')
+                            if os.path.exists(banco_path):
+                                _df_exist = _pdb.read_excel(banco_path)
+                                _df_bank = _pdb.concat([_df_exist, _df_bank], ignore_index=True)
+                                _df_bank.drop_duplicates(keep='last', inplace=True)
+                            _df_bank.to_excel(banco_path, index=False)
+                            yield f'data: ✓ Banco {fname}: {len(_df_bank)} movimientos integrados\n\n'
+                        except Exception as _eb:
+                            import shutil as _sh3c
+                            _sh3c.copy2(fpath, os.path.join(BASE_DIR, 'datos-referencia', 'extracto_banco_upload' + ext))
+                            yield f'data: ✓ Banco {fname}: archivo cargado (revisar formato)\n\n'
                         _mark(fname, 'BANK_OK')
                         continue
                     if is_fb:
-                        import shutil as _sh4
-                        ext = os.path.splitext(fname)[1]
-                        dest = os.path.join(BASE_DIR, 'datos-referencia', 'ventas_fb_upload' + ext)
-                        _sh4.copy2(fpath, dest)
-                        # Intentar cargar como ventas POS
+                        ext = os.path.splitext(fname)[1].lower()
                         try:
-                            import pandas as _pd
-                            if ext in ('.xlsx', '.xls', '.csv'):
-                                _df = _pd.read_csv(fpath) if ext == '.csv' else _pd.read_excel(fpath)
-                                rows = len(_df)
-                                yield f'data: ✓ F&B {fname}: {rows} registros de ventas cargados\n\n'
-                                _mark(fname, 'FB_OK')
+                            import pandas as _pdf
+                            if ext == '.csv':
+                                _df_fb = _pdf.read_csv(fpath)
+                            elif ext in ('.xlsx', '.xls'):
+                                _df_fb = _pdf.read_excel(fpath)
                             else:
-                                yield f'data: ✓ F&B {fname}: archivo de ventas cargado\n\n'
+                                import shutil as _sh4b
+                                _sh4b.copy2(fpath, os.path.join(BASE_DIR, 'datos-referencia', 'ventas_fb_upload' + ext))
+                                yield f'data: ✓ F&B {fname}: archivo copiado\n\n'
                                 _mark(fname, 'FB_OK')
-                        except Exception as _e4:
-                            yield f'data: ✓ F&B {fname}: archivo cargado (revisar formato)\n\n'
-                            _mark(fname, 'FB_OK')
+                                continue
+                            
+                            # Integrar con ventas existentes
+                            ventas_path = os.path.join(BASE_DIR, 'datos-referencia', 'ventas_fb_diarias.xlsx')
+                            if os.path.exists(ventas_path):
+                                _df_exist_fb = _pdf.read_excel(ventas_path)
+                                if not _df_exist_fb.empty:
+                                    _df_fb = _pdf.concat([_df_exist_fb, _df_fb], ignore_index=True)
+                                    _df_fb.drop_duplicates(keep='last', inplace=True)
+                            _df_fb.to_excel(ventas_path, index=False)
+                            yield f'data: ✓ F&B {fname}: {len(_df_fb)} registros integrados\n\n'
+                        except Exception as _efb:
+                            import shutil as _sh4c
+                            _sh4c.copy2(fpath, os.path.join(BASE_DIR, 'datos-referencia', 'ventas_fb_upload' + ext))
+                            yield f'data: ✓ F&B {fname}: archivo cargado (revisar columnas)\n\n'
+                        _mark(fname, 'FB_OK')
                         continue
                     if is_inventory:
                         import shutil as _sh5
