@@ -598,22 +598,52 @@ def api_procesar_batch_stream():
                         _mark(fname, 'ROOMING')
                         continue
 
-                    cmd = ['python3', 'lector_ota.py' if is_ar else 'lector_facturas_ap.py', '--file', fpath]
-                    r = _sp.run(cmd, capture_output=True, text=True, cwd=BASE_DIR, timeout=60)
-                    if r.returncode == 0:
-                        yield f'data: ✓ {"AR" if is_ar else "AP"} {fname}: OK\n\n'
-                        _mark(fname, 'AR_OK' if is_ar else 'AP_OK')
-                        if is_ar: has_ar = True
-                        else: has_ap = True
-                    elif r.returncode == 2:
-                        # Documento no procesable — saltado por pre-filtro
-                        msg = r.stdout.strip() or 'documento no procesable'
-                        yield f'data: ⚠ {fname}: {msg}\n\n'
-                        _mark(fname, 'SKIP')
+                    if is_ar:
+                        # AR: usar subprocess (lector_ota.py tiene su propia lógica)
+                        cmd = ['python3', 'lector_ota.py', '--file', fpath]
+                        r = _sp.run(cmd, capture_output=True, text=True, cwd=BASE_DIR, timeout=60)
+                        if r.returncode == 0:
+                            yield f'data: ✓ AR {fname}: OK\n\n'
+                            _mark(fname, 'AR_OK')
+                            has_ar = True
+                        else:
+                            msg = r.stderr[:80] or r.stdout[:80] or 'error'
+                            yield f'data: ✗ AR {fname}: {msg}\n\n'
+                            _mark(fname, f'ERR:{msg[:30]}')
                     else:
-                        msg = r.stderr[:80] or r.stdout[:80] or 'error'
-                        yield f'data: ✗ {"AR" if is_ar else "AP"} {fname}: {msg}\n\n'
-                        _mark(fname, f'ERR:{msg[:30]}')
+                        # AP: import directo (más rápido, sin cargar Python de nuevo)
+                        try:
+                            from lector_facturas_ap import procesar_factura_ap, cargar_proveedores, guardar_excel, SALIDA_DIR as _AP_DIR
+                            _provs = cargar_proveedores()
+                            reg = procesar_factura_ap(fpath, _provs)
+                            if reg is None:
+                                yield f'data: ⚠ {fname}: documento no procesable\n\n'
+                                _mark(fname, 'SKIP')
+                            elif reg and not reg.get('error'):
+                                # Guardar resultado
+                                _ap_excel = os.path.join(_AP_DIR, f'facturas_ap_{date.today().strftime("%Y%m%d")}.xlsx')
+                                if os.path.exists(_ap_excel):
+                                    _df_e = pd.read_excel(_ap_excel)
+                                    _df_n = pd.DataFrame([reg])
+                                    _df_c = pd.concat([_df_e, _df_n], ignore_index=True)
+                                    _df_c.drop_duplicates(subset=['archivo'], keep='last', inplace=True)
+                                    _df_c.to_excel(_ap_excel, index=False)
+                                else:
+                                    guardar_excel([reg], _ap_excel)
+                                total_importe = reg.get('total_factura', 0)
+                                if isinstance(total_importe, (int, float)):
+                                    yield f'data: ✓ AP {fname}: {reg.get("nombre_proveedor","")} — €{total_importe:,.2f}\n\n'
+                                else:
+                                    yield f'data: ✓ AP {fname}: {reg.get("nombre_proveedor","")}\n\n'
+                                _mark(fname, 'AP_OK')
+                                has_ap = True
+                            else:
+                                err = reg.get('error','error desconocido') if reg else 'sin resultado'
+                                yield f'data: ✗ AP {fname}: {err[:80]}\n\n'
+                                _mark(fname, f'ERR:{err[:30]}')
+                        except Exception as _eap:
+                            yield f'data: ✗ AP {fname}: {str(_eap)[:80]}\n\n'
+                            _mark(fname, f'ERR:{str(_eap)[:30]}')
 
                 except subprocess.TimeoutExpired:
                     yield f'data: ✗ {fname}: TIMEOUT (60s)\n\n'
