@@ -3378,7 +3378,7 @@ button, a { touch-action: manipulation; }
     <button class="sug" onclick="askSug(this)">📋 ¿Qué necesita mi firma hoy?</button>
   </div>
   <div id="chat-input-row">
-    <textarea id="chat-input" rows="1" placeholder="Pregunta sobre el estado financiero del hotel…"
+    <textarea id="chat-input" rows="1" placeholder="Escribe aquí…"
       onkeydown="chatKeydown(event)" oninput="autoResize(this)"></textarea>
     <button id="chat-send" onclick="sendChat()">➤</button>
   </div>
