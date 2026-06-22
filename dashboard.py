@@ -6699,16 +6699,36 @@ function _addFilesToList(newFiles) {
 
 function _detectType(fname) {
   var n = fname.toLowerCase();
+  // DRR
   if (n.includes('drr') || n.includes('daily revenue') || n.includes('revenue report')) return 'DRR';
-  if (n.includes('booking') || n.includes('expedia') || n.includes('hotelbeds') || n.includes('ota')) return 'AR — OTA';
-  if (n.endsWith('.pdf')) return 'AP / AR';
-  return 'Otro';
+  // OTA
+  if (n.includes('booking') || n.includes('expedia') || n.includes('hotelbeds') || n.includes('ota') || n.includes('comision') || n.includes('commission')) return 'AR — OTA';
+  // Banco
+  if (n.includes('extracto') || n.includes('bank') || n.includes('statement') || n.includes('movimientos')) return 'Banco';
+  // F&B / Ventas
+  if (n.includes('ventas') || n.includes('sales') || n.includes('pos') || n.includes('tpv') || n.includes('ticket') || n.includes('restaurante')) return 'F&B';
+  // Inventario
+  if (n.includes('inventario') || n.includes('inventory') || n.includes('stock') || n.includes('almacen')) return 'Inventario';
+  // Mermas
+  if (n.includes('merma') || n.includes('waste') || n.includes('pérdida')) return 'Mermas';
+  // Rooming
+  if (n.includes('rooming') || n.includes('room list') || n.includes('guest list')) return 'Rooming';
+  // No-procesables conocidos
+  if (n.includes('beo') || n.includes('agenda') || n.includes('logo') || n.includes('sow') || n.includes('contrato') || n.includes('contract')) return 'Omitir';
+  // Factura por defecto para PDFs
+  if (n.endsWith('.pdf')) return 'Factura';
+  if (n.endsWith('.xlsx') || n.endsWith('.xls') || n.endsWith('.csv')) return 'Datos';
+  return 'Archivo';
 }
 
 function _typeColor(t) {
   if (t === 'DRR') return '#a78bfa';
   if (t.includes('OTA') || t.includes('AR')) return '#60a5fa';
-  if (t.includes('AP')) return '#f59e0b';
+  if (t === 'Factura' || t.includes('AP')) return '#f59e0b';
+  if (t === 'Banco') return '#22c55e';
+  if (t === 'F&B' || t === 'Inventario' || t === 'Mermas') return '#f97316';
+  if (t === 'Rooming') return '#06b6d4';
+  if (t === 'Omitir') return '#64748b';
   return 'var(--mut)';
 }
 
