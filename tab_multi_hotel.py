@@ -30,10 +30,16 @@ def api_multi_overview():
 
     # Filtro de grupo (para Calipolis y futuros grupos)
     grupo_param = _freq.args.get('grupo', '').strip().lower()
-    if grupo_param and 'grupo' in df.columns:
-        df = df[df['grupo'].str.lower() == grupo_param].copy()
+    if 'grupo' in df.columns:
+        if grupo_param:
+            df = df[df['grupo'].str.lower() == grupo_param].copy()
+        else:
+            # Sin filtro de grupo: excluir hoteles que pertenecen a un grupo específico
+            # Solo mostrar hoteles sin grupo (grupo='default' o vacío)
+            df = df[df['grupo'].str.lower().isin(['default', ''])].copy()
     if df.empty:
-        return jsonify({'ok': False, 'error': f'Sin datos para grupo: {grupo_param}'}), 404
+        error_msg = f'Sin datos para grupo: {grupo_param}' if grupo_param else 'Sin hoteles configurados en Multi-Hotel. Añade hoteles desde el panel de administración.'
+        return jsonify({'ok': False, 'error': error_msg}), 404
 
     all_months = sorted(df['mes'].unique().tolist())
     mes_param = _freq.args.get('mes', '').strip()

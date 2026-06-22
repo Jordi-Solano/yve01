@@ -1380,7 +1380,7 @@ def api_chat():
     contexto = _cargar_contexto_chat()
 
     system_prompt = f"""Eres Yve, copiloto financiero de Yve.01 integrado en el dashboard del hotel.
-Tienes acceso COMPLETO y en tiempo real a todos los módulos: AR (comisiones OTA), AP (facturas proveedores con 3-way matching), DRR (Revenue Report), Banco (conciliación), F&B Cost y Grupos Calipolis.
+Tienes acceso COMPLETO y en tiempo real a todos los módulos: AR (comisiones OTA), AP (facturas proveedores con 3-way matching), DRR (Revenue Report), Banco (conciliación), F&B Cost y Multi-Hotel.
 
 Tu misión: dar respuestas ACCIONABLES. No solo describir el estado — decir QUÉ hacer a continuación.
 Ejemplo bueno: "Tienes 3 discrepancias con Expedia por €847. Puedes reclamarlas desde AR → botón Reclamar, o te genero el email ahora."
@@ -2662,7 +2662,7 @@ button, a { touch-action: manipulation; }
   </div>
   <div class="nav-mid"></div>
   <div id="demo-banner" style="display:none;position:fixed;top:0;left:0;right:0;z-index:8000;background:linear-gradient(90deg,#f59e0b,#d97706);color:#000;text-align:center;padding:6px 16px;font-size:13px;font-weight:700;letter-spacing:.3px">
-    🎭 MODO DEMO · Grupo Calipolis Hotels · <span style="font-weight:400">Datos reales de las 3 propiedades en Sitges</span>
+    🎭 MODO DEMO · <span style="font-weight:400">Datos de ejemplo para demostración</span>
     <button onclick="toggleDemoMode()" style="margin-left:16px;background:rgba(0,0,0,.2);border:none;padding:3px 10px;border-radius:6px;cursor:pointer;font-size:12px;font-weight:700">✕ Salir</button>
   </div>
   <div class="nav-right">
@@ -3024,7 +3024,7 @@ button, a { touch-action: manipulation; }
         <span id="notif-count" style="font-size:.8rem;color:var(--dim);margin-left:8px"></span>
       </div>
       <div style="display:flex;gap:8px">
-        <button class="btn-ref" onclick="testNotification()" style="font-size:12px">🧪 Test</button>
+        
         <button class="btn-run" id="btn-send-notif" onclick="enviarNotificaciones()" style="font-size:12px;padding:8px 16px">
         <span data-i18n="notif.enviar">🔔 Enviar notificaciones pendientes</span>
       </button>
@@ -3611,10 +3611,9 @@ async function loadAll() {
       if (pid === 'panel-drr' && typeof cargarDRR === 'function') cargarDRR();
       if (pid === 'panel-banco' && typeof cargarBanco === 'function') cargarBanco();
       if (pid === 'panel-multi_hotel') {
-        if (!window._mhGrupo) {
-          window._mhGrupoLabel = null;
-          window._mhGrupoSub   = null;
-        }
+        window._mhGrupo = null;
+        window._mhGrupoLabel = null;
+        window._mhGrupoSub   = null;
         _mh_loaded = false;
         if (typeof loadMultiHotel === 'function') loadMultiHotel();
       }
@@ -8026,11 +8025,7 @@ async function loadNotifConfig() {
     if (banner) {
       if (smtp.ok) {
         banner.style.display = 'flex';
-        banner.innerHTML = '<div style="background:rgba(34,197,94,.1);border:1px solid rgba(34,197,94,.3);border-radius:12px;padding:14px 18px;display:flex;align-items:center;gap:12px;width:100%">' +
-          '<span style="font-size:20px">✅</span>' +
-          '<div><div style="font-size:13px;font-weight:600;color:#22c55e">Email configurado</div>' +
-          '<div style="font-size:11px;color:var(--mut);margin-top:2px">SMTP conectado como ' + smtp.user + '</div></div>' +
-          '<button onclick="probarNotif()" style="margin-left:auto;background:rgba(34,197,94,.15);border:1px solid rgba(34,197,94,.3);color:#22c55e;padding:6px 14px;border-radius:8px;font-size:12px;cursor:pointer;font-weight:600">🔔 Probar ahora</button></div>';
+        banner.style.display = 'none';  // No mostrar banner verde — el estado se ve en el canal Email como "Activo" 
       } else {
         banner.style.display = 'flex';
         banner.innerHTML = '<div style="background:rgba(245,158,11,.08);border:1px solid rgba(245,158,11,.3);border-radius:12px;padding:14px 18px;width:100%">' +
@@ -8115,6 +8110,26 @@ function toggleNotifCanal(key) {
   renderNotifConfig();
 }
 
+
+
+// Resetear botón guardar al cambiar cualquier input en el panel de notificaciones
+document.addEventListener('change', function(e) {
+  if (e.target.closest('#panel-notif')) _resetGuardarBtn();
+});
+document.addEventListener('input', function(e) {
+  if (e.target.closest('#panel-notif')) _resetGuardarBtn();
+});
+
+function _resetGuardarBtn() {
+  var btn = document.getElementById('btn-save-notif');
+  if (btn && btn._saved) {
+    btn.textContent = '💾 Guardar configuración';
+    btn.style.background = '';
+    btn.style.borderColor = '';
+    btn.style.color = '';
+    btn._saved = false;
+  }
+}
 async function guardarNotifConfig() {
   // Collect field values
   document.querySelectorAll('[data-field]').forEach(el => {
@@ -8129,10 +8144,13 @@ async function guardarNotifConfig() {
   try {
     await _postJson('/api/notif_config', _notifConfig);
     btn.textContent = '✓ Guardado';
-    setTimeout(() => { btn.textContent = '💾 Guardar configuración'; }, 2000);
+    btn.style.background = 'rgba(34,197,94,.15)';
+    btn.style.borderColor = 'rgba(34,197,94,.3)';
+    btn.style.color = '#22c55e';
+    btn._saved = true;
   } catch(e) {
     btn.textContent = '⚠️ Error';
-    setTimeout(() => { btn.textContent = '💾 Guardar configuración'; }, 2000);
+    setTimeout(() => { btn.textContent = '💾 Guardar configuración'; btn.style.cssText='font-size:12px'; }, 2000);
   }
 }
 
