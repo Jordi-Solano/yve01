@@ -118,8 +118,10 @@ def _enviar_via_brevo(destinatario, asunto, cuerpo_html):
     api_key = os.environ.get("BREVO_API_KEY", "")
     if not api_key:
         return False, "BREVO_API_KEY no configurado"
+    # El sender debe ser un email verificado en Brevo (el de registro se auto-verifica)
+    brevo_sender = os.environ.get("BREVO_SENDER_EMAIL", "")
     smtp_user = os.environ.get("SMTP_USER", "")
-    sender_email = smtp_user if smtp_user else "notificaciones@yve01.com"
+    sender_email = brevo_sender or smtp_user or "vvertex001@gmail.com"
     payload = _json.dumps({
         "sender": {"name": "Yve.01", "email": sender_email},
         "to": [{"email": destinatario}],
