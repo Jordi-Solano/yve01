@@ -2074,7 +2074,7 @@ body::before{
 .logo{display:flex;align-items:baseline;gap:10px;flex-shrink:0}
 .logo-name{font-size:20px;font-weight:800;color:#fff;letter-spacing:-0.5px}
 .logo-tag{font-size:11px;color:var(--mut);font-weight:400;white-space:nowrap}
-.logo-dot{width:8px;height:8px;border-radius:50%;background:var(--acc);flex-shrink:0;box-shadow:0 0 8px var(--acc)}
+.logo-dot{width:10px;height:10px;border-radius:50%;background:#3b82f6;flex-shrink:0;box-shadow:0 0 6px rgba(59,130,246,.6),0 0 14px rgba(59,130,246,.35),0 0 28px rgba(59,130,246,.15)}
 .logo-dot-one{color:var(--acc2)}
 .logo-mark{display:none}
 .nav-mid{flex:1}
