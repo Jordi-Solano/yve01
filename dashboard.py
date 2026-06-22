@@ -533,6 +533,8 @@ def api_procesar_batch_stream():
                     is_bank = any(x in fl for x in ['extracto','bank','statement','movimientos','bancario'])
                     is_rooming = any(x in fl for x in ['rooming','room list','guest list','room block'])
                     is_drr_file = fl.endswith('.xlsm') and any(x in fl for x in ['drr','revenue','daily'])
+                    is_fb = any(x in fl for x in ['pos','ventas','sales','tpv','food','beverage','f&b','fnb','restaurante','bar ','menu_mix','product_mix','ticket'])
+                    is_inventory = any(x in fl for x in ['inventario','inventory','stock','almacen','merma','waste'])
 
                     if is_drr_file:
                         import shutil as _sh2
@@ -546,6 +548,34 @@ def api_procesar_batch_stream():
                         _sh3.copy2(fpath, dest)
                         yield f'data: ✓ Banco {fname}: extracto bancario cargado\n\n'
                         _mark(fname, 'BANK_OK')
+                        continue
+                    if is_fb:
+                        import shutil as _sh4
+                        ext = os.path.splitext(fname)[1]
+                        dest = os.path.join(BASE_DIR, 'datos-referencia', 'ventas_fb_upload' + ext)
+                        _sh4.copy2(fpath, dest)
+                        # Intentar cargar como ventas POS
+                        try:
+                            import pandas as _pd
+                            if ext in ('.xlsx', '.xls', '.csv'):
+                                _df = _pd.read_csv(fpath) if ext == '.csv' else _pd.read_excel(fpath)
+                                rows = len(_df)
+                                yield f'data: ✓ F&B {fname}: {rows} registros de ventas cargados\n\n'
+                                _mark(fname, 'FB_OK')
+                            else:
+                                yield f'data: ✓ F&B {fname}: archivo de ventas cargado\n\n'
+                                _mark(fname, 'FB_OK')
+                        except Exception as _e4:
+                            yield f'data: ✓ F&B {fname}: archivo cargado (revisar formato)\n\n'
+                            _mark(fname, 'FB_OK')
+                        continue
+                    if is_inventory:
+                        import shutil as _sh5
+                        ext = os.path.splitext(fname)[1]
+                        dest = os.path.join(BASE_DIR, 'datos-referencia', 'inventario_upload' + ext)
+                        _sh5.copy2(fpath, dest)
+                        yield f'data: ✓ Inventario {fname}: datos cargados\n\n'
+                        _mark(fname, 'INV_OK')
                         continue
                     if is_rooming:
                         yield f'data: ℹ {fname}: rooming list detectado (ocupación)\n\n'
