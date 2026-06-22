@@ -118,34 +118,11 @@ def es_no_factura_por_nombre(nombre_archivo):
 
 
 def es_no_factura_por_contenido(texto):
-    """Pre-filtro CONSERVADOR. Solo bloquea si está MUY claro que no es factura.
-    En caso de duda, deja pasar a Claude (que es mejor juez)."""
-    if not texto or len(texto.strip()) < 30:
-        return True, "documento vacío (posible PDF escaneado o imagen)"
-    txt_lower = texto[:3000].lower()
-    
-    # Indicadores FUERTES de que SÍ es factura → nunca bloquear
-    factura_signals = ['factura', 'invoice', 'rechnung', 'fattura', 'facture',
-                       'base imponible', 'iva', 'vat', 'mwst', 'tva',
-                       'total a pagar', 'importe total', 'amount due', 'total due',
-                       'nif', 'cif', 'tax id', 'deposit', 'depósito', 'anticipo',
-                       'fecha de emisión', 'invoice number', 'invoice no',
-                       'payment terms', 'forma de pago', 'bank transfer',
-                       'iban', 'subtotal', 'net amount', 'gross amount',
-                       'proforma', 'pro forma', 'advance payment', '€', 'eur ',
-                       'importe', 'precio', 'amount', 'price', 'fee']
-    if any(s in txt_lower for s in factura_signals):
-        return False, ""
-    
-    # Solo bloquear si hay señales MUY claras de no-factura Y ninguna de factura
-    no_factura_signals = ['banquet event order', 'rooming list',
-                          'meeting room setup', 'floor plan layout',
-                          'technical rider', 'audio visual requirements']
-    for s in no_factura_signals:
-        if s in txt_lower:
-            return True, f"contiene '{s}'"
-    
-    # Si no hay señales claras de nada, dejar pasar a Claude
+    """Pre-filtro ULTRA conservador. Solo bloquea si el PDF está vacío.
+    Todo lo demás pasa a Claude — él es mucho mejor juez que regex."""
+    if not texto or len(texto.strip()) < 20:
+        return True, "PDF sin texto extraíble (escaneado sin OCR)"
+    # Todo lo que tenga texto → pasa a Claude
     return False, ""
 
 # ── Extracción con Claude API ─────────────────────────────────────────────
@@ -414,8 +391,8 @@ def procesar_factura_ap(pdf_path, proveedores):
     # Pre-filtro 1: por nombre de archivo (gratis, sin tokens)
     skip, motivo = es_no_factura_por_nombre(nombre)
     if skip:
-        print(f"    [SKIP] {nombre}: documento no procesable — {motivo}")
-        return None
+        print(f"    [SKIP] {nombre}: {motivo}")
+        return {"_skip": True, "_motivo": f"nombre: {motivo}"}
 
     try:
         texto = extraer_texto(pdf_path)
@@ -425,20 +402,20 @@ def procesar_factura_ap(pdf_path, proveedores):
 
     if es_ota(texto):
         print(f"    [SKIP] Es factura de OTA — omitida")
-        return None
+        return {"_skip": True, "_motivo": "factura OTA (va a AR, no AP)"}
 
     # Pre-filtro 2: por contenido del PDF (gratis, sin tokens)
     skip2, motivo2 = es_no_factura_por_contenido(texto)
     if skip2:
-        print(f"    [SKIP] {nombre}: documento no procesable — {motivo2}")
-        return None
+        print(f"    [SKIP] {nombre}: {motivo2}")
+        return {"_skip": True, "_motivo": f"contenido: {motivo2}"}
 
     datos = extraer_con_claude(texto, nombre)
     
     # Si Claude dice que no es factura
     if datos is None:
-        print(f"    [SKIP] {nombre}: no contiene datos financieros extraíbles")
-        return None
+        print(f"    [SKIP] {nombre}: Claude confirma no es factura")
+        return {"_skip": True, "_motivo": "Claude: no es un documento financiero"}
 
     tipo_prov, cuenta = clasificar_proveedor(datos.get("nombre_proveedor"), proveedores)
 

@@ -626,8 +626,9 @@ def api_procesar_batch_stream():
                             from lector_facturas_ap import procesar_factura_ap, cargar_proveedores, guardar_excel, SALIDA_DIR as _AP_DIR
                             _provs = cargar_proveedores()
                             reg = procesar_factura_ap(fpath, _provs)
-                            if reg is None:
-                                yield f'data: ⚠ {fname}: documento no procesable\n\n'
+                            if reg is None or (isinstance(reg, dict) and reg.get('_skip')):
+                                motivo = reg.get('_motivo', 'documento no procesable') if isinstance(reg, dict) else 'documento no procesable'
+                                yield f'data: ⚠ {fname}: {motivo}\n\n'
                                 _mark(fname, 'SKIP')
                             elif reg and not reg.get('error'):
                                 # Guardar resultado
