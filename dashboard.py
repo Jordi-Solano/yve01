@@ -630,6 +630,45 @@ def api_procesar_batch_stream():
                                 motivo = reg.get('_motivo', 'documento no procesable') if isinstance(reg, dict) else 'documento no procesable'
                                 yield f'data: ⚠ {fname}: {motivo}\n\n'
                                 _mark(fname, 'SKIP')
+                            elif isinstance(reg, dict) and reg.get('tipo_documento'):
+                                # Claude clasificó el documento como otro tipo — enrutar
+                                _tipo_doc = reg['tipo_documento']
+                                if _tipo_doc == 'EXTRACTO_BANCO' and reg.get('movimientos'):
+                                    try:
+                                        _movs = reg['movimientos']
+                                        _df_movs = pd.DataFrame(_movs)
+                                        banco_path = os.path.join(BASE_DIR, 'datos-referencia', 'extracto_banco.xlsx')
+                                        if os.path.exists(banco_path):
+                                            _df_exist = pd.read_excel(banco_path)
+                                            _df_movs = pd.concat([_df_exist, _df_movs], ignore_index=True)
+                                        _df_movs.to_excel(banco_path, index=False)
+                                        yield f'data: ✓ Banco {fname}: {len(reg["movimientos"])} movimientos extraídos por IA\n\n'
+                                        _mark(fname, 'BANK_OK')
+                                    except Exception as _eb2:
+                                        yield f'data: ⚠ {fname}: extracto detectado pero error al guardar — {str(_eb2)[:60]}\n\n'
+                                        _mark(fname, 'SKIP')
+                                elif _tipo_doc == 'VENTAS_POS':
+                                    total = reg.get('total_ventas', 0)
+                                    yield f'data: ✓ F&B {fname}: ventas detectadas por IA — €{total}\n\n'
+                                    _mark(fname, 'FB_OK')
+                                elif _tipo_doc == 'COMISIONES_OTA':
+                                    ota = reg.get('ota', '?')
+                                    comision = reg.get('comision', 0)
+                                    yield f'data: ✓ AR {fname}: comisiones {ota} detectadas por IA — €{comision}\n\n'
+                                    _mark(fname, 'AR_OK')
+                                    has_ar = True
+                                elif _tipo_doc == 'ROOMING':
+                                    grupo = reg.get('grupo', '—')
+                                    habs = reg.get('num_habitaciones', '?')
+                                    yield f'data: ℹ {fname}: rooming de {grupo} — {habs} habitaciones (IA)\n\n'
+                                    _mark(fname, 'ROOMING')
+                                elif _tipo_doc == 'OTRO':
+                                    desc = reg.get('descripcion', 'no clasificable')
+                                    yield f'data: ⚠ {fname}: {desc}\n\n'
+                                    _mark(fname, 'SKIP')
+                                else:
+                                    yield f'data: ℹ {fname}: tipo {_tipo_doc} detectado por IA\n\n'
+                                    _mark(fname, 'SKIP')
                             elif reg and not reg.get('error'):
                                 # Guardar resultado
                                 _ap_excel = os.path.join(_AP_DIR, f'facturas_ap_{date.today().strftime("%Y%m%d")}.xlsx')

@@ -135,11 +135,35 @@ def extraer_con_claude(texto, nombre_archivo):
     try:
         import anthropic
         client = anthropic.Anthropic(api_key=api_key)
-        # Enviar más texto si el documento es largo (facturas grandes)
+        # Enviar más texto si el documento es largo
         max_chars = min(len(texto), 6000)
         prompt = (
-            "Eres un experto en contabilidad hotelera. Analiza este documento.\n\n"
-            "PASO 1: ¿Es una factura real (invoice) con importes económicos?\n"
+            "Eres un experto en operaciones y finanzas hoteleras. "
+            "Analiza este documento y CLASIFÍCALO.\n\n"
+            "PASO 1: ¿Qué tipo de documento es? Opciones:\n"
+            "- FACTURA: factura, invoice, depósito, anticipo, proforma\n"
+            "- EXTRACTO_BANCO: extracto bancario, movimientos, bank statement\n"
+            "- VENTAS_POS: ventas restaurante, POS, tickets, TPV\n"
+            "- INVENTARIO: inventario, stock, almacén\n"
+            "- MERMAS: mermas, waste, pérdidas\n"
+            "- COMISIONES_OTA: informe comisiones Booking/Expedia/OTA\n"
+            "- DRR: daily revenue report, revenue summary\n"
+            "- ROOMING: rooming list, guest list, room block\n"
+            "- NOMINA: nómina, payroll\n"
+            "- OTRO: contrato, BEO, agenda, email, logo, manual técnico, etc.\n\n"
+            "PASO 2: Extrae datos según el tipo:\n\n"
+            "Si FACTURA → JSON con: es_factura:true, numero_factura, fecha, nombre_proveedor, "
+            "NIF_proveedor, descripcion_concepto, base_imponible, porcentaje_iva, cuota_iva, "
+            "total_factura, moneda\n\n"
+            "Si EXTRACTO_BANCO → JSON con: tipo_documento:\"EXTRACTO_BANCO\", "
+            "movimientos:[{fecha, concepto, importe, saldo}] (max 20 movimientos)\n\n"
+            "Si VENTAS_POS → JSON con: tipo_documento:\"VENTAS_POS\", "
+            "fecha, total_ventas, num_tickets, platos:[{nombre, cantidad, precio}] (max 15)\n\n"
+            "Si COMISIONES_OTA → JSON con: tipo_documento:\"COMISIONES_OTA\", "
+            "ota, periodo, importe_bruto, comision, porcentaje\n\n"
+            "Si ROOMING → JSON con: tipo_documento:\"ROOMING\", "
+            "grupo, num_habitaciones, checkin, checkout, tarifa_media\n\n"
+            "Si OTRO → JSON con: tipo_documento:\"OTRO\", descripcion:\"qué es\"\n\n"
             "Un documento ES factura si tiene: número de factura, fecha, importes, IVA/VAT.\n"
             "Un documento NO es factura si es: email, contrato, BEO, rooming list, agenda, "
             "manual técnico, propuesta, presupuesto sin comprometer, certificado, acta.\n"
@@ -160,12 +184,10 @@ def extraer_con_claude(texto, nombre_archivo):
             '"moneda": "EUR"}\n\n'
             "REGLAS:\n"
             "- Importes SIEMPRE como float (1234.56), nunca strings\n"
-            "- Si solo ves el total sin desglose IVA: base=total/1.21, iva=21, cuota=total-base\n"
-            "- Si el IVA es 0% (intracomunitaria/export): base=total, iva=0, cuota=0\n"
-            "- porcentaje_iva: número entero (21, 10, 0), no decimal ni string\n"
-            "- Monedas: EUR, USD, GBP, PLN, etc. — extrae los números sin convertir\n"
-            "- Si hay un depósito parcial (1st deposit, anticipo), el total es el depósito\n"
-            "- Si no encuentras un campo, pon null — NUNCA inventes datos\n"
+            "- Para facturas: si solo hay total → base=total/1.21, iva=21\n"
+            "- IVA 0% (intracomunitaria): base=total, iva=0\n"
+            "- Depósitos/anticipos: el total es el depósito, es_factura=true\n"
+            "- Si no encuentras un campo, pon null — NUNCA inventes\n"
             "- SOLO JSON, sin markdown, sin explicaciones, sin ```\n\n"
             f"ARCHIVO: {nombre_archivo}\n"
             f"TEXTO:\n{texto[:max_chars]}"
@@ -197,11 +219,19 @@ def extraer_con_claude(texto, nombre_archivo):
                 print(f"    Raw: {raw[:200]}")
                 return extraer_con_regex(texto)
         
-        # Si Claude dice que no es factura, devolver None
+        # Si tiene tipo_documento, es un documento clasificado (no factura)
+        tipo_doc = datos.get("tipo_documento")
+        if tipo_doc and tipo_doc != "FACTURA":
+            print(f"    [CLASIFICADO] Tipo: {tipo_doc}")
+            return datos  # Devolver los datos clasificados para que el handler los enrute
+        
+        # Si Claude dice explícitamente que no es factura
         if datos.get("es_factura") is False:
-            tipo_doc = datos.get("tipo_documento", "desconocido")
-            print(f"    [INFO] Tipo: {tipo_doc}")
-            return None
+            tipo_doc = datos.get("tipo_documento", "OTRO")
+            desc = datos.get("descripcion", "documento no financiero")
+            print(f"    [INFO] Tipo: {tipo_doc} — {desc}")
+            return {"_skip": True, "_motivo": f"Claude: {desc}", "tipo_documento": tipo_doc}
+        
         return datos
     except Exception as e:
         print(f"    AVISO Claude API: {e} — usando regex")
@@ -412,10 +442,20 @@ def procesar_factura_ap(pdf_path, proveedores):
 
     datos = extraer_con_claude(texto, nombre)
     
-    # Si Claude dice que no es factura
+    # Si Claude no devolvió nada
     if datos is None:
-        print(f"    [SKIP] {nombre}: Claude confirma no es factura")
-        return {"_skip": True, "_motivo": "Claude: no es un documento financiero"}
+        print(f"    [SKIP] {nombre}: sin datos extraíbles")
+        return {"_skip": True, "_motivo": "sin datos extraíbles"}
+
+    # Si Claude clasificó como skip
+    if isinstance(datos, dict) and datos.get('_skip'):
+        return datos
+
+    # Si Claude clasificó como otro tipo (no factura) → pasar al handler para enrutar
+    tipo_doc = datos.get('tipo_documento')
+    if tipo_doc and tipo_doc not in ('FACTURA',):
+        print(f"    [CLASIFICADO] {nombre}: tipo={tipo_doc}")
+        return datos  # El streaming handler lo enrutará al módulo correcto
 
     tipo_prov, cuenta = clasificar_proveedor(datos.get("nombre_proveedor"), proveedores)
 
