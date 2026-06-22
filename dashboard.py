@@ -7708,11 +7708,7 @@ async function sendChat() {
   thinkDiv.innerHTML = '<span class="typing" style="display:flex;gap:5px;padding:2px 0"><span class="dot-pulse"></span><span class="dot-pulse"></span><span class="dot-pulse"></span></span>';
 
   try {
-    const resp = await fetch('/api/chat', {
-      method:  'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body:    JSON.stringify({ messages: chatHistory }),
-    });
+    const resp = await _postJson('/api/chat', { messages: chatHistory });
     const data = await resp.json();
     const reply = data.reply || '⚠️ Sin respuesta del servidor.';
 
