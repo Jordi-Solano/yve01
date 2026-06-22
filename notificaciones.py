@@ -112,14 +112,43 @@ def _registrar(tipo, asunto, destinatario, estado, detalle=""):
 
 # ── Email ─────────────────────────────────────────────────────────────────
 
+def _enviar_via_brevo(destinatario, asunto, cuerpo_html):
+    """Envía email via Brevo API (ex-Sendinblue). Free: 300/día, sin dominio verificado."""
+    import urllib.request, urllib.error, json as _json
+    api_key = os.environ.get("BREVO_API_KEY", "")
+    if not api_key:
+        return False, "BREVO_API_KEY no configurado"
+    smtp_user = os.environ.get("SMTP_USER", "")
+    sender_email = smtp_user if smtp_user else "notificaciones@yve01.com"
+    payload = _json.dumps({
+        "sender": {"name": "Yve.01", "email": sender_email},
+        "to": [{"email": destinatario}],
+        "subject": asunto,
+        "htmlContent": cuerpo_html,
+    }).encode()
+    req = urllib.request.Request(
+        "https://api.brevo.com/v3/smtp/email",
+        data=payload,
+        headers={"api-key": api_key, "Content-Type": "application/json"},
+        method="POST"
+    )
+    try:
+        with urllib.request.urlopen(req, timeout=10) as resp:
+            return True, f"Brevo OK ({resp.status})"
+    except urllib.error.HTTPError as e:
+        body = e.read().decode()
+        print(f"[BREVO ERROR] {e.code}: {body}")
+        return False, f"Brevo {e.code}: {body[:150]}"
+    except Exception as e:
+        return False, str(e)[:120]
+
+
 def _enviar_via_resend(destinatario, asunto, cuerpo_html):
-    """Envía email via Resend HTTP API. Funciona en Render free tier (no bloquea SMTP)."""
+    """Envía email via Resend HTTP API. Requiere dominio verificado en free tier."""
     import urllib.request, urllib.error, json as _json
     api_key = os.environ.get("RESEND_API_KEY", "")
     if not api_key:
         return False, "RESEND_API_KEY no configurado"
-    env = _load_env()
-    nombre_hotel = env.get("HOTEL_NOMBRE", "Hotel")
     payload = _json.dumps({
         "from": "Yve.01 <onboarding@resend.dev>",
         "to": [destinatario],
@@ -134,15 +163,12 @@ def _enviar_via_resend(destinatario, asunto, cuerpo_html):
     )
     try:
         with urllib.request.urlopen(req, timeout=10) as resp:
-            body = resp.read().decode()
-            return True, f"OK id={body[:60]}"
+            return True, f"Resend OK"
     except urllib.error.HTTPError as e:
         body = e.read().decode()
-        print(f"[RESEND ERROR] {e.code}: {body}")  # visible en logs de Render
-        _registrar("resend_error", "Resend HTTP error", destinatario, "error", f"{e.code}: {body[:300]}")
-        return False, f"Resend {e.code}: {body[:200]}"
+        print(f"[RESEND ERROR] {e.code}: {body}")
+        return False, f"Resend {e.code}: {body[:150]}"
     except Exception as e:
-        _registrar("resend_error", "Resend connection error", destinatario, "error", str(e)[:120])
         return False, str(e)[:120]
 
 
@@ -150,7 +176,13 @@ def enviar_email(destinatario, asunto, cuerpo_html, tipo="general"):
     """Envía un email. Usa Resend si hay RESEND_API_KEY, sino SMTP."""
     env = _load_env()
 
-    # Prioridad 1: Resend (HTTP API — funciona en Render free tier)
+    # Prioridad 1: Brevo (sin restricción de dominio, free tier 300/día)
+    if os.environ.get("BREVO_API_KEY"):
+        ok, msg = _enviar_via_brevo(destinatario, asunto, cuerpo_html)
+        _registrar(tipo, asunto, destinatario, "enviado" if ok else "error", msg)
+        return ok
+
+    # Prioridad 2: Resend (requiere dominio verificado en free tier)
     if os.environ.get("RESEND_API_KEY"):
         ok, msg = _enviar_via_resend(destinatario, asunto, cuerpo_html)
         _registrar(tipo, asunto, destinatario, "enviado" if ok else "error", msg)

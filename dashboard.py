@@ -1751,13 +1751,23 @@ def api_smtp_status():
     smtp_user  = os.environ.get("SMTP_USER", "")
     smtp_pass  = os.environ.get("SMTP_PASSWORD", "")
 
-    # Prioridad: Resend
+    # Prioridad 1: Brevo
+    brevo_key = os.environ.get("BREVO_API_KEY", "")
+    if brevo_key:
+        return jsonify({
+            "configured": True, "method": "brevo",
+            "user": smtp_user or "Brevo API",
+            "ok": True,
+            "msg": f"Brevo configurado — listo para enviar"
+        })
+
+    # Prioridad 2: Resend
     if resend_key:
         return jsonify({
             "configured": True, "method": "resend",
             "user": smtp_user or "Resend API",
             "ok": True,
-            "msg": f"Resend configurado — enviará desde onboarding@resend.dev"
+            "msg": "Resend configurado (requiere dominio verificado para enviar a cualquier email)"
         })
 
     # Fallback: SMTP (bloqueado en Render free tier)
