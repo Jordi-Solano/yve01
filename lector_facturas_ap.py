@@ -267,7 +267,7 @@ def procesar_factura_ap(pdf_path, proveedores):
     # Pre-filtro 1: por nombre de archivo (gratis, sin tokens)
     skip, motivo = es_no_factura_por_nombre(nombre)
     if skip:
-        print(f"    [SKIP] {nombre}: no es una factura — {motivo}")
+        print(f"    [SKIP] {nombre}: documento no procesable — {motivo}")
         return None
 
     try:
@@ -283,14 +283,14 @@ def procesar_factura_ap(pdf_path, proveedores):
     # Pre-filtro 2: por contenido del PDF (gratis, sin tokens)
     skip2, motivo2 = es_no_factura_por_contenido(texto)
     if skip2:
-        print(f"    [SKIP] {nombre}: no es una factura — {motivo2}")
+        print(f"    [SKIP] {nombre}: documento no procesable — {motivo2}")
         return None
 
     datos = extraer_con_claude(texto, nombre)
     
     # Si Claude dice que no es factura
     if datos is None:
-        print(f"    [SKIP] {nombre}: Claude confirma que no es una factura")
+        print(f"    [SKIP] {nombre}: no contiene datos financieros extraíbles")
         return None
 
     tipo_prov, cuenta = clasificar_proveedor(datos.get("nombre_proveedor"), proveedores)
@@ -393,7 +393,7 @@ if __name__ == "__main__":
             reg = procesar_factura_ap(file_path, proveedores)
             if reg is None:
                 # No es una factura — salir con código 2 (distinto de error)
-                print(f"no es una factura — saltando")
+                print(f"documento no procesable — saltando")
                 sys.exit(2)
             elif reg and not reg.get("error"):
                 ruta_excel = os.path.join(SALIDA_DIR, f"facturas_ap_{FECHA_HOY}.xlsx")

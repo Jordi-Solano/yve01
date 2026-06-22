@@ -525,9 +525,33 @@ def api_procesar_batch_stream():
                         _mark(fname, 'DRR_OK')
                         continue
 
+                    fl = fname.lower()
+                    # Clasificación inteligente por tipo de documento
                     is_ar = tipo == 'AR' or (tipo == 'AR_o_AP' and any(
-                        x in fname.lower() for x in ['booking','expedia','hotels','despegar','ota']
+                        x in fl for x in ['booking','expedia','hotels','despegar','ota','comision','commission']
                     ))
+                    is_bank = any(x in fl for x in ['extracto','bank','statement','movimientos','bancario'])
+                    is_rooming = any(x in fl for x in ['rooming','room list','guest list','room block'])
+                    is_drr_file = fl.endswith('.xlsm') and any(x in fl for x in ['drr','revenue','daily'])
+
+                    if is_drr_file:
+                        import shutil as _sh2
+                        _sh2.copy2(fpath, os.path.join(BASE_DIR, 'reportes', 'drr_upload.xlsm'))
+                        yield f'data: ✓ DRR {fname}: cargado\n\n'
+                        _mark(fname, 'DRR_OK')
+                        continue
+                    if is_bank:
+                        import shutil as _sh3
+                        dest = os.path.join(BASE_DIR, 'datos-referencia', 'extracto_banco_upload' + os.path.splitext(fname)[1])
+                        _sh3.copy2(fpath, dest)
+                        yield f'data: ✓ Banco {fname}: extracto bancario cargado\n\n'
+                        _mark(fname, 'BANK_OK')
+                        continue
+                    if is_rooming:
+                        yield f'data: ℹ {fname}: rooming list detectado (ocupación)\n\n'
+                        _mark(fname, 'ROOMING')
+                        continue
+
                     cmd = ['python3', 'lector_ota.py' if is_ar else 'lector_facturas_ap.py', '--file', fpath]
                     r = _sp.run(cmd, capture_output=True, text=True, cwd=BASE_DIR, timeout=60)
                     if r.returncode == 0:
@@ -536,8 +560,8 @@ def api_procesar_batch_stream():
                         if is_ar: has_ar = True
                         else: has_ap = True
                     elif r.returncode == 2:
-                        # No es factura — saltado por pre-filtro
-                        msg = (r.stdout.strip() or 'no es una factura') + ' — saltando'
+                        # Documento no procesable — saltado por pre-filtro
+                        msg = r.stdout.strip() or 'documento no procesable'
                         yield f'data: ⚠ {fname}: {msg}\n\n'
                         _mark(fname, 'SKIP')
                     else:
