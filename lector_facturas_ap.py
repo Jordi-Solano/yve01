@@ -195,11 +195,31 @@ def extraer_con_claude(texto, nombre_archivo):
             messages=[{"role":"user","content":prompt}]
         )
         raw = resp.content[0].text.strip()
-        # Limpiar posible markdown
+        # Limpiar posible markdown y texto extra
         raw = re.sub(r"```(?:json)?", "", raw).strip().rstrip("`").strip()
-        datos = json.loads(raw)
+        # A veces Claude añade texto antes/después del JSON
+        json_match = re.search(r'\{[^{}]*(?:\{[^{}]*\}[^{}]*)*\}', raw)
+        if json_match:
+            raw = json_match.group()
+        
+        try:
+            datos = json.loads(raw)
+        except json.JSONDecodeError:
+            # Intentar arreglar JSON común: trailing commas, single quotes
+            fixed = raw.replace("'", '"').rstrip(',').rstrip(',}') + '}'
+            fixed = re.sub(r',\s*}', '}', fixed)
+            fixed = re.sub(r',\s*]', ']', fixed)
+            try:
+                datos = json.loads(fixed)
+            except json.JSONDecodeError:
+                print(f"    AVISO: JSON inválido de Claude — usando regex")
+                print(f"    Raw: {raw[:200]}")
+                return extraer_con_regex(texto)
+        
         # Si Claude dice que no es factura, devolver None
         if datos.get("es_factura") is False:
+            tipo_doc = datos.get("tipo_documento", "desconocido")
+            print(f"    [INFO] Tipo: {tipo_doc}")
             return None
         return datos
     except Exception as e:
@@ -289,18 +309,97 @@ def extraer_con_regex(texto):
 # ── Clasificación de proveedor ────────────────────────────────────────────
 
 def clasificar_proveedor(nombre_proveedor, proveedores):
+    """Clasifica proveedor con matching fuzzy en 3 niveles."""
     if not nombre_proveedor:
         return "OTRAS", NF
     norm = str(nombre_proveedor).strip().lower()
-    # Búsqueda exacta
+    
+    # Nivel 1: Búsqueda exacta
     if norm in proveedores:
         p = proveedores[norm]
-        return p.get("tipo","OTRAS"), p.get("cuenta_contable",NF)
-    # Búsqueda parcial
+        return p.get("tipo","OTRAS"), str(p.get("cuenta_contable",NF))
+    
+    # Nivel 2: Búsqueda parcial (substring)
     for key, p in proveedores.items():
         if key in norm or norm in key:
-            return p.get("tipo","OTRAS"), p.get("cuenta_contable",NF)
+            return p.get("tipo","OTRAS"), str(p.get("cuenta_contable",NF))
+    
+    # Nivel 3: Matching por palabras clave (al menos 2 palabras coinciden)
+    norm_words = set(norm.replace(',','').replace('.','').split())
+    for key, p in proveedores.items():
+        key_words = set(key.replace(',','').replace('.','').split())
+        common = norm_words & key_words
+        # Ignorar palabras genéricas
+        common -= {'sl', 'sa', 'slu', 'sll', 'de', 'del', 'la', 'el', 'los', 'las', 'y', 'e', 'ltd', 'gmbh', 'sp', 'zoo'}
+        if len(common) >= 2:
+            return p.get("tipo","OTRAS"), str(p.get("cuenta_contable",NF))
+    
     return "OTRAS", NF
+
+# ── Helpers de validación ────────────────────────────────────────────
+
+def _safe_float(v):
+    """Convierte a float de forma segura, devuelve None si no puede."""
+    if v is None or v == NF or v == '':
+        return None
+    try:
+        if isinstance(v, str):
+            v = v.replace('€','').replace('$','').replace(' ','').replace(' ','')
+            v = v.replace(',','.') if ',' in v and '.' not in v else v
+        return round(float(v), 2)
+    except (ValueError, TypeError):
+        return None
+
+
+def _auto_cuenta_pgc(concepto, proveedor=None):
+    """Asigna automáticamente la cuenta contable PGC según el concepto."""
+    if not concepto:
+        return NF
+    c = (concepto + ' ' + (proveedor or '')).lower()
+    
+    # F&B / alimentación
+    if any(x in c for x in ['aliment','comida','bebida','food','beverage','catering',
+                             'restaura','cocina','menu','coffee','café','bar ','minibar']):
+        return '600'  # Compras mercaderías
+    # Limpieza
+    if any(x in c for x in ['limpieza','cleaning','lavandera','lavandería','housekeeping']):
+        return '629'  # Otros servicios
+    # Energía / suministros
+    if any(x in c for x in ['electric','energía','gas ','agua ','water','utility','suministro']):
+        return '628'  # Suministros
+    # Mantenimiento
+    if any(x in c for x in ['mantenimiento','maintenance','reparac','repair','conservac']):
+        return '622'  # Reparaciones y conservación
+    # Seguros
+    if any(x in c for x in ['seguro','insurance','póliza']):
+        return '625'  # Primas de seguros
+    # Alquiler
+    if any(x in c for x in ['alquiler','rent','arrendamiento','leasing']):
+        return '621'  # Arrendamientos y cánones
+    # Profesionales / consultoría
+    if any(x in c for x in ['consultor','asesor','abogado','legal','audit','contab','lawyer',
+                             'advisory','consulting','professional']):
+        return '623'  # Servicios profesionales
+    # Publicidad / marketing
+    if any(x in c for x in ['publicidad','marketing','advertising','promo','campaign','diseño']):
+        return '627'  # Publicidad y propaganda
+    # Telecomunicaciones
+    if any(x in c for x in ['telefon','telecom','internet','wifi','fibra','mobile']):
+        return '629'  # Otros servicios
+    # Transporte
+    if any(x in c for x in ['transport','courier','mensajer','envío','shipping','logistic']):
+        return '624'  # Transportes
+    # Comisiones OTA / agencias
+    if any(x in c for x in ['comisión','commission','booking','expedia','agencia','ota']):
+        return '628'  # Comisiones agencias
+    # Eventos
+    if any(x in c for x in ['event','evento','congres','conferenc','meeting','audiovisual',
+                             'decorac','flores','flower','signage','producción']):
+        return '629'  # Otros servicios
+    
+    return '629'  # Default: otros servicios
+
+
 
 # ── Procesado principal ───────────────────────────────────────────────────
 
@@ -339,6 +438,42 @@ def procesar_factura_ap(pdf_path, proveedores):
 
     tipo_prov, cuenta = clasificar_proveedor(datos.get("nombre_proveedor"), proveedores)
 
+    # ── Validar y auto-calcular campos ──────────────────────────────────
+    base = _safe_float(datos.get("base_imponible"))
+    iva_pct = _safe_float(datos.get("porcentaje_iva"))
+    cuota = _safe_float(datos.get("cuota_iva"))
+    total = _safe_float(datos.get("total_factura"))
+
+    # Auto-cálculo: si falta algún campo, intentar derivarlo
+    if total and not base and iva_pct:
+        base = round(total / (1 + iva_pct/100), 2)
+        cuota = round(total - base, 2)
+    elif total and not base and not iva_pct:
+        # Asumir IVA 21% España si no se especifica
+        iva_pct = 21
+        base = round(total / 1.21, 2)
+        cuota = round(total - base, 2)
+    elif base and iva_pct and not total:
+        cuota = round(base * iva_pct / 100, 2)
+        total = round(base + cuota, 2)
+    elif base and not cuota and iva_pct:
+        cuota = round(base * iva_pct / 100, 2)
+        if not total:
+            total = round(base + cuota, 2)
+    elif base and total and not iva_pct:
+        cuota = round(total - base, 2)
+        iva_pct = round(cuota / base * 100) if base > 0 else 0
+
+    # Validación: importes deben ser positivos y razonables
+    if total and total < 0:
+        total = abs(total)  # Facturas negativas → abono
+    if base and base < 0:
+        base = abs(base)
+
+    # Auto-asignar cuenta contable PGC por tipo de concepto
+    if cuenta == NF and datos.get("descripcion_concepto"):
+        cuenta = _auto_cuenta_pgc(datos.get("descripcion_concepto"), datos.get("nombre_proveedor"))
+
     resultado = {
         "archivo":            nombre,
         "numero_factura":     datos.get("numero_factura") or NF,
@@ -346,21 +481,26 @@ def procesar_factura_ap(pdf_path, proveedores):
         "nombre_proveedor":   datos.get("nombre_proveedor") or NF,
         "NIF_proveedor":      datos.get("NIF_proveedor") or NF,
         "descripcion_concepto": datos.get("descripcion_concepto") or NF,
-        "base_imponible":     datos.get("base_imponible") or NF,
-        "porcentaje_iva":     datos.get("porcentaje_iva") or NF,
-        "cuota_iva":          datos.get("cuota_iva") or NF,
-        "total_factura":      datos.get("total_factura") or NF,
+        "base_imponible":     base or NF,
+        "porcentaje_iva":     iva_pct or NF,
+        "cuota_iva":          cuota or NF,
+        "total_factura":      total or NF,
         "tipo_proveedor":     tipo_prov,
         "cuenta_contable":    cuenta,
+        "moneda":             datos.get("moneda", "EUR"),
         "error":              "",
     }
 
+    campos_ok = sum(1 for k,v in resultado.items() 
+                    if k not in ("archivo","tipo_proveedor","cuenta_contable","moneda","error") 
+                    and v not in (NF, None, ""))
+    campos_total = 9  # campos de factura
+    print(f"    Extraídos: {campos_ok}/{campos_total} campos")
     for k, v in resultado.items():
-        if k != "error":
-            icono = "✓" if v not in (NF, None, "") else "✗"
-            if k in ("archivo","tipo_proveedor","cuenta_contable","error"):
-                continue
-            print(f"    [{icono}] {k}: {v}")
+        if k in ("archivo","tipo_proveedor","cuenta_contable","moneda","error"):
+            continue
+        icono = "✓" if v not in (NF, None, "") else "✗"
+        print(f"    [{icono}] {k}: {v}")
     return resultado
 
 def guardar_excel(registros, ruta):
@@ -445,7 +585,15 @@ if __name__ == "__main__":
                     df_existing = pd.read_excel(ruta_excel)
                     df_new = pd.DataFrame([reg])
                     df_combined = pd.concat([df_existing, df_new], ignore_index=True)
+                    # Deduplicar por archivo Y por numero_factura+proveedor
                     df_combined.drop_duplicates(subset=["archivo"], keep="last", inplace=True)
+                    if reg.get("numero_factura") and reg["numero_factura"] != NF:
+                        mask = (df_combined["numero_factura"] == reg["numero_factura"]) & \
+                               (df_combined["nombre_proveedor"] == reg.get("nombre_proveedor",""))
+                        if mask.sum() > 1:
+                            # Mantener solo la última entrada del duplicado
+                            idx_to_drop = df_combined[mask].index[:-1]
+                            df_combined = df_combined.drop(idx_to_drop)
                     df_combined.to_excel(ruta_excel, index=False)
                 else:
                     guardar_excel([reg], ruta_excel)

@@ -599,7 +599,26 @@ def api_procesar_batch_stream():
                     yield 'data: ✓ Verificación completada\n\n'
                 except: pass
 
-            yield 'data: \n\n'
+            # ── Resumen de procesado ──
+            ap_n = sum(1 for v in log.values() if v.get('resultado') == 'AP_OK')
+            ar_n = sum(1 for v in log.values() if v.get('resultado') == 'AR_OK')
+            drr_n = sum(1 for v in log.values() if v.get('resultado') == 'DRR_OK')
+            bank_n = sum(1 for v in log.values() if v.get('resultado') == 'BANK_OK')
+            fb_n = sum(1 for v in log.values() if v.get('resultado') == 'FB_OK')
+            skip_n = sum(1 for v in log.values() if 'SKIP' in str(v.get('resultado','')))
+            err_n = sum(1 for v in log.values() if 'ERR' in str(v.get('resultado','')) or 'CRASH' in str(v.get('resultado','')))
+            parts = []
+            if ap_n: parts.append(f'{ap_n} facturas AP')
+            if ar_n: parts.append(f'{ar_n} informes OTA')
+            if drr_n: parts.append(f'{drr_n} DRR')
+            if bank_n: parts.append(f'{bank_n} banco')
+            if fb_n: parts.append(f'{fb_n} F&B')
+            resumen = ' · '.join(parts) if parts else 'sin documentos procesables'
+            yield f'data: \n\n'
+            yield f'data: ✅ {resumen}'
+            if skip_n: yield f' · {skip_n} omitidos'
+            if err_n: yield f' · {err_n} errores'
+            yield f'\n\n'
             yield 'data: PIPELINE_COMPLETO\n\n'
         except Exception as e:
             yield f'data: ERROR: {str(e)[:200]}\n\n'
