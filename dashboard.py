@@ -1990,7 +1990,7 @@ def index():
     if not current_user.is_authenticated:
         return LANDING_PAGE
     name = _hotel_name()
-    tag = name if name else "AR Dashboard"
+    tag = name if name else ""
     configured = "true" if name else "false"
     user_name = current_user.nombre
     user_rol  = current_user.rol
