@@ -365,9 +365,11 @@ def check_rate_limit():
     from flask import request as _req
     if _req.path.startswith('/api/procesar') or _req.path.startswith('/api/procesar_ap'):
         ip = _req.headers.get('X-Forwarded-For', _req.remote_addr or 'unknown').split(',')[0].strip()
-        if _rate_limit(f"process:{ip}", max_req=10, window=60):
+        # 100 req/min: el frontend hace 1 petición por archivo, así que esto
+        # permite procesar carpetas de hasta ~100 archivos sin cortar el stream
+        if _rate_limit(f"process:{ip}", max_req=100, window=60):
             from flask import jsonify as _j
-            return _j({"error": "Rate limit exceeded. Wait 60 seconds."}), 429
+            return _j({"error": "Demasiados archivos a la vez. Espera 60 segundos."}), 429
 
 @app.route("/robots.txt")
 def robots_txt():
@@ -596,6 +598,14 @@ def api_procesar_batch_stream():
                     if is_rooming:
                         yield f'data: ℹ {fname}: rooming list detectado (ocupación)\n\n'
                         _mark(fname, 'ROOMING')
+                        continue
+
+                    # Guarda: archivos no-PDF que no encajaron en banco/fb/drr/inventario
+                    # NO deben ir a pdfplumber (crashea con 'No /Root object')
+                    _ext_check = os.path.splitext(fname)[1].lower()
+                    if _ext_check in ('.xlsx', '.xls', '.xlsm', '.csv'):
+                        yield f'data: ⚠ {fname}: hoja de cálculo sin clasificar — revisar manualmente\n\n'
+                        _mark(fname, 'SKIP')
                         continue
 
                     if is_ar:
@@ -6739,9 +6749,6 @@ function _runBatchPipeline(fileNames) {
   if (icon) icon.textContent = '⚡';
   if (title) title.textContent = 'Procesando ' + fileNames.length + ' archivo(s)...';
 
-  // Procesar de 1 en 1 para evitar timeout de Render
-  var pendientes = fileNames.slice();
-  var procesados = 0;
   var total = fileNames.length;
 
   function _log(txt, cls) {
@@ -6753,85 +6760,62 @@ function _runBatchPipeline(fileNames) {
     log.scrollTop = log.scrollHeight;
   }
 
-  function _procesarSiguiente() {
-    if (pendientes.length === 0) {
-      if (icon) icon.textContent = procesados === total ? '✅' : '⚠️';
-      if (title) title.textContent = 'Completado — ' + procesados + '/' + total + ' archivo(s)';
-      if (btn) btn.disabled = false;
-      if (spin) spin.style.display = 'none';
-      if (lbl) lbl.textContent = '⚡ Procesar Archivos';
-      if (btnCl) { btnCl.disabled = false; btnCl.textContent = 'Cerrar'; }
-      var retryBtn = document.getElementById('btn-retry');
-      if (retryBtn) retryBtn.style.display = 'none';
-      setTimeout(loadAll, 500);
-      return;
-    }
-
-    var fname = pendientes[0];
-    var idx = total - pendientes.length + 1;
-    if (title) title.textContent = '[' + idx + '/' + total + '] ' + fname;
-
-    var evtSrc = new EventSource('/api/procesar_batch_stream?archivos=' + encodeURIComponent(JSON.stringify([fname])));
-    var timer = setTimeout(function() {
-      evtSrc.close();
-      _log('✗ ' + fname + ': timeout — saltando', 'l-err');
-      pendientes.shift();
-      _procesarSiguiente();
-    }, 55000); // 55s timeout por archivo
-
-    evtSrc.onmessage = function(ev) {
-      var txt = ev.data;
-      if (txt === 'PIPELINE_COMPLETO' || txt === 'PIPELINE_CON_ERRORES') {
-        clearTimeout(timer);
-        evtSrc.close();
-        procesados++;
-        pendientes.shift();
-        setTimeout(_procesarSiguiente, 500);
-      } else if (txt && txt !== '') {
-        var cls = txt.startsWith('✓') ? 'l-ok' : txt.startsWith('✗') ? 'l-err' : txt.startsWith('>>') ? 'l-info' : 'l-dim';
-        _log(txt, cls);
-      }
-    };
-
-    evtSrc.onerror = function() {
-      clearTimeout(timer);
-      evtSrc.close();
-      _log('⚠ Conexión perdida — reintentando ' + fname + '...', 'l-err');
-      // Reintentar el mismo archivo una vez
-      setTimeout(function() {
-        var evtSrc2 = new EventSource('/api/procesar_batch_stream?archivos=' + encodeURIComponent(JSON.stringify([fname])));
-        var timer2 = setTimeout(function() {
-          evtSrc2.close();
-          _log('✗ ' + fname + ': timeout en reintento — saltando', 'l-err');
-          pendientes.shift();
-          _procesarSiguiente();
-        }, 55000);
-        evtSrc2.onmessage = function(ev) {
-          var txt = ev.data;
-          if (txt === 'PIPELINE_COMPLETO' || txt === 'PIPELINE_CON_ERRORES') {
-            clearTimeout(timer2);
-            evtSrc2.close();
-            procesados++;
-            pendientes.shift();
-            setTimeout(_procesarSiguiente, 500);
-          } else if (txt && txt !== '') {
-            var cls = txt.startsWith('✓') ? 'l-ok' : txt.startsWith('✗') ? 'l-err' : txt.startsWith('>>') ? 'l-info' : 'l-dim';
-            _log(txt, cls);
-          }
-        };
-        evtSrc2.onerror = function() {
-          clearTimeout(timer2);
-          evtSrc2.close();
-          _log('✗ ' + fname + ': error — saltando', 'l-err');
-          pendientes.shift();
-          _procesarSiguiente();
-        };
-      }, 2000);
-    };
+  function _finish(ok) {
+    if (icon) icon.textContent = ok ? '✅' : '⚠️';
+    if (title) title.textContent = ok ? 'Procesado completado' : 'Procesado finalizado con avisos';
+    if (btn) btn.disabled = false;
+    if (spin) spin.style.display = 'none';
+    if (lbl) lbl.textContent = '⚡ Procesar Archivos';
+    if (btnCl) { btnCl.disabled = false; btnCl.textContent = 'Cerrar'; }
+    var retryBtn = document.getElementById('btn-retry');
+    if (retryBtn) retryBtn.style.display = 'none';
+    setTimeout(loadAll, 800);
   }
 
-  _procesarSiguiente();
+  // UNA SOLA conexión para TODOS los archivos (el backend los procesa en serie)
+  var allFiles = encodeURIComponent(JSON.stringify(fileNames));
+  var evtSrc = new EventSource('/api/procesar_batch_stream?archivos=' + allFiles);
+
+  // Timeout global generoso: 30s por archivo, mínimo 90s
+  var globalTimeout = Math.max(90000, total * 30000);
+  var timer = setTimeout(function() {
+    evtSrc.close();
+    _log('⚠ Tiempo de espera agotado — algunos archivos pueden no haberse procesado', 'l-err');
+    _finish(false);
+  }, globalTimeout);
+
+  var hadError = false;
+
+  evtSrc.onmessage = function(ev) {
+    var txt = ev.data;
+    if (txt === 'PIPELINE_COMPLETO') {
+      clearTimeout(timer);
+      evtSrc.close();
+      _finish(!hadError);
+    } else if (txt === 'PIPELINE_CON_ERRORES') {
+      clearTimeout(timer);
+      evtSrc.close();
+      _finish(false);
+    } else if (txt && txt !== '') {
+      var cls = 'l-dim';
+      if (txt.startsWith('✓') || txt.startsWith('✅')) cls = 'l-ok';
+      else if (txt.startsWith('✗')) { cls = 'l-err'; hadError = true; }
+      else if (txt.startsWith('⚠')) cls = 'l-warn';
+      else if (txt.startsWith('ℹ')) cls = 'l-info';
+      else if (txt.startsWith('>>')) cls = 'l-info';
+      _log(txt, cls);
+    }
+  };
+
+  evtSrc.onerror = function() {
+    clearTimeout(timer);
+    evtSrc.close();
+    // Solo mostrar error si no terminó limpiamente
+    _log('⚠ Conexión finalizada', 'l-dim');
+    _finish(!hadError);
+  };
 }
+
 
 function closeInvoiceModal() {
   var m = document.getElementById('invoice-modal');
