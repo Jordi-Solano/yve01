@@ -3449,7 +3449,7 @@ button, a { touch-action: manipulation; }
       </div>
     </div>
     <input id="upload-file-input" type="file" multiple accept=".pdf,.xlsm,.xlsx" style="display:none" onchange="handleUploadFiles(this.files)">
-    <input id="upload-folder-input" type="file" multiple webkitdirectory accept=".pdf,.xlsm,.xlsx" style="display:none" onchange="handleUploadFiles(this.files)">
+    <input id="upload-folder-input" type="file" multiple webkitdirectory style="display:none" onchange="handleUploadFiles(this.files)">
     <!-- Already uploaded files on server -->
     <div id="server-files-section" style="display:none;margin-bottom:16px">
       <div style="font-size:11px;font-weight:700;color:var(--dim);text-transform:uppercase;letter-spacing:.5px;margin-bottom:8px">EN SERVIDOR (facturas-entrada)</div>
@@ -6633,7 +6633,7 @@ function _readDir(dirEntry, files, done) {
 
 function handleUploadFiles(fileList) {
   var files = Array.from(fileList).filter(function(f) {
-    return f.name.match(/\.(pdf|xlsm|xlsx)$/i);
+    return f.name.match(/\.(pdf|xlsm|xlsx|xls|csv)$/i);
   });
   _addFilesToList(files);
 }
