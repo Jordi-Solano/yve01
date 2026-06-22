@@ -3875,6 +3875,18 @@ function drawSparkline(canvasId, data, color) {
   const ctx = canvas.getContext('2d');
   const W = canvas.width, H = canvas.height, pad = 2;
   ctx.clearRect(0, 0, W, H);
+  // Si todos los valores son 0, dibujar una línea tenue y salir
+  if (data.every(function(v){ return v === 0; })) {
+    ctx.beginPath();
+    ctx.moveTo(pad, H - pad - 1);
+    ctx.lineTo(W - pad, H - pad - 1);
+    ctx.strokeStyle = color;
+    ctx.globalAlpha = 0.15;
+    ctx.lineWidth = 1;
+    ctx.stroke();
+    ctx.globalAlpha = 1;
+    return;
+  }
   const min = Math.min(...data), max = Math.max(...data);
   const range = (max - min) || 1;
   const pts = data.map((v, i) => ({
@@ -7446,6 +7458,7 @@ async function loadAP() {
     if (el('ap-alertas')) el('ap-alertas').textContent = stats.alertas_consumo ?? '—';
     if (el('ap-manual')) el('ap-manual').textContent = stats.manual ?? '—';
     if (el('ap-aprobadas')) el('ap-aprobadas').textContent = stats.aprobadas ?? '—';
+    _skelOff(['ap-total','ap-importe','ap-matches','ap-disc','ap-sinpo','ap-aprobadas']);
     setTimeout(() => injectSparklines(AP_SPARKS), 60);
 
     const tbody = el('ap-tbody');
@@ -8722,6 +8735,7 @@ async function cargarARRealData() {
       _setText('arp-vencido',   fmt(s.vencido));
       _setText('arp-cobrado',   fmt(s.cobrado_mes));
       _setText('arp-nclientes', dc.ok ? dc.clientes.length + ' activos' : '—');
+      _skelOff(['arp-pendiente','arp-vencido','arp-cobrado','arp-nclientes']);
 
       // Aging bar
       const agingEl = document.getElementById('ar-aging-bar');
@@ -8779,7 +8793,7 @@ async function cargarARRealData() {
 
 function _setText(id, val) {
   const el = document.getElementById(id);
-  if (el) el.textContent = val;
+  if (el) { el.textContent = val; el.classList.remove('skeleton'); }
 }
 
 var _arAllFacturas = [];
