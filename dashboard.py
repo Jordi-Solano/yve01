@@ -512,15 +512,20 @@ def api_procesar_batch_stream():
                     import subprocess as _sp
 
                     fl = fname.lower()
-                    # Clasificación inteligente por tipo de documento
+                    _ext_lower = os.path.splitext(fname)[1].lower()
+                    _is_spreadsheet = _ext_lower in ('.xlsx', '.xls', '.csv')
+                    
+                    # Clasificación inteligente — keywords SOLO para hojas de cálculo
+                    # Los PDFs siempre van a Claude (él extrae mejor que copiar el archivo)
                     is_ar = tipo == 'AR' or (tipo == 'AR_o_AP' and any(
                         x in fl for x in ['booking','expedia','hotels','despegar','ota','comision','commission']
                     ))
-                    is_bank = any(x in fl for x in ['extracto','bank','statement','movimientos','bancario'])
+                    is_bank = _is_spreadsheet and any(x in fl for x in ['extracto','bank','statement','movimientos','bancario'])
                     is_rooming = any(x in fl for x in ['rooming','room list','guest list','room block'])
                     is_drr_file = fl.endswith('.xlsm') and any(x in fl for x in ['drr','revenue report','daily report','daily_report'])
-                    is_fb = any(x in fl for x in ['pos','ventas','sales','tpv','food','beverage','f&b','fnb','restaurante','bar ','menu_mix','product_mix','ticket'])
-                    is_inventory = any(x in fl for x in ['inventario','inventory','stock','almacen','merma','waste'])
+                    is_fb = _is_spreadsheet and any(x in fl for x in ['pos','ventas','sales','tpv','food','beverage','f&b','fnb','restaurante','bar ','menu_mix','product_mix','ticket'])
+                    is_inventory = _is_spreadsheet and any(x in fl for x in ['inventario','inventory','stock','almacen'])
+                    is_merma = _is_spreadsheet and any(x in fl for x in ['merma','waste','pérdida','perdida'])
 
                     if is_drr_file:
                         import shutil as _sh2
@@ -593,6 +598,14 @@ def api_procesar_batch_stream():
                         dest = os.path.join(BASE_DIR, 'datos-referencia', 'inventario_upload' + ext)
                         _sh5.copy2(fpath, dest)
                         yield f'data: ✓ Inventario {fname}: datos cargados\n\n'
+                        _mark(fname, 'INV_OK')
+                        continue
+                    if is_merma:
+                        import shutil as _sh5m
+                        ext = os.path.splitext(fname)[1]
+                        dest = os.path.join(BASE_DIR, 'datos-referencia', 'mermas_upload' + ext)
+                        _sh5m.copy2(fpath, dest)
+                        yield f'data: ✓ Mermas {fname}: datos cargados\n\n'
                         _mark(fname, 'INV_OK')
                         continue
                     if is_rooming:
