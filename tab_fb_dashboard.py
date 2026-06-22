@@ -109,10 +109,10 @@ def api_resultados():
         # Categorías
         cats_summary = {}
         for _, sale in df_ven.iterrows():
-            cat = str(sale['categoria'])
-            rid = sale['id_receta']
-            uds = float(sale['unidades_vendidas'])
-            ven = float(sale['total_venta'])
+            cat = str(sale.get('categoria', 'General'))
+            rid = sale.get('id_receta', '')
+            uds = float(sale.get('unidades_vendidas', 0) or 0)
+            ven = float(sale.get('total_venta', 0) or 0)
             rec = recipe_map.get(rid, {})
             c   = rec.get('coste_teorico', 0) * uds
             if cat not in cats_summary:
@@ -132,9 +132,12 @@ def api_resultados():
             })
 
         # Ranking top platos por ventas
-        ranking = (df_ven.groupby(['id_receta','nombre_plato'])['total_venta']
+        # Defensivo: usar columna de nombre que exista
+        nombre_col = 'nombre_plato' if 'nombre_plato' in df_ven.columns else ('plato' if 'plato' in df_ven.columns else 'id_receta')
+        ranking = (df_ven.groupby(['id_receta', nombre_col])['total_venta']
                    .sum().reset_index()
                    .sort_values('total_venta', ascending=False).head(8))
+        ranking = ranking.rename(columns={nombre_col: 'nombre_plato'})
         ranking_top = []
         for _, row in ranking.iterrows():
             rec = recipe_map.get(row['id_receta'], {})
@@ -184,15 +187,17 @@ def api_inventario():
         df['coste_unitario'] = pd.to_numeric(df['coste_unitario'], errors='coerce').fillna(0)
         items = []
         for _, row in df.iterrows():
-            pct = round(row['stock_actual_kg_l'] / row['stock_inicial_kg_l'] * 100, 0) if row['stock_inicial_kg_l'] > 0 else 0
+            stock_act = float(row.get('stock_actual_kg_l', 0) or 0)
+            stock_ini = float(row.get('stock_inicial_kg_l', 0) or 0)
+            pct = round(stock_act / stock_ini * 100, 0) if stock_ini > 0 else 0
             items.append({
-                'ingrediente': str(row['ingrediente']),
-                'categoria': str(row['categoria']),
-                'stock_inicial': float(row['stock_inicial_kg_l']),
-                'stock_actual': float(row['stock_actual_kg_l']),
-                'unidad': str(row['unidad']),
-                'coste_unitario': float(row['coste_unitario']),
-                'proveedor': str(row['proveedor']),
+                'ingrediente': str(row.get('ingrediente', '—')),
+                'categoria': str(row.get('categoria', 'General')),
+                'stock_inicial': stock_ini,
+                'stock_actual': stock_act,
+                'unidad': str(row.get('unidad', 'kg')),
+                'coste_unitario': float(row.get('coste_unitario', 0) or 0),
+                'proveedor': str(row.get('proveedor', '—')),
                 'pct_restante': pct,
                 'alerta': pct < 30,
                 'critico': pct < 15,
@@ -223,13 +228,13 @@ def api_mermas():
         mermas = []
         for _, row in df.iterrows():
             mermas.append({
-                'fecha': str(row['fecha'])[:10],
-                'ingrediente': str(row['ingrediente']),
-                'categoria': str(row['categoria']),
-                'cantidad': float(row['cantidad_merma']),
-                'unidad': str(row['unidad']),
-                'causa': str(row['causa']),
-                'coste': float(row['coste_merma']),
+                'fecha': str(row.get('fecha', ''))[:10],
+                'ingrediente': str(row.get('ingrediente', '—')),
+                'categoria': str(row.get('categoria', 'General')),
+                'cantidad': float(row.get('cantidad_merma', 0) or 0),
+                'unidad': str(row.get('unidad', 'kg')),
+                'causa': str(row.get('causa', '—')),
+                'coste': float(row.get('coste_merma', 0) or 0),
             })
         total = round(sum(m['coste'] for m in mermas), 2)
         por_causa = {}
