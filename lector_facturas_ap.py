@@ -50,6 +50,60 @@ def es_ota(texto):
     txt_lower = texto.lower()
     return any(ota in txt_lower for ota in OTAS_CONOCIDAS)
 
+
+# Documentos que NO son facturas — pre-filtro por nombre de archivo
+NO_FACTURA_KEYWORDS = {
+    'rooming', 'room list', 'agenda', 'logo', 'signage', 'beo ',
+    'banquet event', 'sow ', 'statement of work', 'contract',
+    'proposal', 'presupuesto', 'quotation', 'quote', 'menu',
+    'floorplan', 'floor plan', 'setup', 'technical manual',
+    'resume', 'cv ', 'presentation', 'powerpoint', 'meeting notes',
+    'acta ', 'minuta', 'checklist', 'planning', 'schedule',
+    'itinerary', 'itinerario', 'programa', 'certificate',
+}
+
+NO_FACTURA_EXTENSIONS = {'.xlsx', '.xls', '.xlsm', '.doc', '.docx', '.ppt', '.pptx', '.png', '.jpg', '.jpeg', '.gif', '.svg'}
+
+
+def es_no_factura_por_nombre(nombre_archivo):
+    """Pre-filtro rápido por nombre de archivo — evita gastar tokens de Claude."""
+    nombre_lower = nombre_archivo.lower()
+    ext = os.path.splitext(nombre_lower)[1]
+    if ext in NO_FACTURA_EXTENSIONS:
+        return True, f"extensión {ext} no es factura"
+    for kw in NO_FACTURA_KEYWORDS:
+        if kw in nombre_lower:
+            return True, f"contiene '{kw}'"
+    return False, ""
+
+
+def es_no_factura_por_contenido(texto):
+    """Pre-filtro por contenido del PDF — detecta documentos que no son facturas."""
+    if not texto or len(texto.strip()) < 50:
+        return True, "documento vacío o muy corto"
+    txt_lower = texto[:2000].lower()
+    
+    # Indicadores de que SÍ es factura (si tiene alguno, no filtrar)
+    factura_signals = ['factura', 'invoice', 'rechnung', 'base imponible', 'iva',
+                       'vat', 'total a pagar', 'importe total', 'nif', 'cif',
+                       'fecha de emisión', 'n.º factura', 'nº factura', 'invoice number',
+                       'amount due', 'payment terms', 'forma de pago']
+    if any(s in txt_lower for s in factura_signals):
+        return False, ""
+    
+    # Indicadores de que NO es factura
+    no_factura_signals = ['banquet event order', 'beo', 'rooming list', 'guest list',
+                          'room block', 'agenda', 'meeting room setup', 'floor plan',
+                          'technical requirements', 'statement of work', 'scope of work',
+                          'proposal for', 'presupuesto para', 'quotation', 'menu del día',
+                          'wine list', 'carta de vinos', 'event program', 'programme',
+                          'check-in list', 'attendee list', 'lista de asistentes']
+    for s in no_factura_signals:
+        if s in txt_lower:
+            return True, f"contiene '{s}'"
+    
+    return False, ""
+
 # ── Extracción con Claude API ─────────────────────────────────────────────
 
 def extraer_con_claude(texto, nombre_archivo):
@@ -61,17 +115,35 @@ def extraer_con_claude(texto, nombre_archivo):
         import anthropic
         client = anthropic.Anthropic(api_key=api_key)
         prompt = (
-            "Eres un asistente de contabilidad hotelera. Extrae los campos de esta factura "
-            "y devuelve EXCLUSIVAMENTE un objeto JSON con estas claves exactas:\n"
-            "numero_factura, fecha, nombre_proveedor, NIF_proveedor, descripcion_concepto, "
-            "base_imponible, porcentaje_iva, cuota_iva, total_factura\n\n"
-            "Reglas:\n"
-            "- base_imponible, cuota_iva y total_factura deben ser números decimales (float)\n"
-            "- porcentaje_iva debe ser número (ej: 21, no '21%')\n"
+            "Eres un experto en contabilidad hotelera española/europea. "
+            "Analiza este documento y extrae los datos de factura.\n\n"
+            "PRIMERO: ¿Es este documento realmente una factura/invoice? "
+            "Si NO es una factura (es un contrato, presupuesto, BEO, rooming list, agenda, "
+            'email, logo, manual técnico, etc.), devuelve exactamente: {"es_factura": false}\n\n'
+            "Si SÍ es una factura, devuelve un JSON con TODAS estas claves:\n"
+            "{\n"
+            "  \"es_factura\": true,\n"
+            "  \"numero_factura\": \"FRA-2024-001\",\n"
+            "  \"fecha\": \"15/03/2024\",\n"
+            "  \"nombre_proveedor\": \"Empresa SL\",\n"
+            "  \"NIF_proveedor\": \"B12345678\",\n"
+            "  \"descripcion_concepto\": \"Servicio de catering evento\",\n"
+            "  \"base_imponible\": 1000.00,\n"
+            "  \"porcentaje_iva\": 21,\n"
+            "  \"cuota_iva\": 210.00,\n"
+            "  \"total_factura\": 1210.00,\n"
+            "  \"moneda\": \"EUR\"\n"
+            "}\n\n"
+            "REGLAS IMPORTANTES:\n"
+            "- Importes como números decimales (float), NO strings\n"
+            "- porcentaje_iva como número entero (21, no 0.21 ni '21%')\n"
             "- fecha en formato DD/MM/YYYY\n"
-            "- Si no encuentras un campo usa null\n"
-            "- Devuelve SOLO el JSON, sin explicaciones\n\n"
-            f"TEXTO DE LA FACTURA:\n{texto[:3000]}"
+            "- Si el documento está en otro idioma (inglés, alemán, polaco), traduce el proveedor pero extrae los números tal cual\n"
+            "- Si hay varios tipos de IVA, usa el principal\n"
+            "- Si no encuentras un campo concreto, usa null (no inventes)\n"
+            "- SOLO devuelve el JSON, sin markdown, sin explicaciones\n\n"
+            f"NOMBRE DEL ARCHIVO: {nombre_archivo}\n\n"
+            f"TEXTO DEL DOCUMENTO:\n{texto[:4000]}"
         )
         resp = client.messages.create(
             model="claude-sonnet-4-6",
@@ -82,6 +154,9 @@ def extraer_con_claude(texto, nombre_archivo):
         # Limpiar posible markdown
         raw = re.sub(r"```(?:json)?", "", raw).strip().rstrip("`").strip()
         datos = json.loads(raw)
+        # Si Claude dice que no es factura, devolver None
+        if datos.get("es_factura") is False:
+            return None
         return datos
     except Exception as e:
         print(f"    AVISO Claude API: {e} — usando regex")
@@ -188,6 +263,13 @@ def clasificar_proveedor(nombre_proveedor, proveedores):
 def procesar_factura_ap(pdf_path, proveedores):
     nombre = os.path.basename(pdf_path)
     print(f"  Procesando: {nombre}")
+
+    # Pre-filtro 1: por nombre de archivo (gratis, sin tokens)
+    skip, motivo = es_no_factura_por_nombre(nombre)
+    if skip:
+        print(f"    [SKIP] {nombre}: no es una factura — {motivo}")
+        return None
+
     try:
         texto = extraer_texto(pdf_path)
     except Exception as e:
@@ -198,7 +280,18 @@ def procesar_factura_ap(pdf_path, proveedores):
         print(f"    [SKIP] Es factura de OTA — omitida")
         return None
 
+    # Pre-filtro 2: por contenido del PDF (gratis, sin tokens)
+    skip2, motivo2 = es_no_factura_por_contenido(texto)
+    if skip2:
+        print(f"    [SKIP] {nombre}: no es una factura — {motivo2}")
+        return None
+
     datos = extraer_con_claude(texto, nombre)
+    
+    # Si Claude dice que no es factura
+    if datos is None:
+        print(f"    [SKIP] {nombre}: Claude confirma que no es una factura")
+        return None
 
     tipo_prov, cuenta = clasificar_proveedor(datos.get("nombre_proveedor"), proveedores)
 
@@ -298,13 +391,16 @@ if __name__ == "__main__":
                         "email_contacto": str(row.get("email_contacto","")).strip(),
                     }
             reg = procesar_factura_ap(file_path, proveedores)
-            if reg and not reg.get("error"):
+            if reg is None:
+                # No es una factura — salir con código 2 (distinto de error)
+                print(f"no es una factura — saltando")
+                sys.exit(2)
+            elif reg and not reg.get("error"):
                 ruta_excel = os.path.join(SALIDA_DIR, f"facturas_ap_{FECHA_HOY}.xlsx")
                 if os.path.exists(ruta_excel):
                     df_existing = pd.read_excel(ruta_excel)
                     df_new = pd.DataFrame([reg])
                     df_combined = pd.concat([df_existing, df_new], ignore_index=True)
-                    # Deduplicar por ARCHIVO (no por numero_factura porque puede ser NO_ENCONTRADO)
                     df_combined.drop_duplicates(subset=["archivo"], keep="last", inplace=True)
                     df_combined.to_excel(ruta_excel, index=False)
                 else:

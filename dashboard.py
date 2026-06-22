@@ -530,12 +530,20 @@ def api_procesar_batch_stream():
                     ))
                     cmd = ['python3', 'lector_ota.py' if is_ar else 'lector_facturas_ap.py', '--file', fpath]
                     r = _sp.run(cmd, capture_output=True, text=True, cwd=BASE_DIR, timeout=60)
-                    ok = r.returncode == 0
-                    msg = 'OK' if ok else (r.stderr[:80] or r.stdout[:80] or 'error')
-                    yield f'data: {"✓" if ok else "✗"} {"AR" if is_ar else "AP"} {fname}: {msg}\n\n'
-                    _mark(fname, ('AR_OK' if is_ar else 'AP_OK') if ok else f'ERR:{msg[:30]}')
-                    if ok and is_ar: has_ar = True
-                    if ok and not is_ar: has_ap = True
+                    if r.returncode == 0:
+                        yield f'data: ✓ {"AR" if is_ar else "AP"} {fname}: OK\n\n'
+                        _mark(fname, 'AR_OK' if is_ar else 'AP_OK')
+                        if is_ar: has_ar = True
+                        else: has_ap = True
+                    elif r.returncode == 2:
+                        # No es factura — saltado por pre-filtro
+                        msg = (r.stdout.strip() or 'no es una factura') + ' — saltando'
+                        yield f'data: ⚠ {fname}: {msg}\n\n'
+                        _mark(fname, 'SKIP')
+                    else:
+                        msg = r.stderr[:80] or r.stdout[:80] or 'error'
+                        yield f'data: ✗ {"AR" if is_ar else "AP"} {fname}: {msg}\n\n'
+                        _mark(fname, f'ERR:{msg[:30]}')
 
                 except subprocess.TimeoutExpired:
                     yield f'data: ✗ {fname}: TIMEOUT (60s)\n\n'
