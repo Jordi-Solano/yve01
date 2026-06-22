@@ -118,30 +118,34 @@ def es_no_factura_por_nombre(nombre_archivo):
 
 
 def es_no_factura_por_contenido(texto):
-    """Pre-filtro por contenido del PDF — detecta documentos que no son facturas."""
-    if not texto or len(texto.strip()) < 50:
-        return True, "documento vacío o muy corto"
-    txt_lower = texto[:2000].lower()
+    """Pre-filtro CONSERVADOR. Solo bloquea si está MUY claro que no es factura.
+    En caso de duda, deja pasar a Claude (que es mejor juez)."""
+    if not texto or len(texto.strip()) < 30:
+        return True, "documento vacío (posible PDF escaneado o imagen)"
+    txt_lower = texto[:3000].lower()
     
-    # Indicadores de que SÍ es factura (si tiene alguno, no filtrar)
-    factura_signals = ['factura', 'invoice', 'rechnung', 'base imponible', 'iva',
-                       'vat', 'total a pagar', 'importe total', 'nif', 'cif',
-                       'fecha de emisión', 'n.º factura', 'nº factura', 'invoice number',
-                       'amount due', 'payment terms', 'forma de pago']
+    # Indicadores FUERTES de que SÍ es factura → nunca bloquear
+    factura_signals = ['factura', 'invoice', 'rechnung', 'fattura', 'facture',
+                       'base imponible', 'iva', 'vat', 'mwst', 'tva',
+                       'total a pagar', 'importe total', 'amount due', 'total due',
+                       'nif', 'cif', 'tax id', 'deposit', 'depósito', 'anticipo',
+                       'fecha de emisión', 'invoice number', 'invoice no',
+                       'payment terms', 'forma de pago', 'bank transfer',
+                       'iban', 'subtotal', 'net amount', 'gross amount',
+                       'proforma', 'pro forma', 'advance payment', '€', 'eur ',
+                       'importe', 'precio', 'amount', 'price', 'fee']
     if any(s in txt_lower for s in factura_signals):
         return False, ""
     
-    # Indicadores de que NO es factura (solo si NO hay señales de factura)
-    no_factura_signals = ['banquet event order', 'rooming list', 'guest list',
-                          'room block', 'meeting room setup', 'floor plan',
-                          'technical requirements', 'statement of work', 'scope of work',
-                          'event program', 'programme',
-                          'check-in list', 'attendee list', 'lista de asistentes',
-                          'running order', 'event schedule']
+    # Solo bloquear si hay señales MUY claras de no-factura Y ninguna de factura
+    no_factura_signals = ['banquet event order', 'rooming list',
+                          'meeting room setup', 'floor plan layout',
+                          'technical rider', 'audio visual requirements']
     for s in no_factura_signals:
         if s in txt_lower:
             return True, f"contiene '{s}'"
     
+    # Si no hay señales claras de nada, dejar pasar a Claude
     return False, ""
 
 # ── Extracción con Claude API ─────────────────────────────────────────────
