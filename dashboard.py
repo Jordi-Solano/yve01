@@ -1407,7 +1407,7 @@ INSTRUCCIONES:
         msgs = [{"role": m["role"], "content": m["content"]}
                 for m in messages if m.get("role") in ("user","assistant")]
         resp = client.messages.create(
-            model="claude-sonnet-4-6",
+            model="claude-haiku-4-5-20251001",
             max_tokens=512,
             system=system_prompt,
             messages=msgs,
