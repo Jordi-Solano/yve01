@@ -2683,7 +2683,7 @@ button, a { touch-action: manipulation; }
     <span class="pill hide-mobile" style="color:var(--acc2)">👤 __USER_NAME__</span>
 
     <button class="btn-ref show-mobile" onclick="toggleChat()" style="background:linear-gradient(135deg,rgba(124,58,237,.15),rgba(59,130,246,.15));border-color:rgba(124,58,237,.35);color:#a78bfa;font-weight:700" title="Pregunta a Yve IA">💬 Yve</button>
-    <button class="show-mobile" onclick="openUploadModal()" title="Procesar Facturas" style="background:rgba(59,130,246,.1);border:1px solid rgba(59,130,246,.25);color:#60a5fa;padding:7px 11px;border-radius:8px;font-size:16px;cursor:pointer;line-height:1;transition:.15s" onmouseover="this.style.background='rgba(59,130,246,.2)'" onmouseout="this.style.background='rgba(59,130,246,.1)'">⚡</button>
+    <button class="show-mobile" onclick="openUploadModal()" title="Procesar Archivos" style="background:rgba(59,130,246,.1);border:1px solid rgba(59,130,246,.25);color:#60a5fa;padding:7px 11px;border-radius:8px;font-size:16px;cursor:pointer;line-height:1;transition:.15s" onmouseover="this.style.background='rgba(59,130,246,.2)'" onmouseout="this.style.background='rgba(59,130,246,.1)'">⚡</button>
 
 
 
@@ -2691,7 +2691,7 @@ button, a { touch-action: manipulation; }
 
     <button class="btn-run hide-mobile" id="btn-run" onclick="openUploadModal()">
       <div class="spin" id="spin"></div>
-      <span id="run-lbl" data-i18n="nav.procesar">⚡ Procesar Facturas</span>
+      <span id="run-lbl" data-i18n="nav.procesar">⚡ Procesar Archivos</span>
     </button>
 
     <div class="dropdown">
@@ -2862,7 +2862,7 @@ button, a { touch-action: manipulation; }
     <div class="card">
       <div class="card-title" data-i18n="card.resumen">Resumen de estados</div>
       <div id="activity" class="hide-lite">
-        <div class="empty"><div class="ei">📂</div><p>Sin datos.<br>Pulsa ⚡ Procesar Facturas.</p></div>
+        <div class="empty"><div class="ei">📂</div><p>Sin datos.<br>Pulsa ⚡ Procesar Archivos.</p></div>
       </div>
     </div>
   </div>
@@ -2892,7 +2892,7 @@ button, a { touch-action: manipulation; }
           </tr>
         </thead>
         <tbody id="tbl-body">
-          <tr><td colspan="11" class="empty"><p>Sin datos. Pulsa ⚡ Procesar Facturas para empezar.</p></td></tr>
+          <tr><td colspan="11" class="empty"><p>Sin datos. Pulsa ⚡ Procesar Archivos para empezar.</p></td></tr>
         </tbody>
       </table>
     </div>
@@ -3295,7 +3295,7 @@ button, a { touch-action: manipulation; }
   <div style="background:var(--s1);border:1px solid var(--s2);border-radius:20px;padding:28px;width:min(600px,95vw);max-height:85vh;overflow-y:auto;position:relative">
     <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:22px">
       <div>
-        <h2 style="font-size:18px;font-weight:800;margin:0">⚡ Procesar Facturas</h2>
+        <h2 style="font-size:18px;font-weight:800;margin:0">⚡ Procesar Archivos</h2>
         <div style="font-size:12px;color:var(--mut);margin-top:4px">OTA (PDF) · Proveedores (PDF) · DRR (.xlsm) — los ya procesados se saltan automáticamente</div>
       </div>
       <button onclick="closeUploadModal()" style="background:none;border:none;color:var(--mut);font-size:24px;cursor:pointer">×</button>
@@ -3707,7 +3707,7 @@ function renderTable(rows) {
   const tbody = document.getElementById('tbl-body');
   document.getElementById('tbl-count').textContent = rows.length ? rows.length + ' ' + (t('lbl.registros')||'registros') : '';
   if (!rows.length) {
-    tbody.innerHTML = '<tr><td colspan="12" style="padding:32px;text-align:center"><div style="font-size:32px;margin-bottom:8px">📦</div><div style="font-weight:600;color:var(--mut);margin-bottom:4px">Sin facturas AP</div><div style="font-size:12px;color:var(--dim)">Pulsa ⚡ Procesar Facturas AP</div></td></tr>';
+    tbody.innerHTML = '<tr><td colspan="12" style="padding:32px;text-align:center"><div style="font-size:32px;margin-bottom:8px">📦</div><div style="font-weight:600;color:var(--mut);margin-bottom:4px">Sin facturas AP</div><div style="font-size:12px;color:var(--dim)">Pulsa ⚡ Procesar Archivos</div></td></tr>';
     return;
   }
   tbody.innerHTML = rows.map((r, i) => {
@@ -3734,7 +3734,7 @@ function renderTable(rows) {
 function renderActivity(rows) {
   const el = document.getElementById('activity');
   if (!rows.length) {
-    el.innerHTML = '<div class="empty"><div class="ei">📂</div><p>Sin datos.<br>Pulsa ⚡ Procesar Facturas.</p></div>';
+    el.innerHTML = '<div class="empty"><div class="ei">📂</div><p>Sin datos.<br>Pulsa ⚡ Procesar Archivos.</p></div>';
     return;
   }
   const c = {}, d = {};
@@ -3808,7 +3808,7 @@ function runPipeline() {
       title.textContent = ok ? 'Pipeline completado con éxito' : 'Pipeline finalizado con errores';
       btn.disabled = false;
       spin.style.display = 'none';
-      lbl.textContent = '⚡ Procesar Facturas';
+      lbl.textContent = '⚡ Procesar Archivos';
       btnCl.disabled = false;
       setTimeout(loadAll, 800);
     }
@@ -3822,7 +3822,7 @@ function runPipeline() {
     log.appendChild(p);
     btn.disabled = false;
     spin.style.display = 'none';
-    lbl.textContent = '⚡ Procesar Facturas';
+    lbl.textContent = '⚡ Procesar Archivos';
     btnCl.disabled = false;
     icon.textContent = '⚠️';
     title.textContent = 'Error de conexión';
@@ -4308,7 +4308,7 @@ var _i18nStrMap = {
     '📊 Vista lite': '📊 Lite view',
     '📊 Vista completa': '📊 Full view',
     '📱 Vista lite': '📱 Lite view',
-    '⚡ Procesar Facturas': '⚡ Process Invoices',
+    '⚡ Procesar Archivos': '⚡ Process Files',
     '⚡ Procesar archivos nuevos': '⚡ Process new files',
     '▶ Procesar pendientes del servidor': '▶ Process server pending',
     '✅ Aprobar Match OK': '✅ Approve Match OK',
@@ -4320,8 +4320,8 @@ var _i18nStrMap = {
     'Pendiente emitir': 'Pending issue',
     'Pendientes': 'Pending',
     'Todas las facturas del ciclo': 'All cycle invoices',
-    'Pulsa ⚡ Procesar Facturas AP': 'Press ⚡ Process AP Invoices',
-    'Pulsa ⚡ Procesar Facturas.': 'Press ⚡ Process Invoices.',
+    'Pulsa ⚡ Procesar Archivos': 'Press ⚡ Process AP Invoices',
+    'Pulsa ⚡ Procesar Archivos.': 'Press ⚡ Process Files.',
     '📊 Resumen': '📊 Summary',
     'Vista consolidada del grupo': 'Group consolidated view',
     '⚠️ Alertas activas': '⚠️ Active alerts',
@@ -4468,7 +4468,7 @@ var _i18nStrMap = {
     '⌨ Atajos': '⌨ Dreceres',
     '📊 Vista lite': '📊 Vista reduïda',
     '📱 Vista lite': '📱 Vista reduïda',
-    '⚡ Procesar Facturas': '⚡ Processar Factures',
+    '⚡ Procesar Archivos': '⚡ Processar Arxius',
     '⚡ Procesar archivos nuevos': '⚡ Processar arxius nous',
     '▶ Procesar pendientes del servidor': '▶ Processar pendents servidor',
     '✅ Aprobar Match OK': '✅ Aprovar Match OK',
@@ -4478,8 +4478,8 @@ var _i18nStrMap = {
     'Pendiente emitir': 'Pendent d\'emetre',
     'Pendientes': 'Pendents',
     'Todas las facturas del ciclo': 'Totes les factures del cicle',
-    'Pulsa ⚡ Procesar Facturas AP': 'Prem ⚡ Processar Factures AP',
-    'Pulsa ⚡ Procesar Facturas.': 'Prem ⚡ Processar Factures.',
+    'Pulsa ⚡ Procesar Archivos': 'Prem ⚡ Processar Factures AP',
+    'Pulsa ⚡ Procesar Archivos.': 'Prem ⚡ Processar Arxius.',
     '📊 Resumen': '📊 Resum',
     'Vista consolidada del grupo': 'Vista consolidada del grup',
     '⚠️ Alertas activas': '⚠️ Alertes actives',
@@ -4631,7 +4631,7 @@ var _i18nStrMap = {
     '📊 Vista lite': '📊 Vue réduite',
     '📊 Vista completa': '📊 Vue complète',
     '📱 Vista lite': '📱 Vue réduite',
-    '⚡ Procesar Facturas': '⚡ Traiter Factures',
+    '⚡ Procesar Archivos': '⚡ Traiter Fichiers',
     '⚡ Procesar archivos nuevos': '⚡ Traiter nouveaux fichiers',
     '▶ Procesar pendientes del servidor': '▶ Traiter en attente serveur',
     '✅ Aprobar Match OK': '✅ Approuver Match OK',
@@ -4643,8 +4643,8 @@ var _i18nStrMap = {
     'Pendiente emitir': 'En attente d\'émission',
     'Pendientes': 'En attente',
     'Todas las facturas del ciclo': 'Toutes les factures du cycle',
-    'Pulsa ⚡ Procesar Facturas AP': 'Appuyez ⚡ Traiter Factures AP',
-    'Pulsa ⚡ Procesar Facturas.': 'Appuyez ⚡ Traiter Factures.',
+    'Pulsa ⚡ Procesar Archivos': 'Appuyez ⚡ Traiter Factures AP',
+    'Pulsa ⚡ Procesar Archivos.': 'Appuyez ⚡ Traiter Fichiers.',
     '📊 Resumen': '📊 Résumé',
     'Vista consolidada del grupo': 'Vue consolidée du groupe',
     '⚠️ Alertas activas': '⚠️ Alertes actives',
@@ -4802,7 +4802,7 @@ var _i18nStrMap = {
     '📊 Vista lite': '📊 Kompaktansicht',
     '📊 Vista completa': '📊 Vollansicht',
     '📱 Vista lite': '📱 Kompaktansicht',
-    '⚡ Procesar Facturas': '⚡ Rechnungen verarbeiten',
+    '⚡ Procesar Archivos': '⚡ Dateien verarbeiten',
     '⚡ Procesar archivos nuevos': '⚡ Neue Dateien verarbeiten',
     '▶ Procesar pendientes del servidor': '▶ Server-Ausstehende verarbeiten',
     '✅ Aprobar Match OK': '✅ Match OK genehmigen',
@@ -4814,8 +4814,8 @@ var _i18nStrMap = {
     'Pendiente emitir': 'Ausstehend',
     'Pendientes': 'Ausstehend',
     'Todas las facturas del ciclo': 'Alle Rechnungen des Zyklus',
-    'Pulsa ⚡ Procesar Facturas AP': '⚡ AP-Rechnungen verarbeiten',
-    'Pulsa ⚡ Procesar Facturas.': '⚡ Rechnungen verarbeiten.',
+    'Pulsa ⚡ Procesar Archivos': '⚡ AP-Rechnungen verarbeiten',
+    'Pulsa ⚡ Procesar Archivos.': '⚡ Dateien verarbeiten.',
     '📊 Resumen': '📊 Übersicht',
     'Vista consolidada del grupo': 'Konsolidierte Gruppenansicht',
     '⚠️ Alertas activas': '⚠️ Aktive Warnungen',
@@ -4964,7 +4964,7 @@ var _i18nStrMap = {
     '⌨ Atajos': '⌨ Scorciatoie',
     '📊 Vista lite': '📊 Vista compatta',
     '📱 Vista lite': '📱 Vista compatta',
-    '⚡ Procesar Facturas': '⚡ Elabora Fatture',
+    '⚡ Procesar Archivos': '⚡ Elabora File',
     '⚡ Procesar archivos nuevos': '⚡ Elabora nuovi file',
     '▶ Procesar pendientes del servidor': '▶ Elabora in attesa server',
     '✅ Aprobar Match OK': '✅ Approva Match OK',
@@ -4976,8 +4976,8 @@ var _i18nStrMap = {
     'Pendiente emitir': 'In attesa emissione',
     'Pendientes': 'In attesa',
     'Todas las facturas del ciclo': 'Tutte le fatture del ciclo',
-    'Pulsa ⚡ Procesar Facturas AP': 'Premi ⚡ Elabora Fatture AP',
-    'Pulsa ⚡ Procesar Facturas.': 'Premi ⚡ Elabora Fatture.',
+    'Pulsa ⚡ Procesar Archivos': 'Premi ⚡ Elabora Fatture AP',
+    'Pulsa ⚡ Procesar Archivos.': 'Premi ⚡ Elabora File.',
     '📊 Resumen': '📊 Riepilogo',
     'Vista consolidada del grupo': 'Vista consolidata del gruppo',
     '⚠️ Alertas activas': '⚠️ Avvisi attivi',
@@ -5109,7 +5109,7 @@ var _i18nStrMap = {
     '⌨ Atajos': '⌨ Atalhos',
     '📊 Vista lite': '📊 Vista compacta',
     '📱 Vista lite': '📱 Vista compacta',
-    '⚡ Procesar Facturas': '⚡ Processar Faturas',
+    '⚡ Procesar Archivos': '⚡ Processar Ficheiros',
     '⚡ Procesar archivos nuevos': '⚡ Processar novos arquivos',
     '▶ Procesar pendientes del servidor': '▶ Processar pendentes servidor',
     '✅ Aprobar Match OK': '✅ Aprovar Match OK',
@@ -5119,8 +5119,8 @@ var _i18nStrMap = {
     'Pendiente emitir': 'Pendente emitir',
     'Pendientes': 'Pendentes',
     'Todas las facturas del ciclo': 'Todas as faturas do ciclo',
-    'Pulsa ⚡ Procesar Facturas AP': 'Pressione ⚡ Processar Faturas AP',
-    'Pulsa ⚡ Procesar Facturas.': 'Pressione ⚡ Processar Faturas.',
+    'Pulsa ⚡ Procesar Archivos': 'Pressione ⚡ Processar Faturas AP',
+    'Pulsa ⚡ Procesar Archivos.': 'Pressione ⚡ Processar Ficheiros.',
     '📊 Resumen': '📊 Resumo',
     'Vista consolidada del grupo': 'Vista consolidada do grupo',
     '⚠️ Alertas activas': '⚠️ Alertas ativos',
@@ -6638,7 +6638,7 @@ function _runBatchPipeline(fileNames) {
       if (title) title.textContent = 'Completado — ' + procesados + '/' + total + ' archivo(s)';
       if (btn) btn.disabled = false;
       if (spin) spin.style.display = 'none';
-      if (lbl) lbl.textContent = '⚡ Procesar Facturas';
+      if (lbl) lbl.textContent = '⚡ Procesar Archivos';
       if (btnCl) { btnCl.disabled = false; btnCl.textContent = 'Cerrar'; }
       var retryBtn = document.getElementById('btn-retry');
       if (retryBtn) retryBtn.style.display = 'none';
@@ -7558,7 +7558,7 @@ function procesarAP() {
       title.textContent = ok ? 'Pipeline AP completado' : 'Pipeline AP con errores';
       btn.disabled = false;
       spin.style.display = 'none';
-      lbl.textContent = '⚙️ Procesar Facturas AP';
+      lbl.textContent = '⚡ Procesar Archivos';
       btnCl.disabled = false;
       setTimeout(loadAP, 800);
     }
@@ -7572,7 +7572,7 @@ function procesarAP() {
     log.appendChild(p);
     btn.disabled = false;
     spin.style.display = 'none';
-    lbl.textContent = '⚙️ Procesar Facturas AP';
+    lbl.textContent = '⚡ Procesar Archivos';
     btnCl.disabled = false;
   };
 }
@@ -9405,7 +9405,7 @@ function showSetupChecklist() {
   const items = [
     {label:'Configurar SMTP para notificaciones email', check: () => true, link:'/admin/', action:'Ir a Admin → Conexiones'},
     {label:'Subir primer DRR (.xlsm)', check: () => document.getElementById('drr-status')?.textContent?.includes('días'), link:null, action:'Tab DRR → Subir DRR'},
-    {label:'Procesar facturas AR (⚡)', check: () => (parseInt(document.getElementById('sc-procesadas')?.textContent)||0) > 0, link:null, action:'Tab AR → Procesar Facturas'},
+    {label:'Procesar archivos (⚡)', check: () => (parseInt(document.getElementById('sc-procesadas')?.textContent)||0) > 0, link:null, action:'Tab AR → Procesar Archivos'},
     {label:'Revisar discrepancias AP', check: () => document.getElementById('tab-ap')?.classList?.contains('active'), link:null, action:'Tab AP'},
     {label:'Configurar canal de notificaciones', check: () => localStorage.getItem('notif_configured'), link:null, action:'Tab Notificaciones'},
     {label:'Probar el tour guiado', check: () => localStorage.getItem('tour_done'), link:null, action:'Menú ⋯ → Demo Mode → Tour'},
