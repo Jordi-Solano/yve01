@@ -480,6 +480,14 @@ def api_procesar_batch_stream():
                 yield 'data: PIPELINE_CON_ERRORES\n\n'
                 return
             _pipeline_running = True
+        # Keep-alive: enviar comentario vacío cada 8s para evitar timeout de Render
+        import threading, time as _tm
+        _ka = {'on': True}
+        def _keepalive():
+            while _ka['on']:
+                _tm.sleep(8)
+        _ka_t = threading.Thread(target=_keepalive, daemon=True)
+        _ka_t.start()
         try:
             if not archivos:
                 yield 'data: ✗ No se especificaron archivos\n\n'
@@ -749,6 +757,7 @@ def api_procesar_batch_stream():
             yield f'data: ERROR: {str(e)[:200]}\n\n'
             yield 'data: PIPELINE_CON_ERRORES\n\n'
         finally:
+            _ka['on'] = False
             _pipeline_running = False
 
     return Response(stream_with_context(generar()), mimetype='text/event-stream',
@@ -1000,6 +1009,37 @@ def _detect_file_type(filename):
     if name.endswith(('.xlsx', '.xls', '.csv', '.xlsm')):
         return 'AR_o_AP'  # Podría ser extracto, ventas, inventario...
     return 'AP'
+
+@app.route('/api/historial_procesado')
+@login_required
+def api_historial_procesado():
+    """Devuelve historial de archivos procesados con tipo y resultado."""
+    log = _load_proc_log()
+    items = []
+    for fname, info in sorted(log.items(), key=lambda x: x[1].get('fecha',''), reverse=True):
+        resultado = info.get('resultado', '—')
+        # Determinar el tab que se actualizó
+        tab = '—'
+        if resultado in ('AP_OK',): tab = 'AP — Proveedores'
+        elif resultado in ('AR_OK',): tab = 'AR — OTAs'
+        elif resultado in ('DRR_OK',): tab = 'DRR'
+        elif resultado in ('BANK_OK',): tab = 'Banco'
+        elif resultado in ('FB_OK',): tab = 'F&B Cost'
+        elif resultado in ('INV_OK',): tab = 'Inventario'
+        elif resultado in ('ROOMING',): tab = 'Rooming'
+        elif 'SKIP' in resultado: tab = 'Omitido'
+        elif 'ERR' in resultado or 'CRASH' in resultado: tab = 'Error'
+        
+        icono = '✓' if 'OK' in resultado else ('⚠' if 'SKIP' in resultado else ('ℹ' if resultado == 'ROOMING' else '✗'))
+        items.append({
+            'archivo': fname,
+            'fecha': info.get('fecha', '—'),
+            'resultado': resultado,
+            'tab': tab,
+            'icono': icono,
+        })
+    return jsonify({'ok': True, 'items': items[:50]})  # Últimos 50
+
 
 @app.route('/api/archivos_estado', methods=['GET'])
 @login_required
@@ -2905,6 +2945,7 @@ button, a { touch-action: manipulation; }
         <div class="menu-sep"></div>
         <div class="menu-head" data-i18n="menu.presentacion">Presentación</div>
         <button class="menu-item" data-i18n="nav.tour" onclick="startTour();document.getElementById('main-menu').classList.remove('open')">🎯 Tour guiado</button>
+        <button class="menu-item" onclick="mostrarHistorialProcesado();document.getElementById('main-menu').classList.remove('open')">📋 Historial de procesado</button>
         <button class="menu-item" id="btn-demo" onclick="toggleDemoMode()"><span data-i18n="nav.demo">🎭 Demo Mode</span></button>
         <div class="menu-sep"></div>
         <div class="menu-head" data-i18n="menu.cambiarRol">Cambiar rol</div>
@@ -6836,6 +6877,8 @@ function _runBatchPipeline(fileNames) {
   function _finish(ok) {
     if (icon) icon.textContent = ok ? '✅' : '⚠️';
     if (title) title.textContent = ok ? 'Procesado completado' : 'Procesado finalizado con avisos';
+    // Mostrar badges verdes en los tabs que se actualizaron
+    if (log) _showTabBadges(log.textContent || '');
     if (btn) btn.disabled = false;
     if (spin) spin.style.display = 'none';
     if (lbl) lbl.textContent = '⚡ Procesar Archivos';
@@ -6889,6 +6932,96 @@ function _runBatchPipeline(fileNames) {
   };
 }
 
+
+
+// ── Historial de procesado ──────────────────────────────────────────
+async function mostrarHistorialProcesado() {
+  try {
+    var r = await fetch('/api/historial_procesado');
+    var d = await r.json();
+    if (!d.ok || !d.items.length) {
+      alert('No hay archivos procesados todavía.');
+      return;
+    }
+    // Crear modal con historial
+    var existing = document.getElementById('historial-modal');
+    if (existing) existing.remove();
+    
+    var rows = d.items.map(function(item) {
+      var color = item.icono === '✓' ? '#4ade80' : (item.icono === '⚠' ? '#facc15' : (item.icono === 'ℹ' ? '#60a5fa' : '#f87171'));
+      return '<tr style="border-bottom:1px solid rgba(255,255,255,.05)">' +
+        '<td style="padding:8px 12px;color:' + color + ';font-size:14px">' + item.icono + '</td>' +
+        '<td style="padding:8px 10px;font-size:12px;max-width:250px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap" title="' + item.archivo + '">' + item.archivo + '</td>' +
+        '<td style="padding:8px 10px;font-size:12px;color:var(--acc2)">' + item.tab + '</td>' +
+        '<td style="padding:8px 10px;font-size:11px;color:#64748b">' + item.fecha + '</td>' +
+        '</tr>';
+    }).join('');
+    
+    // Contar tabs actualizados
+    var tabCounts = {};
+    d.items.forEach(function(item) {
+      if (item.tab !== 'Omitido' && item.tab !== 'Error' && item.tab !== '—') {
+        tabCounts[item.tab] = (tabCounts[item.tab] || 0) + 1;
+      }
+    });
+    var tabSummary = Object.entries(tabCounts).map(function(e) {
+      return '<span style="display:inline-block;padding:3px 10px;border-radius:12px;font-size:11px;font-weight:600;background:rgba(59,130,246,.12);color:var(--acc2);margin:2px 3px">' + e[1] + ' ' + e[0] + '</span>';
+    }).join('');
+    
+    var modal = document.createElement('div');
+    modal.id = 'historial-modal';
+    modal.style.cssText = 'position:fixed;inset:0;z-index:9999;background:rgba(0,0,0,.6);display:flex;align-items:center;justify-content:center';
+    modal.innerHTML = '<div style="background:var(--bg2);border-radius:16px;padding:24px;max-width:700px;width:95%;max-height:80vh;overflow:auto;box-shadow:0 20px 60px rgba(0,0,0,.5)">' +
+      '<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:16px">' +
+        '<h3 style="margin:0;font-size:16px;font-weight:700">📋 Historial de Procesado</h3>' +
+        '<button onclick="document.getElementById('historial-modal').remove()" style="background:none;border:none;color:var(--mut);font-size:20px;cursor:pointer">✕</button>' +
+      '</div>' +
+      '<div style="margin-bottom:14px">' + (tabSummary || '<span style="color:#64748b;font-size:12px">Sin datos procesados</span>') + '</div>' +
+      '<table style="width:100%;border-collapse:collapse">' +
+        '<thead><tr style="border-bottom:1px solid rgba(255,255,255,.1)">' +
+          '<th style="padding:6px 12px;text-align:left;font-size:11px;color:#64748b"></th>' +
+          '<th style="padding:6px 10px;text-align:left;font-size:11px;color:#64748b">ARCHIVO</th>' +
+          '<th style="padding:6px 10px;text-align:left;font-size:11px;color:#64748b">SECCIÓN</th>' +
+          '<th style="padding:6px 10px;text-align:left;font-size:11px;color:#64748b">FECHA</th>' +
+        '</tr></thead>' +
+        '<tbody>' + rows + '</tbody>' +
+      '</table>' +
+    '</div>';
+    modal.addEventListener('click', function(e) { if (e.target === modal) modal.remove(); });
+    document.body.appendChild(modal);
+  } catch(e) {
+    alert('Error cargando historial: ' + e.message);
+  }
+}
+
+// Mostrar badges en los tabs que se actualizaron tras procesar
+function _showTabBadges(log) {
+  // log es un string con los mensajes del procesado
+  var tabs = {};
+  if (log.includes('AP ')) tabs['tab-ap'] = true;
+  if (log.includes('AR ') || log.includes('OTA')) tabs['tab-ar'] = true;
+  if (log.includes('Banco')) tabs['tab-banco'] = true;
+  if (log.includes('F&B')) tabs['tab-fb'] = true;
+  if (log.includes('DRR')) tabs['tab-drr'] = true;
+  
+  // Añadir indicador verde a los tabs actualizados
+  document.querySelectorAll('.tab-link').forEach(function(el) {
+    var badge = el.querySelector('.tab-badge');
+    if (badge) badge.remove();
+  });
+  for (var tabId in tabs) {
+    var tabEl = document.querySelector('[data-tab="' + tabId.replace('tab-','') + '"]');
+    if (tabEl) {
+      var badge = document.createElement('span');
+      badge.className = 'tab-badge';
+      badge.style.cssText = 'width:6px;height:6px;border-radius:50%;background:#22c55e;display:inline-block;margin-left:4px;vertical-align:middle';
+      badge.title = 'Actualizado';
+      tabEl.appendChild(badge);
+      // Quitar badge tras 30 segundos
+      setTimeout(function(b){ if(b.parentNode) b.remove(); }, 30000, badge);
+    }
+  }
+}
 
 function closeInvoiceModal() {
   var m = document.getElementById('invoice-modal');
