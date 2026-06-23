@@ -530,14 +530,6 @@ def api_procesar_batch_stream():
                 yield 'data: PIPELINE_CON_ERRORES\n\n'
                 return
             _pipeline_running = True
-        # Keep-alive: enviar comentario vacío cada 8s para evitar timeout de Render
-        import threading, time as _tm
-        _ka = {'on': True}
-        def _keepalive():
-            while _ka['on']:
-                _tm.sleep(8)
-        _ka_t = threading.Thread(target=_keepalive, daemon=True)
-        _ka_t.start()
         try:
             if not archivos:
                 yield 'data: ✗ No se especificaron archivos\n\n'
@@ -565,6 +557,8 @@ def api_procesar_batch_stream():
 
                 tipo = _detect_file_type(fname)
                 yield f'data: >> [{i+1}/{total}] {fname}...\n\n'
+                # SSE keep-alive para evitar timeout de Render en procesados largos
+                yield ': ping\n\n'
 
                 try:
                     import subprocess as _sp
@@ -884,11 +878,10 @@ def api_procesar_batch_stream():
             yield f'data: ERROR: {str(e)[:200]}\n\n'
             yield 'data: PIPELINE_CON_ERRORES\n\n'
         finally:
-            _ka['on'] = False
             _pipeline_running = False
 
     return Response(stream_with_context(generar()), mimetype='text/event-stream',
-                    headers={'Cache-Control':'no-cache','X-Accel-Buffering':'no'})
+                    headers={'Cache-Control':'no-cache','X-Accel-Buffering':'no','Connection':'keep-alive'})
 
 @app.route("/api/health")
 def health():
