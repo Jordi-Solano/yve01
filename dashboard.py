@@ -670,7 +670,24 @@ def api_procesar_batch_stream():
                                         _mark(fname, 'SKIP')
                                 elif _tipo_doc == 'VENTAS_POS':
                                     total = reg.get('total_ventas', 0)
-                                    yield f'data: ✓ F&B {fname}: ventas detectadas por IA — €{total}\n\n'
+                                    platos = reg.get('platos', [])
+                                    # Integrar ventas detalladas en ventas_fb_diarias
+                                    try:
+                                        if platos:
+                                            _df_ventas = pd.DataFrame(platos)
+                                            fecha = reg.get('fecha', date.today().isoformat())
+                                            if 'fecha' not in _df_ventas.columns:
+                                                _df_ventas['fecha'] = fecha
+                                            ventas_path = os.path.join(BASE_DIR, 'datos-referencia', 'ventas_fb_diarias.xlsx')
+                                            if os.path.exists(ventas_path):
+                                                _df_old_v = pd.read_excel(ventas_path)
+                                                _df_ventas = pd.concat([_df_old_v, _df_ventas], ignore_index=True)
+                                            _df_ventas.to_excel(ventas_path, index=False)
+                                            yield f'data: ✓ F&B {fname}: {len(platos)} platos, €{total} integrados por IA\n\n'
+                                        else:
+                                            yield f'data: ✓ F&B {fname}: ventas detectadas — €{total}\n\n'
+                                    except Exception as _efb2:
+                                        yield f'data: ✓ F&B {fname}: ventas — €{total} (detalle no integrable: {str(_efb2)[:40]})\n\n'
                                     _mark(fname, 'FB_OK')
                                 elif _tipo_doc == 'COMISIONES_OTA':
                                     ota = reg.get('ota', '?')
@@ -678,10 +695,53 @@ def api_procesar_batch_stream():
                                     yield f'data: ✓ AR {fname}: comisiones {ota} detectadas por IA — €{comision}\n\n'
                                     _mark(fname, 'AR_OK')
                                     has_ar = True
+                                elif _tipo_doc == 'INVENTARIO':
+                                    # Integrar datos de inventario en F&B
+                                    try:
+                                        inv_items = reg.get('items', reg.get('productos', []))
+                                        if inv_items:
+                                            _df_inv = pd.DataFrame(inv_items)
+                                            inv_path = os.path.join(BASE_DIR, 'datos-referencia', 'inventario.xlsx')
+                                            if os.path.exists(inv_path):
+                                                _df_old = pd.read_excel(inv_path)
+                                                _df_inv = pd.concat([_df_old, _df_inv], ignore_index=True)
+                                                if 'ingrediente' in _df_inv.columns:
+                                                    _df_inv.drop_duplicates(subset=['ingrediente'], keep='last', inplace=True)
+                                            _df_inv.to_excel(inv_path, index=False)
+                                            yield f'data: ✓ Inventario {fname}: {len(inv_items)} productos extraídos por IA\n\n'
+                                        else:
+                                            yield f'data: ℹ {fname}: inventario detectado (sin items extraíbles)\n\n'
+                                    except Exception as _einv:
+                                        yield f'data: ℹ {fname}: inventario detectado — {str(_einv)[:60]}\n\n'
+                                    _mark(fname, 'INV_OK')
+                                elif _tipo_doc == 'MERMAS':
+                                    # Integrar datos de mermas en F&B
+                                    try:
+                                        merma_items = reg.get('items', reg.get('mermas', []))
+                                        if merma_items:
+                                            _df_mer = pd.DataFrame(merma_items)
+                                            mer_path = os.path.join(BASE_DIR, 'datos-referencia', 'mermas.xlsx')
+                                            if os.path.exists(mer_path):
+                                                _df_old_m = pd.read_excel(mer_path)
+                                                _df_mer = pd.concat([_df_old_m, _df_mer], ignore_index=True)
+                                            _df_mer.to_excel(mer_path, index=False)
+                                            total_merma = sum(float(m.get('coste_merma', m.get('coste', 0)) or 0) for m in merma_items)
+                                            yield f'data: ✓ Mermas {fname}: {len(merma_items)} registros — €{total_merma:.2f} extraídos por IA\n\n'
+                                        else:
+                                            yield f'data: ℹ {fname}: mermas detectadas (sin items extraíbles)\n\n'
+                                    except Exception as _emer:
+                                        yield f'data: ℹ {fname}: mermas detectadas — {str(_emer)[:60]}\n\n'
+                                    _mark(fname, 'INV_OK')
                                 elif _tipo_doc == 'ROOMING':
                                     grupo = reg.get('grupo', '—')
                                     habs = reg.get('num_habitaciones', '?')
-                                    yield f'data: ℹ {fname}: rooming de {grupo} — {habs} habitaciones (IA)\n\n'
+                                    checkin = reg.get('checkin', '')
+                                    checkout = reg.get('checkout', '')
+                                    tarifa = reg.get('tarifa_media', '')
+                                    info_parts = [f'{habs} hab.']
+                                    if checkin: info_parts.append(f'{checkin}→{checkout}')
+                                    if tarifa: info_parts.append(f'€{tarifa}/noche')
+                                    yield f'data: ✓ Rooming {fname}: {grupo} — {", ".join(info_parts)} (IA)\n\n'
                                     _mark(fname, 'ROOMING')
                                 elif _tipo_doc == 'OTRO':
                                     desc = reg.get('descripcion', 'no clasificable')
