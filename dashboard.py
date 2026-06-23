@@ -3684,7 +3684,7 @@ function generateBriefing(stats) {
       statusBar.style.color = 'var(--grn)';
       statusBar.textContent = '✓ ' + good[0];
       // First all-clear celebration
-      if (!sessionStorage.getItem('all_clear_shown')) { sessionStorage.setItem('all_clear_shown','1'); setTimeout(()=>showNotification('🎉 ¡Todo en orden! Ciclo AR limpio.','success'),500); }
+      // notif AR "todo en orden" quitada
     }
     // Pulse animation on issues
     if (issues.length > 0) {
@@ -3828,7 +3828,7 @@ async function loadAll() {
       lnk.onclick = function(e){ e.preventDefault(); switchTab('ar_otas',document.getElementById('tab-ar_otas')); };
       sumTxt.appendChild(lnk);
     }
-    else { sumEl.style.display = 'block'; sumTxt.textContent = '✓ Todo en orden — ' + stats.total + ' facturas procesadas sin incidencias'; sumEl.style.background = 'rgba(34,197,94,.05)'; sumEl.style.borderColor = 'rgba(34,197,94,.1)'; }
+    else { sumEl.style.display = 'none'; }
   }
   if (topBar) { topBar.style.width = '100%'; setTimeout(() => { topBar.style.opacity = '0'; setTimeout(() => { topBar.style.width = '0'; topBar.style.opacity = '1'; }, 300); }, 400); }
 
@@ -4076,10 +4076,10 @@ function closeModalAndRefresh() {
           var apTab = document.getElementById('tab-ap') || document.querySelector('[onclick*="ap_proveedores"]') || document.querySelector('[onclick*="switchTab(\'ap\'"]');
           if (apTab) {
             apTab.click();
-            showNotification && showNotification('✓ ' + apCount + ' factura(s) AP procesada(s)', 'success');
+            // notif AP quitada
           }
         } else if (arCount > 0) {
-          showNotification && showNotification('✓ ' + arCount + ' factura(s) AR procesada(s)', 'success');
+          // notif AR quitada
         }
       }).catch(()=>{});
     }).catch(()=>{});
@@ -6970,8 +6970,8 @@ async function mostrarHistorialProcesado() {
     
     var modal = document.createElement('div');
     modal.id = 'historial-modal';
-    modal.style.cssText = 'position:fixed;inset:0;z-index:9999;background:rgba(0,0,0,.6);display:flex;align-items:center;justify-content:center';
-    modal.innerHTML = '<div style="background:var(--bg2);border-radius:16px;padding:24px;max-width:700px;width:95%;max-height:80vh;overflow:auto;box-shadow:0 20px 60px rgba(0,0,0,.5)">' +
+    modal.style.cssText = 'position:fixed;inset:0;z-index:9999;background:rgba(0,0,0,.7);backdrop-filter:blur(4px);display:flex;align-items:center;justify-content:center';
+    modal.innerHTML = '<div style="background:#0f1729;border:1px solid rgba(255,255,255,.08);border-radius:16px;padding:24px;max-width:700px;width:95%;max-height:80vh;overflow:auto;box-shadow:0 20px 60px rgba(0,0,0,.7);position:relative">' +
       '<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:16px">' +
         '<h3 style="margin:0;font-size:16px;font-weight:700">📋 Historial de Procesado</h3>' +
         '<button onclick="this.closest(\'[id=historial-modal]\').remove()" style="background:none;border:none;color:var(--mut);font-size:20px;cursor:pointer">✕</button>' +
@@ -6994,31 +6994,37 @@ async function mostrarHistorialProcesado() {
   }
 }
 
-// Mostrar badges en los tabs que se actualizaron tras procesar
-function _showTabBadges(log) {
-  // log es un string con los mensajes del procesado
-  var tabs = {};
-  if (log.includes('AP ')) tabs['tab-ap'] = true;
-  if (log.includes('AR ') || log.includes('OTA')) tabs['tab-ar'] = true;
-  if (log.includes('Banco')) tabs['tab-banco'] = true;
-  if (log.includes('F&B')) tabs['tab-fb'] = true;
-  if (log.includes('DRR')) tabs['tab-drr'] = true;
+// Mostrar puntos verdes en los tabs que se actualizaron tras procesar
+function _showTabBadges(logText) {
+  var tabMap = {
+    'AP ': 'tab-ap',
+    'AR ': 'tab-ar',
+    'OTA': 'tab-ar',
+    'Banco': 'tab-banco',
+    'F&B': 'tab-fb',
+    'DRR': 'tab-drr',
+  };
   
-  // Añadir indicador verde a los tabs actualizados
-  document.querySelectorAll('.tab-link').forEach(function(el) {
-    var badge = el.querySelector('.tab-badge');
-    if (badge) badge.remove();
-  });
-  for (var tabId in tabs) {
-    var tabEl = document.querySelector('[data-tab="' + tabId.replace('tab-','') + '"]');
+  // Limpiar badges anteriores
+  document.querySelectorAll('.proc-badge').forEach(function(b) { b.remove(); });
+  
+  var updated = {};
+  for (var key in tabMap) {
+    if (logText.includes(key) && logText.includes('✓')) {
+      updated[tabMap[key]] = true;
+    }
+  }
+  
+  for (var tabId in updated) {
+    var tabEl = document.getElementById(tabId);
     if (tabEl) {
-      var badge = document.createElement('span');
-      badge.className = 'tab-badge';
-      badge.style.cssText = 'width:6px;height:6px;border-radius:50%;background:#22c55e;display:inline-block;margin-left:4px;vertical-align:middle';
-      badge.title = 'Actualizado';
-      tabEl.appendChild(badge);
-      // Quitar badge tras 30 segundos
-      setTimeout(function(b){ if(b.parentNode) b.remove(); }, 30000, badge);
+      var dot = document.createElement('span');
+      dot.className = 'proc-badge';
+      dot.style.cssText = 'width:7px;height:7px;border-radius:50%;background:#22c55e;display:inline-block;margin-left:6px;vertical-align:middle;box-shadow:0 0 6px rgba(34,197,94,.5)';
+      dot.title = 'Datos actualizados';
+      tabEl.appendChild(dot);
+      // Quitar tras 60 segundos
+      setTimeout(function(d){ if(d.parentNode) d.remove(); }, 60000, dot);
     }
   }
 }
