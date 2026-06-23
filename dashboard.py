@@ -454,6 +454,56 @@ def api_oracle_status():
     mode='real' if os.environ.get('ORACLE_BASE_URL') else 'simulation'
     return jsonify({'mode':mode,'ok':True})
 
+
+# ── Normalización de columnas para datos extraídos por IA ────────────
+def _normalize_cols(df, expected_map):
+    """Renombra columnas de un DataFrame para que coincidan con el esquema esperado.
+    expected_map: {'nombre_esperado': ['alternativa1', 'alternativa2', ...]}"""
+    rename = {}
+    for expected, alternatives in expected_map.items():
+        if expected not in df.columns:
+            for alt in alternatives:
+                if alt in df.columns:
+                    rename[alt] = expected
+                    break
+    if rename:
+        df = df.rename(columns=rename)
+    return df
+
+_INV_COL_MAP = {
+    'ingrediente': ['producto', 'nombre', 'item', 'articulo', 'material'],
+    'categoria': ['tipo', 'category', 'grupo', 'familia'],
+    'coste_unitario': ['precio', 'coste', 'precio_unitario', 'cost', 'precio_kg'],
+    'stock_actual_kg_l': ['stock_actual', 'stock', 'cantidad', 'cantidad_actual'],
+    'stock_inicial_kg_l': ['stock_inicial', 'cantidad_inicial'],
+    'unidad': ['unit', 'medida', 'uom'],
+    'proveedor': ['supplier', 'vendor', 'distribuidor'],
+}
+
+_MER_COL_MAP = {
+    'ingrediente': ['producto', 'nombre', 'item', 'articulo'],
+    'categoria': ['tipo', 'category', 'grupo'],
+    'cantidad_merma': ['cantidad', 'amount', 'qty', 'kilos'],
+    'causa': ['motivo', 'reason', 'causa_merma'],
+    'coste_merma': ['coste', 'coste_total', 'valor', 'importe'],
+    'coste_unitario': ['precio', 'coste_kg'],
+    'unidad': ['unit', 'medida'],
+}
+
+_VEN_COL_MAP = {
+    'nombre_plato': ['plato', 'nombre', 'producto', 'item', 'dish'],
+    'categoria': ['tipo', 'category', 'grupo'],
+    'unidades_vendidas': ['cantidad', 'qty', 'units', 'unidades'],
+    'total_venta': ['total', 'importe', 'revenue', 'ventas'],
+}
+
+_BANK_COL_MAP = {
+    'fecha': ['date', 'dia'],
+    'concepto': ['descripcion', 'description', 'detalle', 'referencia'],
+    'importe': ['cantidad', 'amount', 'monto', 'valor'],
+    'saldo': ['balance', 'saldo_final'],
+}
+
 @app.route('/api/procesar_batch_stream')
 @login_required
 def api_procesar_batch_stream():
@@ -657,13 +707,16 @@ def api_procesar_batch_stream():
                                 if _tipo_doc == 'EXTRACTO_BANCO' and reg.get('movimientos'):
                                     try:
                                         _movs = reg['movimientos']
-                                        _df_movs = pd.DataFrame(_movs)
+                                        _df_movs = _normalize_cols(pd.DataFrame(_movs), _BANK_COL_MAP)
                                         banco_path = os.path.join(BASE_DIR, 'datos-referencia', 'extracto_banco.xlsx')
                                         if os.path.exists(banco_path):
                                             _df_exist = pd.read_excel(banco_path)
                                             _df_movs = pd.concat([_df_exist, _df_movs], ignore_index=True)
                                         _df_movs.to_excel(banco_path, index=False)
-                                        yield f'data: ✓ Banco {fname}: {len(reg["movimientos"])} movimientos extraídos por IA\n\n'
+                                        n_movs = len(reg['movimientos'])
+                                        total_cargo = sum(float(m.get('importe',0) or 0) for m in reg['movimientos'] if float(m.get('importe',0) or 0) < 0)
+                                        total_abono = sum(float(m.get('importe',0) or 0) for m in reg['movimientos'] if float(m.get('importe',0) or 0) > 0)
+                                        yield f'data: ✓ Banco {fname}: {n_movs} movimientos (cargos €{abs(total_cargo):,.0f} / abonos €{total_abono:,.0f}) integrados\n\n'
                                         _mark(fname, 'BANK_OK')
                                     except Exception as _eb2:
                                         yield f'data: ⚠ {fname}: extracto detectado pero error al guardar — {str(_eb2)[:60]}\n\n'
@@ -674,7 +727,7 @@ def api_procesar_batch_stream():
                                     # Integrar ventas detalladas en ventas_fb_diarias
                                     try:
                                         if platos:
-                                            _df_ventas = pd.DataFrame(platos)
+                                            _df_ventas = _normalize_cols(pd.DataFrame(platos), _VEN_COL_MAP)
                                             fecha = reg.get('fecha', date.today().isoformat())
                                             if 'fecha' not in _df_ventas.columns:
                                                 _df_ventas['fecha'] = fecha
@@ -700,7 +753,7 @@ def api_procesar_batch_stream():
                                     try:
                                         inv_items = reg.get('items', reg.get('productos', []))
                                         if inv_items:
-                                            _df_inv = pd.DataFrame(inv_items)
+                                            _df_inv = _normalize_cols(pd.DataFrame(inv_items), _INV_COL_MAP)
                                             inv_path = os.path.join(BASE_DIR, 'datos-referencia', 'inventario.xlsx')
                                             if os.path.exists(inv_path):
                                                 _df_old = pd.read_excel(inv_path)
@@ -708,7 +761,8 @@ def api_procesar_batch_stream():
                                                 if 'ingrediente' in _df_inv.columns:
                                                     _df_inv.drop_duplicates(subset=['ingrediente'], keep='last', inplace=True)
                                             _df_inv.to_excel(inv_path, index=False)
-                                            yield f'data: ✓ Inventario {fname}: {len(inv_items)} productos extraídos por IA\n\n'
+                                            nombres = [str(i.get('ingrediente', i.get('producto', '?')))[:20] for i in inv_items[:5]]
+                                            yield f'data: ✓ Inventario {fname}: {len(inv_items)} productos ({", ".join(nombres)}{"..." if len(inv_items)>5 else ""}) integrados\n\n'
                                         else:
                                             yield f'data: ℹ {fname}: inventario detectado (sin items extraíbles)\n\n'
                                     except Exception as _einv:
@@ -719,7 +773,7 @@ def api_procesar_batch_stream():
                                     try:
                                         merma_items = reg.get('items', reg.get('mermas', []))
                                         if merma_items:
-                                            _df_mer = pd.DataFrame(merma_items)
+                                            _df_mer = _normalize_cols(pd.DataFrame(merma_items), _MER_COL_MAP)
                                             mer_path = os.path.join(BASE_DIR, 'datos-referencia', 'mermas.xlsx')
                                             if os.path.exists(mer_path):
                                                 _df_old_m = pd.read_excel(mer_path)
@@ -741,6 +795,19 @@ def api_procesar_batch_stream():
                                     info_parts = [f'{habs} hab.']
                                     if checkin: info_parts.append(f'{checkin}→{checkout}')
                                     if tarifa: info_parts.append(f'€{tarifa}/noche')
+                                    # Guardar datos de rooming
+                                    try:
+                                        rooming_path = os.path.join(BASE_DIR, 'datos-referencia', 'rooming_grupos.json')
+                                        rooming_data = json.load(open(rooming_path)) if os.path.exists(rooming_path) else []
+                                        rooming_data.append({
+                                            'archivo': fname, 'grupo': grupo,
+                                            'habitaciones': habs, 'checkin': checkin,
+                                            'checkout': checkout, 'tarifa': tarifa,
+                                            'fecha_procesado': date.today().isoformat()
+                                        })
+                                        json.dump(rooming_data, open(rooming_path, 'w'), indent=2, ensure_ascii=False)
+                                    except Exception:
+                                        pass
                                     yield f'data: ✓ Rooming {fname}: {grupo} — {", ".join(info_parts)} (IA)\n\n'
                                     _mark(fname, 'ROOMING')
                                 elif _tipo_doc == 'OTRO':
