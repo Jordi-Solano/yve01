@@ -6974,7 +6974,7 @@ async function mostrarHistorialProcesado() {
     modal.innerHTML = '<div style="background:var(--bg2);border-radius:16px;padding:24px;max-width:700px;width:95%;max-height:80vh;overflow:auto;box-shadow:0 20px 60px rgba(0,0,0,.5)">' +
       '<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:16px">' +
         '<h3 style="margin:0;font-size:16px;font-weight:700">📋 Historial de Procesado</h3>' +
-        '<button onclick="document.getElementById('historial-modal').remove()" style="background:none;border:none;color:var(--mut);font-size:20px;cursor:pointer">✕</button>' +
+        '<button onclick="this.closest(\'[id=historial-modal]\').remove()" style="background:none;border:none;color:var(--mut);font-size:20px;cursor:pointer">✕</button>' +
       '</div>' +
       '<div style="margin-bottom:14px">' + (tabSummary || '<span style="color:#64748b;font-size:12px">Sin datos procesados</span>') + '</div>' +
       '<table style="width:100%;border-collapse:collapse">' +
