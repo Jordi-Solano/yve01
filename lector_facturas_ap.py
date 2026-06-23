@@ -79,8 +79,23 @@ with pdfplumber.open("{pdf_path}") as pdf:
     return texto
 
 def es_ota(texto):
-    txt_lower = texto.lower()
-    return any(ota in txt_lower for ota in OTAS_CONOCIDAS)
+    """Detecta si es una FACTURA de OTA (no solo mención de OTA en el texto).
+    Un extracto bancario puede mencionar Booking.com sin ser una factura de OTA."""
+    txt_lower = texto[:3000].lower()
+    tiene_ota = any(ota in txt_lower for ota in OTAS_CONOCIDAS)
+    if not tiene_ota:
+        return False
+    # Debe tener señales de factura DE la OTA, no solo mencionarla
+    ota_invoice_signals = ['commission', 'comisión', 'comision', 'invoice', 'factura',
+                           'amount due', 'total due', 'payment due', 'remittance']
+    tiene_factura_ota = any(s in txt_lower for s in ota_invoice_signals)
+    # Si menciona OTA pero también parece extracto bancario, NO es factura OTA
+    bank_signals = ['extracto', 'saldo', 'movimiento', 'bank statement', 'cuenta corriente',
+                    'transferencia', 'cargo', 'abono', 'balance']
+    parece_banco = sum(1 for s in bank_signals if s in txt_lower) >= 3
+    if parece_banco:
+        return False
+    return tiene_factura_ota
 
 
 # Documentos que NO son facturas — pre-filtro por nombre de archivo
