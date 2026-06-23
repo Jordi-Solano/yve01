@@ -7441,11 +7441,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
 function eliminarArchivoServidor(nombre, rowEl) {
   if (!confirm('¿Eliminar ' + nombre + '?')) return;
-  fetch('/api/eliminar_archivo', {
-    method: 'POST',
-    headers: {'Content-Type': 'application/json'},
-    body: JSON.stringify({nombre: nombre})
-  })
+  _postJson('/api/eliminar_archivo', {nombre: nombre})
   .then(function(r){ return r.json(); })
   .then(function(d) {
     if (d.ok) {
