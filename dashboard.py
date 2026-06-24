@@ -859,6 +859,8 @@ def api_procesar_batch_stream():
             drr_n = sum(1 for v in log.values() if v.get('resultado') == 'DRR_OK')
             bank_n = sum(1 for v in log.values() if v.get('resultado') == 'BANK_OK')
             fb_n = sum(1 for v in log.values() if v.get('resultado') == 'FB_OK')
+            inv_n = sum(1 for v in log.values() if v.get('resultado') == 'INV_OK')
+            rooming_n = sum(1 for v in log.values() if v.get('resultado') == 'ROOMING')
             skip_n = sum(1 for v in log.values() if 'SKIP' in str(v.get('resultado','')))
             err_n = sum(1 for v in log.values() if 'ERR' in str(v.get('resultado','')) or 'CRASH' in str(v.get('resultado','')))
             parts = []
@@ -867,12 +869,23 @@ def api_procesar_batch_stream():
             if drr_n: parts.append(f'{drr_n} DRR')
             if bank_n: parts.append(f'{bank_n} banco')
             if fb_n: parts.append(f'{fb_n} F&B')
+            if inv_n: parts.append(f'{inv_n} inventario/mermas')
+            if rooming_n: parts.append(f'{rooming_n} rooming')
             resumen = ' · '.join(parts) if parts else 'sin documentos procesables'
             yield f'data: \n\n'
             yield f'data: ✅ {resumen}'
             if skip_n: yield f' · {skip_n} omitidos'
             if err_n: yield f' · {err_n} errores'
             yield f'\n\n'
+            # Indicar qué tabs consultar
+            tabs_updated = []
+            if ap_n: tabs_updated.append('AP — Proveedores')
+            if ar_n: tabs_updated.append('AR — OTAs')
+            if bank_n: tabs_updated.append('Banco')
+            if fb_n or inv_n: tabs_updated.append('F&B Cost')
+            if rooming_n: tabs_updated.append('Rooming')
+            if tabs_updated:
+                yield f'data: 📍 Consulta: {", ".join(tabs_updated)}\n\n'
             yield 'data: PIPELINE_COMPLETO\n\n'
         except Exception as e:
             yield f'data: ERROR: {str(e)[:200]}\n\n'
@@ -1145,7 +1158,7 @@ def api_historial_procesado():
         elif resultado in ('DRR_OK',): tab = 'DRR'
         elif resultado in ('BANK_OK',): tab = 'Banco'
         elif resultado in ('FB_OK',): tab = 'F&B Cost'
-        elif resultado in ('INV_OK',): tab = 'Inventario'
+        elif resultado in ('INV_OK',): tab = 'F&B Cost (Inventario/Mermas)'
         elif resultado in ('ROOMING',): tab = 'Rooming'
         elif 'SKIP' in resultado: tab = 'Omitido'
         elif 'ERR' in resultado or 'CRASH' in resultado: tab = 'Error'
@@ -7013,7 +7026,7 @@ function _runBatchPipeline(fileNames) {
   var evtSrc = new EventSource('/api/procesar_batch_stream?archivos=' + allFiles);
 
   // Timeout global generoso: 30s por archivo, mínimo 90s
-  var globalTimeout = Math.max(90000, total * 30000);
+  var globalTimeout = Math.max(120000, total * 45000);
   var timer = setTimeout(function() {
     evtSrc.close();
     _log('⚠ Tiempo de espera agotado — algunos archivos pueden no haberse procesado', 'l-err');
@@ -7122,7 +7135,10 @@ function _showTabBadges(logText) {
     'OTA': 'tab-ar',
     'Banco': 'tab-banco',
     'F&B': 'tab-fb',
+    'Inventario': 'tab-fb',
+    'Mermas': 'tab-fb',
     'DRR': 'tab-drr',
+    'Rooming': 'tab-fb',
   };
   
   // Limpiar badges anteriores
