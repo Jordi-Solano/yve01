@@ -896,6 +896,22 @@ def api_procesar_batch_stream():
     return Response(stream_with_context(generar()), mimetype='text/event-stream',
                     headers={'Cache-Control':'no-cache','X-Accel-Buffering':'no','Connection':'keep-alive'})
 
+
+@app.route('/api/test_clasificador')
+@login_required
+def api_test_clasificador():
+    """Copia los 8 PDFs de test al directorio de upload y devuelve la lista."""
+    import shutil as _sht
+    test_dir = os.path.join(BASE_DIR, 'facturas-entrada', 'test_clasificador')
+    upload_dir = os.path.join(BASE_DIR, 'facturas-entrada')
+    archivos = []
+    for pdf in sorted(glob.glob(os.path.join(test_dir, '*.pdf'))):
+        fname = os.path.basename(pdf)
+        dest = os.path.join(upload_dir, fname)
+        _sht.copy2(pdf, dest)
+        archivos.append(fname)
+    return jsonify({'ok': True, 'archivos': archivos})
+
 @app.route("/api/health")
 def health():
     """Health check — keeps Render awake and provides system status."""
