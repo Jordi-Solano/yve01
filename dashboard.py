@@ -3654,7 +3654,7 @@ button, a { touch-action: manipulation; }
     <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:22px">
       <div>
         <h2 style="font-size:18px;font-weight:800;margin:0">⚡ Procesar Archivos</h2>
-        <div style="font-size:12px;color:var(--mut);margin-top:4px">OTA (PDF) · Proveedores (PDF) · DRR (.xlsm) — los ya procesados se saltan automáticamente</div>
+        <div style="font-size:12px;color:var(--mut);margin-top:4px">Facturas · Extractos bancarios · Ventas POS · Inventario · Mermas · Comisiones OTA · Rooming — clasificación automática por IA</div>
       </div>
       <button onclick="closeUploadModal()" style="background:none;border:none;color:var(--mut);font-size:24px;cursor:pointer">×</button>
     </div>
@@ -3666,7 +3666,7 @@ button, a { touch-action: manipulation; }
          style="border:2px dashed var(--s3);border-radius:14px;padding:32px;text-align:center;cursor:pointer;transition:.2s;margin-bottom:16px">
       <div style="font-size:36px;margin-bottom:10px">📂</div>
       <div style="font-size:15px;font-weight:600;color:var(--tx);margin-bottom:6px">Arrastra archivos aquí o haz clic</div>
-      <div style="font-size:12px;color:var(--dim);margin-bottom:14px">PDF (facturas) · XLSM (DRR)</div>
+      <div style="font-size:12px;color:var(--dim);margin-bottom:14px">PDF · Excel · CSV — clasificación automática</div>
       <div style="display:flex;gap:10px;justify-content:center;flex-wrap:wrap">
         <button onclick="event.stopPropagation();document.getElementById('upload-file-input').click()"
                 style="background:var(--acc);border:none;color:#fff;padding:8px 18px;border-radius:9px;font-size:13px;font-weight:600;cursor:pointer">📄 Seleccionar archivos</button>
