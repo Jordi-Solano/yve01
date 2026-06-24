@@ -150,103 +150,107 @@ def extraer_con_claude(texto, nombre_archivo):
     try:
         import anthropic
         client = anthropic.Anthropic(api_key=api_key)
-        # Enviar más texto si el documento es largo
-        max_chars = min(len(texto), 6000)
-        prompt = (
-            "Eres un experto en operaciones y finanzas hoteleras. "
-            "Analiza este documento y CLASIFÍCALO.\n\n"
-            "PASO 1 — CLASIFICACIÓN (obligatorio, hazla PRIMERO):\n"
-            "Lee TODO el documento y decide qué tipo es. NO asumas que es factura por defecto.\n"
-            "Si tiene lista de productos con stock/cantidades → INVENTARIO\n"
-            "Si tiene pérdidas/mermas/desperdicios → MERMAS\n"  
-            "Si tiene ventas de restaurante/platos/tickets → VENTAS_POS\n"
-            "Si tiene movimientos bancarios con fechas y saldos → EXTRACTO_BANCO\n"
-            "Si tiene comisiones de Booking/Expedia/OTA → COMISIONES_OTA\n"
-            "Si tiene lista de habitaciones/huéspedes → ROOMING\n"
-            "Si tiene número de factura + importes IVA + proveedor → FACTURA\n"
-            "Si es contrato/BEO/agenda/email/logo/manual → OTRO\n\n"
-            "PASO 2 — EXTRACCIÓN según el tipo clasificado:\n\n"
-            "Si FACTURA → JSON con: es_factura:true, numero_factura, fecha, nombre_proveedor, "
-            "NIF_proveedor, descripcion_concepto, base_imponible, porcentaje_iva, cuota_iva, "
-            "total_factura, moneda\n\n"
-            "Si EXTRACTO_BANCO → JSON con: tipo_documento:\"EXTRACTO_BANCO\", "
-            "movimientos:[{fecha, concepto, importe, saldo}] (max 20 movimientos)\n\n"
-            "Si VENTAS_POS → JSON con: tipo_documento:\"VENTAS_POS\", "
-            "fecha, total_ventas, num_tickets, platos:[{nombre, cantidad, precio}] (max 15)\n\n"
-            "Si COMISIONES_OTA → JSON con: tipo_documento:\"COMISIONES_OTA\", "
-            "ota, periodo, importe_bruto, comision, porcentaje\n\n"
-            "Si INVENTARIO → JSON con: tipo_documento:\"INVENTARIO\", "
-            "items:[{ingrediente:\"nombre\", categoria:\"tipo\", coste_unitario:0.00, "
-            "stock_actual_kg_l:0.0, stock_inicial_kg_l:0.0, unidad:\"kg\", "
-            "proveedor:\"nombre\", critico:false}] — TODOS los productos que veas\n\n"
-            "Si MERMAS → JSON con: tipo_documento:\"MERMAS\", "
-            "items:[{fecha:\"DD/MM/YYYY\", ingrediente:\"nombre\", categoria:\"tipo\", "
-            "cantidad_merma:0.0, unidad:\"kg\", causa:\"motivo\", "
-            "coste_unitario:0.00, coste_merma:0.00}], total_mermas:0.00\n\n"
-            "Si VENTAS_POS → JSON con: tipo_documento:\"VENTAS_POS\", "
-            "fecha:\"YYYY-MM-DD\", total_ventas:0.00, num_tickets:0, "
-            "platos:[{nombre_plato:\"nombre\", categoria:\"tipo\", "
-            "unidades_vendidas:0, total_venta:0.00}] — TODOS los platos\n\n"
-            "Si EXTRACTO_BANCO → JSON con: tipo_documento:\"EXTRACTO_BANCO\", "
-            "movimientos:[{fecha:\"DD/MM/YYYY\", concepto:\"descripción\", "
-            "importe:0.00, saldo:0.00}] — TODOS los movimientos visibles\n\n"
-            "Si ROOMING → JSON con: tipo_documento:\"ROOMING\", "
-            "grupo, num_habitaciones, checkin, checkout, tarifa_media\n\n"
-            "Si OTRO → JSON con: tipo_documento:\"OTRO\", descripcion:\"qué es\"\n\n"
-            "Un documento ES factura si tiene: número de factura, fecha, importes, IVA/VAT.\n"
-            "Un documento NO es factura si es: email, contrato, BEO, rooming list, agenda, "
-            "manual técnico, propuesta, presupuesto sin comprometer, certificado, acta.\n"
-            "Un depósito/anticipo (deposit/advance payment) SÍ es factura.\n"
-            "Una factura proforma SÍ es factura.\n\n"
-            'Si NO es factura, devuelve SOLO: {"es_factura": false, "tipo_documento": "descripcion breve"}\n\n'
-            "PASO 2: Si SÍ es factura, extrae TODOS los campos posibles:\n"
-            '{"es_factura": true, '
-            '"numero_factura": "string o null", '
-            '"fecha": "DD/MM/YYYY o null", '
-            '"nombre_proveedor": "nombre empresa emisora", '
-            '"NIF_proveedor": "NIF/CIF/VAT ID o null", '
-            '"descripcion_concepto": "resumen en español de qué se factura", '
-            '"base_imponible": 0.00, '
-            '"porcentaje_iva": 21, '
-            '"cuota_iva": 0.00, '
-            '"total_factura": 0.00, '
-            '"moneda": "EUR"}\n\n'
-            "REGLAS:\n"
-            "- Importes SIEMPRE como float (1234.56), nunca strings\n"
-            "- Para facturas: si solo hay total → base=total/1.21, iva=21\n"
-            "- IVA 0% (intracomunitaria): base=total, iva=0\n"
-            "- Depósitos/anticipos: el total es el depósito, es_factura=true\n"
-            "- Si no encuentras un campo, pon null — NUNCA inventes\n"
-            "- SOLO JSON, sin markdown, sin explicaciones, sin ```\n\n"
-            f"ARCHIVO: {nombre_archivo}\n"
-            f"TEXTO:\n{texto[:max_chars]}"
-        )
+        # ── Prompt de clasificación y extracción universal ──
+        max_chars = min(len(texto), 8000)
+        
+        prompt = """Eres un experto en operaciones y finanzas hoteleras.
+Analiza el documento y haz DOS cosas: CLASIFICAR y EXTRAER.
+
+CLASIFICACIÓN — Lee TODO el contenido antes de decidir:
+• Lista de productos/ingredientes con stock/cantidades → INVENTARIO  
+• Pérdidas/mermas/desperdicios con costes → MERMAS
+• Ventas de restaurante/platos vendidos/tickets TPV → VENTAS_POS
+• Movimientos bancarios con fechas, importes y saldos → EXTRACTO_BANCO
+• Comisiones de Booking/Expedia/OTA con % → COMISIONES_OTA
+• Lista de habitaciones/huéspedes de un grupo → ROOMING
+• Número de factura + proveedor + IVA/VAT + total → FACTURA
+• Depósito/anticipo/proforma con importe → FACTURA
+• Contrato/BEO/agenda/email/logo/manual → OTRO
+
+EXTRACCIÓN — Devuelve SOLO JSON según el tipo:
+
+FACTURA:
+{"es_factura":true,"numero_factura":"X","fecha":"DD/MM/YYYY","nombre_proveedor":"X","NIF_proveedor":"X","descripcion_concepto":"X","base_imponible":0.0,"porcentaje_iva":21,"cuota_iva":0.0,"total_factura":0.0,"moneda":"EUR"}
+
+INVENTARIO:
+{"tipo_documento":"INVENTARIO","items":[{"ingrediente":"nombre","categoria":"tipo","coste_unitario":0.0,"stock_actual_kg_l":0.0,"stock_inicial_kg_l":0.0,"unidad":"kg","proveedor":"nombre","critico":false}]}
+
+MERMAS:
+{"tipo_documento":"MERMAS","items":[{"fecha":"DD/MM/YYYY","ingrediente":"nombre","categoria":"tipo","cantidad_merma":0.0,"unidad":"kg","causa":"motivo","coste_unitario":0.0,"coste_merma":0.0}],"total_mermas":0.0}
+
+VENTAS_POS:
+{"tipo_documento":"VENTAS_POS","fecha":"YYYY-MM-DD","total_ventas":0.0,"num_tickets":0,"platos":[{"nombre_plato":"nombre","categoria":"tipo","unidades_vendidas":0,"total_venta":0.0}]}
+
+EXTRACTO_BANCO:
+{"tipo_documento":"EXTRACTO_BANCO","movimientos":[{"fecha":"DD/MM/YYYY","concepto":"descripción","importe":0.0,"saldo":0.0}]}
+
+COMISIONES_OTA:
+{"tipo_documento":"COMISIONES_OTA","ota":"nombre","periodo":"mes/año","importe_bruto":0.0,"comision":0.0,"porcentaje":0.0}
+
+ROOMING:
+{"tipo_documento":"ROOMING","grupo":"nombre","num_habitaciones":0,"checkin":"DD/MM/YYYY","checkout":"DD/MM/YYYY","tarifa_media":0.0}
+
+OTRO:
+{"tipo_documento":"OTRO","descripcion":"qué es el documento"}
+
+REGLAS:
+- Importes SIEMPRE como float (1234.56)
+- Si es factura y solo hay total: base=total/1.21, iva=21, cuota=total-base
+- IVA 0% intracomunitaria: base=total, iva=0, cuota=0
+- Extrae TODOS los items/movimientos/platos que veas, no solo los primeros
+- Si no encuentras un campo → null. NUNCA inventes datos
+- Responde SOLO con JSON, sin markdown, sin explicaciones, sin ```
+
+""" + f"ARCHIVO: {nombre_archivo}\nTEXTO:\n{texto[:max_chars]}"
+
         resp = client.messages.create(
             model="claude-sonnet-4-6",
-            max_tokens=512,
+            max_tokens=2048,  # Suficiente para listas largas
             messages=[{"role":"user","content":prompt}]
         )
         raw = resp.content[0].text.strip()
-        # Limpiar posible markdown y texto extra
+        
+        # Limpiar markdown
         raw = re.sub(r"```(?:json)?", "", raw).strip().rstrip("`").strip()
-        # A veces Claude añade texto antes/después del JSON
-        json_match = re.search(r'\{[^{}]*(?:\{[^{}]*\}[^{}]*)*\}', raw)
-        if json_match:
-            raw = json_match.group()
+        
+        # Extraer JSON — buscar el primer { y el último }
+        first_brace = raw.find('{')
+        last_brace = raw.rfind('}')
+        if first_brace >= 0 and last_brace > first_brace:
+            raw = raw[first_brace:last_brace+1]
         
         try:
             datos = json.loads(raw)
         except json.JSONDecodeError:
-            # Intentar arreglar JSON común: trailing commas, single quotes
-            fixed = raw.replace("'", '"').rstrip(',').rstrip(',}') + '}'
-            fixed = re.sub(r',\s*}', '}', fixed)
+            # Intentar arreglar JSON común
+            fixed = re.sub(r',\s*}', '}', raw)
             fixed = re.sub(r',\s*]', ']', fixed)
             try:
                 datos = json.loads(fixed)
             except json.JSONDecodeError:
-                print(f"    AVISO: JSON inválido de Claude — usando regex")
-                print(f"    Raw: {raw[:200]}")
+                print(f"    AVISO: JSON inválido — usando regex")
+                print(f"    Raw (primeros 200): {raw[:200]}")
                 return extraer_con_regex(texto)
+        
+        # Clasificación: si tiene tipo_documento, es un tipo no-factura
+        tipo_doc = datos.get("tipo_documento")
+        if tipo_doc and tipo_doc not in ("FACTURA",):
+            items = datos.get("items", datos.get("movimientos", datos.get("platos", [])))
+            n_items = len(items) if isinstance(items, list) else 0
+            print(f"    [CLASIFICADO] Tipo: {tipo_doc} ({n_items} items)")
+            return datos
+        
+        # Si Claude dice que no es factura
+        if datos.get("es_factura") is False:
+            tipo_doc = datos.get("tipo_documento", "OTRO")
+            desc = datos.get("descripcion", "documento no financiero")
+            print(f"    [INFO] Tipo: {tipo_doc} — {desc}")
+            return {"_skip": True, "_motivo": f"Claude: {desc}", "tipo_documento": tipo_doc}
+        
+        return datos
+    except Exception as e:
+        print(f"    AVISO Claude API: {e} — usando regex")
+        return extraer_con_regex(texto)
         
         # Si tiene tipo_documento, es un documento clasificado (no factura)
         tipo_doc = datos.get("tipo_documento")
