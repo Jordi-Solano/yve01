@@ -7037,48 +7037,62 @@ function _runBatchPipeline(fileNames) {
     setTimeout(loadAll, 800);
   }
 
-  // UNA SOLA conexión para TODOS los archivos (el backend los procesa en serie)
-  var allFiles = encodeURIComponent(JSON.stringify(fileNames));
-  var evtSrc = new EventSource('/api/procesar_batch_stream?archivos=' + allFiles);
+  // Dividir en lotes de 4 para evitar timeout de Render (30s por conexión SSE)
+  var BATCH_SIZE = 4;
+  var batches = [];
+  for (var bi = 0; bi < fileNames.length; bi += BATCH_SIZE) {
+    batches.push(fileNames.slice(bi, bi + BATCH_SIZE));
+  }
+  var batchIdx = 0;
 
-  // Timeout global generoso: 30s por archivo, mínimo 90s
-  var globalTimeout = Math.max(120000, total * 45000);
-  var timer = setTimeout(function() {
-    evtSrc.close();
-    _log('⚠ Tiempo de espera agotado — algunos archivos pueden no haberse procesado', 'l-err');
-    _finish(false);
-  }, globalTimeout);
-
-  var hadError = false;
-
-  evtSrc.onmessage = function(ev) {
-    var txt = ev.data;
-    if (txt === 'PIPELINE_COMPLETO') {
-      clearTimeout(timer);
-      evtSrc.close();
+  function processBatch() {
+    if (batchIdx >= batches.length) {
       _finish(!hadError);
-    } else if (txt === 'PIPELINE_CON_ERRORES') {
+      return;
+    }
+    if (batchIdx > 0) _log('⚡ Lote ' + (batchIdx+1) + '/' + batches.length + '...', 'l-dim');
+    var batch = batches[batchIdx];
+    var batchFiles = encodeURIComponent(JSON.stringify(batch));
+    var evtSrc = new EventSource('/api/procesar_batch_stream?archivos=' + batchFiles);
+    var timer = setTimeout(function() {
+      evtSrc.close();
+      _log('⚠ Timeout en lote ' + (batchIdx+1) + ' — continuando', 'l-warn');
+      batchIdx++;
+      processBatch();
+    }, 60000);
+
+    evtSrc.onmessage = function(ev) {
+      var txt = ev.data;
+      if (txt === 'PIPELINE_COMPLETO' || txt === 'PIPELINE_CON_ERRORES') {
+        clearTimeout(timer);
+        evtSrc.close();
+        if (txt === 'PIPELINE_CON_ERRORES') hadError = true;
+        batchIdx++;
+        setTimeout(processBatch, 500);
+      } else if (txt && txt !== '') {
+        var cls = 'l-dim';
+        if (txt.startsWith('✓') || txt.startsWith('✅')) cls = 'l-ok';
+        else if (txt.startsWith('✗')) { cls = 'l-err'; hadError = true; }
+        else if (txt.startsWith('⚠')) cls = 'l-warn';
+        else if (txt.startsWith('ℹ')) cls = 'l-info';
+        else if (txt.startsWith('>>')) cls = 'l-info';
+        else if (txt.startsWith('📍')) cls = 'l-info';
+        _log(txt, cls);
+      }
+    };
+    evtSrc.onerror = function() {
       clearTimeout(timer);
       evtSrc.close();
-      _finish(false);
-    } else if (txt && txt !== '') {
-      var cls = 'l-dim';
-      if (txt.startsWith('✓') || txt.startsWith('✅')) cls = 'l-ok';
-      else if (txt.startsWith('✗')) { cls = 'l-err'; hadError = true; }
-      else if (txt.startsWith('⚠')) cls = 'l-warn';
-      else if (txt.startsWith('ℹ')) cls = 'l-info';
-      else if (txt.startsWith('>>')) cls = 'l-info';
-      _log(txt, cls);
-    }
-  };
-
-  evtSrc.onerror = function() {
-    clearTimeout(timer);
-    evtSrc.close();
-    // Solo mostrar error si no terminó limpiamente
-    _log('⚠ Conexión finalizada', 'l-dim');
-    _finish(!hadError);
-  };
+      batchIdx++;
+      if (batchIdx < batches.length) {
+        _log('⚡ Reconectando...', 'l-dim');
+        setTimeout(processBatch, 1000);
+      } else {
+        _finish(!hadError);
+      }
+    };
+  }
+  processBatch();
 }
 
 
