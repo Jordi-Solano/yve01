@@ -7039,6 +7039,7 @@ function _runBatchPipeline(fileNames) {
   if (title) title.textContent = 'Procesando ' + fileNames.length + ' archivo(s)...';
 
   var total = fileNames.length;
+  var hadError = false;
 
   function _log(txt, cls) {
     if (!log) return;
