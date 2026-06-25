@@ -47,34 +47,32 @@ def extraer_texto(pdf_path):
                 textos.append(t)
     texto = "\n".join(textos)
     
-    # Si el PDF tiene poco texto, puede ser escaneado — intentar OCR
+    # Si el PDF tiene poco texto, puede ser escaneado — usar Claude Vision
     if len(texto.strip()) < 100:
         try:
-            import subprocess
-            # pytesseract via subprocess (más compatible)
-            r = subprocess.run(
-                ['python3', '-c', f'''
-import pdfplumber, io
-from PIL import Image
-with pdfplumber.open("{pdf_path}") as pdf:
-    for p in pdf.pages:
-        img = p.to_image(resolution=200)
-        # Guardar como imagen temporal
-        img.save("/tmp/yve_ocr_page.png")
-        break
-'''],
-                capture_output=True, text=True, timeout=15
-            )
-            if os.path.exists("/tmp/yve_ocr_page.png"):
-                r2 = subprocess.run(
-                    ['tesseract', '/tmp/yve_ocr_page.png', 'stdout', '-l', 'spa+eng'],
-                    capture_output=True, text=True, timeout=15
-                )
-                if r2.stdout.strip():
-                    texto = r2.stdout.strip()
-                os.remove("/tmp/yve_ocr_page.png")
-        except Exception:
-            pass  # OCR no disponible — continuar con lo que tengamos
+            import base64
+            with pdfplumber.open(pdf_path) as pdf:
+                if pdf.pages:
+                    img = pdf.pages[0].to_image(resolution=150)
+                    img.save("/tmp/yve_ocr_page.png")
+                    with open("/tmp/yve_ocr_page.png", "rb") as f:
+                        img_b64 = base64.b64encode(f.read()).decode()
+                    os.remove("/tmp/yve_ocr_page.png")
+                    # Enviar imagen a Claude Vision para extraer texto
+                    resp = client.messages.create(
+                        model="claude-sonnet-4-6",
+                        max_tokens=2000,
+                        messages=[{"role":"user","content":[
+                            {"type":"image","source":{"type":"base64","media_type":"image/png","data":img_b64}},
+                            {"type":"text","text":"Extrae TODO el texto visible de esta imagen. Solo devuelve el texto, sin explicaciones."}
+                        ]}]
+                    )
+                    ocr_text = resp.content[0].text.strip()
+                    if len(ocr_text) > 50:
+                        texto = ocr_text
+                        print(f"    [OCR] Claude Vision extrajo {len(ocr_text)} chars")
+        except Exception as e:
+            print(f"    [OCR] Vision no disponible: {e}")
     
     return texto
 

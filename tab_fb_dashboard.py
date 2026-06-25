@@ -102,7 +102,11 @@ def api_resultados():
 
         fc_real_global = round(coste_real_sum / total_ventas * 100, 2) if total_ventas > 0 else 0
 
-        # Mermas
+        # Mermas — normalizar columnas
+        if 'coste_merma' not in df_mer.columns and 'coste' in df_mer.columns:
+            df_mer = df_mer.rename(columns={'coste': 'coste_merma'})
+        if 'coste_merma' not in df_mer.columns:
+            df_mer['coste_merma'] = 0
         df_mer['coste_merma'] = pd.to_numeric(df_mer['coste_merma'], errors='coerce').fillna(0)
         coste_mermas = float(df_mer['coste_merma'].sum())
 
@@ -222,6 +226,15 @@ def api_mermas():
         if _df_mer_check.empty or len(_df_mer_check) < 1:
             return jsonify({"mermas": [], "total": 0})
         df = _xlsx("mermas.xlsx")
+        # Normalizar: Claude puede devolver 'coste' en vez de 'coste_merma'
+        if 'coste_merma' not in df.columns and 'coste' in df.columns:
+            df = df.rename(columns={'coste': 'coste_merma'})
+        if 'cantidad_merma' not in df.columns and 'cantidad' in df.columns:
+            df = df.rename(columns={'cantidad': 'cantidad_merma'})
+        if 'coste_merma' not in df.columns:
+            df['coste_merma'] = 0
+        if 'cantidad_merma' not in df.columns:
+            df['cantidad_merma'] = 0
         df['coste_merma'] = pd.to_numeric(df['coste_merma'], errors='coerce').fillna(0)
         total_coste  = float(df['coste_merma'].sum())
         por_categoria = df.groupby('categoria')['coste_merma'].sum().sort_values(ascending=False).to_dict() if 'categoria' in df.columns else {}

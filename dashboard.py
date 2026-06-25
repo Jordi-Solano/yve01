@@ -2090,12 +2090,38 @@ def api_run_conciliacion():
 @app.route("/api/stats_banco")
 def api_stats_banco():
     """Resumen de conciliacion bancaria para el dashboard."""
+    # Primero intentar conciliación existente
     ruta = None
     hits = glob.glob(os.path.join(REPORTES_DIR, "conciliacion_*.xlsx"))
     if hits:
         hits.sort(key=lambda p: os.path.getmtime(p), reverse=True)
         ruta = hits[0]
+    
+    # Si no hay conciliación, mostrar datos del extracto directamente
     if not ruta:
+        extracto_path = os.path.join(BASE_DIR, "datos-referencia", "extracto_banco.xlsx")
+        if os.path.exists(extracto_path):
+            try:
+                df_ext = pd.read_excel(extracto_path)
+                n_movs = len(df_ext)
+                # Calcular cargos y abonos
+                imp_col = None
+                for c in ['importe', 'cantidad', 'amount', 'monto']:
+                    if c in df_ext.columns:
+                        imp_col = c
+                        break
+                cargos = 0
+                abonos = 0
+                if imp_col:
+                    df_ext[imp_col] = df_ext[imp_col].apply(lambda x: safe_float(x) if not pd.isna(x) else 0)
+                    cargos = abs(float(df_ext[df_ext[imp_col] < 0][imp_col].sum()))
+                    abonos = float(df_ext[df_ext[imp_col] > 0][imp_col].sum())
+                return jsonify({"total": n_movs, "conciliados": 0, "pendientes": n_movs,
+                                "diferencias": 0, "importe_pendiente": round(cargos + abonos, 2),
+                                "alertas": [], "sin_conciliar": True,
+                                "cargos": round(cargos, 2), "abonos": round(abonos, 2)})
+            except Exception:
+                pass
         return jsonify(None)
     try:
         df = pd.read_excel(ruta)
@@ -2689,7 +2715,7 @@ tr:hover td{background:rgba(255,255,255,.025)}
 .modal-h h3{font-size:16px;font-weight:700;flex:1}
 .log{background:#060c1a;border:1px solid var(--s2);border-radius:10px;padding:16px;height:280px;overflow-y:auto;font-family:'JetBrains Mono','Cascadia Code','Fira Code',monospace;font-size:11px;line-height:1.8;scroll-behavior:smooth}
 .log p{margin:0}
-.l-ok{color:#4ade80}.l-err{color:#f87171}.l-info{color:var(--acc2);font-weight:700}.l-warn{color:#facc15}.l-dim{color:#475569}
+.l-ok{color:#4ade80}@keyframes pulse-green{0%,100%{box-shadow:0 0 4px rgba(34,197,94,.4)}50%{box-shadow:0 0 12px rgba(34,197,94,.8)}}.l-err{color:#f87171}.l-info{color:var(--acc2);font-weight:700}.l-warn{color:#facc15}.l-dim{color:#475569}
 .modal-f{margin-top:16px;display:flex;justify-content:flex-end;gap:10px}
 .btn-cl{background:var(--s2);color:var(--tx);border:none;padding:9px 20px;border-radius:9px;font-size:13px;font-weight:600;cursor:pointer;transition:.15s}
 .btn-cl:hover:not(:disabled){background:var(--s3)}
@@ -7151,24 +7177,25 @@ async function mostrarHistorialProcesado() {
       '</table>' +
     '</div>';
     modal.addEventListener('click', function(e) { if (e.target === modal) modal.remove(); });
+    document.addEventListener('keydown', function _escH(e) { if (e.key === 'Escape') { var m = document.getElementById('historial-modal'); if(m){m.remove();document.removeEventListener('keydown',_escH);} }});
     document.body.appendChild(modal);
   } catch(e) {
     alert('Error cargando historial: ' + e.message);
   }
 }
 
-// Mostrar puntos verdes en los tabs que se actualizaron tras procesar
+// Mostrar puntos verdes en tabs actualizados + highlight de stats
 function _showTabBadges(logText) {
   var tabMap = {
-    'AP ': 'tab-ap',
-    'AR ': 'tab-ar',
+    '✓ AP ': 'tab-ap',
+    '✓ AR ': 'tab-ar',
     'OTA': 'tab-ar',
-    'Banco': 'tab-banco',
-    'F&B': 'tab-fb',
-    'Inventario': 'tab-fb',
-    'Mermas': 'tab-fb',
-    'DRR': 'tab-drr',
-    'Rooming': 'tab-fb',
+    '✓ Banco': 'tab-banco',
+    '✓ F&B': 'tab-fb',
+    '✓ Inventario': 'tab-fb',
+    '✓ Mermas': 'tab-fb',
+    '✓ Rooming': 'tab-fb',
+    '✓ DRR': 'tab-drr',
   };
   
   // Limpiar badges anteriores
@@ -7176,23 +7203,51 @@ function _showTabBadges(logText) {
   
   var updated = {};
   for (var key in tabMap) {
-    if (logText.includes(key) && logText.includes('✓')) {
+    if (logText.includes(key)) {
       updated[tabMap[key]] = true;
     }
   }
   
+  // Encontrar todos los botones de tab (por texto)
+  var tabButtons = document.querySelectorAll('[id^="tab-"]');
+  
   for (var tabId in updated) {
     var tabEl = document.getElementById(tabId);
+    if (!tabEl) {
+      // Buscar por texto alternativo
+      tabButtons.forEach(function(btn) {
+        var txt = btn.textContent.toLowerCase();
+        if (tabId === 'tab-ap' && txt.includes('proveedores')) tabEl = btn;
+        if (tabId === 'tab-ar' && txt.includes('ota')) tabEl = btn;
+        if (tabId === 'tab-banco' && txt.includes('banco')) tabEl = btn;
+        if (tabId === 'tab-fb' && txt.includes('f&b')) tabEl = btn;
+        if (tabId === 'tab-drr' && txt.includes('drr')) tabEl = btn;
+      });
+    }
     if (tabEl) {
+      // Punto verde pulsante al lado del tab
       var dot = document.createElement('span');
       dot.className = 'proc-badge';
-      dot.style.cssText = 'width:7px;height:7px;border-radius:50%;background:#22c55e;display:inline-block;margin-left:6px;vertical-align:middle;box-shadow:0 0 6px rgba(34,197,94,.5)';
+      dot.style.cssText = 'width:8px;height:8px;border-radius:50%;background:#22c55e;display:inline-block;margin-left:6px;vertical-align:middle;box-shadow:0 0 8px rgba(34,197,94,.6);animation:pulse-green 1.5s ease-in-out 3';
       dot.title = 'Datos actualizados';
       tabEl.appendChild(dot);
-      // Quitar tras 60 segundos
       setTimeout(function(d){ if(d.parentNode) d.remove(); }, 60000, dot);
     }
   }
+  
+  // Highlight temporal de las stat cards del tab activo
+  setTimeout(function() {
+    var cards = document.querySelectorAll('.stat-card, .kpi-card, [class*="stat"]');
+    cards.forEach(function(card) {
+      card.style.transition = 'box-shadow 0.5s, border-color 0.5s';
+      card.style.boxShadow = '0 0 12px rgba(34,197,94,.25)';
+      card.style.borderColor = 'rgba(34,197,94,.4)';
+      setTimeout(function() {
+        card.style.boxShadow = '';
+        card.style.borderColor = '';
+      }, 4000);
+    });
+  }, 1000);
 }
 
 function closeInvoiceModal() {
