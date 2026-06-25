@@ -7185,70 +7185,130 @@ async function mostrarHistorialProcesado() {
   }
 }
 
-// Mostrar puntos verdes en tabs actualizados + highlight de stats
+// Tabs actualizados — puntos verdes + highlight de stats
+// Persisten hasta que el usuario VISITA el tab y luego SALE de él
+var _updatedTabs = {};
+
 function _showTabBadges(logText) {
   var tabMap = {
-    '✓ AP ': 'tab-ap',
-    '✓ AR ': 'tab-ar',
-    'OTA': 'tab-ar',
-    '✓ Banco': 'tab-banco',
-    '✓ F&B': 'tab-fb',
-    '✓ Inventario': 'tab-fb',
-    '✓ Mermas': 'tab-fb',
-    '✓ Rooming': 'tab-fb',
-    '✓ DRR': 'tab-drr',
+    '✓ AP ': 'ap',
+    '✓ AR ': 'ar',
+    'OTA': 'ar',
+    '✓ Banco': 'banco',
+    '✓ F&B': 'fb',
+    '✓ Inventario': 'fb',
+    '✓ Mermas': 'fb',
+    '✓ Rooming': 'fb',
+    '✓ DRR': 'drr',
   };
   
+  for (var key in tabMap) {
+    if (logText.includes(key)) {
+      _updatedTabs[tabMap[key]] = true;
+    }
+  }
+  _renderBadges();
+  _highlightActiveStats();
+}
+
+function _renderBadges() {
   // Limpiar badges anteriores
   document.querySelectorAll('.proc-badge').forEach(function(b) { b.remove(); });
   
-  var updated = {};
-  for (var key in tabMap) {
-    if (logText.includes(key)) {
-      updated[tabMap[key]] = true;
-    }
-  }
+  // Tab name mapping para buscar elementos
+  var nameMap = {
+    'ap': ['proveedores', 'ap'],
+    'ar': ['ota', 'ar'],
+    'banco': ['banco'],
+    'fb': ['f&b', 'fb'],
+    'drr': ['drr'],
+  };
   
-  // Encontrar todos los botones de tab (por texto)
   var tabButtons = document.querySelectorAll('[id^="tab-"]');
   
-  for (var tabId in updated) {
-    var tabEl = document.getElementById(tabId);
-    if (!tabEl) {
-      // Buscar por texto alternativo
+  for (var tabKey in _updatedTabs) {
+    if (!_updatedTabs[tabKey]) continue;
+    
+    var tabEl = document.getElementById('tab-' + tabKey);
+    if (!tabEl && nameMap[tabKey]) {
       tabButtons.forEach(function(btn) {
         var txt = btn.textContent.toLowerCase();
-        if (tabId === 'tab-ap' && txt.includes('proveedores')) tabEl = btn;
-        if (tabId === 'tab-ar' && txt.includes('ota')) tabEl = btn;
-        if (tabId === 'tab-banco' && txt.includes('banco')) tabEl = btn;
-        if (tabId === 'tab-fb' && txt.includes('f&b')) tabEl = btn;
-        if (tabId === 'tab-drr' && txt.includes('drr')) tabEl = btn;
+        nameMap[tabKey].forEach(function(name) {
+          if (txt.includes(name)) tabEl = btn;
+        });
       });
     }
     if (tabEl) {
-      // Punto verde pulsante al lado del tab
       var dot = document.createElement('span');
       dot.className = 'proc-badge';
-      dot.style.cssText = 'width:8px;height:8px;border-radius:50%;background:#22c55e;display:inline-block;margin-left:6px;vertical-align:middle;box-shadow:0 0 8px rgba(34,197,94,.6);animation:pulse-green 1.5s ease-in-out 3';
-      dot.title = 'Datos actualizados';
+      dot.dataset.tab = tabKey;
+      dot.style.cssText = 'width:8px;height:8px;border-radius:50%;background:#22c55e;display:inline-block;margin-left:6px;vertical-align:middle;box-shadow:0 0 8px rgba(34,197,94,.6);animation:pulse-green 1.5s ease-in-out infinite';
+      dot.title = 'Datos actualizados — visita el tab para marcar como visto';
       tabEl.appendChild(dot);
-      setTimeout(function(d){ if(d.parentNode) d.remove(); }, 60000, dot);
     }
   }
+}
+
+function _highlightActiveStats() {
+  // Encontrar el tab activo y ver si tiene actualizaciones
+  var activeTab = document.querySelector('.tab-active, [class*="tab"][class*="active"]');
+  if (!activeTab) return;
+  var tabText = activeTab.textContent.toLowerCase();
+  var isUpdated = false;
+  if (tabText.includes('proveedores') && _updatedTabs['ap']) isUpdated = true;
+  if (tabText.includes('ota') && _updatedTabs['ar']) isUpdated = true;
+  if (tabText.includes('banco') && _updatedTabs['banco']) isUpdated = true;
+  if (tabText.includes('f&b') && _updatedTabs['fb']) isUpdated = true;
+  if (tabText.includes('drr') && _updatedTabs['drr']) isUpdated = true;
   
-  // Highlight temporal de las stat cards del tab activo
-  setTimeout(function() {
-    var cards = document.querySelectorAll('.stat-card, .kpi-card, [class*="stat"]');
+  // Quitar highlight de todas las cards primero
+  document.querySelectorAll('[data-highlighted="true"]').forEach(function(card) {
+    card.style.boxShadow = '';
+    card.style.borderColor = '';
+    card.removeAttribute('data-highlighted');
+  });
+  
+  if (isUpdated) {
+    // Buscar stat cards en el contenido visible del tab
+    var section = document.querySelector('[style*="display: block"], [style*="display:block"]');
+    if (!section) section = document;
+    var cards = section.querySelectorAll('[class*="stat"], [class*="kpi"], [class*="card-stat"]');
+    if (cards.length === 0) {
+      // Fallback: buscar divs que parezcan stat cards por estructura
+      cards = document.querySelectorAll('.tab-content:not([style*="none"]) > div > div > div');
+    }
     cards.forEach(function(card) {
-      card.style.transition = 'box-shadow 0.5s, border-color 0.5s';
-      card.style.boxShadow = '0 0 12px rgba(34,197,94,.25)';
-      card.style.borderColor = 'rgba(34,197,94,.4)';
-      setTimeout(function() {
-        card.style.boxShadow = '';
-        card.style.borderColor = '';
-      }, 4000);
+      if (card.offsetHeight > 30 && card.offsetHeight < 200) {
+        card.style.transition = 'box-shadow 0.5s, border-color 0.5s';
+        card.style.boxShadow = '0 0 12px rgba(34,197,94,.25)';
+        card.style.borderColor = 'rgba(34,197,94,.4)';
+        card.setAttribute('data-highlighted', 'true');
+      }
     });
-  }, 1000);
+  }
+}
+
+// Al cambiar de tab, marcar el tab anterior como "visto" y quitar su badge
+var _prevVisitedTab = null;
+var _origSwitchTab = typeof switchTab === 'function' ? switchTab : null;
+
+function _onTabSwitch(newTab) {
+  // Si el tab anterior tenía actualización, marcarla como vista
+  if (_prevVisitedTab && _updatedTabs[_prevVisitedTab]) {
+    _updatedTabs[_prevVisitedTab] = false;
+    _renderBadges();
+  }
+  // Determinar qué tab key es el nuevo
+  var txt = (newTab || '').toLowerCase();
+  if (txt.includes('ap') || txt.includes('proveedores')) _prevVisitedTab = 'ap';
+  else if (txt.includes('ar') || txt.includes('ota')) _prevVisitedTab = 'ar';
+  else if (txt.includes('banco')) _prevVisitedTab = 'banco';
+  else if (txt.includes('fb') || txt.includes('f&b')) _prevVisitedTab = 'fb';
+  else if (txt.includes('drr')) _prevVisitedTab = 'drr';
+  else _prevVisitedTab = null;
+  
+  // Highlight stats del nuevo tab si está actualizado
+  setTimeout(_highlightActiveStats, 300);
 }
 
 function closeInvoiceModal() {
@@ -7564,6 +7624,7 @@ function eliminarArchivoServidor(nombre, rowEl) {
 }
 
 function switchTab(tab, el) {
+  if (typeof _onTabSwitch === 'function') _onTabSwitch(tab);
   document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
   document.querySelectorAll('.panel').forEach(p => p.classList.remove('active'));
   el.classList.add('active');
