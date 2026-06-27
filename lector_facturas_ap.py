@@ -97,23 +97,7 @@ def es_ota(texto):
 
 
 # Documentos que NO son facturas — pre-filtro por nombre de archivo
-NO_FACTURA_KEYWORDS = {
-    'rooming', 'room list', 'room block', 'guest list',
-    'agenda', 'logo', 'signage', 'banner',
-    'beo', 'banquet event', 'banquet order',
-    'sow', 'statement of work', 'scope of work',
-    'contract', 'contrato', 'acuerdo',
-    'proposal', 'presupuesto', 'quotation', 'quote',
-    'menu ', 'wine list', 'carta de',
-    'floorplan', 'floor plan', 'setup', 'plano',
-    'technical manual', ' tm ', '_tm_', ' tm.',
-    'resume', 'presentation', 'powerpoint', 'ppt',
-    'meeting notes', 'acta ', 'minuta',
-    'checklist', 'planning', 'schedule', 'timeline',
-    'itinerary', 'itinerario', 'programa',
-    'certificate', 'certificado', 'diploma',
-    'running order', 'master onsite', 'event order',
-}
+NO_FACTURA_KEYWORDS = {'menu ', 'checklist', ' tm.', 'minuta', 'diploma', 'schedule', 'quotation', 'acuerdo', 'meeting notes', 'certificado', 'signage', 'setup', 'powerpoint', 'technical manual', 'programa', 'proposal', 'plano', 'itinerario', 'certificate', 'agenda', 'ppt', 'logo', 'floor plan', 'master onsite', 'room list', 'acta ', 'timeline', 'event order', 'guest list', 'rooming', 'carta de', 'presentation', 'floorplan', 'running order', 'quote', '_tm_', 'room block', 'wine list', 'planning', 'banner', 'resume', 'itinerary', 'banquet order', 'presupuesto', 'banquet event'}
 
 NO_FACTURA_EXTENSIONS = {'.doc', '.docx', '.ppt', '.pptx', '.png', '.jpg', '.jpeg', '.gif', '.svg', '.mp4', '.zip', '.rar'}
 
@@ -163,7 +147,10 @@ CLASIFICACIÓN — Lee TODO el contenido antes de decidir:
 • Lista de habitaciones/huéspedes de un grupo → ROOMING
 • Número de factura + proveedor + IVA/VAT + total → FACTURA
 • Depósito/anticipo/proforma con importe → FACTURA
-• Contrato/BEO/agenda/email/logo/manual → OTRO
+• BEO/Banquet Event Order con desglose de servicios y precios → BEO
+• TM/Technical Manual/requisitos técnicos de evento → TM
+• Contrato/acuerdo de servicios con importes → CONTRATO
+• Agenda/email/logo/manual técnico sin datos financieros → OTRO
 
 EXTRACCIÓN — Devuelve SOLO JSON según el tipo:
 
@@ -187,6 +174,15 @@ COMISIONES_OTA:
 
 ROOMING:
 {"tipo_documento":"ROOMING","grupo":"nombre","num_habitaciones":0,"checkin":"DD/MM/YYYY","checkout":"DD/MM/YYYY","tarifa_media":0.0}
+
+BEO:
+{"tipo_documento":"BEO","evento":"nombre del evento","cliente":"empresa cliente","fecha_evento":"DD/MM/YYYY","num_asistentes":0,"items":[{"concepto":"descripción","cantidad":0,"precio_unitario":0.0,"total":0.0}],"total_estimado":0.0,"notas":"observaciones"}
+
+TM:
+{"tipo_documento":"TM","evento":"nombre del evento","cliente":"empresa","requisitos":[{"tipo":"AV/Sala/Catering/Decoración","descripcion":"detalle","coste_estimado":0.0}],"total_estimado":0.0}
+
+CONTRATO:
+{"tipo_documento":"CONTRATO","evento":"nombre del evento","cliente":"empresa cliente","NIF_cliente":"X","fecha_firma":"DD/MM/YYYY","importe_total":0.0,"deposito":0.0,"condiciones_pago":"descripción","items":[{"concepto":"descripción","importe":0.0}],"vigencia":"periodo"}
 
 OTRO:
 {"tipo_documento":"OTRO","descripcion":"qué es el documento"}

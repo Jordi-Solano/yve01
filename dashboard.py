@@ -780,6 +780,61 @@ def api_procesar_batch_stream():
                                     except Exception as _emer:
                                         yield f'data: ℹ {fname}: mermas detectadas — {str(_emer)[:60]}\n\n'
                                     _mark(fname, 'INV_OK')
+                                elif _tipo_doc in ('BEO', 'TM', 'CONTRATO'):
+                                    # Guardar como documento de referencia para matching
+                                    try:
+                                        ref_path = os.path.join(BASE_DIR, 'datos-referencia', 'eventos_referencia.json')
+                                        refs = json.load(open(ref_path)) if os.path.exists(ref_path) else []
+                                        
+                                        evento = reg.get('evento', reg.get('cliente', fname))
+                                        cliente = reg.get('cliente', '—')
+                                        total = reg.get('total_estimado', reg.get('importe_total', 0))
+                                        items = reg.get('items', reg.get('requisitos', []))
+                                        
+                                        # Buscar si ya existe un evento con el mismo nombre
+                                        evento_key = evento.lower().strip()[:50]
+                                        found = False
+                                        for ref in refs:
+                                            if ref.get('evento_key') == evento_key:
+                                                ref['documentos'][_tipo_doc] = {
+                                                    'archivo': fname,
+                                                    'total': total,
+                                                    'items': items,
+                                                    'fecha': date.today().isoformat(),
+                                                    'raw': {k:v for k,v in reg.items() if k != 'items' and k != 'requisitos'}
+                                                }
+                                                found = True
+                                                break
+                                        
+                                        if not found:
+                                            refs.append({
+                                                'evento': evento,
+                                                'evento_key': evento_key,
+                                                'cliente': cliente,
+                                                'documentos': {
+                                                    _tipo_doc: {
+                                                        'archivo': fname,
+                                                        'total': total,
+                                                        'items': items,
+                                                        'fecha': date.today().isoformat(),
+                                                        'raw': {k:v for k,v in reg.items() if k != 'items' and k != 'requisitos'}
+                                                    }
+                                                }
+                                            })
+                                        
+                                        json.dump(refs, open(ref_path, 'w'), indent=2, ensure_ascii=False)
+                                        
+                                        n_items = len(items)
+                                        docs_evento = [ref for ref in refs if ref.get('evento_key') == evento_key]
+                                        n_docs = len(docs_evento[0]['documentos']) if docs_evento else 1
+                                        tipos_docs = ', '.join(docs_evento[0]['documentos'].keys()) if docs_evento else _tipo_doc
+                                        
+                                        total_str = f' — €{total:,.2f}' if total else ''
+                                        yield f'data: ✓ {_tipo_doc} {fname}: {evento} ({cliente}){total_str} · {n_items} items · Evento tiene {n_docs} docs ({tipos_docs})\n\n'
+                                        _mark(fname, f'{_tipo_doc}_OK')
+                                    except Exception as _eref:
+                                        yield f'data: ⚠ {fname}: {_tipo_doc} detectado pero error: {str(_eref)[:60]}\n\n'
+                                        _mark(fname, 'SKIP')
                                 elif _tipo_doc == 'ROOMING':
                                     grupo = reg.get('grupo', '—')
                                     habs = reg.get('num_habitaciones', '?')
@@ -829,6 +884,48 @@ def api_procesar_batch_stream():
                                     yield f'data: ✓ AP {fname}: {reg.get("nombre_proveedor","")}\n\n'
                                 _mark(fname, 'AP_OK')
                                 has_ap = True
+                                
+                                # 3-WAY MATCHING: buscar BEO/contrato del mismo evento/cliente
+                                try:
+                                    ref_path = os.path.join(BASE_DIR, 'datos-referencia', 'eventos_referencia.json')
+                                    if os.path.exists(ref_path):
+                                        refs = json.load(open(ref_path))
+                                        proveedor = (reg.get('nombre_proveedor') or '').lower()
+                                        concepto = (reg.get('descripcion_concepto') or '').lower()
+                                        total_factura = reg.get('total_factura', 0)
+                                        
+                                        match_found = None
+                                        for ref in refs:
+                                            cliente = (ref.get('cliente') or '').lower()
+                                            evento = (ref.get('evento') or '').lower()
+                                            # Match por cliente o evento mencionado en la factura
+                                            if cliente and (cliente in proveedor or cliente in concepto or proveedor in cliente):
+                                                match_found = ref
+                                                break
+                                            if evento and (evento in concepto or any(w in concepto for w in evento.split()[:3] if len(w)>3)):
+                                                match_found = ref
+                                                break
+                                        
+                                        if match_found:
+                                            docs = match_found.get('documentos', {})
+                                            docs_list = list(docs.keys())
+                                            # Comparar totales
+                                            discrepancias = []
+                                            for doc_tipo, doc_data in docs.items():
+                                                doc_total = doc_data.get('total', 0)
+                                                if doc_total and isinstance(total_factura, (int, float)) and total_factura > 0:
+                                                    diff = abs(total_factura - doc_total)
+                                                    diff_pct = diff / doc_total * 100 if doc_total > 0 else 0
+                                                    if diff_pct > 5:  # Más de 5% de diferencia
+                                                        discrepancias.append(f'{doc_tipo} dice €{doc_total:,.2f} vs factura €{total_factura:,.2f} ({diff_pct:.0f}% diff)')
+                                            
+                                            evento_nombre = match_found.get('evento', '—')
+                                            if discrepancias:
+                                                yield f'data: ⚠ MATCHING {evento_nombre}: {" | ".join(discrepancias)}\n\n'
+                                            else:
+                                                yield f'data: ✓ MATCHING {evento_nombre}: factura cuadra con {", ".join(docs_list)}\n\n'
+                                except Exception:
+                                    pass  # Matching es best-effort
                             else:
                                 err = reg.get('error','error desconocido') if reg else 'sin resultado'
                                 yield f'data: ✗ AP {fname}: {err[:80]}\n\n'
@@ -871,6 +968,8 @@ def api_procesar_batch_stream():
             if fb_n: parts.append(f'{fb_n} F&B')
             if inv_n: parts.append(f'{inv_n} inventario/mermas')
             if rooming_n: parts.append(f'{rooming_n} rooming')
+            beo_n = sum(1 for v in log.values() if v.get('resultado') in ('BEO_OK','TM_OK','CONTRATO_OK'))
+            if beo_n: parts.append(f'{beo_n} docs evento')
             resumen = ' · '.join(parts) if parts else 'sin documentos procesables'
             yield f'data: \n\n'
             yield f'data: ✅ {resumen}'
@@ -907,6 +1006,21 @@ def demo_view():
     if user:
         login_user(user)
     return redirect('/')
+
+
+@app.route('/api/eventos_referencia')
+@login_required
+def api_eventos_referencia():
+    """Devuelve los eventos con sus documentos de referencia (BEO, TM, contrato)."""
+    ref_path = os.path.join(BASE_DIR, 'datos-referencia', 'eventos_referencia.json')
+    if not os.path.exists(ref_path):
+        return jsonify({'ok': True, 'eventos': []})
+    try:
+        refs = json.load(open(ref_path))
+        return jsonify({'ok': True, 'eventos': refs})
+    except Exception as e:
+        return jsonify({'ok': False, 'error': str(e)}), 500
+
 
 @app.route('/api/test_clasificador')
 @login_required
@@ -1187,6 +1301,9 @@ def api_historial_procesado():
         elif resultado in ('FB_OK',): tab = 'F&B Cost'
         elif resultado in ('INV_OK',): tab = 'F&B Cost (Inventario/Mermas)'
         elif resultado in ('ROOMING',): tab = 'Rooming'
+        elif resultado in ('BEO_OK',): tab = 'Evento (BEO)'
+        elif resultado in ('TM_OK',): tab = 'Evento (TM)'
+        elif resultado in ('CONTRATO_OK',): tab = 'Evento (Contrato)'
         elif 'SKIP' in resultado: tab = 'Omitido'
         elif 'ERR' in resultado or 'CRASH' in resultado: tab = 'Error'
         
@@ -2805,22 +2922,6 @@ tr:hover td{background:rgba(255,255,255,.025)}
   }
   #chat-panel.open{transform:translateY(0)}
 }
-@media(max-width:640px){
-  .tabs{display:flex;overflow-x:auto;-webkit-overflow-scrolling:touch;gap:0;padding-bottom:4px;scrollbar-width:none}
-  .tabs::-webkit-scrollbar{display:none}
-  .tab{white-space:nowrap;font-size:11px;padding:8px 10px;flex-shrink:0}
-  .stats{grid-template-columns:repeat(2,1fr) !important;gap:8px !important}
-  .stat-card,.kpi-card{padding:12px !important}
-  .stat-card h2,.kpi-card h2{font-size:22px !important}
-  .stat-card .label,.kpi-card .label{font-size:10px !important}
-  h1,.section-title{font-size:16px !important}
-  .btn-run{font-size:11px !important;padding:7px 12px !important}
-  .header-actions{gap:4px}
-  .nav{flex-wrap:wrap;gap:4px}
-  table{font-size:11px}
-  .modal{padding:16px !important;margin:8px !important}
-}
-
 
 #chat-header{
   padding:16px 18px;border-bottom:1px solid var(--s1);
@@ -6957,7 +7058,10 @@ function _detectType(fname) {
   // Rooming
   if (n.includes('rooming') || n.includes('room list') || n.includes('guest list')) return 'Rooming';
   // No-procesables conocidos
-  if (n.includes('beo') || n.includes('agenda') || n.includes('logo') || n.includes('sow') || n.includes('contrato') || n.includes('contract')) return 'Omitir';
+  if (n.includes('beo') || n.includes('banquet event')) return 'BEO';
+  if (n.includes(' tm ') || n.includes('technical')) return 'TM';
+  if (n.includes('contrato') || n.includes('contract') || n.includes('sow') || n.includes('scope of work')) return 'Contrato';
+  if (n.includes('agenda') || n.includes('logo')) return 'Omitir';
   // Factura por defecto para PDFs
   if (n.endsWith('.pdf')) return 'Factura';
   if (n.endsWith('.xlsx') || n.endsWith('.xls') || n.endsWith('.csv')) return 'Datos';
@@ -6971,6 +7075,7 @@ function _typeColor(t) {
   if (t === 'Banco') return '#22c55e';
   if (t === 'F&B' || t === 'Inventario' || t === 'Mermas') return '#f97316';
   if (t === 'Rooming') return '#06b6d4';
+  if (t === 'BEO' || t === 'TM' || t === 'Contrato') return '#a78bfa';
   if (t === 'Omitir') return '#64748b';
   return 'var(--mut)';
 }
