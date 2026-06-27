@@ -897,6 +897,17 @@ def api_procesar_batch_stream():
                     headers={'Cache-Control':'no-cache','X-Accel-Buffering':'no','Connection':'keep-alive'})
 
 
+
+@app.route('/demo')
+def demo_view():
+    """Demo pública sin login — entra como admin directamente."""
+    from flask_login import login_user
+    from auth import login as auth_login
+    user = auth_login('admin', 'admin123')
+    if user:
+        login_user(user)
+    return redirect('/')
+
 @app.route('/api/test_clasificador')
 @login_required
 def api_test_clasificador():
@@ -2794,6 +2805,22 @@ tr:hover td{background:rgba(255,255,255,.025)}
   }
   #chat-panel.open{transform:translateY(0)}
 }
+@media(max-width:640px){
+  .tabs{display:flex;overflow-x:auto;-webkit-overflow-scrolling:touch;gap:0;padding-bottom:4px;scrollbar-width:none}
+  .tabs::-webkit-scrollbar{display:none}
+  .tab{white-space:nowrap;font-size:11px;padding:8px 10px;flex-shrink:0}
+  .stats{grid-template-columns:repeat(2,1fr) !important;gap:8px !important}
+  .stat-card,.kpi-card{padding:12px !important}
+  .stat-card h2,.kpi-card h2{font-size:22px !important}
+  .stat-card .label,.kpi-card .label{font-size:10px !important}
+  h1,.section-title{font-size:16px !important}
+  .btn-run{font-size:11px !important;padding:7px 12px !important}
+  .header-actions{gap:4px}
+  .nav{flex-wrap:wrap;gap:4px}
+  table{font-size:11px}
+  .modal{padding:16px !important;margin:8px !important}
+}
+
 
 #chat-header{
   padding:16px 18px;border-bottom:1px solid var(--s1);
