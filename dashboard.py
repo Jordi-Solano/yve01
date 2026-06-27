@@ -2620,7 +2620,16 @@ body::before{
 .btn-run{background:linear-gradient(135deg,var(--acc),var(--acc-dark));color:#fff;border:none;padding:9px 18px;border-radius:9px;font-size:13px;font-weight:700;cursor:pointer;display:flex;align-items:center;gap:8px;white-space:nowrap;box-shadow:0 0 20px rgba(var(--acc-r,59),var(--acc-g,130),var(--acc-b,246),.35);transition:.15s}
 .btn-run:hover{box-shadow:0 0 28px rgba(var(--acc-r,59),var(--acc-g,130),var(--acc-b,246),.55);transform:translateY(-1px)}
 .btn-run:disabled{opacity:.5;cursor:not-allowed;transform:none;box-shadow:none}
-@media(max-width:640px){.logo-tag,.pill{display:none}.nav{padding:0 14px}.btn-run{padding:8px 12px;font-size:12px}}
+@media(max-width:640px){
+  .logo-tag,.pill{display:none}
+  .nav{padding:0 10px;gap:6px;height:50px;flex-wrap:nowrap;overflow:hidden}
+  .logo-name{font-size:16px}
+  .logo-tag{display:none}
+  #btn-lite-nav{display:none}
+  .btn-run{padding:8px 12px;font-size:12px}
+  .btn-ref{padding:4px 8px;font-size:11px}
+  .nav-right{gap:6px}
+}
 
 /* ── MAIN ── */
 .main{padding:24px;max-width:1440px;margin:0 auto}
