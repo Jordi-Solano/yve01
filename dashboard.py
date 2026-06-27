@@ -2622,13 +2622,15 @@ body::before{
 .btn-run:disabled{opacity:.5;cursor:not-allowed;transform:none;box-shadow:none}
 @media(max-width:640px){
   .logo-tag,.pill{display:none}
-  .nav{padding:0 10px;gap:6px;height:50px;flex-wrap:nowrap;overflow:hidden}
+  .nav{padding:0 10px;gap:6px;height:50px}
   .logo-name{font-size:16px}
-  .logo-tag{display:none}
   #btn-lite-nav{display:none}
   .btn-run{padding:8px 12px;font-size:12px}
   .btn-ref{padding:4px 8px;font-size:11px}
   .nav-right{gap:6px}
+  #daily-alerts-panel{display:none!important}
+  #mobile-kpi-bar{display:none!important}
+  #exec-summary{display:none!important}
 }
 
 /* ── MAIN ── */
