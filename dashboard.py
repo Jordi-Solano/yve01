@@ -2631,6 +2631,23 @@ body::before{
   #daily-alerts-panel{display:none!important}
   #mobile-kpi-bar{display:none!important}
   #exec-summary{display:none!important}
+  /* Stats cards: 2 columnas en móvil */
+  .stats,.metrics,.kpi-row{grid-template-columns:repeat(2,1fr)!important;gap:8px!important}
+  /* Sub-tabs F&B: scroll horizontal */
+  .fb-sub{font-size:11px!important;padding:6px 10px!important}
+  /* Tabs principales: scroll horizontal */
+  .tabs{overflow-x:auto;-webkit-overflow-scrolling:touch;scrollbar-width:none;flex-wrap:nowrap!important}
+  .tabs::-webkit-scrollbar{display:none}
+  .tab{font-size:11px;padding:8px 10px;white-space:nowrap;flex-shrink:0}
+  /* Main padding reducido */
+  .main{padding:12px!important}
+  /* Tablas: scroll horizontal */
+  .table-wrap{overflow-x:auto;-webkit-overflow-scrolling:touch}
+  table{min-width:auto!important;font-size:11px}
+  /* Gráficos: ancho completo */
+  .mid,.chart-grid{grid-template-columns:1fr!important}
+  /* Modal: ocupa más pantalla */
+  .modal{width:calc(100% - 16px)!important;max-width:none!important;margin:8px!important;padding:16px!important}
 }
 
 /* ── MAIN ── */
@@ -3592,7 +3609,7 @@ button, a { touch-action: manipulation; }
   <div id="panel-fb" class="panel">
     <!-- F&B Sub-tabs -->
     <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:20px;flex-wrap:wrap;gap:10px">
-      <div style="display:flex;gap:4px;background:var(--s1);border-radius:10px;padding:4px;border:1px solid var(--s2)">
+      <div style="display:flex;gap:4px;background:var(--s1);border-radius:10px;padding:4px;border:1px solid var(--s2);overflow-x:auto;-webkit-overflow-scrolling:touch;scrollbar-width:none">
         <button class="fb-sub active" onclick="fbSub('resumen',this)" data-i18n="fb.resumen">📊 Resumen</button>
         <button class="fb-sub" onclick="fbSub('inventario',this)" data-i18n="fb.inventario">📦 Inventario</button>
         <button class="fb-sub" onclick="fbSub('mermas',this)" data-i18n="fb.mermas">⚠️ Mermas</button>
