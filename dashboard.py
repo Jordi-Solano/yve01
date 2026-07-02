@@ -2651,6 +2651,12 @@ body::before{
   .mid,.chart-grid{grid-template-columns:1fr!important}
   /* Modal: ocupa más pantalla */
   .modal{width:calc(100% - 16px)!important;max-width:none!important;margin:8px!important;padding:16px!important}
+  .fb-kpi-grid{grid-template-columns:repeat(2,1fr)!important;gap:8px!important}
+  .fb-chart-grid{grid-template-columns:1fr!important}
+  .fb-kpi-card{padding:12px 10px!important}
+  .fb-kpi-val{font-size:20px!important}
+  .fb-kpi-lbl{font-size:9px!important}
+  h2{font-size:15px!important}
 }
 
 /* ── MAIN ── */
@@ -7907,7 +7913,7 @@ async function loadFBResumen() {
     html += '</div>';
 
     // ── KPIs: 4 cards en fila ──
-    html += '<div style="display:grid;grid-template-columns:repeat(4,1fr);gap:12px;margin-bottom:16px">';
+    html += '<div class="fb-kpi-grid" style="display:grid;grid-template-columns:repeat(4,1fr);gap:12px;margin-bottom:16px">';
     html += _fbKpi(t('fb.ventasFb')||'Ventas F&B', '€' + Math.round(r.total_ventas).toLocaleString('es-ES'), t('fb.periodoCompleto')||'período completo', 'var(--acc2)');
     html += _fbKpi(t('fb.fcTeorico')||'FC Teórico', r.fc_teorico_pct + '%', t('fb.objetivoCalc')||'objetivo calculado', 'var(--grn)');
     html += _fbKpi(t('fb.fcReal')||'FC Real', r.fc_real_pct + '%', fcSign + fcDiff + ' ' + (t('fb.vsObjetivo')||'pp vs objetivo'), fcColor);
@@ -7916,7 +7922,7 @@ async function loadFBResumen() {
 
     // ── Fila: gráfico ventas (izq, ancho) + gauge FC% (der, estrecho) ──
     const maxG = Math.max(r.fc_teorico_pct, r.fc_real_pct) * 1.35;
-    html += '<div style="display:grid;grid-template-columns:1.5fr 1fr;gap:16px;margin-bottom:16px">';
+    html += '<div class="fb-chart-grid" style="display:grid;grid-template-columns:1.5fr 1fr;gap:16px;margin-bottom:16px">';
     html += '<div class="card"><div class="card-title" data-i18n="card.ventasDiarias">Ventas diarias F&B</div>';
     html += '<div style="height:200px;position:relative"><canvas id="fb-ventas-chart"></canvas></div></div>';
     html += '<div class="card"><div class="card-title" style="margin-bottom:16px" data-i18n="fb.gaugeTitle">Food Cost % — Teórico vs Real</div>';
@@ -8054,7 +8060,7 @@ async function loadFBMermas() {
         html += '<div style="background:rgba(245,158,11,.08);border:1px solid rgba(245,158,11,.25);border-radius:10px;padding:12px 16px;font-size:13px;color:var(--ora);margin-bottom:16px">⚠ Mermas altas: €' + totalCoste.toFixed(2) + ' este período. Revisar porcionado y almacenamiento.</div>';
       }
     }
-    html += '<div style="display:grid;grid-template-columns:1fr 1fr;gap:16px;margin-bottom:20px">';
+    html += '<div class="fb-chart-grid" style="display:grid;grid-template-columns:1fr 1fr;gap:16px;margin-bottom:20px">';
     // Mermas por causa
     html += '<div class="card"><div class="card-title" data-i18n="card.mermasCausa">Mermas por Causa</div><div style="margin-top:8px">';
     const causas = Object.entries(data.por_causa).sort((a,b) => b[1]-a[1]);
