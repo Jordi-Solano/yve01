@@ -7858,7 +7858,10 @@ function fbSub(sub, el) {
   Object.values(panels).forEach(id => { const d = document.getElementById(id); if (d) d.style.display = 'none'; });
   const active = document.getElementById(panels[sub]);
   if (active) active.style.display = 'block';
-  if (!_fbLoaded[sub]) {
+  // Cargar siempre si no está cargado O si el panel está vacío
+  var _panel = document.getElementById(panels[sub]);
+  var _isEmpty = _panel && (_panel.innerHTML.includes('Cargando') || _panel.innerHTML.trim() === '');
+  if (!_fbLoaded[sub] || _isEmpty) {
     if (sub === 'resumen')    loadFBResumen();
     if (sub === 'inventario') loadFBInventario();
     if (sub === 'mermas')     loadFBMermas();
@@ -7868,6 +7871,16 @@ function fbSub(sub, el) {
 
 async function loadFBTab() {
   if (!_fbLoaded.resumen) loadFBResumen();
+  // Precargar las otras sub-tabs para que estén listas al hacer clic
+  setTimeout(function() {
+    if (!_fbLoaded.inventario) loadFBInventario();
+  }, 500);
+  setTimeout(function() {
+    if (!_fbLoaded.mermas) loadFBMermas();
+  }, 1000);
+  setTimeout(function() {
+    if (!_fbLoaded.recetas) loadFBRecetas();
+  }, 1500);
 }
 
 function runFB() {
@@ -7934,7 +7947,7 @@ async function loadFBResumen() {
     // ── Fila: categorías (izq) + top platos (der) ──
     html += '<div style="display:grid;grid-template-columns:1.2fr 0.8fr;gap:16px">';
     html += '<div class="card"><div class="card-title" data-i18n="card.fcCategoria">Food Cost por Categoría</div>';
-    html += '<div class="tbl-wrap"><table style="min-width:0;width:100%"><thead><tr>';
+    html += '<div class="tbl-wrap" style="overflow-x:auto;-webkit-overflow-scrolling:touch"><table style="min-width:0;width:100%"><thead><tr>';
     html += '<th>' + (t('fb.thCategoria')||'Categoría') + '</th><th style="text-align:right">' + (t('fb.thVentas')||'Ventas') + '</th><th style="text-align:right">FC%</th><th style="text-align:center">' + (t('fb.thEstado')||'Estado') + '</th>';
     html += '</tr></thead><tbody id="mh-tbody">';
     data.categorias.forEach(c => {
@@ -7948,7 +7961,7 @@ async function loadFBResumen() {
     html += '</tbody></table></div></div>';
 
     html += '<div class="card"><div class="card-title" data-i18n="card.topPlatos">Top Platos</div>';
-    html += '<div class="tbl-wrap"><table style="min-width:0;width:100%"><thead><tr><th>' + (t('fb.thPlato')||'Plato') + '</th><th style="text-align:right">€</th><th style="text-align:right">FC%</th></tr></thead><tbody>';
+    html += '<div class="tbl-wrap" style="overflow-x:auto;-webkit-overflow-scrolling:touch"><table style="min-width:0;width:100%"><thead><tr><th>' + (t('fb.thPlato')||'Plato') + '</th><th style="text-align:right">€</th><th style="text-align:right">FC%</th></tr></thead><tbody>';
     data.ranking_top.forEach((p, i) => {
       const pC = p.fc_real_pct > 30 ? 'var(--ora)' : 'var(--grn)';
       html += '<tr><td><span style="color:var(--dim);font-size:10px;margin-right:5px">#' + (i+1) + '</span>' + p.nombre + '</td>' +
@@ -7998,14 +8011,14 @@ async function loadFBInventario() {
     if (!data.ok) { cont.innerHTML = '<div class="empty"><p>Error inventario</p></div>'; return; }
 
     const alertas = data.items.filter(i => i.alerta);
-    let html = '<div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(140px,1fr));gap:14px;margin-bottom:20px">';
+    let html = '<div class="fb-kpi-grid" style="display:grid;grid-template-columns:repeat(auto-fit,minmax(140px,1fr));gap:14px;margin-bottom:20px">';
     html += _fbKpi(t('fb.itemsStock')||'Items en Stock', data.items.length, t('fb.ingredientes')||'ingredientes', 'var(--acc2)');
     html += _fbKpi(t('fb.valorInv')||'Valor Inventario', '€' + data.valor_total.toLocaleString('es-ES'), t('fb.valorActual')||'valoración actual', 'var(--grn)');
     html += _fbKpi(t('fb.alertasStock')||'Alertas Stock Bajo', alertas.length, alertas.length > 0 ? 'revisar urgente' : t('fb.todoOk')||'todo OK', alertas.length > 0 ? 'var(--red)' : 'var(--grn)');
     html += '</div>';
 
     html += '<div class="card"><div class="card-title" data-i18n="card.stockIngredientes">Stock de Ingredientes</div>';
-    html += '<div class="tbl-wrap"><table style="min-width:0;width:100%"><thead><tr>';
+    html += '<div class="tbl-wrap" style="overflow-x:auto;-webkit-overflow-scrolling:touch"><table style="min-width:0;width:100%"><thead><tr>';
     html += '<th>' + (t('fb.thIngrediente')||'Ingrediente') + '</th><th>' + (t('fb.thCategoria')||'Categoría') + '</th><th>' + (t('th.proveedor')||'Proveedor') + '</th>';
     html += '<th style="text-align:right">' + (t('fb.thActual')||'Actual') + '</th><th style="text-align:right">€/u</th>';
     html += '<th style="text-align:right;width:130px">Stock</th><th style="text-align:center">Estado</th>';
@@ -8094,7 +8107,7 @@ async function loadFBMermas() {
 
     // Historial
     html += '<div class="card"><div class="card-title">Historial de Mermas · Total: <span style="color:var(--ora)">€' + data.total.toFixed(2) + '</span></div>';
-    html += '<div class="tbl-wrap"><table style="min-width:0;width:100%"><thead><tr>';
+    html += '<div class="tbl-wrap" style="overflow-x:auto;-webkit-overflow-scrolling:touch"><table style="min-width:0;width:100%"><thead><tr>';
     html += '<th>Fecha</th><th>Ingrediente</th><th>Categoría</th><th style="text-align:right">Cantidad</th>';
     html += '<th>Causa</th><th style="text-align:right">Coste</th></tr></thead><tbody>';
     [...data.mermas].reverse().forEach(m => {
@@ -8154,7 +8167,7 @@ async function loadFBRecetas() {
     html += '</div>';
 
     html += '<div class="card"><div class="card-title" data-i18n="card.fichaRecetas">Ficha de Recetas con Coste Teórico</div>';
-    html += '<div class="tbl-wrap"><table style="min-width:0;width:100%"><thead><tr>';
+    html += '<div class="tbl-wrap" style="overflow-x:auto;-webkit-overflow-scrolling:touch"><table style="min-width:0;width:100%"><thead><tr>';
     html += '<th>Receta</th><th>Categoría</th><th style="text-align:right">PVP</th>';
     html += '<th style="text-align:right">Coste</th><th style="text-align:right">FC%</th>';
     html += '<th style="text-align:right">Margen</th><th style="text-align:center">Estado</th>';
