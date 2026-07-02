@@ -2632,6 +2632,10 @@ body::before{
   .btn-ref{padding:4px 8px;font-size:11px}
   .nav-right{gap:6px}
   #daily-alerts-panel{display:none!important}
+  #tour-box{max-width:280px!important;padding:14px!important;font-size:12px!important}
+  #tour-box h3{font-size:14px!important}
+  #tour-congrats>div{padding:20px!important;max-width:300px!important}
+  #tour-congrats>div>div:first-child{font-size:36px!important}
   #mobile-kpi-bar{display:none!important}
   #exec-summary{display:none!important}
   /* Stats cards: 2 columnas en móvil */
@@ -3181,7 +3185,7 @@ tr:hover td{background:rgba(255,255,255,.025)}
 
 /* ── Dropdown menus (navbar) — sustituye estilos inline hardcodeados ── */
 .dropdown{display:inline-block;position:relative}
-.menu{display:none;position:absolute;top:46px;right:0;background:var(--s1);border:1px solid var(--s2);border-radius:11px;padding:7px;z-index:1000;min-width:218px;box-shadow:0 12px 40px rgba(0,0,0,.45)}
+.menu{display:none;position:absolute;top:46px;right:0;background:var(--s1);border:1px solid var(--s2);border-radius:11px;padding:7px;z-index:1000;min-width:218px;box-shadow:0 12px 40px rgba(0,0,0,.45);max-height:calc(100vh - 60px);overflow-y:auto}
 .menu.open{display:block;animation:menuIn .14s ease}
 @keyframes menuIn{from{opacity:0;transform:translateY(-6px)}to{opacity:1;transform:none}}
 .menu-head{padding:7px 12px 5px;color:var(--dim);font-size:9.5px;font-weight:700;text-transform:uppercase;letter-spacing:.6px}
@@ -3375,8 +3379,8 @@ button, a { touch-action: manipulation; }
     <button class="tab" id="tab-notif" onclick="switchTab('notif',this)" data-i18n="tab.notif">🔔 Notificaciones</button>
     <button class="tab" onclick="switchTab('fb',this)" id="tab-fb" data-i18n="tab.fb">🍽️ F&amp;B Cost</button>
     <button class="tab" onclick="switchTab('ar_real',this)" id="tab-ar-real" data-i18n="tab.arreal">🏢 AR Real</button>
-    <button class="tab" onclick="switchCalipolisTab(this)" id="tab-calipolis" data-i18n="tab.calipolis">🏖️ Calipolis</button>
-    <button class="tab" onclick="switchTab('multi_hotel',this)" id="tab-multi-hotel" data-i18n="tab.multihotel">🏨 Multi-Hotel</button>
+    <!-- Calipolis tab quitado temporalmente -->
+    <button class="tab hide-mobile" onclick="switchTab('multi_hotel',this)" id="tab-multi-hotel" data-i18n="tab.multihotel">🏨 Multi-Hotel</button>
   </div>
 
   <div id="panel-ar" class="panel active">
@@ -6746,8 +6750,9 @@ function endTour() {
   // Mark done
   localStorage.setItem('tour_done', _TOUR_VER);
 
-  function _closeCongrats() { var c=document.getElementById('tour-congrats'); if(c) c.remove(); }
-function _startAR() { _closeCongrats(); var t=document.getElementById('tab-ar'); if(t) switchTab('ar',t); }
+  // Mover a global scope para que onclick funcione
+  window._closeCongrats = function() { var c=document.getElementById('tour-congrats'); if(c) c.remove(); };
+  window._startAR = function() { window._closeCongrats(); var t=document.getElementById('tab-ar'); if(t) switchTab('ar',t); };
 // ── Celebración final: tarjeta de bienvenida sobre el dashboard ──
   setTimeout(function() {
     var card = document.createElement('div');
