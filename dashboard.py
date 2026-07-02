@@ -2708,9 +2708,7 @@ body.mobile-lite #notif-tbody,
 body.mobile-lite #panel-notif > .card { display: none !important; }
 
 /* F&B — solo mostrar resumen KPIs */
-body.mobile-lite #fb-inventario,
-body.mobile-lite #fb-recetas,
-body.mobile-lite #fb-mermas-panel { display: none !important; }
+/* F&B sub-tabs: visibles en lite si el usuario hace clic */
 
 /* Real AR — ocultar tabla, lista, aging */
 body.mobile-lite #ar-clientes-list,
