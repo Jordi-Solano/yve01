@@ -1558,6 +1558,7 @@ def api_procesar():
                 try:
                     sys.path.insert(0, BASE_DIR)
                     from exportador_final import generar_reporte_ejecutivo, generar_excel_consolidado
+                    from notificaciones import enviar_pendientes
                     alertas = enviar_pendientes()
                     if alertas:
                         yield "data: >> Notificaciones: " + str(len(alertas)) + " alerta(s) procesada(s)\n\n"
@@ -1747,6 +1748,7 @@ def api_procesar_ap():
                 try:
                     sys.path.insert(0, BASE_DIR)
                     from exportador_final import generar_reporte_ejecutivo, generar_excel_consolidado
+                    from notificaciones import enviar_pendientes
                     alertas = enviar_pendientes()
                     if alertas:
                         yield "data: >> Notificaciones: " + str(len(alertas)) + " alerta(s) procesada(s)\n\n"
@@ -2498,6 +2500,7 @@ def api_enviar_notificaciones():
     try:
         sys.path.insert(0, BASE_DIR)
         from exportador_final import generar_reporte_ejecutivo, generar_excel_consolidado
+        from notificaciones import enviar_pendientes
         alertas = enviar_pendientes()
         return jsonify({"ok": True, "enviadas": len(alertas)})
     except Exception as e:
@@ -2624,7 +2627,7 @@ body::before{
   .logo-tag,.pill{display:none}
   .nav{padding:0 10px;gap:6px;height:50px}
   .logo-name{font-size:16px}
-  #btn-lite-nav{display:none}
+  #btn-lite-nav{font-size:11px!important;padding:5px 8px!important}
   .btn-run{padding:8px 12px;font-size:12px}
   .btn-ref{padding:4px 8px;font-size:11px}
   .nav-right{gap:6px}
@@ -10279,6 +10282,7 @@ def chequear_notificaciones():
     """Escanea alertas y envía pendientes"""
     try:
         escanear_alertas()
+        from notificaciones import enviar_pendientes
         enviados = enviar_pendientes(solo_check=False)
         return jsonify({
             "status": "ok",
