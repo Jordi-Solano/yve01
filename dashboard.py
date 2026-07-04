@@ -7681,7 +7681,7 @@ async function processScan() {
       // Botones de acción
       html += '<div style="display:flex;gap:8px;flex-wrap:wrap">';
       if (targetTab) {
-        html += '<button onclick="closeScanModal();var t=document.getElementById('tab-'+targetTab+'');if(t)switchTab(''+targetTab+'',t)" style="flex:1;padding:10px;background:rgba(59,130,246,.15);border:1px solid rgba(59,130,246,.3);color:#60a5fa;border-radius:8px;font-size:13px;font-weight:600;cursor:pointer">📍 Ver en ' + (tabName[targetTab]||tipo) + '</button>';
+        html += '<button onclick="closeScanModal();var t=document.getElementById(\'tab-'+targetTab+'\');if(t)switchTab(\''+targetTab+'\',t)" style="flex:1;padding:10px;background:rgba(59,130,246,.15);border:1px solid rgba(59,130,246,.3);color:#60a5fa;border-radius:8px;font-size:13px;font-weight:600;cursor:pointer">📍 Ver en ' + (tabName[targetTab]||tipo) + '</button>';
       }
       html += '<button onclick="resetScan()" style="flex:1;padding:10px;background:rgba(168,85,247,.15);border:1px solid rgba(168,85,247,.3);color:#a855f7;border-radius:8px;font-size:13px;font-weight:600;cursor:pointer">📸 Escanear otro</button>';
       html += '</div>';
