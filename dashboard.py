@@ -3359,7 +3359,9 @@ button, a { touch-action: manipulation; }
 
     <button class="btn-ref show-mobile" onclick="toggleChat()" style="background:linear-gradient(135deg,rgba(124,58,237,.15),rgba(59,130,246,.15));border-color:rgba(124,58,237,.35);color:#a78bfa;font-weight:700" title="Pregunta a Yve IA">💬 Yve</button>
     <button class="show-mobile" onclick="openUploadModal()" title="Procesar Archivos" style="background:rgba(59,130,246,.1);border:1px solid rgba(59,130,246,.25);color:#60a5fa;padding:7px 11px;border-radius:8px;font-size:16px;cursor:pointer;line-height:1;transition:.15s">⚡</button>
-    <button class="show-mobile" onclick="openScanModal()" title="Escanear documento" style="background:rgba(168,85,247,.1);border:1px solid rgba(168,85,247,.25);color:#a855f7;padding:7px 11px;border-radius:8px;font-size:16px;cursor:pointer;line-height:1;transition:.15s">📸</button>
+    <button class="show-mobile" onclick="openScanModal()" title="Escanear documento" style="background:rgba(168,85,247,.1);border:1px solid rgba(168,85,247,.25);color:#a855f7;padding:7px 11px;border-radius:8px;font-size:16px;cursor:pointer;line-height:1">📸</button>
+
+    <button class="btn-ref hide-mobile" onclick="openScanModal()" title="Escanear documento físico" style="background:rgba(168,85,247,.08);color:#a855f7;border-color:rgba(168,85,247,.25)">📸 Escanear</button>
 
 
 
