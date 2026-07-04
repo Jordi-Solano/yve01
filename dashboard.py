@@ -1073,8 +1073,10 @@ SOLO devuelve JSON, sin markdown ni explicaciones."""
         log[fname] = {'fecha': _dt2.now().strftime('%Y-%m-%d %H:%M'), 'resultado': f'{tipo}_OK'}
         _save_proc_log(log)
         
-        # Integrar datos según tipo (mismo flujo que el procesado normal)
+        # Integrar datos según tipo — MISMO flujo que Procesar Archivos
         items_count = 0
+        mensaje = ''
+        
         if tipo == 'FACTURA' and datos.get('es_factura'):
             from lector_facturas_ap import clasificar_proveedor, cargar_proveedores, _safe_float, _auto_cuenta_pgc, guardar_excel, SALIDA_DIR, NF
             provs = cargar_proveedores()
@@ -1096,17 +1098,110 @@ SOLO devuelve JSON, sin markdown ni explicaciones."""
             ruta = os.path.join(SALIDA_DIR, f'facturas_ap_{date.today().strftime("%Y%m%d")}.xlsx')
             guardar_excel([reg], ruta)
             mensaje = f'{datos.get("nombre_proveedor","")} — €{reg["total_factura"]:,.2f}'
+            
         elif tipo in ('BEO','TM','CONTRATO'):
             ref_path = os.path.join(BASE_DIR, 'datos-referencia', 'eventos_referencia.json')
             refs = json.load(open(ref_path)) if os.path.exists(ref_path) else []
             evento = datos.get('evento', fname)
-            refs.append({'evento': evento, 'evento_key': evento.lower()[:50],
-                         'cliente': datos.get('cliente',''), 'documentos': {
-                             tipo: {'archivo': fname, 'total': datos.get('total_estimado', datos.get('importe_total',0)),
-                                    'items': datos.get('items',[]), 'fecha': date.today().isoformat()}}})
+            evento_key = evento.lower().strip()[:50]
+            found = False
+            for ref in refs:
+                if ref.get('evento_key') == evento_key:
+                    ref['documentos'][tipo] = {'archivo': fname, 'total': datos.get('total_estimado', datos.get('importe_total',0)),
+                        'items': datos.get('items',[]), 'fecha': date.today().isoformat()}
+                    found = True
+                    break
+            if not found:
+                refs.append({'evento': evento, 'evento_key': evento_key,
+                    'cliente': datos.get('cliente',''), 'documentos': {
+                        tipo: {'archivo': fname, 'total': datos.get('total_estimado', datos.get('importe_total',0)),
+                            'items': datos.get('items',[]), 'fecha': date.today().isoformat()}}})
             json.dump(refs, open(ref_path,'w'), indent=2, ensure_ascii=False)
             items_count = len(datos.get('items',[]))
-            mensaje = f'{evento} — {items_count} items'
+            n_docs = len([r for r in refs if r.get('evento_key')==evento_key][0].get('documentos',{}))
+            mensaje = f'{evento} ({datos.get("cliente","")}) — {items_count} items · {n_docs} docs del evento'
+            
+        elif tipo == 'EXTRACTO_BANCO':
+            movimientos = datos.get('movimientos', [])
+            if movimientos:
+                _df_movs = _normalize_cols(pd.DataFrame(movimientos), _BANK_COL_MAP)
+                banco_path = os.path.join(BASE_DIR, 'datos-referencia', 'extracto_banco.xlsx')
+                if os.path.exists(banco_path):
+                    _df_old = pd.read_excel(banco_path)
+                    _df_movs = pd.concat([_df_old, _df_movs], ignore_index=True)
+                _df_movs.to_excel(banco_path, index=False)
+                items_count = len(movimientos)
+                mensaje = f'{items_count} movimientos bancarios integrados'
+            else:
+                mensaje = 'Extracto detectado (sin movimientos extraíbles)'
+                
+        elif tipo == 'VENTAS_POS':
+            platos = datos.get('platos', [])
+            total = datos.get('total_ventas', 0)
+            if platos:
+                _df_v = _normalize_cols(pd.DataFrame(platos), _VEN_COL_MAP)
+                fecha = datos.get('fecha', date.today().isoformat())
+                if 'fecha' not in _df_v.columns:
+                    _df_v['fecha'] = fecha
+                ventas_path = os.path.join(BASE_DIR, 'datos-referencia', 'ventas_fb_diarias.xlsx')
+                if os.path.exists(ventas_path):
+                    _df_old_v = pd.read_excel(ventas_path)
+                    _df_v = pd.concat([_df_old_v, _df_v], ignore_index=True)
+                _df_v.to_excel(ventas_path, index=False)
+                items_count = len(platos)
+                mensaje = f'{items_count} platos, €{total} integrados'
+            else:
+                mensaje = f'Ventas detectadas — €{total}'
+                
+        elif tipo == 'INVENTARIO':
+            inv_items = datos.get('items', datos.get('productos', []))
+            if inv_items:
+                _df_inv = _normalize_cols(pd.DataFrame(inv_items), _INV_COL_MAP)
+                inv_path = os.path.join(BASE_DIR, 'datos-referencia', 'inventario.xlsx')
+                if os.path.exists(inv_path):
+                    _df_old_i = pd.read_excel(inv_path)
+                    _df_inv = pd.concat([_df_old_i, _df_inv], ignore_index=True)
+                    if 'ingrediente' in _df_inv.columns:
+                        _df_inv.drop_duplicates(subset=['ingrediente'], keep='last', inplace=True)
+                _df_inv.to_excel(inv_path, index=False)
+                items_count = len(inv_items)
+                nombres = [str(i.get('ingrediente', '?'))[:15] for i in inv_items[:4]]
+                mensaje = f'{items_count} productos ({", ".join(nombres)}...) integrados'
+            else:
+                mensaje = 'Inventario detectado (sin items extraíbles)'
+                
+        elif tipo == 'MERMAS':
+            merma_items = datos.get('items', datos.get('mermas', []))
+            if merma_items:
+                _df_m = _normalize_cols(pd.DataFrame(merma_items), _MER_COL_MAP)
+                mer_path = os.path.join(BASE_DIR, 'datos-referencia', 'mermas.xlsx')
+                if os.path.exists(mer_path):
+                    _df_old_m = pd.read_excel(mer_path)
+                    _df_m = pd.concat([_df_old_m, _df_m], ignore_index=True)
+                _df_m.to_excel(mer_path, index=False)
+                items_count = len(merma_items)
+                total_merma = sum(float(m.get('coste_merma', m.get('coste', 0)) or 0) for m in merma_items)
+                mensaje = f'{items_count} registros — €{total_merma:.2f} integrados'
+            else:
+                mensaje = 'Mermas detectadas (sin registros extraíbles)'
+                
+        elif tipo == 'ROOMING':
+            grupo = datos.get('grupo', '—')
+            habs = datos.get('num_habitaciones', '?')
+            checkin = datos.get('checkin', '')
+            checkout = datos.get('checkout', '')
+            rooming_path = os.path.join(BASE_DIR, 'datos-referencia', 'rooming_grupos.json')
+            rooming_data = json.load(open(rooming_path)) if os.path.exists(rooming_path) else []
+            rooming_data.append({'archivo': fname, 'grupo': grupo, 'habitaciones': habs,
+                'checkin': checkin, 'checkout': checkout, 'fecha_procesado': date.today().isoformat()})
+            json.dump(rooming_data, open(rooming_path, 'w'), indent=2, ensure_ascii=False)
+            mensaje = f'{grupo} — {habs} hab. ({checkin}→{checkout})'
+            
+        elif tipo == 'COMISIONES_OTA':
+            ota = datos.get('ota', '?')
+            comision = datos.get('comision', 0)
+            mensaje = f'{ota} — €{comision} comisión'
+            
         else:
             desc = datos.get('descripcion', tipo)
             mensaje = desc
