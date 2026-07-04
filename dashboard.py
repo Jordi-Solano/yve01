@@ -7633,9 +7633,15 @@ async function processScan() {
   var btn = document.getElementById('btn-scan-process');
   var logEl = document.getElementById('scan-log');
   btn.disabled = true;
-  btn.textContent = '⏳ Procesando con IA...';
   logEl.style.display = 'block';
-  logEl.innerHTML = '<p style="color:#94a3b8">Enviando imagen a Claude Vision...</p>';
+  
+  // Animación de carga
+  var dots = 0;
+  var loadingInterval = setInterval(function() {
+    dots = (dots + 1) % 4;
+    btn.textContent = '⏳ Leyendo documento' + '.'.repeat(dots);
+  }, 400);
+  logEl.innerHTML = '<p style="color:#94a3b8;animation:pulse-green 1.5s infinite">🔍 Claude Vision está leyendo la imagen...</p>';
   
   try {
     var formData = new FormData();
@@ -7646,24 +7652,61 @@ async function processScan() {
       body: formData,
       headers: { 'X-CSRF-Token': _csrfToken }
     });
+    clearInterval(loadingInterval);
     var data = await r.json();
     
     if (data.ok) {
-      logEl.innerHTML = '<p style="color:#4ade80">✓ ' + data.mensaje + '</p>';
+      var tipo = data.tipo || '—';
+      var tabMap = {FACTURA:'ap',BEO:'ap',TM:'ap',CONTRATO:'ap',EXTRACTO_BANCO:'banco',VENTAS_POS:'fb',INVENTARIO:'fb',MERMAS:'fb',COMISIONES_OTA:'ar',ROOMING:'fb'};
+      var tabName = {ap:'AP — Proveedores',ar:'AR — OTAs',banco:'Banco',fb:'F&B Cost'};
+      var targetTab = tabMap[tipo] || '';
+      
+      var html = '<div style="border:1px solid rgba(34,197,94,.3);background:rgba(34,197,94,.05);border-radius:10px;padding:14px;margin-bottom:10px">';
+      html += '<div style="font-size:14px;font-weight:700;color:#4ade80;margin-bottom:8px">✓ Documento procesado</div>';
+      html += '<div style="font-size:13px;color:#94a3b8;line-height:1.6">';
+      html += '<b style="color:#60a5fa">Tipo:</b> ' + tipo + '<br>';
+      html += '<b style="color:#60a5fa">Resultado:</b> ' + data.mensaje + '<br>';
+      if (data.items) html += '<b style="color:#60a5fa">Items:</b> ' + data.items + ' extraídos<br>';
+      
+      // Mostrar campos clave según tipo
       if (data.datos) {
-        logEl.innerHTML += '<p style="color:#60a5fa;margin-top:6px">Tipo: ' + (data.tipo || '—') + '</p>';
-        if (data.items) logEl.innerHTML += '<p style="color:#94a3b8">' + data.items + ' items extraídos</p>';
+        var d = data.datos;
+        if (d.nombre_proveedor) html += '<b style="color:#60a5fa">Proveedor:</b> ' + d.nombre_proveedor + '<br>';
+        if (d.total_factura) html += '<b style="color:#60a5fa">Total:</b> €' + Number(d.total_factura).toLocaleString() + '<br>';
+        if (d.evento) html += '<b style="color:#60a5fa">Evento:</b> ' + d.evento + '<br>';
+        if (d.cliente) html += '<b style="color:#60a5fa">Cliente:</b> ' + d.cliente + '<br>';
       }
+      html += '</div></div>';
+      
+      // Botones de acción
+      html += '<div style="display:flex;gap:8px;flex-wrap:wrap">';
+      if (targetTab) {
+        html += '<button onclick="closeScanModal();var t=document.getElementById('tab-'+targetTab+'');if(t)switchTab(''+targetTab+'',t)" style="flex:1;padding:10px;background:rgba(59,130,246,.15);border:1px solid rgba(59,130,246,.3);color:#60a5fa;border-radius:8px;font-size:13px;font-weight:600;cursor:pointer">📍 Ver en ' + (tabName[targetTab]||tipo) + '</button>';
+      }
+      html += '<button onclick="resetScan()" style="flex:1;padding:10px;background:rgba(168,85,247,.15);border:1px solid rgba(168,85,247,.3);color:#a855f7;border-radius:8px;font-size:13px;font-weight:600;cursor:pointer">📸 Escanear otro</button>';
+      html += '</div>';
+      
+      logEl.innerHTML = html;
       setTimeout(function() { loadAll(); }, 1000);
     } else {
-      logEl.innerHTML = '<p style="color:#f87171">✗ ' + (data.error || 'Error desconocido') + '</p>';
+      logEl.innerHTML = '<div style="border:1px solid rgba(239,68,68,.3);background:rgba(239,68,68,.05);border-radius:10px;padding:14px"><p style="color:#f87171;margin:0">✗ ' + (data.error || 'Error desconocido') + '</p></div>' +
+        '<button onclick="resetScan()" style="margin-top:10px;width:100%;padding:10px;background:rgba(168,85,247,.15);border:1px solid rgba(168,85,247,.3);color:#a855f7;border-radius:8px;font-size:13px;font-weight:600;cursor:pointer">📸 Intentar otro</button>';
     }
   } catch(e) {
+    clearInterval(loadingInterval);
     logEl.innerHTML = '<p style="color:#f87171">✗ Error: ' + e.message + '</p>';
   }
   
   btn.textContent = '⚡ Procesar documento';
   btn.disabled = false;
+}
+
+function resetScan() {
+  _scanFile = null;
+  document.getElementById('scan-preview').style.display = 'none';
+  document.getElementById('scan-log').style.display = 'none';
+  document.getElementById('btn-scan-process').disabled = true;
+  document.getElementById('btn-scan-process').style.opacity = '.5';
 }
 
 function closeInvoiceModal() {
