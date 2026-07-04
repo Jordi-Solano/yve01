@@ -7774,82 +7774,83 @@ async function processScan() {
   var logEl = document.getElementById('scan-log');
   btn.disabled = true;
   logEl.style.display = 'block';
+  logEl.innerHTML = '';
   
-  // Animación de carga
-  var dots = 0;
-  var loadingInterval = setInterval(function() {
-    dots = (dots + 1) % 4;
-    btn.textContent = '⏳ Leyendo documento' + '.'.repeat(dots);
-  }, 400);
-  logEl.innerHTML = '<p style="color:#94a3b8;animation:pulse-green 1.5s infinite">🔍 Claude Vision está leyendo la imagen...</p>';
+  var total = _scanFiles.length;
+  var processed = 0;
+  var errors = 0;
   
-  try {
-    // Procesar todos los archivos en secuencia
-    var allResults = [];
-    for (var fi = 0; fi < _scanFiles.length; fi++) {
-      if (_scanFiles.length > 1) {
-        logEl.innerHTML += '<p style="color:#94a3b8;margin-top:6px">📄 [' + (fi+1) + '/' + _scanFiles.length + '] ' + _scanFiles[fi].name + '...</p>';
-      }
-      var formData = new FormData();
-      formData.append('image', _scanFiles[fi]);
-      var r = await fetch('/api/scan_documento', {
-        method: 'POST',
-        body: formData,
-        headers: { 'X-CSRF-Token': _csrfToken }
-      });
-      var data = await r.json();
-      allResults.push(data);
-    }
-    clearInterval(loadingInterval);
+  for (var fi = 0; fi < _scanFiles.length; fi++) {
+    var file = _scanFiles[fi];
+    var label = '[' + (fi+1) + '/' + total + '] ' + (file.name || 'foto');
     
-    var anyOk = allResults.some(function(d){ return d.ok; });
-    allResults.forEach(function(data, ri) {
-    if (data.ok) {
-      var tipo = data.tipo || '—';
-      var tabMap = {FACTURA:'ap',BEO:'ap',TM:'ap',CONTRATO:'ap',EXTRACTO_BANCO:'banco',VENTAS_POS:'fb',INVENTARIO:'fb',MERMAS:'fb',COMISIONES_OTA:'ar',ROOMING:'fb'};
-      var tabName = {ap:'AP — Proveedores',ar:'AR — OTAs',banco:'Banco',fb:'F&B Cost'};
-      var targetTab = tabMap[tipo] || '';
-      
-      var html = '<div style="border:1px solid rgba(34,197,94,.3);background:rgba(34,197,94,.05);border-radius:10px;padding:14px;margin-bottom:10px">';
-      html += '<div style="font-size:14px;font-weight:700;color:#4ade80;margin-bottom:8px">✓ Documento procesado</div>';
-      html += '<div style="font-size:13px;color:#94a3b8;line-height:1.6">';
-      html += '<b style="color:#60a5fa">Tipo:</b> ' + tipo + '<br>';
-      html += '<b style="color:#60a5fa">Resultado:</b> ' + data.mensaje + '<br>';
-      if (data.items) html += '<b style="color:#60a5fa">Items:</b> ' + data.items + ' extraídos<br>';
-      
-      // Mostrar campos clave según tipo
-      if (data.datos) {
-        var d = data.datos;
-        if (d.nombre_proveedor) html += '<b style="color:#60a5fa">Proveedor:</b> ' + d.nombre_proveedor + '<br>';
-        if (d.total_factura) html += '<b style="color:#60a5fa">Total:</b> €' + Number(d.total_factura).toLocaleString() + '<br>';
-        if (d.evento) html += '<b style="color:#60a5fa">Evento:</b> ' + d.evento + '<br>';
-        if (d.cliente) html += '<b style="color:#60a5fa">Cliente:</b> ' + d.cliente + '<br>';
+    // Progreso
+    btn.textContent = '⏳ ' + label;
+    logEl.innerHTML += '<p id="scan-prog-' + fi + '" style="color:#94a3b8;padding:6px 0;border-bottom:1px solid rgba(255,255,255,.05)">🔍 ' + label + '...</p>';
+    logEl.scrollTop = logEl.scrollHeight;
+    
+    var success = false;
+    for (var retry = 0; retry < 2 && !success; retry++) {
+      try {
+        var formData = new FormData();
+        formData.append('image', file);
+        var r = await fetch('/api/scan_documento', {
+          method: 'POST',
+          body: formData,
+          headers: { 'X-CSRF-Token': _csrfToken }
+        });
+        var data = await r.json();
+        var progEl = document.getElementById('scan-prog-' + fi);
+        
+        if (data.ok) {
+          var tipo = data.tipo || '—';
+          var colors = {FACTURA:'#f59e0b',BEO:'#a78bfa',TM:'#a78bfa',CONTRATO:'#a78bfa',EXTRACTO_BANCO:'#22c55e',VENTAS_POS:'#f97316',INVENTARIO:'#f97316',MERMAS:'#f97316',COMISIONES_OTA:'#60a5fa',ROOMING:'#06b6d4',OTRO:'#64748b'};
+          var color = colors[tipo] || '#94a3b8';
+          if (progEl) progEl.innerHTML = '✓ ' + label + ' — <span style="color:' + color + ';font-weight:600">' + tipo + '</span> · ' + (data.mensaje || '');
+          if (progEl) progEl.style.color = '#4ade80';
+          processed++;
+          success = true;
+        } else {
+          if (progEl) progEl.innerHTML = '✗ ' + label + ' — ' + (data.error || 'error');
+          if (progEl) progEl.style.color = '#f87171';
+          if (retry === 0) {
+            if (progEl) progEl.innerHTML += ' (reintentando...)';
+          } else {
+            errors++;
+            success = true; // no reintentar más
+          }
+        }
+      } catch(e) {
+        var progEl2 = document.getElementById('scan-prog-' + fi);
+        if (retry === 0) {
+          if (progEl2) progEl2.innerHTML = '⚠ ' + label + ' — conexión perdida (reintentando...)';
+          if (progEl2) progEl2.style.color = '#facc15';
+          await new Promise(function(r) { setTimeout(r, 2000); }); // esperar 2s
+        } else {
+          if (progEl2) progEl2.innerHTML = '✗ ' + label + ' — ' + e.message;
+          if (progEl2) progEl2.style.color = '#f87171';
+          errors++;
+          success = true;
+        }
       }
-      html += '</div></div>';
-      
-      // Botones de acción
-      html += '<div style="display:flex;gap:8px;flex-wrap:wrap">';
-      if (targetTab) {
-        html += '<button onclick="closeScanModal();var t=document.getElementById(\'tab-'+targetTab+'\');if(t)switchTab(\''+targetTab+'\',t)" style="flex:1;padding:10px;background:rgba(59,130,246,.15);border:1px solid rgba(59,130,246,.3);color:#60a5fa;border-radius:8px;font-size:13px;font-weight:600;cursor:pointer">📍 Ver en ' + (tabName[targetTab]||tipo) + '</button>';
-      }
-      html += '<button onclick="resetScan()" style="flex:1;padding:10px;background:rgba(168,85,247,.15);border:1px solid rgba(168,85,247,.3);color:#a855f7;border-radius:8px;font-size:13px;font-weight:600;cursor:pointer">📸 Escanear otro</button>';
-      html += '</div>';
-      
-      logEl.innerHTML += html;
-    } else {
-      logEl.innerHTML = '<div style="border:1px solid rgba(239,68,68,.3);background:rgba(239,68,68,.05);border-radius:10px;padding:14px"><p style="color:#f87171;margin:0">✗ ' + (data.error || 'Error desconocido') + '</p></div>' +
-        '<button onclick="resetScan()" style="margin-top:10px;width:100%;padding:10px;background:rgba(168,85,247,.15);border:1px solid rgba(168,85,247,.3);color:#a855f7;border-radius:8px;font-size:13px;font-weight:600;cursor:pointer">📸 Intentar otro</button>';
     }
-    }); // fin forEach resultados
-    logEl.innerHTML += '<div style="margin-top:10px;display:flex;gap:8px"><button onclick="resetScan()" style="flex:1;padding:10px;background:rgba(168,85,247,.15);border:1px solid rgba(168,85,247,.3);color:#a855f7;border-radius:8px;font-size:13px;font-weight:600;cursor:pointer">📸 Escanear más</button></div>';
-    setTimeout(function() { loadAll(); }, 1000);
-  } catch(e) {
-    clearInterval(loadingInterval);
-    logEl.innerHTML = '<p style="color:#f87171">✗ Error: ' + e.message + '</p>';
   }
+  
+  // Resumen final
+  var resHtml = '<div style="border-top:1px solid rgba(255,255,255,.1);padding-top:10px;margin-top:10px">';
+  resHtml += '<p style="color:' + (errors ? '#facc15' : '#4ade80') + ';font-weight:700">✅ ' + processed + '/' + total + ' procesados';
+  if (errors) resHtml += ' · ' + errors + ' errores';
+  resHtml += '</p>';
+  resHtml += '<div style="display:flex;gap:8px;margin-top:8px">';
+  resHtml += '<button onclick="resetScan()" style="flex:1;padding:10px;background:rgba(168,85,247,.15);border:1px solid rgba(168,85,247,.3);color:#a855f7;border-radius:8px;font-size:13px;font-weight:600;cursor:pointer">📸 Escanear más</button>';
+  resHtml += '<button onclick="closeScanModal()" style="flex:1;padding:10px;background:rgba(255,255,255,.05);border:1px solid rgba(255,255,255,.1);color:#94a3b8;border-radius:8px;font-size:13px;font-weight:600;cursor:pointer">Cerrar</button>';
+  resHtml += '</div></div>';
+  logEl.innerHTML += resHtml;
+  logEl.scrollTop = logEl.scrollHeight;
   
   btn.textContent = '⚡ Procesar documento';
   btn.disabled = false;
+  setTimeout(function() { loadAll(); }, 500);
 }
 
 function resetScan() {
