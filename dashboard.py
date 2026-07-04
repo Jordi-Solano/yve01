@@ -7835,18 +7835,19 @@ async function processScan() {
       html += '<button onclick="resetScan()" style="flex:1;padding:10px;background:rgba(168,85,247,.15);border:1px solid rgba(168,85,247,.3);color:#a855f7;border-radius:8px;font-size:13px;font-weight:600;cursor:pointer">📸 Escanear otro</button>';
       html += '</div>';
       
-      logEl.innerHTML = html;
-      setTimeout(function() { loadAll(); }, 1000);
+      logEl.innerHTML += html;
     } else {
       logEl.innerHTML = '<div style="border:1px solid rgba(239,68,68,.3);background:rgba(239,68,68,.05);border-radius:10px;padding:14px"><p style="color:#f87171;margin:0">✗ ' + (data.error || 'Error desconocido') + '</p></div>' +
         '<button onclick="resetScan()" style="margin-top:10px;width:100%;padding:10px;background:rgba(168,85,247,.15);border:1px solid rgba(168,85,247,.3);color:#a855f7;border-radius:8px;font-size:13px;font-weight:600;cursor:pointer">📸 Intentar otro</button>';
     }
+    }); // fin forEach resultados
+    logEl.innerHTML += '<div style="margin-top:10px;display:flex;gap:8px"><button onclick="resetScan()" style="flex:1;padding:10px;background:rgba(168,85,247,.15);border:1px solid rgba(168,85,247,.3);color:#a855f7;border-radius:8px;font-size:13px;font-weight:600;cursor:pointer">📸 Escanear más</button></div>';
+    setTimeout(function() { loadAll(); }, 1000);
   } catch(e) {
     clearInterval(loadingInterval);
     logEl.innerHTML = '<p style="color:#f87171">✗ Error: ' + e.message + '</p>';
   }
   
-    }); // fin forEach resultados
   btn.textContent = '⚡ Procesar documento';
   btn.disabled = false;
 }
