@@ -1008,6 +1008,115 @@ def demo_view():
     return redirect('/')
 
 
+
+@app.route('/api/scan_documento', methods=['POST'])
+@login_required
+def api_scan_documento():
+    """Procesa una imagen de documento físico con Claude Vision."""
+    import base64
+    if 'image' not in request.files:
+        return jsonify({'ok': False, 'error': 'No se recibió imagen'}), 400
+    
+    img_file = request.files['image']
+    img_data = img_file.read()
+    img_b64 = base64.b64encode(img_data).decode()
+    
+    # Determinar media type
+    fname = img_file.filename or 'scan.jpg'
+    ext = fname.rsplit('.', 1)[-1].lower() if '.' in fname else 'jpg'
+    media_map = {'jpg':'image/jpeg','jpeg':'image/jpeg','png':'image/png','heic':'image/heic','webp':'image/webp'}
+    media_type = media_map.get(ext, 'image/jpeg')
+    
+    try:
+        import anthropic
+        client = anthropic.Anthropic()
+        
+        # Prompt de clasificación y extracción (mismo que para PDFs)
+        prompt = """Eres un experto en operaciones y finanzas hoteleras.
+Esta es una FOTO de un documento físico. Lee TODO el texto visible y:
+
+1. CLASIFICA el documento: FACTURA, BEO, TM, CONTRATO, EXTRACTO_BANCO, 
+   VENTAS_POS, INVENTARIO, MERMAS, COMISIONES_OTA, ROOMING, u OTRO.
+
+2. EXTRAE datos estructurados en JSON según el tipo (mismos schemas que para PDFs).
+
+Si es FACTURA: {"es_factura":true,"numero_factura":"X","fecha":"DD/MM/YYYY","nombre_proveedor":"X","NIF_proveedor":"X","descripcion_concepto":"X","base_imponible":0.0,"porcentaje_iva":21,"cuota_iva":0.0,"total_factura":0.0,"moneda":"EUR"}
+Si es BEO: {"tipo_documento":"BEO","evento":"X","cliente":"X","items":[{"concepto":"X","total":0.0}],"total_estimado":0.0}
+Si es CONTRATO: {"tipo_documento":"CONTRATO","evento":"X","cliente":"X","importe_total":0.0,"items":[{"concepto":"X","importe":0.0}]}
+Si es OTRO: {"tipo_documento":"OTRO","descripcion":"qué es"}
+
+SOLO devuelve JSON, sin markdown ni explicaciones."""
+
+        resp = client.messages.create(
+            model="claude-sonnet-4-6",
+            max_tokens=2048,
+            messages=[{"role":"user","content":[
+                {"type":"image","source":{"type":"base64","media_type":media_type,"data":img_b64}},
+                {"type":"text","text":prompt}
+            ]}]
+        )
+        raw = resp.content[0].text.strip()
+        
+        # Extraer JSON
+        import re as _re
+        raw = _re.sub(r"```(?:json)?", "", raw).strip().rstrip("`").strip()
+        first = raw.find('{')
+        last = raw.rfind('}')
+        if first >= 0 and last > first:
+            raw = raw[first:last+1]
+        
+        datos = json.loads(raw)
+        tipo = datos.get('tipo_documento', 'FACTURA' if datos.get('es_factura') else 'OTRO')
+        
+        # Guardar en historial
+        log = _load_proc_log()
+        log[fname] = {'fecha': _dt2.now().strftime('%Y-%m-%d %H:%M'), 'resultado': f'{tipo}_OK'}
+        _save_proc_log(log)
+        
+        # Integrar datos según tipo (mismo flujo que el procesado normal)
+        items_count = 0
+        if tipo == 'FACTURA' and datos.get('es_factura'):
+            from lector_facturas_ap import clasificar_proveedor, cargar_proveedores, _safe_float, _auto_cuenta_pgc, guardar_excel, SALIDA_DIR, NF
+            provs = cargar_proveedores()
+            tipo_prov, cuenta = clasificar_proveedor(datos.get('nombre_proveedor'), provs)
+            if cuenta == NF and datos.get('descripcion_concepto'):
+                cuenta = _auto_cuenta_pgc(datos.get('descripcion_concepto'), datos.get('nombre_proveedor'))
+            reg = {
+                'archivo': fname, 'numero_factura': datos.get('numero_factura',''),
+                'fecha': datos.get('fecha',''), 'nombre_proveedor': datos.get('nombre_proveedor',''),
+                'NIF_proveedor': datos.get('NIF_proveedor',''),
+                'descripcion_concepto': datos.get('descripcion_concepto',''),
+                'base_imponible': _safe_float(datos.get('base_imponible')) or 0,
+                'porcentaje_iva': _safe_float(datos.get('porcentaje_iva')) or 0,
+                'cuota_iva': _safe_float(datos.get('cuota_iva')) or 0,
+                'total_factura': _safe_float(datos.get('total_factura')) or 0,
+                'tipo_proveedor': tipo_prov, 'cuenta_contable': cuenta,
+                'moneda': datos.get('moneda','EUR'), 'error': ''
+            }
+            ruta = os.path.join(SALIDA_DIR, f'facturas_ap_{date.today().strftime("%Y%m%d")}.xlsx')
+            guardar_excel([reg], ruta)
+            mensaje = f'{datos.get("nombre_proveedor","")} — €{reg["total_factura"]:,.2f}'
+        elif tipo in ('BEO','TM','CONTRATO'):
+            ref_path = os.path.join(BASE_DIR, 'datos-referencia', 'eventos_referencia.json')
+            refs = json.load(open(ref_path)) if os.path.exists(ref_path) else []
+            evento = datos.get('evento', fname)
+            refs.append({'evento': evento, 'evento_key': evento.lower()[:50],
+                         'cliente': datos.get('cliente',''), 'documentos': {
+                             tipo: {'archivo': fname, 'total': datos.get('total_estimado', datos.get('importe_total',0)),
+                                    'items': datos.get('items',[]), 'fecha': date.today().isoformat()}}})
+            json.dump(refs, open(ref_path,'w'), indent=2, ensure_ascii=False)
+            items_count = len(datos.get('items',[]))
+            mensaje = f'{evento} — {items_count} items'
+        else:
+            desc = datos.get('descripcion', tipo)
+            mensaje = desc
+        
+        return jsonify({'ok': True, 'tipo': tipo, 'mensaje': mensaje,
+                        'items': str(items_count) if items_count else None, 'datos': datos})
+    except Exception as e:
+        return jsonify({'ok': False, 'error': str(e)[:200]}), 500
+
+
 @app.route('/api/eventos_referencia')
 @login_required
 def api_eventos_referencia():
@@ -3249,7 +3358,8 @@ button, a { touch-action: manipulation; }
     <span class="pill hide-mobile" style="color:var(--acc2)">👤 __USER_NAME__</span>
 
     <button class="btn-ref show-mobile" onclick="toggleChat()" style="background:linear-gradient(135deg,rgba(124,58,237,.15),rgba(59,130,246,.15));border-color:rgba(124,58,237,.35);color:#a78bfa;font-weight:700" title="Pregunta a Yve IA">💬 Yve</button>
-    <button class="show-mobile" onclick="openUploadModal()" title="Procesar Archivos" style="background:rgba(59,130,246,.1);border:1px solid rgba(59,130,246,.25);color:#60a5fa;padding:7px 11px;border-radius:8px;font-size:16px;cursor:pointer;line-height:1;transition:.15s" onmouseover="this.style.background='rgba(59,130,246,.2)'" onmouseout="this.style.background='rgba(59,130,246,.1)'">⚡</button>
+    <button class="show-mobile" onclick="openUploadModal()" title="Procesar Archivos" style="background:rgba(59,130,246,.1);border:1px solid rgba(59,130,246,.25);color:#60a5fa;padding:7px 11px;border-radius:8px;font-size:16px;cursor:pointer;line-height:1;transition:.15s">⚡</button>
+    <button class="show-mobile" onclick="openScanModal()" title="Escanear documento" style="background:rgba(168,85,247,.1);border:1px solid rgba(168,85,247,.25);color:#a855f7;padding:7px 11px;border-radius:8px;font-size:16px;cursor:pointer;line-height:1;transition:.15s">📸</button>
 
 
 
@@ -7483,6 +7593,77 @@ function _onTabSwitch(newTab) {
   setTimeout(_highlightActiveStats, 300);
 }
 
+
+// ── Escanear Documento Físico ───────────────────────────────────────
+var _scanFile = null;
+
+function openScanModal() {
+  var ov = document.getElementById('scan-overlay');
+  if (ov) { ov.style.display = 'flex'; _scanFile = null; }
+  document.getElementById('scan-preview').style.display = 'none';
+  document.getElementById('scan-log').style.display = 'none';
+  document.getElementById('btn-scan-process').disabled = true;
+  document.getElementById('btn-scan-process').style.opacity = '.5';
+}
+
+function closeScanModal() {
+  var ov = document.getElementById('scan-overlay');
+  if (ov) ov.style.display = 'none';
+  _scanFile = null;
+}
+
+function previewScan(file) {
+  if (!file) return;
+  _scanFile = file;
+  var reader = new FileReader();
+  reader.onload = function(e) {
+    document.getElementById('scan-img').src = e.target.result;
+    document.getElementById('scan-fname').textContent = file.name + ' (' + (file.size/1024).toFixed(0) + ' KB)';
+    document.getElementById('scan-preview').style.display = 'block';
+    document.getElementById('btn-scan-process').disabled = false;
+    document.getElementById('btn-scan-process').style.opacity = '1';
+  };
+  reader.readAsDataURL(file);
+}
+
+async function processScan() {
+  if (!_scanFile) return;
+  var btn = document.getElementById('btn-scan-process');
+  var logEl = document.getElementById('scan-log');
+  btn.disabled = true;
+  btn.textContent = '⏳ Procesando con IA...';
+  logEl.style.display = 'block';
+  logEl.innerHTML = '<p style="color:#94a3b8">Enviando imagen a Claude Vision...</p>';
+  
+  try {
+    var formData = new FormData();
+    formData.append('image', _scanFile);
+    
+    var r = await fetch('/api/scan_documento', {
+      method: 'POST',
+      body: formData,
+      headers: { 'X-CSRF-Token': _csrfToken }
+    });
+    var data = await r.json();
+    
+    if (data.ok) {
+      logEl.innerHTML = '<p style="color:#4ade80">✓ ' + data.mensaje + '</p>';
+      if (data.datos) {
+        logEl.innerHTML += '<p style="color:#60a5fa;margin-top:6px">Tipo: ' + (data.tipo || '—') + '</p>';
+        if (data.items) logEl.innerHTML += '<p style="color:#94a3b8">' + data.items + ' items extraídos</p>';
+      }
+      setTimeout(function() { loadAll(); }, 1000);
+    } else {
+      logEl.innerHTML = '<p style="color:#f87171">✗ ' + (data.error || 'Error desconocido') + '</p>';
+    }
+  } catch(e) {
+    logEl.innerHTML = '<p style="color:#f87171">✗ Error: ' + e.message + '</p>';
+  }
+  
+  btn.textContent = '⚡ Procesar documento';
+  btn.disabled = false;
+}
+
 function closeInvoiceModal() {
   var m = document.getElementById('invoice-modal');
   if (m) m.style.display = 'none';
@@ -10237,6 +10418,39 @@ window.addEventListener('scroll', () => {
   if (btn) btn.style.alignItems = 'center'; if (btn) btn.style.justifyContent = 'center';
 }, {passive: true});
 </script>
+
+<!-- Modal Escanear Documento -->
+<div id="scan-overlay" style="display:none;position:fixed;inset:0;z-index:9998;background:rgba(0,0,0,.7);backdrop-filter:blur(4px);align-items:center;justify-content:center">
+  <div style="background:#0f172a;border:1px solid rgba(255,255,255,.08);border-radius:16px;padding:24px;max-width:440px;width:calc(100% - 24px);max-height:90vh;overflow-y:auto">
+    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:16px">
+      <h3 style="margin:0;font-size:16px;font-weight:700">📸 Escanear Documento</h3>
+      <button onclick="closeScanModal()" style="background:none;border:none;color:#64748b;font-size:20px;cursor:pointer">✕</button>
+    </div>
+    <p style="font-size:13px;color:#94a3b8;margin-bottom:16px">Haz una foto al documento físico (factura, BEO, contrato, extracto...) y Yve lo leerá con IA.</p>
+    
+    <div id="scan-preview" style="display:none;margin-bottom:16px;text-align:center">
+      <img id="scan-img" style="max-width:100%;max-height:300px;border-radius:10px;border:1px solid rgba(255,255,255,.1)">
+      <p id="scan-fname" style="font-size:11px;color:#64748b;margin-top:6px"></p>
+    </div>
+    
+    <div style="display:flex;gap:10px;margin-bottom:16px">
+      <label style="flex:1;display:flex;align-items:center;justify-content:center;gap:6px;padding:14px;background:rgba(168,85,247,.08);border:2px dashed rgba(168,85,247,.3);border-radius:12px;cursor:pointer;font-size:14px;font-weight:600;color:#a855f7">
+        📸 Cámara
+        <input type="file" accept="image/*" capture="environment" onchange="previewScan(this.files[0])" style="display:none">
+      </label>
+      <label style="flex:1;display:flex;align-items:center;justify-content:center;gap:6px;padding:14px;background:rgba(59,130,246,.08);border:2px dashed rgba(59,130,246,.3);border-radius:12px;cursor:pointer;font-size:14px;font-weight:600;color:#3b82f6">
+        🖼️ Galería
+        <input type="file" accept="image/*" onchange="previewScan(this.files[0])" style="display:none">
+      </label>
+    </div>
+    
+    <button id="btn-scan-process" onclick="processScan()" disabled style="width:100%;padding:12px;background:linear-gradient(135deg,#a855f7,#7c3aed);border:none;color:#fff;border-radius:10px;font-size:14px;font-weight:700;cursor:pointer;opacity:.5">
+      ⚡ Procesar documento
+    </button>
+    
+    <div id="scan-log" style="margin-top:14px;display:none;background:rgba(0,0,0,.3);border-radius:10px;padding:12px;font-family:monospace;font-size:12px;max-height:200px;overflow-y:auto"></div>
+  </div>
+</div>
 </body>
 </html>"""
 
