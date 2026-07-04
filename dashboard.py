@@ -7692,39 +7692,84 @@ function _onTabSwitch(newTab) {
 
 
 // ── Escanear Documento Físico ───────────────────────────────────────
-var _scanFile = null;
+var _scanFiles = [];
 
 function openScanModal() {
   var ov = document.getElementById('scan-overlay');
-  if (ov) { ov.style.display = 'flex'; _scanFile = null; }
+  if (ov) { ov.style.display = 'flex'; }
+  _scanFiles = [];
   document.getElementById('scan-preview').style.display = 'none';
+  document.getElementById('scan-preview').innerHTML = '';
   document.getElementById('scan-log').style.display = 'none';
   document.getElementById('btn-scan-process').disabled = true;
   document.getElementById('btn-scan-process').style.opacity = '.5';
+  document.getElementById('btn-scan-process').textContent = '⚡ Procesar documento';
 }
 
 function closeScanModal() {
   var ov = document.getElementById('scan-overlay');
   if (ov) ov.style.display = 'none';
-  _scanFile = null;
+  _scanFiles = [];
 }
 
-function previewScan(file) {
-  if (!file) return;
-  _scanFile = file;
-  var reader = new FileReader();
-  reader.onload = function(e) {
-    document.getElementById('scan-img').src = e.target.result;
-    document.getElementById('scan-fname').textContent = file.name + ' (' + (file.size/1024).toFixed(0) + ' KB)';
-    document.getElementById('scan-preview').style.display = 'block';
-    document.getElementById('btn-scan-process').disabled = false;
-    document.getElementById('btn-scan-process').style.opacity = '1';
-  };
-  reader.readAsDataURL(file);
+function addScanFiles(fileList) {
+  if (!fileList || !fileList.length) return;
+  for (var i = 0; i < fileList.length; i++) {
+    _scanFiles.push(fileList[i]);
+  }
+  renderScanPreviews();
+}
+
+function renderScanPreviews() {
+  var container = document.getElementById('scan-preview');
+  container.style.display = 'block';
+  container.innerHTML = '';
+  
+  var grid = document.createElement('div');
+  grid.style.cssText = 'display:flex;gap:8px;flex-wrap:wrap;justify-content:center;margin-bottom:8px';
+  
+  _scanFiles.forEach(function(file, idx) {
+    var wrap = document.createElement('div');
+    wrap.style.cssText = 'position:relative;width:80px;height:80px;border-radius:8px;overflow:hidden;border:1px solid rgba(255,255,255,.1)';
+    
+    var img = document.createElement('img');
+    img.style.cssText = 'width:100%;height:100%;object-fit:cover';
+    var reader = new FileReader();
+    reader.onload = function(e) { img.src = e.target.result; };
+    reader.readAsDataURL(file);
+    
+    var badge = document.createElement('span');
+    badge.style.cssText = 'position:absolute;top:2px;right:2px;background:rgba(0,0,0,.7);color:#fff;font-size:9px;padding:1px 5px;border-radius:4px';
+    badge.textContent = (idx + 1);
+    
+    var del = document.createElement('button');
+    del.style.cssText = 'position:absolute;bottom:2px;right:2px;background:rgba(239,68,68,.8);color:#fff;border:none;font-size:10px;width:18px;height:18px;border-radius:50%;cursor:pointer;line-height:1';
+    del.textContent = '✕';
+    del.onclick = function() { _scanFiles.splice(idx, 1); renderScanPreviews(); };
+    
+    wrap.appendChild(img);
+    wrap.appendChild(badge);
+    wrap.appendChild(del);
+    grid.appendChild(wrap);
+  });
+  
+  container.appendChild(grid);
+  
+  var count = document.createElement('p');
+  count.style.cssText = 'font-size:12px;color:#94a3b8;text-align:center;margin:4px 0 0';
+  count.textContent = _scanFiles.length + ' documento' + (_scanFiles.length > 1 ? 's' : '') + ' seleccionado' + (_scanFiles.length > 1 ? 's' : '');
+  container.appendChild(count);
+  
+  var btn = document.getElementById('btn-scan-process');
+  btn.disabled = _scanFiles.length === 0;
+  btn.style.opacity = _scanFiles.length > 0 ? '1' : '.5';
+  btn.textContent = _scanFiles.length > 1 
+    ? '⚡ Procesar ' + _scanFiles.length + ' documentos' 
+    : '⚡ Procesar documento';
 }
 
 async function processScan() {
-  if (!_scanFile) return;
+  if (!_scanFiles.length) return;
   var btn = document.getElementById('btn-scan-process');
   var logEl = document.getElementById('scan-log');
   btn.disabled = true;
@@ -7739,17 +7784,26 @@ async function processScan() {
   logEl.innerHTML = '<p style="color:#94a3b8;animation:pulse-green 1.5s infinite">🔍 Claude Vision está leyendo la imagen...</p>';
   
   try {
-    var formData = new FormData();
-    formData.append('image', _scanFile);
-    
-    var r = await fetch('/api/scan_documento', {
-      method: 'POST',
-      body: formData,
-      headers: { 'X-CSRF-Token': _csrfToken }
-    });
+    // Procesar todos los archivos en secuencia
+    var allResults = [];
+    for (var fi = 0; fi < _scanFiles.length; fi++) {
+      if (_scanFiles.length > 1) {
+        logEl.innerHTML += '<p style="color:#94a3b8;margin-top:6px">📄 [' + (fi+1) + '/' + _scanFiles.length + '] ' + _scanFiles[fi].name + '...</p>';
+      }
+      var formData = new FormData();
+      formData.append('image', _scanFiles[fi]);
+      var r = await fetch('/api/scan_documento', {
+        method: 'POST',
+        body: formData,
+        headers: { 'X-CSRF-Token': _csrfToken }
+      });
+      var data = await r.json();
+      allResults.push(data);
+    }
     clearInterval(loadingInterval);
-    var data = await r.json();
     
+    var anyOk = allResults.some(function(d){ return d.ok; });
+    allResults.forEach(function(data, ri) {
     if (data.ok) {
       var tipo = data.tipo || '—';
       var tabMap = {FACTURA:'ap',BEO:'ap',TM:'ap',CONTRATO:'ap',EXTRACTO_BANCO:'banco',VENTAS_POS:'fb',INVENTARIO:'fb',MERMAS:'fb',COMISIONES_OTA:'ar',ROOMING:'fb'};
@@ -7792,12 +7846,13 @@ async function processScan() {
     logEl.innerHTML = '<p style="color:#f87171">✗ Error: ' + e.message + '</p>';
   }
   
+    }); // fin forEach resultados
   btn.textContent = '⚡ Procesar documento';
   btn.disabled = false;
 }
 
 function resetScan() {
-  _scanFile = null;
+  _scanFiles = [];
   document.getElementById('scan-preview').style.display = 'none';
   document.getElementById('scan-log').style.display = 'none';
   document.getElementById('btn-scan-process').disabled = true;
@@ -10576,11 +10631,11 @@ window.addEventListener('scroll', () => {
     <div style="display:flex;gap:10px;margin-bottom:16px">
       <label style="flex:1;display:flex;align-items:center;justify-content:center;gap:6px;padding:14px;background:rgba(168,85,247,.08);border:2px dashed rgba(168,85,247,.3);border-radius:12px;cursor:pointer;font-size:14px;font-weight:600;color:#a855f7">
         📸 Cámara
-        <input type="file" accept="image/*" capture="environment" onchange="previewScan(this.files[0])" style="display:none">
+        <input type="file" accept="image/*" capture="environment" onchange="addScanFiles(this.files)" style="display:none">
       </label>
       <label style="flex:1;display:flex;align-items:center;justify-content:center;gap:6px;padding:14px;background:rgba(59,130,246,.08);border:2px dashed rgba(59,130,246,.3);border-radius:12px;cursor:pointer;font-size:14px;font-weight:600;color:#3b82f6">
         🖼️ Galería
-        <input type="file" accept="image/*" onchange="previewScan(this.files[0])" style="display:none">
+        <input type="file" accept="image/*" multiple onchange="addScanFiles(this.files)" style="display:none">
       </label>
     </div>
     
