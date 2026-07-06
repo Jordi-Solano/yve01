@@ -2810,7 +2810,6 @@ body::before{
   .logo-tag,.pill{display:none}
   .nav{padding:0 10px;gap:6px;height:50px}
   .logo-name{font-size:16px}
-  #btn-lite-nav{font-size:11px!important;padding:5px 8px!important}
   .btn-run{padding:8px 12px;font-size:12px}
   .btn-ref{padding:4px 8px;font-size:11px}
   .nav-right{gap:6px}
@@ -2857,74 +2856,6 @@ body::before{
 /* ── STATS ── */
 .stats{display:grid;grid-template-columns:repeat(6,1fr);gap:12px;margin-bottom:22px}
 @media(max-width:1200px){.stats{grid-template-columns:repeat(3,1fr)}}
-/* ── Mobile lite mode ─────────────────────────────────────────────── */
-/* ── Mobile Lite Mode ─────────────────────────────────── */
-/* AR — ocultar charts, tabla, actividad, toolbar */
-body.mobile-lite #ota-chart,
-body.mobile-lite #activity,
-body.mobile-lite #tbl-body,
-body.mobile-lite #tbl-count,
-body.mobile-lite #ar-select-all,
-body.mobile-lite .tbl-wrap,
-body.mobile-lite #panel-ar > div[style*="flex-end"],
-body.mobile-lite #panel-ar > .card { display: none !important; }
-
-/* AP — ocultar tabla, filtros, toolbar */
-body.mobile-lite #ap-tbody,
-body.mobile-lite #ap-count,
-body.mobile-lite #ap-chart-wrap,
-body.mobile-lite #btn-filter-ap,
-body.mobile-lite #ap-estado-filter,
-body.mobile-lite #panel-ap > div[style*="flex-end"],
-body.mobile-lite #panel-ap > .card { display: none !important; }
-
-/* DRR — ocultar charts, tabla días, alertas, presupuesto */
-body.mobile-lite #drr-chart-card,
-body.mobile-lite #drr-days,
-body.mobile-lite #drr-alerts,
-body.mobile-lite #drr-budget-bar,
-body.mobile-lite #drr-revenue-chart { display: none !important; }
-body.mobile-lite #drr-metrics { grid-template-columns: repeat(2,1fr) !important; }
-
-/* Banco — ocultar alertas y botones extras */
-body.mobile-lite #banco-alerts-card,
-body.mobile-lite #panel-banco > div[style*="margin-top:16px"] { display: none !important; }
-
-/* Notificaciones — ocultar tabla historial */
-body.mobile-lite #notif-tbody,
-body.mobile-lite #panel-notif > .card { display: none !important; }
-
-/* F&B — solo mostrar resumen KPIs */
-/* F&B sub-tabs: visibles en lite si el usuario hace clic */
-
-/* Real AR — ocultar tabla, lista, aging */
-body.mobile-lite #ar-clientes-list,
-body.mobile-lite #ar-facturas-tbody,
-body.mobile-lite #ar-aging-bar,
-body.mobile-lite #ar-filter-estado,
-body.mobile-lite #ar-real-grid > div:last-child { display: none !important; }
-
-
-body.mobile-lite #cal-tendencias,
-body.mobile-lite #cal-ap-chart,
-body.mobile-lite #cal-hoteles,
-body.mobile-lite #cal-detail,
-body.mobile-lite #cal-insights { display: none !important; }
-body.mobile-lite #cal-kpis { grid-template-columns: repeat(2,1fr) !important; }
-
-/* Multi-Hotel — solo KPI cards */
-body.mobile-lite #mh-gop-chart,
-body.mobile-lite #mh-rev-chart,
-body.mobile-lite #mh-hotel-cards,
-body.mobile-lite #mh-insights { display: none !important; }
-
-/* Ocultar class genéricas */
-body.mobile-lite .hide-lite { display: none !important; }
-
-/* Stats siempre en 2 columnas en lite */
-body.mobile-lite .stats { grid-template-columns: repeat(2,1fr) !important; gap: 8px !important; }
-body.mobile-lite .sc-val { font-size: 22px !important; }
-body.mobile-lite .panel { padding: 12px !important; }
 
 
 @media(max-width:900px){
@@ -3426,20 +3357,17 @@ button, a { touch-action: manipulation; }
     <button id="btn-install-pwa" onclick="if(_deferredInstall){_deferredInstall.prompt();}" style="display:none;background:rgba(34,197,94,.1);border:1px solid rgba(34,197,94,.2);color:#22c55e;padding:4px 10px;border-radius:8px;font-size:11px;cursor:pointer">📲 Instalar</button>
     
     <button id="btn-atajos" onclick="toggleAtajos()" class="hide-mobile" data-i18n="nav.atajos" style="background:rgba(59,130,246,.1);border:1px solid rgba(59,130,246,.2);color:#60a5fa;padding:5px 12px;border-radius:8px;font-size:12px;cursor:pointer;font-weight:500" title="Ver atajos (?)">⌨ Atajos</button>
-    <button id="btn-lite-nav" onclick="toggleMobileLite()" style="background:rgba(34,197,94,.1);border:1px solid rgba(34,197,94,.2);color:#22c55e;padding:5px 12px;border-radius:8px;font-size:12px;cursor:pointer;font-weight:500;transition:.15s" title="Cambiar entre vista resumida y completa">📊 Vista lite</button>
     <span class="pill hide-mobile" style="color:var(--acc2)">👤 __USER_NAME__</span>
 
     <button class="btn-ref show-mobile" onclick="toggleChat()" style="background:linear-gradient(135deg,rgba(124,58,237,.15),rgba(59,130,246,.15));border-color:rgba(124,58,237,.35);color:#a78bfa;font-weight:700" title="Pregunta a Yve IA">💬 Yve</button>
     <button class="show-mobile" onclick="openUploadModal()" title="Procesar Archivos" style="background:rgba(59,130,246,.1);border:1px solid rgba(59,130,246,.25);color:#60a5fa;padding:7px 11px;border-radius:8px;font-size:16px;cursor:pointer;line-height:1;transition:.15s">⚡</button>
-    <button class="show-mobile" onclick="openScanModal()" title="Escanear documento" style="background:rgba(168,85,247,.1);border:1px solid rgba(168,85,247,.25);color:#a855f7;padding:7px 11px;border-radius:8px;font-size:16px;cursor:pointer;line-height:1">📸</button>
 
-    <button class="btn-ref hide-mobile" onclick="openScanModal()" title="Escanear documento físico" style="background:rgba(168,85,247,.08);color:#a855f7;border-color:rgba(168,85,247,.25)">📸 Escanear</button>
 
 
 
     <button class="btn-ref hide-mobile" onclick="loadAll()" title="Actualizar datos" data-i18n="nav.actualizar">↻ Actualizar</button>
 
-    <button class="btn-run hide-mobile" id="btn-run" onclick="openUploadModal()">
+    <button class="btn-run" id="btn-run" onclick="openUploadModal()">
       <div class="spin" id="spin"></div>
       <span id="run-lbl" data-i18n="nav.procesar">⚡ Procesar Archivos</span>
     </button>
@@ -4052,15 +3980,15 @@ button, a { touch-action: manipulation; }
          style="border:2px dashed var(--s3);border-radius:14px;padding:32px;text-align:center;cursor:pointer;transition:.2s;margin-bottom:16px">
       <div style="font-size:36px;margin-bottom:10px">📂</div>
       <div style="font-size:15px;font-weight:600;color:var(--tx);margin-bottom:6px">Arrastra archivos aquí o haz clic</div>
-      <div style="font-size:12px;color:var(--dim);margin-bottom:14px">PDF · Excel · CSV — clasificación automática</div>
+      <div style="font-size:12px;color:var(--dim);margin-bottom:14px">PDF · Excel · CSV · Fotos — clasificación automática</div>
       <div style="display:flex;gap:10px;justify-content:center;flex-wrap:wrap">
         <button onclick="event.stopPropagation();document.getElementById('upload-file-input').click()"
                 style="background:var(--acc);border:none;color:#fff;padding:8px 18px;border-radius:9px;font-size:13px;font-weight:600;cursor:pointer">📄 Seleccionar archivos</button>
-        <button onclick="event.stopPropagation();document.getElementById('upload-folder-input').click()"
+        <button class="hide-mobile" onclick="event.stopPropagation();document.getElementById('upload-folder-input').click()"
                 style="background:var(--s2);border:1px solid var(--s3);color:var(--tx);padding:8px 18px;border-radius:9px;font-size:13px;font-weight:600;cursor:pointer">📁 Seleccionar carpeta</button>
       </div>
     </div>
-    <input id="upload-file-input" type="file" multiple accept=".pdf,.xlsm,.xlsx" style="display:none" onchange="handleUploadFiles(this.files)">
+    <input id="upload-file-input" type="file" multiple accept=".pdf,.xlsm,.xlsx,.xls,.csv,image/*" style="display:none" onchange="handleUploadFiles(this.files)">
     <input id="upload-folder-input" type="file" multiple webkitdirectory style="display:none" onchange="handleUploadFiles(this.files)">
     <!-- Already uploaded files on server -->
     <div id="server-files-section" style="display:none;margin-bottom:16px">
@@ -6941,7 +6869,6 @@ _updateClock();
 setInterval(_updateClock, 1000);
 // ─────────────────────────────────────────────────────────────
 // Init mobile lite mode
-if (IS_MOBILE) initMobileLite();
 // Auto-apply saved language preference
 (function() {
   var _savedLang = localStorage.getItem('yve_lang');
@@ -7575,49 +7502,6 @@ function closeTourBox() {
 }
 
 // ── Invoice detail modal ─────────────────────────────────────────────────
-// ── Mobile lite mode ─────────────────────────────────────────────────────
-var _mobileLite = true;  // default ON on mobile
-
-function initMobileLite() {
-  // Lite is opt-in on desktop, default-on for mobile
-  var stored = localStorage.getItem('mobile_lite');
-  if (stored === null) {
-    _mobileLite = IS_MOBILE ? true : false;
-  } else {
-    _mobileLite = stored === '1';
-  }
-  applyMobileLite();
-}
-
-function applyMobileLite() {
-  var menuBtn = document.getElementById('menu-lite-btn');
-  var navBtn  = document.getElementById('btn-lite-nav');
-  var _tLite = function(es) { return (_i18nStrMap[_i18nLang] && _i18nStrMap[_i18nLang][es]) ? _i18nStrMap[_i18nLang][es] : es; };
-  if (_mobileLite) {
-    document.body.classList.add('mobile-lite');
-    if (menuBtn) menuBtn.textContent = _tLite('📊 Vista completa');
-    if (navBtn)  { navBtn.textContent = _tLite('📊 Vista completa'); navBtn.title = _tLite('Cambiar a vista completa') || 'Full view'; }
-  } else {
-    document.body.classList.remove('mobile-lite');
-    if (menuBtn) menuBtn.textContent = _tLite('📱 Vista lite');
-    if (navBtn)  { navBtn.textContent = '📱 Vista lite'; navBtn.title = 'Cambiar a vista resumida'; }
-  }
-}
-
-function toggleMobileLite() {
-  _mobileLite = !_mobileLite;
-  localStorage.setItem('mobile_lite', _mobileLite ? '1' : '0');
-  applyMobileLite();
-  var menuBtn = document.getElementById('menu-lite-btn');
-  if (menuBtn) menuBtn.textContent = _mobileLite ? '📊 Vista completa' : '📱 Vista lite';
-  // Reload current tab data if switching to full
-  if (!_mobileLite) {
-    showNotification('Vista completa activada', 'info');
-  } else {
-    showNotification('Vista lite activada', 'info');
-  }
-}
-
 function toggleAtajos() {
   var m = document.getElementById('atajos-modal');
   if (!m) return;
@@ -7840,7 +7724,7 @@ function _readDir(dirEntry, files, done) {
 
 function handleUploadFiles(fileList) {
   var files = Array.from(fileList).filter(function(f) {
-    return f.name.match(/\.(pdf|xlsm|xlsx|xls|csv)$/i);
+    return f.name.match(/\.(pdf|xlsm|xlsx|xls|csv|jpe?g|png|webp|heic)$/i) || (f.type || '').indexOf('image/') === 0;
   });
   _addFilesToList(files);
 }
@@ -7873,6 +7757,8 @@ function _detectType(fname) {
   if (n.includes(' tm ') || n.includes('technical')) return 'TM';
   if (n.includes('contrato') || n.includes('contract') || n.includes('sow') || n.includes('scope of work')) return 'Contrato';
   if (n.includes('agenda') || n.includes('logo')) return 'Omitir';
+  // Fotos → OCR con IA
+  if (n.match(/\.(jpe?g|png|webp|heic)$/)) return 'Foto';
   // Factura por defecto para PDFs
   if (n.endsWith('.pdf')) return 'Factura';
   if (n.endsWith('.xlsx') || n.endsWith('.xls') || n.endsWith('.csv')) return 'Datos';
@@ -7884,6 +7770,7 @@ function _typeColor(t) {
   if (t.includes('OTA') || t.includes('AR')) return '#60a5fa';
   if (t === 'Factura' || t.includes('AP')) return '#f59e0b';
   if (t === 'Banco') return '#22c55e';
+  if (t === 'Foto') return '#a855f7';
   if (t === 'F&B' || t === 'Inventario' || t === 'Mermas') return '#f97316';
   if (t === 'Rooming') return '#06b6d4';
   if (t === 'BEO' || t === 'TM' || t === 'Contrato') return '#a78bfa';
@@ -7934,35 +7821,74 @@ function _removeUploadFile(idx) {
 
 async function uploadAndProcess() {
   var newFiles = _uploadFiles.filter(function(f) { return !_processedNames.has(f.name); });
-  if (!newFiles.length) { showNotification('No hay archivos nuevos que procesar', 'info'); return; }
-  
+  if (!newFiles.length) { showNotification(_tSSE('No hay archivos nuevos que procesar'), 'info'); return; }
+
+  var isImg = function(f) { return /\.(jpe?g|png|webp|heic)$/i.test(f.name) || (f.type || '').indexOf('image/') === 0; };
+  var imgs = newFiles.filter(isImg);
+  var docs = newFiles.filter(function(f){ return !isImg(f); });
+
   var btn = document.getElementById('btn-upload-procesar');
   btn.disabled = true; btn.style.opacity = '.4';
-  btn.textContent = '⏳ Subiendo archivos...';
 
-  // Upload files
-  var formData = new FormData();
-  newFiles.forEach(function(f) { formData.append('files', f, f.name); });
-  
-  try {
-    var r = await fetch('/api/upload_facturas', { method: 'POST', body: formData });
-    var d = await r.json();
-    if (!d.ok) throw new Error(d.error || 'Upload failed');
-    showNotification('✓ ' + d.subidos + ' archivo(s) subidos', 'success');
-  } catch(e) {
-    showNotification('✗ Error subiendo archivos: ' + e.message, 'error');
-    btn.disabled = false; btn.style.opacity = '1'; btn.textContent = '⚡ Reintentar';
+  if (docs.length) {
+    btn.textContent = '⏳ Subiendo archivos...';
+    var formData = new FormData();
+    docs.forEach(function(f) { formData.append('files', f, f.name); });
+    try {
+      var r = await fetch('/api/upload_facturas', { method: 'POST', body: formData });
+      var d = await r.json();
+      if (!d.ok) throw new Error(d.error || 'Upload failed');
+      showNotification('✓ ' + d.subidos + ' archivo(s) subidos', 'success');
+    } catch(e) {
+      showNotification('✗ Error subiendo archivos: ' + e.message, 'error');
+      btn.disabled = false; btn.style.opacity = '1'; btn.textContent = '⚡ Reintentar';
+      return;
+    }
+  }
+
+  closeUploadModal();
+
+  if (imgs.length) {
+    var overlay = document.getElementById('overlay');
+    var log = document.getElementById('log');
+    var icon = document.getElementById('modal-icon');
+    var title = document.getElementById('modal-title');
+    var spin = document.getElementById('spin');
+    var btnCl = document.getElementById('btn-cl');
+    var runBtn = document.getElementById('btn-run');
+    if (overlay) overlay.classList.add('on');
+    if (log) log.innerHTML = '';
+    if (spin) spin.style.display = 'block';
+    if (icon) icon.textContent = '⚡';
+    if (title) title.textContent = _tSSE('Procesando ' + newFiles.length + ' archivo(s)...');
+    if (btnCl) btnCl.disabled = true;
+    if (runBtn) runBtn.disabled = true;
+    var addLine = function(txt, cls) {
+      if (!log) return;
+      var p = document.createElement('p');
+      p.className = cls || 'l-dim';
+      p.textContent = _tSSE(txt);
+      log.appendChild(p);
+      log.scrollTop = log.scrollHeight;
+    };
+    var errs = await _procesarImagenes(imgs, addLine);
+    if (docs.length) {
+      _runBatchPipeline(docs.map(function(f){ return f.name; }), true);
+    } else {
+      if (icon) icon.textContent = errs ? '⚠️' : '✅';
+      if (title) title.textContent = _tSSE(errs ? 'Procesado finalizado con avisos' : 'Procesado completado');
+      if (spin) spin.style.display = 'none';
+      if (btnCl) btnCl.disabled = false;
+      if (runBtn) runBtn.disabled = false;
+      setTimeout(function(){ loadAll(); }, 500);
+    }
     return;
   }
 
-  // Close upload modal and open pipeline modal to show progress
-  closeUploadModal();
-  
-  // Trigger batch processing via SSE
-  _runBatchPipeline(newFiles.map(function(f){ return f.name; }));
+  _runBatchPipeline(docs.map(function(f){ return f.name; }));
 }
 
-function _runBatchPipeline(fileNames) {
+function _runBatchPipeline(fileNames, keepLog) {
   var overlay = document.getElementById('overlay');
   var log = document.getElementById('log');
   var btn = document.getElementById('btn-run');
@@ -7973,7 +7899,7 @@ function _runBatchPipeline(fileNames) {
   var title = document.getElementById('modal-title');
 
   if (overlay) overlay.classList.add('on');
-  if (log) log.innerHTML = '';
+  if (log && !keepLog) log.innerHTML = '';
   if (btn) btn.disabled = true;
   if (spin) spin.style.display = 'block';
   if (lbl) lbl.textContent = 'Procesando...';
@@ -8256,174 +8182,39 @@ function _onTabSwitch(newTab) {
 
 
 // ── Escanear Documento Físico ───────────────────────────────────────
-var _scanFiles = [];
-
-function openScanModal() {
-  var ov = document.getElementById('scan-overlay');
-  if (ov) { ov.style.display = 'flex'; }
-  _scanFiles = [];
-  document.getElementById('scan-preview').style.display = 'none';
-  document.getElementById('scan-preview').innerHTML = '';
-  document.getElementById('scan-log').style.display = 'none';
-  document.getElementById('btn-scan-process').disabled = true;
-  document.getElementById('btn-scan-process').style.opacity = '.5';
-  document.getElementById('btn-scan-process').textContent = '⚡ Procesar documento';
-}
-
-function closeScanModal() {
-  var ov = document.getElementById('scan-overlay');
-  if (ov) ov.style.display = 'none';
-  _scanFiles = [];
-}
-
-function addScanFiles(fileList) {
-  if (!fileList || !fileList.length) return;
-  for (var i = 0; i < fileList.length; i++) {
-    _scanFiles.push(fileList[i]);
-  }
-  renderScanPreviews();
-}
-
-function renderScanPreviews() {
-  var container = document.getElementById('scan-preview');
-  container.style.display = 'block';
-  container.innerHTML = '';
-  
-  var grid = document.createElement('div');
-  grid.style.cssText = 'display:flex;gap:8px;flex-wrap:wrap;justify-content:center;margin-bottom:8px';
-  
-  _scanFiles.forEach(function(file, idx) {
-    var wrap = document.createElement('div');
-    wrap.style.cssText = 'position:relative;width:80px;height:80px;border-radius:8px;overflow:hidden;border:1px solid rgba(255,255,255,.1)';
-    
-    var img = document.createElement('img');
-    img.style.cssText = 'width:100%;height:100%;object-fit:cover';
-    var reader = new FileReader();
-    reader.onload = function(e) { img.src = e.target.result; };
-    reader.readAsDataURL(file);
-    
-    var badge = document.createElement('span');
-    badge.style.cssText = 'position:absolute;top:2px;right:2px;background:rgba(0,0,0,.7);color:#fff;font-size:9px;padding:1px 5px;border-radius:4px';
-    badge.textContent = (idx + 1);
-    
-    var del = document.createElement('button');
-    del.style.cssText = 'position:absolute;bottom:2px;right:2px;background:rgba(239,68,68,.8);color:#fff;border:none;font-size:10px;width:18px;height:18px;border-radius:50%;cursor:pointer;line-height:1';
-    del.textContent = '✕';
-    del.onclick = function() { _scanFiles.splice(idx, 1); renderScanPreviews(); };
-    
-    wrap.appendChild(img);
-    wrap.appendChild(badge);
-    wrap.appendChild(del);
-    grid.appendChild(wrap);
-  });
-  
-  container.appendChild(grid);
-  
-  var count = document.createElement('p');
-  count.style.cssText = 'font-size:12px;color:#94a3b8;text-align:center;margin:4px 0 0';
-  count.textContent = _scanFiles.length + ' documento' + (_scanFiles.length > 1 ? 's' : '') + ' seleccionado' + (_scanFiles.length > 1 ? 's' : '');
-  container.appendChild(count);
-  
-  var btn = document.getElementById('btn-scan-process');
-  btn.disabled = _scanFiles.length === 0;
-  btn.style.opacity = _scanFiles.length > 0 ? '1' : '.5';
-  btn.textContent = _scanFiles.length > 1 
-    ? '⚡ Procesar ' + _scanFiles.length + ' documentos' 
-    : '⚡ Procesar documento';
-}
-
-async function processScan() {
-  if (!_scanFiles.length) return;
-  var btn = document.getElementById('btn-scan-process');
-  var logEl = document.getElementById('scan-log');
-  btn.disabled = true;
-  logEl.style.display = 'block';
-  logEl.innerHTML = '';
-  
-  var total = _scanFiles.length;
-  var processed = 0;
+// ── Procesado de fotos de documentos, integrado en Procesar Archivos ──
+async function _procesarImagenes(imgs, addLine) {
   var errors = 0;
-  
-  for (var fi = 0; fi < _scanFiles.length; fi++) {
-    var file = _scanFiles[fi];
-    var label = '[' + (fi+1) + '/' + total + '] ' + (file.name || 'foto');
-    
-    // Progreso
-    btn.textContent = '⏳ ' + label;
-    logEl.innerHTML += '<p id="scan-prog-' + fi + '" style="color:#94a3b8;padding:6px 0;border-bottom:1px solid rgba(255,255,255,.05)">🔍 ' + label + '...</p>';
-    logEl.scrollTop = logEl.scrollHeight;
-    
+  for (var fi = 0; fi < imgs.length; fi++) {
+    var file = imgs[fi];
+    var label = '[' + (fi+1) + '/' + imgs.length + '] ' + (file.name || 'foto');
+    addLine('🔍 ' + label + '...', 'l-info');
     var success = false;
     for (var retry = 0; retry < 2 && !success; retry++) {
       try {
         var formData = new FormData();
         formData.append('image', file);
-        var r = await fetch('/api/scan_documento', {
-          method: 'POST',
-          body: formData,
-          headers: { 'X-CSRF-Token': _csrfToken }
-        });
+        var r = await fetch('/api/scan_documento', { method: 'POST', body: formData, headers: { 'X-CSRF-Token': _csrfToken } });
         var data = await r.json();
-        var progEl = document.getElementById('scan-prog-' + fi);
-        
         if (data.ok) {
-          var tipo = data.tipo || '—';
-          var colors = {FACTURA:'#f59e0b',BEO:'#a78bfa',TM:'#a78bfa',CONTRATO:'#a78bfa',EXTRACTO_BANCO:'#22c55e',VENTAS_POS:'#f97316',INVENTARIO:'#f97316',MERMAS:'#f97316',COMISIONES_OTA:'#60a5fa',ROOMING:'#06b6d4',OTRO:'#64748b'};
-          var color = colors[tipo] || '#94a3b8';
-          if (progEl) progEl.innerHTML = '✓ ' + label + ' — <span style="color:' + color + ';font-weight:600">' + tipo + '</span> · ' + (data.mensaje || '');
-          if (progEl) progEl.style.color = '#4ade80';
-          processed++;
-          success = true;
+          addLine('✓ ' + (file.name || 'foto') + ': ' + (data.tipo || '—') + (data.mensaje ? ' — ' + data.mensaje : ''), 'l-ok');
         } else {
-          if (progEl) progEl.innerHTML = '✗ ' + label + ' — ' + (data.error || 'error');
-          if (progEl) progEl.style.color = '#f87171';
-          if (retry === 0) {
-            if (progEl) progEl.innerHTML += ' (reintentando...)';
-          } else {
-            errors++;
-            success = true; // no reintentar más
-          }
-        }
-      } catch(e) {
-        var progEl2 = document.getElementById('scan-prog-' + fi);
-        if (retry === 0) {
-          if (progEl2) progEl2.innerHTML = '⚠ ' + label + ' — conexión perdida (reintentando...)';
-          if (progEl2) progEl2.style.color = '#facc15';
-          await new Promise(function(r) { setTimeout(r, 2000); }); // esperar 2s
-        } else {
-          if (progEl2) progEl2.innerHTML = '✗ ' + label + ' — ' + e.message;
-          if (progEl2) progEl2.style.color = '#f87171';
+          addLine('✗ ' + (file.name || 'foto') + ': ' + (data.error || 'error'), 'l-err');
           errors++;
-          success = true;
+        }
+        success = true;
+      } catch(e) {
+        if (retry === 0) {
+          addLine('⚠ ' + label + ' — ' + _tSSE('Reconectando') + '...', 'l-warn');
+          await new Promise(function(res) { setTimeout(res, 2000); });
+        } else {
+          addLine('✗ ' + label + ' — ' + e.message, 'l-err');
+          errors++; success = true;
         }
       }
     }
   }
-  
-  // Resumen final
-  var resHtml = '<div style="border-top:1px solid rgba(255,255,255,.1);padding-top:10px;margin-top:10px">';
-  resHtml += '<p style="color:' + (errors ? '#facc15' : '#4ade80') + ';font-weight:700">✅ ' + processed + '/' + total + ' procesados';
-  if (errors) resHtml += ' · ' + errors + ' errores';
-  resHtml += '</p>';
-  resHtml += '<div style="display:flex;gap:8px;margin-top:8px">';
-  resHtml += '<button onclick="resetScan()" style="flex:1;padding:10px;background:rgba(168,85,247,.15);border:1px solid rgba(168,85,247,.3);color:#a855f7;border-radius:8px;font-size:13px;font-weight:600;cursor:pointer">📸 Escanear más</button>';
-  resHtml += '<button onclick="closeScanModal()" style="flex:1;padding:10px;background:rgba(255,255,255,.05);border:1px solid rgba(255,255,255,.1);color:#94a3b8;border-radius:8px;font-size:13px;font-weight:600;cursor:pointer">Cerrar</button>';
-  resHtml += '</div></div>';
-  logEl.innerHTML += resHtml;
-  logEl.scrollTop = logEl.scrollHeight;
-  _i18nAfterRender();
-  
-  btn.textContent = t('nav.procesarDoc', '⚡ Procesar documento');
-  btn.disabled = false;
-  setTimeout(function() { loadAll(); }, 500);
-}
-
-function resetScan() {
-  _scanFiles = [];
-  document.getElementById('scan-preview').style.display = 'none';
-  document.getElementById('scan-log').style.display = 'none';
-  document.getElementById('btn-scan-process').disabled = true;
-  document.getElementById('btn-scan-process').style.opacity = '.5';
+  return errors;
 }
 
 function closeInvoiceModal() {
@@ -8883,7 +8674,7 @@ async function loadFBResumen() {
     html += '</div></div>';
 
     // ── Fila: categorías (izq) + top platos (der) ──
-    html += '<div style="display:grid;grid-template-columns:1.2fr 0.8fr;gap:16px">';
+    html += '<div class="fb-chart-grid" style="display:grid;grid-template-columns:1.2fr 0.8fr;gap:16px">';
     html += '<div class="card"><div class="card-title" data-i18n="card.fcCategoria">Food Cost por Categoría</div>';
     html += '<div class="tbl-wrap" style="overflow-x:auto;-webkit-overflow-scrolling:touch"><table style="min-width:0;width:100%"><thead><tr>';
     html += '<th>' + (t('fb.thCategoria', 'Categoría')) + '</th><th style="text-align:right">' + (t('fb.thVentas', 'Ventas')) + '</th><th style="text-align:right">FC%</th><th style="text-align:center">' + (t('fb.thEstado', 'Estado')) + '</th>';
@@ -9096,7 +8887,7 @@ async function loadFBRecetas() {
     if (!data.ok) { cont.innerHTML = '<div class="empty"><p>Error recetas</p></div>'; return; }
 
     const avg = data.recetas.reduce((a,r)=>a+r.fc_pct,0)/data.recetas.length;
-    let html = '<div style="display:grid;grid-template-columns:repeat(3,1fr);gap:14px;margin-bottom:20px">';
+    let html = '<div class="fb-kpi-grid" style="display:grid;grid-template-columns:repeat(3,1fr);gap:14px;margin-bottom:20px">';
     html += _fbKpi((t('fb.recetas', 'Recetas activas')), data.recetas.length, (t('fb.recetas', 'recetas')) + ' en carta', 'var(--acc2)');
     if (data.avg_fc_pct) html += _fbKpi('FC% Medio', data.avg_fc_pct + '%', 'media del menú', data.avg_fc_pct <= 22 ? 'var(--grn)' : 'var(--ora)');
     if (data.best_margin) html += _fbKpi('Mejor margen', data.best_margin.split(' ').slice(0,2).join(' '), 'menor FC%', 'var(--grn)');
@@ -10151,7 +9942,7 @@ async function loadMultiHotel() {
     if (iEl && hs.length >= 2) {
       var best = hs.reduce(function(a,b){ return b.gop_pct>a.gop_pct?b:a; }, hs[0]);
       iEl.innerHTML =
-        '<div style="display:grid;grid-template-columns:repeat(3,1fr);gap:12px;margin-bottom:4px">' +
+        '<div class="fb-kpi-grid" style="display:grid;grid-template-columns:repeat(3,1fr);gap:12px;margin-bottom:4px">' +
         '<div class="card" style="border-left:3px solid #22c55e;padding:14px 16px">' +
           '<div style="font-size:9px;font-weight:700;letter-spacing:.6px;color:#22c55e;text-transform:uppercase;margin-bottom:6px">MEJOR GOP%</div>' +
           '<div style="font-size:14px;font-weight:700;color:var(--tx);margin-bottom:4px">' + best.nombre.split(' ').slice(-1)[0] + '</div>' +
@@ -10679,7 +10470,7 @@ async function openHotelDetail(hotelId) {
             '<div style="font-size:13px;color:#8892a4;margin-top:4px">' + h.facturas_pendientes + ' facturas activas</div>' +
           '</div>' +
         '</div>' +
-        '<div style="display:grid;grid-template-columns:repeat(3,1fr);gap:12px;margin-top:16px;padding-top:16px;border-top:1px solid #2e3248">' +
+        '<div class="fb-kpi-grid" style="display:grid;grid-template-columns:repeat(3,1fr);gap:12px;margin-top:16px;padding-top:16px;border-top:1px solid #2e3248">' +
           '<div><div style="font-size:11px;color:#8892a4">OTAs (Booking, Expedia)</div><div style="font-size:18px;font-weight:600;color:#1a73e8">' + otasFacts + ' facts</div></div>' +
           '<div><div style="font-size:11px;color:#8892a4">Grupos Corporativos</div><div style="font-size:18px;font-weight:600;color:#1a73e8">' + grupoFacts + ' facts</div></div>' +
           '<div><div style="font-size:11px;color:#8892a4">Clientes Directos</div><div style="font-size:18px;font-weight:600;color:#1a73e8">' + directosFacts + ' facts</div></div>' +
@@ -10760,7 +10551,6 @@ document.addEventListener('keydown', e => {
           <li>🏨 /unirse — registro self-service para nuevos hoteles</li>
           <li>📊 DRR GOP% — estimación automática cuando Excel tiene fórmulas</li>
           <li>🏢 Multi-Hotel — gráficos aislados, KPI cards siempre visibles</li>
-          <li>📱 Vista lite en todos los paneles (F&B, Real AR, Multi)</li>
           <li>💬 Chat Yve — abre desde nav, panel full-screen en móvil</li>
           <li>🧾 Signup → redirige a checkout automáticamente</li>
           <li>💰 Página pricing con CTAs directos a Stripe</li>
@@ -10845,37 +10635,6 @@ window.addEventListener('scroll', () => {
 </script>
 
 <!-- Modal Escanear Documento -->
-<div id="scan-overlay" style="display:none;position:fixed;inset:0;z-index:9998;background:rgba(0,0,0,.7);backdrop-filter:blur(4px);align-items:center;justify-content:center">
-  <div style="background:#0f172a;border:1px solid rgba(255,255,255,.08);border-radius:16px;padding:24px;max-width:440px;width:calc(100% - 24px);max-height:90vh;overflow-y:auto">
-    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:16px">
-      <h3 style="margin:0;font-size:16px;font-weight:700">📸 Escanear Documento</h3>
-      <button onclick="closeScanModal()" style="background:none;border:none;color:#64748b;font-size:20px;cursor:pointer">✕</button>
-    </div>
-    <p style="font-size:13px;color:#94a3b8;margin-bottom:16px">Haz una foto al documento físico (factura, BEO, contrato, extracto...) y Yve lo leerá con IA.</p>
-    
-    <div id="scan-preview" style="display:none;margin-bottom:16px;text-align:center">
-      <img id="scan-img" style="max-width:100%;max-height:300px;border-radius:10px;border:1px solid rgba(255,255,255,.1)">
-      <p id="scan-fname" style="font-size:11px;color:#64748b;margin-top:6px"></p>
-    </div>
-    
-    <div style="display:flex;gap:10px;margin-bottom:16px">
-      <label style="flex:1;display:flex;align-items:center;justify-content:center;gap:6px;padding:14px;background:rgba(168,85,247,.08);border:2px dashed rgba(168,85,247,.3);border-radius:12px;cursor:pointer;font-size:14px;font-weight:600;color:#a855f7">
-        📸 Cámara
-        <input type="file" accept="image/*" capture="environment" onchange="addScanFiles(this.files)" style="display:none">
-      </label>
-      <label style="flex:1;display:flex;align-items:center;justify-content:center;gap:6px;padding:14px;background:rgba(59,130,246,.08);border:2px dashed rgba(59,130,246,.3);border-radius:12px;cursor:pointer;font-size:14px;font-weight:600;color:#3b82f6">
-        🖼️ Galería
-        <input type="file" accept="image/*" multiple onchange="addScanFiles(this.files)" style="display:none">
-      </label>
-    </div>
-    
-    <button id="btn-scan-process" onclick="processScan()" disabled style="width:100%;padding:12px;background:linear-gradient(135deg,#a855f7,#7c3aed);border:none;color:#fff;border-radius:10px;font-size:14px;font-weight:700;cursor:pointer;opacity:.5">
-      ⚡ Procesar documento
-    </button>
-    
-    <div id="scan-log" style="margin-top:14px;display:none;background:rgba(0,0,0,.3);border-radius:10px;padding:12px;font-family:monospace;font-size:12px;max-height:200px;overflow-y:auto"></div>
-  </div>
-</div>
 </body>
 </html>"""
 
