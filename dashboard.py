@@ -11072,6 +11072,7 @@ def historial_notificaciones():
 def reporte_ejecutivo():
     """Descarga reporte ejecutivo en PDF"""
     try:
+        from exportador_final import generar_reporte_ejecutivo
         pdf = generar_reporte_ejecutivo()
         return send_file(os.path.abspath(pdf), mimetype='application/pdf', as_attachment=True, download_name='Reporte_Ejecutivo.pdf')
     except Exception as e:
@@ -11081,6 +11082,7 @@ def reporte_ejecutivo():
 def reporte_consolidado():
     """Descarga reporte consolidado en Excel"""
     try:
+        from exportador_final import generar_excel_consolidado
         xlsx = generar_excel_consolidado()
         return send_file(os.path.abspath(xlsx), mimetype='application/vnd.openxmlformats-officedocument.spreadsheetml.sheet', as_attachment=True, download_name='Consolidado.xlsx')
     except Exception as e:
