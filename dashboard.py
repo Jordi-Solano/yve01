@@ -2443,7 +2443,7 @@ def api_stats_banco():
         conc = int((df["estado"] == "CONCILIADO").sum()) if "estado" in df.columns else 0
         pend = int((df["estado"] == "PENDIENTE").sum()) if "estado" in df.columns else 0
         diff = int((df["estado"] == "DIFERENCIA").sum()) if "estado" in df.columns else 0
-        imp_pend = float(df.loc[df.get("estado", pd.Series()) == "PENDIENTE", "importe"].apply(safe_float).sum()) if "estado" in df.columns else 0
+        imp_pend = float(df.loc[df.get("estado", pd.Series()) == "PENDIENTE", "importe"].apply(lambda v: abs(safe_float(v))).sum()) if "estado" in df.columns else 0
         # Alertas: pendientes con mas de 7 dias
         alertas = []
         if "estado" in df.columns and "fecha" in df.columns:

@@ -53,7 +53,7 @@ def api_stats():
         pend = int((df["estado"] == "PENDIENTE").sum()) if "estado" in df.columns else 0
         diff = int((df["estado"] == "DIFERENCIA").sum()) if "estado" in df.columns else 0
         imp_total = df["importe"].apply(_sf).sum()
-        imp_pend = df.loc[df.get("estado", pd.Series()) == "PENDIENTE", "importe"].apply(_sf).sum() if "estado" in df.columns else 0
+        imp_pend = df.loc[df.get("estado", pd.Series()) == "PENDIENTE", "importe"].apply(lambda v: abs(_sf(v))).sum() if "estado" in df.columns else 0
         saldo = _sf(df["saldo"].iloc[-1]) if "saldo" in df.columns and len(df) > 0 else 0
 
         rows = []
