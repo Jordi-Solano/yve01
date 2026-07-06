@@ -3414,7 +3414,6 @@ button, a { touch-action: manipulation; }
         </div>
         <div class="menu-sep"></div>
         <button class="menu-item" onclick="loadAll();document.getElementById('main-menu').classList.remove('open')">↻ Actualizar datos</button>
-        <a href="/configuracion/" class="menu-item" data-i18n="nav.config">⚙️ Configuración</a>
         <a href="/admin/" class="menu-item" style="display:__ADMIN_DISPLAY__" data-i18n="menu.admin">👥 Administración</a>
         <!-- Colores personalizados -->
         <button class="menu-item" onclick="_openColorPicker();document.getElementById('main-menu').classList.remove('open')" id="btn-color-picker">🎨 Personalizar colores</button>
@@ -6151,7 +6150,7 @@ function _applyStrMap(lang) {
     var text = n.textContent;
     if (!text || !text.trim()) continue;
     var trimmed = text.trim();
-    if (map[trimmed]) {
+    if (map[trimmed] && map[trimmed] !== trimmed) {
       // Preserve leading/trailing whitespace
       var leading  = text.match(/^\s*/)[0];
       var trailing = text.match(/\s*$/)[0];
@@ -7138,7 +7137,7 @@ function _applyPlaceholders(lang) {
   if (!map) return;
   document.querySelectorAll('input[placeholder],textarea[placeholder]').forEach(function(el) {
     var p = el.getAttribute('placeholder');
-    if (p && map[p]) el.setAttribute('placeholder', map[p]);
+    if (p && map[p] && map[p] !== p) el.setAttribute('placeholder', map[p]);
   });
 }
 (function() {
@@ -7152,7 +7151,7 @@ function _applyPlaceholders(lang) {
       finally { setTimeout(function() { _i18nApplying = false; }, 60); }
     }, 250);
   });
-  obs.observe(document.body, {childList: true, subtree: true, characterData: true});
+  obs.observe(document.body, {childList: true, subtree: true});
 })();
 // Changelog badge
 if (localStorage.getItem('changelog_seen') !== '2026-06-v3') {
@@ -11073,7 +11072,7 @@ def reporte_ejecutivo():
     """Descarga reporte ejecutivo en PDF"""
     try:
         pdf = generar_reporte_ejecutivo()
-        return send_file(pdf, mimetype='application/pdf', as_attachment=True, download_name='Reporte_Ejecutivo.pdf')
+        return send_file(os.path.abspath(pdf), mimetype='application/pdf', as_attachment=True, download_name='Reporte_Ejecutivo.pdf')
     except Exception as e:
         return jsonify({"error": str(e)}), 500
 
@@ -11082,7 +11081,7 @@ def reporte_consolidado():
     """Descarga reporte consolidado en Excel"""
     try:
         xlsx = generar_excel_consolidado()
-        return send_file(xlsx, mimetype='application/vnd.openxmlformats-officedocument.spreadsheetml.sheet', as_attachment=True, download_name='Consolidado.xlsx')
+        return send_file(os.path.abspath(xlsx), mimetype='application/vnd.openxmlformats-officedocument.spreadsheetml.sheet', as_attachment=True, download_name='Consolidado.xlsx')
     except Exception as e:
         return jsonify({"error": str(e)}), 500
 
