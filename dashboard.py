@@ -10119,18 +10119,7 @@ async function openHotelDetail(hotelId) {
 // ═══════════════════════════════════════════════════════════════════
 // CALIPOLIS DASHBOARD
 // ═══════════════════════════════════════════════════════════════════
-var _calCharts = {};
-
-  // Delegado a loadMultiHotel con filtro grupo=calipolis
-  window._mhGrupoSub   = 'Sitges · 3 propiedades · 307 habitaciones';
-  _mh_loaded = false;
-  if (typeof loadMultiHotel === 'function') await loadMultiHotel();
-  // (código antiguo reemplazado — se usa panel-multi_hotel)
-  if (false) { // dead code kept for reference
-    const kpiEl = document.getElementById('cal-kpis');
-    if (kpiEl) kpiEl.innerHTML = '';
-  }
-}
+// Calipolis functions removed — product is now generic
 
 function _calSparkline(data, color) {
   if (!data || !data.length) return '<div style="width:80px;height:40px"></div>';
