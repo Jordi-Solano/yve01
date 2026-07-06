@@ -129,6 +129,10 @@ def api_asignar():
         return jsonify({"ok": False}), 400
     try:
         df = pd.read_excel(ruta)
+        # columnas de texto: si vienen vacías pandas las tipa como numéricas y rechaza strings
+        for _col in ("estado", "factura_ref", "origen", "match_proveedor"):
+            if _col in df.columns:
+                df[_col] = df[_col].astype(object)
         if 0 <= idx < len(df):
             df.loc[idx, "estado"] = "CONCILIADO"
             df.loc[idx, "factura_ref"] = factura

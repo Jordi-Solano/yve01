@@ -10650,7 +10650,8 @@ async function loadMultiHotel() {
     if (savedView === 'ranking') setMHView('ranking');
     if (_i18nLang && _i18nLang !== 'es') applyI18n(_i18nData);
   } catch(e) {
-    console.error('MH Error:', e);
+    var _msg = String(e && e.message || e);
+    if (_msg.indexOf('Sin datos') === -1 && _msg.indexOf('Sin hoteles') === -1) console.error('MH Error:', e);
     var el = document.getElementById('mh-kpis');
     // Estado vacío amigable (sin hoteles configurados es esperado, no un error)
     var msg = (e.message||e);
