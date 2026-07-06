@@ -4855,6 +4855,8 @@ const _i18nCache = {};
 const _i18nOriginal = {}; // textos ES originales — para restaurar al volver a español
 var _i18nStrMap = {
   en: {
+    "El sistema está listo para automatizar las finanzas de tu hotel.": "The system is ready to automate your hotel's finances.",
+    "El primer paso: procesa las facturas OTA del mes en": "First step: process this month's OTA invoices in",
     "👋 Bienvenido a Yve.01": "👋 Welcome to Yve.01",
     "El sistema de finanzas hoteleras que automatiza AR, AP, DRR y reporting. Este tour te lleva por cada módulo de izquierda a derecha — 3 minutos y ya lo dominas todo. Arrástrame si te estorbo: me acoplo solo donde me sueltes.": "The hotel finance system that automates AR, AP, DRR and reporting. This tour walks you through every module from left to right — 3 minutes and you'll master it all. Drag me out of the way: I'll dock wherever you drop me.",
     "📥 AR — Comisiones OTA": "📥 AR — OTA Commissions",
@@ -5085,6 +5087,8 @@ var _i18nStrMap = {
     'Administrador': 'Administrator',
     '👤 Administrador': '👤 Administrator',},
   ca: {
+    "El sistema está listo para automatizar las finanzas de tu hotel.": "El sistema està a punt per automatitzar les finances del teu hotel.",
+    "El primer paso: procesa las facturas OTA del mes en": "El primer pas: processa les factures OTA del mes a",
     "👋 Bienvenido a Yve.01": "👋 Benvingut a Yve.01",
     "El sistema de finanzas hoteleras que automatiza AR, AP, DRR y reporting. Este tour te lleva por cada módulo de izquierda a derecha — 3 minutos y ya lo dominas todo. Arrástrame si te estorbo: me acoplo solo donde me sueltes.": "El sistema de finances hoteleres que automatitza AR, AP, DRR i reporting. Aquest tour et porta per cada mòdul d'esquerra a dreta — 3 minuts i ja ho domines tot. Arrossega'm si et faig nosa: m'acoblo sol on em deixis anar.",
     "📥 AR — Comisiones OTA": "📥 AR — Comissions OTA",
@@ -5308,6 +5312,8 @@ var _i18nStrMap = {
     'Sin datos F&B.': 'Sense dades F&B.',
     'Reportes': 'Informes',},
   fr: {
+    "El sistema está listo para automatizar las finanzas de tu hotel.": "Le système est prêt à automatiser les finances de votre hôtel.",
+    "El primer paso: procesa las facturas OTA del mes en": "Première étape : traitez les factures OTA du mois dans",
     "👋 Bienvenido a Yve.01": "👋 Bienvenue sur Yve.01",
     "El sistema de finanzas hoteleras que automatiza AR, AP, DRR y reporting. Este tour te lleva por cada módulo de izquierda a derecha — 3 minutos y ya lo dominas todo. Arrástrame si te estorbo: me acoplo solo donde me sueltes.": "Le système de finances hôtelières qui automatise AR, AP, DRR et reporting. Ce tour vous guide module par module — 3 minutes et vous maîtrisez tout. Déplacez-moi si je gêne : je m'ancre là où vous me lâchez.",
     "📥 AR — Comisiones OTA": "📥 AR — Commissions OTA",
@@ -5542,6 +5548,8 @@ var _i18nStrMap = {
     'Administrador': 'Administrateur',
     '👤 Administrador': '👤 Administrateur',},
   de: {
+    "El sistema está listo para automatizar las finanzas de tu hotel.": "Das System ist bereit, die Finanzen deines Hotels zu automatisieren.",
+    "El primer paso: procesa las facturas OTA del mes en": "Erster Schritt: Verarbeite die OTA-Rechnungen des Monats in",
     "👋 Bienvenido a Yve.01": "👋 Willkommen bei Yve.01",
     "El sistema de finanzas hoteleras que automatiza AR, AP, DRR y reporting. Este tour te lleva por cada módulo de izquierda a derecha — 3 minutos y ya lo dominas todo. Arrástrame si te estorbo: me acoplo solo donde me sueltes.": "Das Hotelfinanz-System, das AR, AP, DRR und Reporting automatisiert. Diese Tour führt dich Modul für Modul von links nach rechts — 3 Minuten und du beherrschst alles. Zieh mich beiseite: Ich docke dort an, wo du mich loslässt.",
     "📥 AR — Comisiones OTA": "📥 AR — OTA-Provisionen",
@@ -5780,6 +5788,8 @@ var _i18nStrMap = {
     'Administrador': 'Administrator',
     '👤 Administrador': '👤 Administrator',},
   it: {
+    "El sistema está listo para automatizar las finanzas de tu hotel.": "Il sistema è pronto ad automatizzare le finanze del tuo hotel.",
+    "El primer paso: procesa las facturas OTA del mes en": "Primo passo: elabora le fatture OTA del mese in",
     "👋 Bienvenido a Yve.01": "👋 Benvenuto in Yve.01",
     "El sistema de finanzas hoteleras que automatiza AR, AP, DRR y reporting. Este tour te lleva por cada módulo de izquierda a derecha — 3 minutos y ya lo dominas todo. Arrástrame si te estorbo: me acoplo solo donde me sueltes.": "Il sistema di finanza alberghiera che automatizza AR, AP, DRR e reporting. Questo tour ti guida modulo per modulo — 3 minuti e padroneggi tutto. Trascinami se ti intralcio: mi aggancio dove mi lasci.",
     "📥 AR — Comisiones OTA": "📥 AR — Commissioni OTA",
@@ -6008,6 +6018,8 @@ var _i18nStrMap = {
     'Administrador': 'Amministratore',
     '👤 Administrador': '👤 Amministratore',},
   pt: {
+    "El sistema está listo para automatizar las finanzas de tu hotel.": "O sistema está pronto para automatizar as finanças do seu hotel.",
+    "El primer paso: procesa las facturas OTA del mes en": "Primeiro passo: processe as faturas OTA do mês em",
     "👋 Bienvenido a Yve.01": "👋 Bem-vindo ao Yve.01",
     "El sistema de finanzas hoteleras que automatiza AR, AP, DRR y reporting. Este tour te lleva por cada módulo de izquierda a derecha — 3 minutos y ya lo dominas todo. Arrástrame si te estorbo: me acoplo solo donde me sueltes.": "O sistema de finanças hoteleiras que automatiza AR, AP, DRR e reporting. Este tour percorre cada módulo da esquerda para a direita — 3 minutos e você domina tudo. Arraste-me se atrapalhar: eu me encaixo onde você me soltar.",
     "📥 AR — Comisiones OTA": "📥 AR — Comissões OTA",
