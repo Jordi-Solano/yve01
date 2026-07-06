@@ -1068,6 +1068,7 @@ SOLO devuelve JSON, sin markdown ni explicaciones."""
         tipo = datos.get('tipo_documento', 'FACTURA' if datos.get('es_factura') else 'OTRO')
         
         # Guardar en historial
+        from datetime import datetime as _dt2
         log = _load_proc_log()
         log[fname] = {'fecha': _dt2.now().strftime('%Y-%m-%d %H:%M'), 'resultado': f'{tipo}_OK'}
         _save_proc_log(log)
