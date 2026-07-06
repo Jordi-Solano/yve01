@@ -238,9 +238,9 @@ function eur(n) {
 }
 
 function badge(estado) {
-  if (estado === 'CONCILIADO') return '<span class="badge b-ok">Conciliado</span>';
-  if (estado === 'PENDIENTE') return '<span class="badge b-pend">Pendiente</span>';
-  if (estado === 'DIFERENCIA') return '<span class="badge b-diff">Diferencia</span>';
+  if (estado === 'CONCILIADO') return '<span class="badge b-ok">' + tt('Conciliado') + '</span>';
+  if (estado === 'PENDIENTE') return '<span class="badge b-pend">' + tt('Pendiente') + '</span>';
+  if (estado === 'DIFERENCIA') return '<span class="badge b-diff">' + tt('Diferencia') + '</span>';
   return '<span class="badge b-manual">' + estado + '</span>';
 }
 
@@ -248,23 +248,23 @@ async function loadData() {
   try {
     var r = await fetch('/conciliacion/api/stats');
     var d = await r.json();
-    if (!d || d.error) { document.getElementById('status-msg').textContent = d ? d.error : 'Sin datos'; return; }
+    if (!d || d.error) { document.getElementById('status-msg').textContent = d ? d.error : tt('Sin datos'); return; }
 
     document.getElementById('s-total').textContent = d.total;
     document.getElementById('s-conc').textContent = d.conciliados;
     document.getElementById('s-pend').textContent = d.pendientes;
     document.getElementById('s-diff').textContent = d.diferencias;
-    document.getElementById('s-imp-pend').textContent = 'Pendiente: ' + eur(d.importe_pendiente);
+    document.getElementById('s-imp-pend').textContent = tt('Pendiente: ') + eur(d.importe_pendiente);
 
     var tbody = document.getElementById('tbl-body');
     if (!d.movimientos || !d.movimientos.length) {
-      tbody.innerHTML = '<tr><td colspan="9" style="text-align:center;color:var(--dim);padding:40px">Sin movimientos. Sube un extracto.</td></tr>';
+      tbody.innerHTML = '<tr><td colspan="9" style="text-align:center;color:var(--dim);padding:40px">' + tt('Sin movimientos. Sube un extracto.') + '</td></tr>';
       return;
     }
     tbody.innerHTML = d.movimientos.map(function(m, i) {
       var tipoColor = m.tipo === 'ABONO' ? 'color:var(--grn)' : 'color:var(--red)';
       var accBtn = m.estado === 'PENDIENTE'
-        ? '<button class="btn btn-sec" style="padding:4px 8px;font-size:11px" onclick="asignarManual(' + i + ')">Asignar</button>'
+        ? '<button class="btn btn-sec" style="padding:4px 8px;font-size:11px" onclick="asignarManual(' + i + ')">' + tt('Asignar') + '</button>'
         : (m.factura_ref || '—');
       return '<tr>'
         + '<td style="color:var(--dim)">' + m.fecha + '</td>'
@@ -279,45 +279,45 @@ async function loadData() {
         + '</tr>';
     }).join('');
   } catch(e) {
-    document.getElementById('status-msg').textContent = 'Error cargando datos';
+    document.getElementById('status-msg').textContent = tt('Error cargando datos');
   }
 }
 
 async function runConciliacion() {
   var btn = document.getElementById('btn-conc');
   var msg = document.getElementById('status-msg');
-  btn.disabled = true; btn.textContent = 'Procesando...';
+  btn.disabled = true; btn.textContent = tt('Procesando...');
   msg.textContent = '';
   try {
     var r = await fetch('/conciliacion/api/conciliar', {method:'POST'});
     var d = await r.json();
     if (d.ok) {
-      msg.textContent = 'Conciliacion completada';
+      msg.textContent = tt('Conciliacion completada');
       loadData();
     } else {
       msg.textContent = 'Error: ' + (d.error || d.output || '');
     }
-  } catch(e) { msg.textContent = 'Error de conexion'; }
-  btn.disabled = false; btn.textContent = 'Ejecutar conciliacion';
+  } catch(e) { msg.textContent = tt('Error de conexion'); }
+  btn.disabled = false; btn.textContent = '⚡ ' + tt('Ejecutar conciliacion');
 }
 
 async function uploadFile(input) {
   var file = input.files[0];
   if (!file) return;
   var msg = document.getElementById('status-msg');
-  msg.textContent = 'Subiendo ' + file.name + '...';
+  msg.textContent = tt('Subiendo ') + file.name + '...';
   var form = new FormData();
   form.append('file', file);
   try {
     var r = await fetch('/conciliacion/api/upload', {method:'POST', body:form});
     var d = await r.json();
-    msg.textContent = d.ok ? 'Extracto subido. Ejecuta la conciliacion.' : ('Error: ' + d.error);
-  } catch(e) { msg.textContent = 'Error subiendo archivo'; }
+    msg.textContent = d.ok ? tt('Extracto subido. Ejecuta la conciliacion.') : ('Error: ' + d.error);
+  } catch(e) { msg.textContent = tt('Error subiendo archivo'); }
   input.value = '';
 }
 
 async function asignarManual(idx) {
-  var factura = prompt('Numero de factura para asignar a este movimiento:');
+  var factura = prompt(tt('Numero de factura para asignar a este movimiento:'));
   if (!factura) return;
   try {
     var r = await fetch('/conciliacion/api/asignar_manual', {
@@ -328,6 +328,30 @@ async function asignarManual(idx) {
     if (d.ok) loadData();
   } catch(e) {}
 }
+
+// ── i18n: mismo idioma que el dashboard (localStorage yve_lang) ──
+var _lang = localStorage.getItem('yve_lang') || 'es';
+var _L = {
+ en: {"Conciliacion Bancaria":"Bank Reconciliation","← Dashboard":"← Dashboard","Movimientos":"Transactions","Conciliados":"Matched","Pendientes":"Pending","Diferencias":"Differences","Movimientos Bancarios":"Bank Transactions","📂 Subir extracto (.xlsx/.csv)":"📂 Upload statement (.xlsx/.csv)","⚡ Ejecutar conciliacion":"⚡ Run reconciliation","Cargando...":"Loading...","Fecha":"Date","Concepto":"Description","Importe":"Amount","Tipo":"Type","Ref":"Ref","Saldo":"Balance","Estado":"Status","Factura":"Invoice","Accion":"Action","Conciliado":"Matched","Pendiente":"Pending","Diferencia":"Difference","Asignar":"Assign","Sin movimientos. Sube un extracto.":"No transactions. Upload a statement.","Pendiente: ":"Pending: ","Conciliacion completada":"Reconciliation completed","Error de conexion":"Connection error","Procesando...":"Processing...","Ejecutar conciliacion":"Run reconciliation","Subiendo ":"Uploading ","Extracto subido. Ejecuta la conciliacion.":"Statement uploaded. Run the reconciliation.","Error subiendo archivo":"Error uploading file","Numero de factura para asignar a este movimiento:":"Invoice number to assign to this transaction:","Sin datos":"No data","Error cargando datos":"Error loading data"},
+ ca: {"Conciliacion Bancaria":"Conciliació Bancària","← Dashboard":"← Tauler","Movimientos":"Moviments","Conciliados":"Conciliats","Pendientes":"Pendents","Diferencias":"Diferències","Movimientos Bancarios":"Moviments Bancaris","📂 Subir extracto (.xlsx/.csv)":"📂 Pujar extracte (.xlsx/.csv)","⚡ Ejecutar conciliacion":"⚡ Executar conciliació","Cargando...":"Carregant...","Fecha":"Data","Concepto":"Concepte","Importe":"Import","Tipo":"Tipus","Ref":"Ref","Saldo":"Saldo","Estado":"Estat","Factura":"Factura","Accion":"Acció","Conciliado":"Conciliat","Pendiente":"Pendent","Diferencia":"Diferència","Asignar":"Assignar","Sin movimientos. Sube un extracto.":"Sense moviments. Puja un extracte.","Pendiente: ":"Pendent: ","Conciliacion completada":"Conciliació completada","Error de conexion":"Error de connexió","Procesando...":"Processant...","Ejecutar conciliacion":"Executar conciliació","Subiendo ":"Pujant ","Extracto subido. Ejecuta la conciliacion.":"Extracte pujat. Executa la conciliació.","Error subiendo archivo":"Error pujant el fitxer","Numero de factura para asignar a este movimiento:":"Número de factura per assignar a aquest moviment:","Sin datos":"Sense dades","Error cargando datos":"Error carregant dades"},
+ fr: {"Conciliacion Bancaria":"Rapprochement Bancaire","← Dashboard":"← Tableau de bord","Movimientos":"Mouvements","Conciliados":"Rapprochés","Pendientes":"En attente","Diferencias":"Écarts","Movimientos Bancarios":"Mouvements Bancaires","📂 Subir extracto (.xlsx/.csv)":"📂 Charger le relevé (.xlsx/.csv)","⚡ Ejecutar conciliacion":"⚡ Lancer le rapprochement","Cargando...":"Chargement...","Fecha":"Date","Concepto":"Libellé","Importe":"Montant","Tipo":"Type","Ref":"Réf","Saldo":"Solde","Estado":"Statut","Factura":"Facture","Accion":"Action","Conciliado":"Rapproché","Pendiente":"En attente","Diferencia":"Écart","Asignar":"Assigner","Sin movimientos. Sube un extracto.":"Aucun mouvement. Chargez un relevé.","Pendiente: ":"En attente : ","Conciliacion completada":"Rapprochement terminé","Error de conexion":"Erreur de connexion","Procesando...":"Traitement...","Ejecutar conciliacion":"Lancer le rapprochement","Subiendo ":"Chargement ","Extracto subido. Ejecuta la conciliacion.":"Relevé chargé. Lancez le rapprochement.","Error subiendo archivo":"Erreur lors du chargement","Numero de factura para asignar a este movimiento:":"Numéro de facture à assigner à ce mouvement :","Sin datos":"Aucune donnée","Error cargando datos":"Erreur de chargement"},
+ de: {"Conciliacion Bancaria":"Bankabstimmung","← Dashboard":"← Dashboard","Movimientos":"Bewegungen","Conciliados":"Abgestimmt","Pendientes":"Offen","Diferencias":"Differenzen","Movimientos Bancarios":"Bankbewegungen","📂 Subir extracto (.xlsx/.csv)":"📂 Kontoauszug hochladen (.xlsx/.csv)","⚡ Ejecutar conciliacion":"⚡ Abstimmung starten","Cargando...":"Laden...","Fecha":"Datum","Concepto":"Beschreibung","Importe":"Betrag","Tipo":"Typ","Ref":"Ref","Saldo":"Saldo","Estado":"Status","Factura":"Rechnung","Accion":"Aktion","Conciliado":"Abgestimmt","Pendiente":"Offen","Diferencia":"Differenz","Asignar":"Zuordnen","Sin movimientos. Sube un extracto.":"Keine Bewegungen. Lade einen Kontoauszug hoch.","Pendiente: ":"Offen: ","Conciliacion completada":"Abstimmung abgeschlossen","Error de conexion":"Verbindungsfehler","Procesando...":"Verarbeite...","Ejecutar conciliacion":"Abstimmung starten","Subiendo ":"Lade hoch ","Extracto subido. Ejecuta la conciliacion.":"Kontoauszug hochgeladen. Starte die Abstimmung.","Error subiendo archivo":"Fehler beim Hochladen","Numero de factura para asignar a este movimiento:":"Rechnungsnummer für diese Bewegung:","Sin datos":"Keine Daten","Error cargando datos":"Fehler beim Laden"},
+ it: {"Conciliacion Bancaria":"Riconciliazione Bancaria","← Dashboard":"← Dashboard","Movimientos":"Movimenti","Conciliados":"Riconciliati","Pendientes":"In sospeso","Diferencias":"Differenze","Movimientos Bancarios":"Movimenti Bancari","📂 Subir extracto (.xlsx/.csv)":"📂 Carica estratto (.xlsx/.csv)","⚡ Ejecutar conciliacion":"⚡ Esegui riconciliazione","Cargando...":"Caricamento...","Fecha":"Data","Concepto":"Descrizione","Importe":"Importo","Tipo":"Tipo","Ref":"Rif","Saldo":"Saldo","Estado":"Stato","Factura":"Fattura","Accion":"Azione","Conciliado":"Riconciliato","Pendiente":"In sospeso","Diferencia":"Differenza","Asignar":"Assegna","Sin movimientos. Sube un extracto.":"Nessun movimento. Carica un estratto.","Pendiente: ":"In sospeso: ","Conciliacion completada":"Riconciliazione completata","Error de conexion":"Errore di connessione","Procesando...":"Elaborazione...","Ejecutar conciliacion":"Esegui riconciliazione","Subiendo ":"Caricamento ","Extracto subido. Ejecuta la conciliacion.":"Estratto caricato. Esegui la riconciliazione.","Error subiendo archivo":"Errore nel caricamento","Numero de factura para asignar a este movimiento:":"Numero di fattura da assegnare a questo movimento:","Sin datos":"Nessun dato","Error cargando datos":"Errore di caricamento"},
+ pt: {"Conciliacion Bancaria":"Conciliação Bancária","← Dashboard":"← Painel","Movimientos":"Movimentos","Conciliados":"Conciliados","Pendientes":"Pendentes","Diferencias":"Diferenças","Movimientos Bancarios":"Movimentos Bancários","📂 Subir extracto (.xlsx/.csv)":"📂 Enviar extrato (.xlsx/.csv)","⚡ Ejecutar conciliacion":"⚡ Executar conciliação","Cargando...":"Carregando...","Fecha":"Data","Concepto":"Descrição","Importe":"Valor","Tipo":"Tipo","Ref":"Ref","Saldo":"Saldo","Estado":"Estado","Factura":"Fatura","Accion":"Ação","Conciliado":"Conciliado","Pendiente":"Pendente","Diferencia":"Diferença","Asignar":"Atribuir","Sin movimientos. Sube un extracto.":"Sem movimentos. Envie um extrato.","Pendiente: ":"Pendente: ","Conciliacion completada":"Conciliação concluída","Error de conexion":"Erro de conexão","Procesando...":"Processando...","Ejecutar conciliacion":"Executar conciliação","Subiendo ":"Enviando ","Extracto subido. Ejecuta la conciliacion.":"Extrato enviado. Execute a conciliação.","Error subiendo archivo":"Erro ao enviar arquivo","Numero de factura para asignar a este movimiento:":"Número da fatura para atribuir a este movimento:","Sin datos":"Sem dados","Error cargando datos":"Erro ao carregar dados"},
+};
+function tt(s) { var d = _L[_lang]; return (d && d[s]) ? d[s] : s; }
+function _applyI18nConc() {
+  if (_lang === 'es' || !_L[_lang]) return;
+  var d = _L[_lang];
+  var walker = document.createTreeWalker(document.body, NodeFilter.SHOW_TEXT, null, false);
+  var n, reps = [];
+  while ((n = walker.nextNode())) {
+    var txt = n.textContent, tr = txt.trim();
+    if (tr && d[tr]) reps.push([n, txt.replace(tr, d[tr])]);
+  }
+  reps.forEach(function(r) { r[0].textContent = r[1]; });
+}
+_applyI18nConc();
 
 loadData();
 </script>
