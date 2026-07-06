@@ -7526,6 +7526,7 @@ function _initTourDrag(box) {
         if (raf) cancelAnimationFrame(raf);
         box.style.willChange = '';
         if (!moved) return;
+        box.style.transform = 'translate3d(' + dx + 'px,' + dy + 'px,0)';
         var r = box.getBoundingClientRect();
         box.style.transform = 'none';
         box.style.left = r.left + 'px';
