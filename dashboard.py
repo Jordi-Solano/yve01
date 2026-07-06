@@ -7247,7 +7247,11 @@ function _applyPlaceholders(lang) {
     _i18nObsTimer = setTimeout(function() {
       _i18nApplying = true;
       try { _applyStrMap(_i18nLang); _applyPlaceholders(_i18nLang); }
-      finally { setTimeout(function() { _i18nApplying = false; }, 60); }
+      finally { setTimeout(function() {
+        _i18nApplying = false;
+        // segunda pasada: caza renders que llegaron durante la primera
+        if (_i18nLang && _i18nLang !== 'es') { _applyStrMap(_i18nLang); _applyPlaceholders(_i18nLang); }
+      }, 150); }
     }, 100);
   });
   obs.observe(document.body, {childList: true, subtree: true});
