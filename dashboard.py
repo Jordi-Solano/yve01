@@ -7443,7 +7443,10 @@ var _tourCurrentTarget = null;
 
 function _tourBoxCoords(pos, bw, bh) {
   var vw = window.innerWidth, vh = window.innerHeight;
-  var pad = 20, navH = 56;
+  var pad = 20;
+  // las posiciones superiores empiezan debajo de la barra de pestañas para no tapar el nombre del apartado
+  var tabs = document.querySelector('.tabs');
+  var navH = tabs ? Math.max(56, Math.round(tabs.getBoundingClientRect().bottom + 10)) : 56;
   switch(pos) {
     case 'center': return { top: Math.round((vh - bh)/2), left: Math.round((vw - bw)/2) };
     case 'tl':     return { top: navH + pad, left: pad };
@@ -7460,19 +7463,28 @@ function _tourBoxCoords(pos, bw, bh) {
 
 // ── Choose best auto-position avoiding the highlighted element ────────
 function _autoPickPos(targetRect) {
-  if (!targetRect) return 'center';
-  var vw = window.innerWidth, vh = window.innerHeight;
-  var bw = 360, bh = 280;
-  var cx = targetRect.left + targetRect.width/2;
-  var cy = targetRect.top  + targetRect.height/2;
-  // Pick position in opposite quadrant from target
-  var inLeft  = cx < vw/2;
-  var inTop   = cy < vh/2;
-  if (inLeft  && inTop)  return 'br';
-  if (!inLeft && inTop)  return 'bl';
-  if (inLeft  && !inTop) return 'tr';
-  return 'tl';
+  var box = document.getElementById('tour-box');
+  var bw = (box && box.offsetWidth) || 360, bh = (box && box.offsetHeight) || 280;
+  var candidatos = ['tl', 'tc', 'tr', 'lc', 'rc', 'bl', 'bc', 'br'];
+  var tabs = document.querySelector('.tabs');
+  var tabsRect = tabs ? tabs.getBoundingClientRect() : null;
+  function solapa(r, q) {
+    return !(r.left > q.right || r.right < q.left || r.top > q.bottom || r.bottom < q.top);
+  }
+  var validos = candidatos.filter(function(p) {
+    var c = _tourBoxCoords(p, bw, bh);
+    var r = { left: c.left, top: c.top, right: c.left + bw, bottom: c.top + bh };
+    if (tabsRect && solapa(r, tabsRect)) return false;
+    if (targetRect && solapa(r, targetRect)) return false;
+    return true;
+  });
+  if (!validos.length) validos = ['br', 'bl', 'rc', 'lc'];
+  // aleatorio, sin repetir la última posición
+  var pool = validos.filter(function(p) { return p !== _tourBoxPos; });
+  if (!pool.length) pool = validos;
+  return pool[Math.floor(Math.random() * pool.length)];
 }
+
 
 // ── Redraw the spotlight canvas ───────────────────────────────────────
 function _drawSpotlight(target) {
@@ -7710,8 +7722,8 @@ function _applyTourBoxPos(targetRect) {
 
   // For step 0 always center; for others auto or stored pos
   var pos = _tourBoxPos;
-  if (pos === 'auto' && targetRect) pos = _autoPickPos(targetRect);
-  else if (pos === 'auto') pos = 'center';
+  if (pos === 'auto') pos = _autoPickPos(targetRect || null);
+  _tourBoxPos = pos;
 
   var coords = _tourBoxCoords(pos, bw, bh);
   // desliza suavemente hasta la nueva posición (si ya estaba colocada)
@@ -8678,15 +8690,38 @@ function _onTabSwitch(newTab) {
 
 
 // ── Escanear Documento Físico ───────────────────────────────────────
+// ── Compresión de fotos en el navegador (las de móvil pesan 5-12MB) ──
+async function _comprimirImagen(file) {
+  try {
+    var bmp = await createImageBitmap(file);
+    var maxSide = 1800;
+    var scale = Math.min(1, maxSide / Math.max(bmp.width, bmp.height));
+    if (scale >= 1 && file.size < 1200000) return file; // ya es pequeña
+    var c = document.createElement('canvas');
+    c.width = Math.max(1, Math.round(bmp.width * scale));
+    c.height = Math.max(1, Math.round(bmp.height * scale));
+    c.getContext('2d').drawImage(bmp, 0, 0, c.width, c.height);
+    var blob = await new Promise(function(res) { c.toBlob(res, 'image/jpeg', 0.85); });
+    if (blob && blob.size < file.size) {
+      return new File([blob], (file.name || 'foto').replace(/\.\w+$/, '') + '.jpg', { type: 'image/jpeg' });
+    }
+    return file;
+  } catch(e) { return file; } // HEIC u otros que el navegador no decodifica: se envía tal cual
+}
+
 // ── Procesado de fotos de documentos, integrado en Procesar Archivos ──
+function _mb(n) { return n > 950000 ? (n/1048576).toFixed(1) + 'MB' : Math.round(n/1024) + 'KB'; }
+
 async function _procesarImagenes(imgs, addLine) {
   var errors = 0;
   for (var fi = 0; fi < imgs.length; fi++) {
-    var file = imgs[fi];
+    var original = imgs[fi];
+    var file = await _comprimirImagen(original);
     var label = '[' + (fi+1) + '/' + imgs.length + '] ' + (file.name || 'foto');
-    addLine('🔍 ' + label + '...', 'l-info');
+    var sizeInfo = file.size < original.size ? ' (' + _mb(original.size) + ' → ' + _mb(file.size) + ')' : ' (' + _mb(file.size) + ')';
+    addLine('🔍 ' + label + sizeInfo + '...', 'l-info');
     var success = false;
-    for (var retry = 0; retry < 2 && !success; retry++) {
+    for (var retry = 0; retry < 3 && !success; retry++) {
       try {
         var formData = new FormData();
         formData.append('image', file);
@@ -8700,9 +8735,9 @@ async function _procesarImagenes(imgs, addLine) {
         }
         success = true;
       } catch(e) {
-        if (retry === 0) {
-          addLine('⚠ ' + label + ' — ' + _tSSE('Reconectando') + '...', 'l-warn');
-          await new Promise(function(res) { setTimeout(res, 2000); });
+        if (retry < 2) {
+          addLine('⚠ ' + label + ' — ' + _tSSE('Reconectando') + '... (' + (retry+2) + '/3)', 'l-warn');
+          await new Promise(function(res) { setTimeout(res, 2000 * (retry+1)); });
         } else {
           addLine('✗ ' + label + ' — ' + e.message, 'l-err');
           errors++; success = true;
