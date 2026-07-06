@@ -7808,9 +7808,10 @@ function _showTourStep() {
       }
       _drawSpotlight(target);
       _renderTourBox(step);
-      requestAnimationFrame(function() {
+      // setTimeout en vez de rAF: rAF se congela si la ventana está tapada/minimizada
+      setTimeout(function() {
         _applyTourBoxPos(target ? target.getBoundingClientRect() : null);
-      });
+      }, 0);
     };
     setTimeout(function() { _drawAttempt(6); }, target ? 150 : 0);
   }, delay);
