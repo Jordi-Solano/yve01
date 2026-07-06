@@ -7,7 +7,7 @@ Abre en: http://localhost:5001
 import os, glob, json, subprocess, sys, threading
 from datetime import date
 import pandas as pd
-from flask import Flask, Response, jsonify, request, stream_with_context, redirect
+from flask import Flask, Response, jsonify, request, stream_with_context, redirect, send_file
 from flask_login import login_required, current_user
 
 # Ruta base del proyecto — robusta ante ejecución desde cualquier directorio
