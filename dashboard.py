@@ -7463,27 +7463,11 @@ function _tourBoxCoords(pos, bw, bh) {
 
 // ── Choose best auto-position avoiding the highlighted element ────────
 function _autoPickPos(targetRect) {
-  var box = document.getElementById('tour-box');
-  var bw = (box && box.offsetWidth) || 360, bh = (box && box.offsetHeight) || 280;
   var candidatos = ['tl', 'tc', 'tr', 'lc', 'rc', 'bl', 'bc', 'br'];
-  var tabs = document.querySelector('.tabs');
-  var tabsRect = tabs ? tabs.getBoundingClientRect() : null;
-  function solapa(r, q) {
-    return !(r.left > q.right || r.right < q.left || r.top > q.bottom || r.bottom < q.top);
-  }
-  var validos = candidatos.filter(function(p) {
-    var c = _tourBoxCoords(p, bw, bh);
-    var r = { left: c.left, top: c.top, right: c.left + bw, bottom: c.top + bh };
-    if (tabsRect && solapa(r, tabsRect)) return false;
-    if (targetRect && solapa(r, targetRect)) return false;
-    return true;
-  });
-  if (!validos.length) validos = ['br', 'bl', 'rc', 'lc'];
-  // aleatorio, sin repetir la última posición
-  var pool = validos.filter(function(p) { return p !== _tourBoxPos; });
-  if (!pool.length) pool = validos;
+  var pool = candidatos.filter(function(p) { return p !== _tourBoxPos; });
   return pool[Math.floor(Math.random() * pool.length)];
 }
+
 
 
 // ── Redraw the spotlight canvas ───────────────────────────────────────
@@ -7726,6 +7710,19 @@ function _applyTourBoxPos(targetRect) {
   _tourBoxPos = pos;
 
   var coords = _tourBoxCoords(pos, bw, bh);
+  // si pisa la zona iluminada, deslizar justo debajo (o encima) manteniendo el carril horizontal
+  if (targetRect) {
+    var vh = window.innerHeight;
+    var solapan = !(coords.left > targetRect.right || coords.left + bw < targetRect.left ||
+                    coords.top > targetRect.bottom || coords.top + bh < targetRect.top);
+    if (solapan) {
+      var debajo = targetRect.bottom + 14;
+      var encima = targetRect.top - bh - 14;
+      if (debajo + bh <= vh - 12) coords.top = Math.round(debajo);
+      else if (encima >= 64) coords.top = Math.round(encima);
+      else coords.top = Math.max(64, vh - bh - 20);
+    }
+  }
   // desliza suavemente hasta la nueva posición (si ya estaba colocada)
   if (box.style.top) {
     box.style.transition = 'top .38s cubic-bezier(.22,.9,.35,1), left .38s cubic-bezier(.22,.9,.35,1), opacity .15s ease';
