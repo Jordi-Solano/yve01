@@ -356,5 +356,7 @@
   "fb.enCarta": "ricette nel menu",
   "bk.dias": "giorni",
   "bk.sinConciliar": "non riconciliato:",
-  "ar.activos": "attivi"
+  "ar.activos": "attivi",
+  "hist.vacio": "Nessun file elaborato ancora.",
+  "ar.selCliente": "Seleziona un cliente"
 }

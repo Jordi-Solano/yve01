@@ -8344,7 +8344,7 @@ async function mostrarHistorialProcesado() {
     var r = await fetch('/api/historial_procesado');
     var d = await r.json();
     if (!d.ok || !d.items.length) {
-      alert('No hay archivos procesados todavía.');
+      showNotification(t('hist.vacio', 'No hay archivos procesados todavía.'), 'info');
       return;
     }
     // Crear modal con historial
@@ -8395,7 +8395,7 @@ async function mostrarHistorialProcesado() {
     document.addEventListener('keydown', function _escH(e) { if (e.key === 'Escape') { var m = document.getElementById('historial-modal'); if(m){m.remove();document.removeEventListener('keydown',_escH);} }});
     document.body.appendChild(modal);
   } catch(e) {
-    alert('Error cargando historial: ' + e.message);
+    showNotification('✗ Historial: ' + e.message, 'error');
   }
 }
 
@@ -10519,7 +10519,7 @@ function calcularFactura() {
 }
 async function emitirFactura() {
   const cliente = document.getElementById('ef-cliente').value;
-  if (!cliente) { alert('Selecciona un cliente'); return; }
+  if (!cliente) { showNotification(t('ar.selCliente', 'Selecciona un cliente'), 'info'); return; }
   const entrada = document.getElementById('ef-entrada').value;
   const salida  = document.getElementById('ef-salida').value;
   const hab     = parseFloat(document.getElementById('ef-hab').value) || 1;
@@ -10756,7 +10756,7 @@ async function openHotelDetail(hotelId) {
   try {
     const res = await fetch('/api/multi_hotel/hotel/' + hotelId);
     const h = await res.json();
-    if (h.error) { alert('Hotel no encontrado'); return; }
+    if (h.error) { showNotification('Hotel no encontrado', 'error'); return; }
     const statusColor = h.status === 'ok' ? '#1db954' : h.status === 'warning' ? '#ff9800' : '#e05252';
     const statusLabel = h.status === 'ok' ? 'OK' : h.status === 'warning' ? 'WARNING' : 'CRITICO';
     let alertasHtml = '';
@@ -10829,7 +10829,7 @@ async function openHotelDetail(hotelId) {
     document.body.appendChild(modal);
   } catch(e) {
     console.error('Error abriendo detalle:', e);
-    alert('Error cargando hotel: ' + e.message);
+    showNotification('✗ Hotel: ' + e.message, 'error');
   }
 }
 

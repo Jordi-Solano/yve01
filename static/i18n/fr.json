@@ -356,5 +356,7 @@
   "fb.enCarta": "recettes à la carte",
   "bk.dias": "jours",
   "bk.sinConciliar": "non rapproché :",
-  "ar.activos": "actifs"
+  "ar.activos": "actifs",
+  "hist.vacio": "Aucun fichier traité pour l'instant.",
+  "ar.selCliente": "Sélectionnez un client"
 }

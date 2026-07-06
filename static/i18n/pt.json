@@ -356,5 +356,7 @@
   "fb.enCarta": "receitas no cardápio",
   "bk.dias": "dias",
   "bk.sinConciliar": "sem conciliar:",
-  "ar.activos": "ativos"
+  "ar.activos": "ativos",
+  "hist.vacio": "Nenhum arquivo processado ainda.",
+  "ar.selCliente": "Selecione um cliente"
 }

@@ -356,5 +356,7 @@
   "fb.enCarta": "receptes en carta",
   "bk.dias": "dies",
   "bk.sinConciliar": "sense conciliar:",
-  "ar.activos": "actius"
+  "ar.activos": "actius",
+  "hist.vacio": "Encara no hi ha fitxers processats.",
+  "ar.selCliente": "Selecciona un client"
 }

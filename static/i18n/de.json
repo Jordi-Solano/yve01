@@ -356,5 +356,7 @@
   "fb.enCarta": "Rezepte auf der Karte",
   "bk.dias": "Tage",
   "bk.sinConciliar": "nicht abgestimmt:",
-  "ar.activos": "aktiv"
+  "ar.activos": "aktiv",
+  "hist.vacio": "Noch keine Dateien verarbeitet.",
+  "ar.selCliente": "Wähle einen Kunden"
 }

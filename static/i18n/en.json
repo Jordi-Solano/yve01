@@ -356,5 +356,7 @@
   "fb.enCarta": "recipes on the menu",
   "bk.dias": "days",
   "bk.sinConciliar": "unmatched:",
-  "ar.activos": "active"
+  "ar.activos": "active",
+  "hist.vacio": "No files processed yet.",
+  "ar.selCliente": "Select a client"
 }
