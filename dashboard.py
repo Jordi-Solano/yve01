@@ -2796,7 +2796,7 @@ body::before{
 .logo{display:flex;align-items:baseline;gap:10px;flex-shrink:0}
 .logo-name{font-size:20px;font-weight:800;color:#fff;letter-spacing:-0.5px}
 .logo-tag{font-size:11px;color:var(--mut);font-weight:400;white-space:nowrap}
-.logo-dot{width:10px;height:10px;border-radius:50%;background:#3b82f6;flex-shrink:0;box-shadow:0 0 6px rgba(59,130,246,.6),0 0 14px rgba(59,130,246,.35),0 0 28px rgba(59,130,246,.15)}
+.logo-dot{width:10px;height:10px;border-radius:50%;background:var(--acc,#3b82f6);flex-shrink:0;box-shadow:0 0 6px rgba(var(--acc-r,59),var(--acc-g,130),var(--acc-b,246),.6),0 0 14px rgba(var(--acc-r,59),var(--acc-g,130),var(--acc-b,246),.35),0 0 28px rgba(var(--acc-r,59),var(--acc-g,130),var(--acc-b,246),.15)}
 .logo-dot-one{color:var(--acc2)}
 .logo-mark{display:none}
 .nav-mid{flex:1}
@@ -6856,15 +6856,17 @@ loadAll();
 setInterval(loadAll, 60000);
 
 // ── Live clock ────────────────────────────────────────────────
+var _CLOCK_LOCALES = { es:'es-ES', en:'en-GB', ca:'ca-ES', fr:'fr-FR', de:'de-DE', it:'it-IT', pt:'pt-PT' };
 function _updateClock() {
   var el = document.getElementById('date-pill');
   if (!el) return;
   var now = new Date();
-  var days = ['domingo','lunes','martes','miércoles','jueves','viernes','sábado'];
-  var months = ['ene','feb','mar','abr','may','jun','jul','ago','sep','oct','nov','dic'];
-  el.textContent = days[now.getDay()] + ' ' + now.getDate() + ' ' + months[now.getMonth()] +
-    ' · ' + String(now.getHours()).padStart(2,'0') + ':' + String(now.getMinutes()).padStart(2,'0') +
-    ':' + String(now.getSeconds()).padStart(2,'0');
+  var loc = _CLOCK_LOCALES[localStorage.getItem('yve_lang') || 'es'] || 'es-ES';
+  var fecha;
+  try { fecha = now.toLocaleDateString(loc, {weekday:'long', day:'numeric', month:'short'}); }
+  catch(e) { fecha = now.toLocaleDateString('es-ES', {weekday:'long', day:'numeric', month:'short'}); }
+  el.textContent = fecha + ' · ' + String(now.getHours()).padStart(2,'0') + ':' +
+    String(now.getMinutes()).padStart(2,'0') + ':' + String(now.getSeconds()).padStart(2,'0');
 }
 _updateClock();
 setInterval(_updateClock, 1000);
@@ -7054,10 +7056,6 @@ var _tourResizeHandler = null;
 var _tourCurrentTarget = null;
 
 // ── Position presets ──────────────────────────────────────────────────
-var _TOUR_POSITIONS = ['center', 'tl', 'tr', 'bl', 'br'];
-var _TOUR_POS_LABELS = {
-  center: '⊙', tl: '↖', tr: '↗', bl: '↙', br: '↘'
-};
 
 function _tourBoxCoords(pos, bw, bh) {
   var vw = window.innerWidth, vh = window.innerHeight;
@@ -7180,28 +7178,16 @@ function _renderTourBox(step) {
     document.body.appendChild(box);
   }
   box.style.cssText =
-    'position:fixed;background:#0f172a;border:2px solid #3b82f6;border-radius:16px;' +
+    'position:fixed;background:#0f172a;border:2px solid var(--acc,#3b82f6);border-radius:16px;' +
     'padding:18px 20px 16px;max-width:360px;width:calc(100vw - 32px);z-index:10000;' +
-    'box-shadow:0 20px 60px rgba(0,0,0,.85),0 0 60px rgba(59,130,246,.08);' +
+    'box-shadow:0 20px 60px rgba(0,0,0,.85),0 0 60px rgba(var(--acc-r,59),var(--acc-g,130),var(--acc-b,246),.08);' +
     'pointer-events:all;font-family:Inter,system-ui,sans-serif;color:#f1f5f9;' +
     'animation:tourBoxIn .3s cubic-bezier(.34,1.56,.64,1);user-select:none';
 
-  // Position switcher row
-  var posButtons = _TOUR_POSITIONS.map(function(p) {
-    var active = p === _tourBoxPos;
-    return '<button onclick="_setTourPos(\'' + p + '\')" title="Mover aquí" ' +
-      'style="background:' + (active ? 'rgba(59,130,246,.3)' : 'rgba(255,255,255,.06)') + ';' +
-      'border:1px solid ' + (active ? '#3b82f6' : 'rgba(255,255,255,.1)') + ';' +
-      'color:' + (active ? '#60a5fa' : '#475569') + ';' +
-      'width:26px;height:26px;border-radius:6px;font-size:13px;cursor:pointer;line-height:1;' +
-      'display:inline-flex;align-items:center;justify-content:center;transition:.15s">' +
-      _TOUR_POS_LABELS[p] + '</button>';
-  }).join('');
-
   box.innerHTML =
-    // Header row: position controls + close
+    // Header row: drag grip + close
     '<div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:12px">' +
-      '<div style="display:flex;gap:4px;align-items:center">' + posButtons + '</div>' +
+      '<div title="Arrastra para mover" style="color:#475569;font-size:15px;letter-spacing:3px;cursor:grab;user-select:none">⠿</div>' +
       '<button onclick="endTour()" style="background:none;border:none;color:#475569;font-size:20px;' +
         'cursor:pointer;padding:0 2px;line-height:1;transition:.15s" ' +
         'onmouseover="this.style.color=\'#94a3b8\'" onmouseout="this.style.color=\'#475569\'">×</button>' +
@@ -7218,7 +7204,7 @@ function _renderTourBox(step) {
         _tourSteps.map(function(_,i) {
           var active = i === _tourStep;
           return '<div style="transition:.25s;border-radius:' + (active ? '4px' : '50%') + ';' +
-            'background:' + (active ? '#3b82f6' : 'rgba(59,130,246,.25)') + ';' +
+            'background:' + (active ? 'var(--acc,#3b82f6)' : 'rgba(var(--acc-r,59),var(--acc-g,130),var(--acc-b,246),.25)') + ';' +
             'width:' + (active ? '18px' : '7px') + ';height:7px"></div>';
         }).join('') +
       '</div>' +
@@ -7226,13 +7212,78 @@ function _renderTourBox(step) {
         (_tourStep > 0 ?
           '<button onclick="prevTourStep()" style="background:rgba(255,255,255,.06);border:1px solid rgba(255,255,255,.1);' +
           'color:#94a3b8;padding:7px 13px;border-radius:9px;font-size:13px;cursor:pointer">← Atrás</button>' : '') +
-        '<button onclick="nextTourStep()" style="background:#3b82f6;border:none;color:#fff;' +
+        '<button onclick="nextTourStep()" style="background:var(--acc,#3b82f6);border:none;color:#fff;' +
           'padding:7px 16px;border-radius:9px;font-size:13px;font-weight:700;cursor:pointer;' +
-          'box-shadow:0 4px 12px rgba(59,130,246,.4)">' +
+          'box-shadow:0 4px 12px rgba(var(--acc-r,59),var(--acc-g,130),var(--acc-b,246),.4)">' +
           (_tourStep === _tourSteps.length - 1 ? '✓ Finalizar' : 'Siguiente →') +
         '</button>' +
       '</div>' +
     '</div>';
+  _initTourDrag(box);
+}
+
+// ── Drag & imán: arrastra la burbuja y se acopla sola a la zona más cercana ──
+function _initTourDrag(box) {
+  box.style.cursor = 'grab';
+  box.onmousedown = function(e) {
+    if (e.target.closest('button')) return;
+    e.preventDefault();
+    var rect = box.getBoundingClientRect();
+    var offX = e.clientX - rect.left, offY = e.clientY - rect.top;
+    box.style.transition = 'none';
+    box.style.cursor = 'grabbing';
+    var moved = false;
+    function mv(ev) {
+      moved = true;
+      box.style.left = (ev.clientX - offX) + 'px';
+      box.style.top  = (ev.clientY - offY) + 'px';
+    }
+    function up() {
+      document.removeEventListener('mousemove', mv);
+      document.removeEventListener('mouseup', up);
+      box.style.cursor = 'grab';
+      if (moved) _snapTourBox(box);
+    }
+    document.addEventListener('mousemove', mv);
+    document.addEventListener('mouseup', up);
+  };
+  box.ontouchstart = function(e) {
+    if (e.target.closest('button')) return;
+    var t0 = e.touches[0];
+    var rect = box.getBoundingClientRect();
+    var offX = t0.clientX - rect.left, offY = t0.clientY - rect.top;
+    box.style.transition = 'none';
+    var moved = false;
+    function mv(ev) {
+      moved = true;
+      var t1 = ev.touches[0];
+      box.style.left = (t1.clientX - offX) + 'px';
+      box.style.top  = (t1.clientY - offY) + 'px';
+      ev.preventDefault();
+    }
+    function up() {
+      box.removeEventListener('touchmove', mv);
+      box.removeEventListener('touchend', up);
+      if (moved) _snapTourBox(box);
+    }
+    box.addEventListener('touchmove', mv, {passive:false});
+    box.addEventListener('touchend', up);
+  };
+}
+
+function _snapTourBox(box) {
+  var vw = window.innerWidth, vh = window.innerHeight;
+  var r = box.getBoundingClientRect();
+  var cx = r.left + r.width/2, cy = r.top + r.height/2;
+  var pos;
+  if (cx > vw/3 && cx < vw*2/3 && cy > vh/3 && cy < vh*2/3) pos = 'center';
+  else pos = (cy < vh/2 ? 't' : 'b') + (cx < vw/2 ? 'l' : 'r');
+  _tourBoxPos = pos;
+  var c = _tourBoxCoords(pos, r.width, r.height);
+  box.style.transition = 'top .25s ease, left .25s ease';
+  box.style.top = c.top + 'px';
+  box.style.left = c.left + 'px';
+  setTimeout(function(){ box.style.transition = 'none'; }, 300);
 }
 
 // ── Apply position to box ─────────────────────────────────────────────
@@ -7253,12 +7304,7 @@ function _applyTourBoxPos(targetRect) {
   box.style.transform = '';
 }
 
-function _setTourPos(pos) {
-  _tourBoxPos = pos;
-  var target = _tourCurrentTarget;
-  _renderTourBox(_tourSteps[_tourStep]);
-  setTimeout(function() { _applyTourBoxPos(target ? target.getBoundingClientRect() : null); }, 10);
-}
+
 
 // ── Main step renderer ────────────────────────────────────────────────
 function _showTourStep() {
