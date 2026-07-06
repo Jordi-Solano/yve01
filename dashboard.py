@@ -4194,9 +4194,9 @@ function bDI(e) {
 }
 
 function bApro(a) {
-  if (!a || a === '') return '<span class="badge b-pen">· ' + (t('lbl.pendiente')||'Pendiente') + '</span>';
-  if (a === 'APROBADA')  return '<span class="badge b-apr">✓ ' + (t('lbl.aprobado')||'Aprobada') + '</span>';
-  if (a === 'RECHAZADA') return '<span class="badge b-rec">✗ ' + (t('lbl.rechazado')||'Rechazada') + '</span>';
+  if (!a || a === '') return '<span class="badge b-pen">· ' + (t('lbl.pendiente', 'Pendiente')) + '</span>';
+  if (a === 'APROBADA')  return '<span class="badge b-apr">✓ ' + (t('lbl.aprobado', 'Aprobada')) + '</span>';
+  if (a === 'RECHAZADA') return '<span class="badge b-rec">✗ ' + (t('lbl.rechazado', 'Rechazada')) + '</span>';
   return '<span class="badge b-na">—</span>';
 }
 
@@ -4236,7 +4236,7 @@ function generateBriefing(stats) {
 async function loadAll() {
   const topBar = document.getElementById('top-bar');
   if (topBar) { topBar.style.width = '30%'; topBar.style.opacity = '1'; }
-  document.getElementById('status-txt').textContent = t('status.actualizando') || 'Actualizando...';
+  document.getElementById('status-txt').textContent = t('status.actualizando', 'Actualizando...');
   try {
     // 1. Cargar y renderizar stats primero (independiente de facturas)
     const sr = await fetch('/api/stats');
@@ -4249,9 +4249,9 @@ async function loadAll() {
     const _updateAlertBar = () => {
       const parts = [];
       if (stats.discrepancias > 0)
-        parts.push(stats.discrepancias + ' ' + (t('alert.discrepancias') || 'discrepancia(s) reclamables'));
+        parts.push(stats.discrepancias + ' ' + (t('alert.discrepancias', 'discrepancia(s) reclamables')));
       if (stats.di_pendientes > 0)
-        parts.push(stats.di_pendientes + ' ' + (t('alert.sinDI') || 'factura(s) sin cert. DI'));
+        parts.push(stats.di_pendientes + ' ' + (t('alert.sinDI', 'factura(s) sin cert. DI')));
       if (parts.length) {
         document.getElementById('alert-msg').textContent = parts.join(' — ');
         alertBar.classList.add('on');
@@ -4393,7 +4393,7 @@ async function loadAll() {
 
   } catch(e) {
     console.error('Error en loadAll:', e);
-    document.getElementById('status-txt').textContent = t('status.error') || 'Error al cargar datos';
+    document.getElementById('status-txt').textContent = t('status.error', 'Error al cargar datos');
   }
   // Re-apply string map after all data has rendered
   if (_i18nLang && _i18nLang !== 'es') {
@@ -4468,7 +4468,7 @@ var _arRows = [];
 function renderTable(rows) {
   _arRows = rows;
   const tbody = document.getElementById('tbl-body');
-  document.getElementById('tbl-count').textContent = rows.length ? rows.length + ' ' + (t('lbl.registros')||'registros') : '';
+  document.getElementById('tbl-count').textContent = rows.length ? rows.length + ' ' + (t('lbl.registros', 'registros')) : '';
   if (!rows.length) {
     tbody.innerHTML = '<tr><td colspan="12" style="padding:32px;text-align:center"><div style="font-size:32px;margin-bottom:8px">📦</div><div style="font-weight:600;color:var(--mut);margin-bottom:4px">Sin facturas AP</div><div style="font-size:12px;color:var(--dim)">Pulsa ⚡ Procesar Archivos</div></td></tr>';
     return;
@@ -4542,7 +4542,7 @@ function runPipeline() {
   log.innerHTML = '';
   btnCl.disabled = true;
   icon.textContent = '⚡';
-  title.textContent = 'Pipeline AR — Procesando...';
+  title.textContent = _tSSE('Pipeline AR — Procesando...');
   document.getElementById('overlay').classList.add('on');
 
   const src = new EventSource('/api/procesar');
@@ -4560,7 +4560,7 @@ function runPipeline() {
     else if (txt.includes('✗') || txt.includes('X]')) p.className = 'l-err';
     else p.className = 'l-dim';
 
-    p.textContent = txt;
+    p.textContent = _tSSE(txt);
     log.appendChild(p);
     log.scrollTop = log.scrollHeight;
 
@@ -4568,10 +4568,10 @@ function runPipeline() {
       src.close();
       const ok = txt === 'PIPELINE_COMPLETO';
       icon.textContent  = ok ? '✅' : '⚠️';
-      title.textContent = ok ? 'Pipeline completado con éxito' : 'Pipeline finalizado con errores';
+      title.textContent = _tSSE(ok ? 'Pipeline completado con éxito' : 'Pipeline finalizado con errores');
       btn.disabled = false;
       spin.style.display = 'none';
-      lbl.textContent = '⚡ Procesar Archivos';
+      lbl.textContent = _tSSE('⚡ Procesar Archivos');
       btnCl.disabled = false;
       setTimeout(loadAll, 800);
     }
@@ -4585,10 +4585,10 @@ function runPipeline() {
     log.appendChild(p);
     btn.disabled = false;
     spin.style.display = 'none';
-    lbl.textContent = '⚡ Procesar Archivos';
+    lbl.textContent = _tSSE('⚡ Procesar Archivos');
     btnCl.disabled = false;
     icon.textContent = '⚠️';
-    title.textContent = 'Error de conexión';
+    title.textContent = _tSSE('Error de conexión');
 
     const actionsDiv = document.createElement('div');
     actionsDiv.style.cssText = 'display:flex;gap:12px;margin-top:16px;justify-content:flex-end';
@@ -4948,6 +4948,14 @@ const _i18nCache = {};
 const _i18nOriginal = {}; // textos ES originales — para restaurar al volver a español
 var _i18nStrMap = {
   en: {
+    "📸 Escanear Documento": "📸 Scan Document",
+    "Haz una foto al documento físico (factura, BEO, contrato, extracto...) y Yve lo leerá con IA.": "Take a photo of the physical document (invoice, BEO, contract, statement...) and Yve will read it with AI.",
+    "📸 Cámara": "📸 Camera",
+    "🖼️ Galería": "🖼️ Gallery",
+    "⚡ Procesar documento": "⚡ Process document",
+    "📸 Escanear": "📸 Scan",
+    "Cerrar": "Close",
+    "📸 Escanear más": "📸 Scan more",
     '% Com.': '% Comm.',
     '0 ya procesados (se saltarán)': '0 already processed (will skip)',
     '2 minutos para conocer todo Yve': '2 minutes to discover Yve',
@@ -5111,6 +5119,14 @@ var _i18nStrMap = {
     'Administrador': 'Administrator',
     '👤 Administrador': '👤 Administrator',},
   ca: {
+    "📸 Escanear Documento": "📸 Escanejar Document",
+    "Haz una foto al documento físico (factura, BEO, contrato, extracto...) y Yve lo leerá con IA.": "Fes una foto al document físic (factura, BEO, contracte, extracte...) i Yve el llegirà amb IA.",
+    "📸 Cámara": "📸 Càmera",
+    "🖼️ Galería": "🖼️ Galeria",
+    "⚡ Procesar documento": "⚡ Processar document",
+    "📸 Escanear": "📸 Escanejar",
+    "Cerrar": "Tancar",
+    "📸 Escanear más": "📸 Escanejar més",
     '0 ya procesados (se saltarán)': '0 ja processats (s\'ometran)',
     '2 minutos para conocer todo Yve': '2 minuts per conèixer Yve',
     'AP firma': 'Firma AP',
@@ -5267,6 +5283,14 @@ var _i18nStrMap = {
     'Sin datos F&B.': 'Sense dades F&B.',
     'Reportes': 'Informes',},
   fr: {
+    "📸 Escanear Documento": "📸 Scanner un document",
+    "Haz una foto al documento físico (factura, BEO, contrato, extracto...) y Yve lo leerá con IA.": "Prenez une photo du document physique (facture, BEO, contrat, relevé...) et Yve le lira avec l'IA.",
+    "📸 Cámara": "📸 Caméra",
+    "🖼️ Galería": "🖼️ Galerie",
+    "⚡ Procesar documento": "⚡ Traiter le document",
+    "📸 Escanear": "📸 Scanner",
+    "Cerrar": "Fermer",
+    "📸 Escanear más": "📸 Scanner plus",
     '0 ya procesados (se saltarán)': '0 déjà traités (seront ignorés)',
     '2 minutos para conocer todo Yve': '2 minutes pour découvrir Yve',
     'AP firma': 'Signature AP',
@@ -5434,6 +5458,14 @@ var _i18nStrMap = {
     'Administrador': 'Administrateur',
     '👤 Administrador': '👤 Administrateur',},
   de: {
+    "📸 Escanear Documento": "📸 Dokument scannen",
+    "Haz una foto al documento físico (factura, BEO, contrato, extracto...) y Yve lo leerá con IA.": "Fotografiere das physische Dokument (Rechnung, BEO, Vertrag, Kontoauszug...) und Yve liest es mit KI.",
+    "📸 Cámara": "📸 Kamera",
+    "🖼️ Galería": "🖼️ Galerie",
+    "⚡ Procesar documento": "⚡ Dokument verarbeiten",
+    "📸 Escanear": "📸 Scannen",
+    "Cerrar": "Schließen",
+    "📸 Escanear más": "📸 Mehr scannen",
     '% Com.': '% Prov.',
     '0 ya procesados (se saltarán)': '0 bereits verarbeitet (werden übersprungen)',
     '2 minutos para conocer todo Yve': '2 Minuten um Yve zu entdecken',
@@ -5605,6 +5637,14 @@ var _i18nStrMap = {
     'Administrador': 'Administrator',
     '👤 Administrador': '👤 Administrator',},
   it: {
+    "📸 Escanear Documento": "📸 Scansiona documento",
+    "Haz una foto al documento físico (factura, BEO, contrato, extracto...) y Yve lo leerá con IA.": "Scatta una foto al documento fisico (fattura, BEO, contratto, estratto...) e Yve lo leggerà con l'IA.",
+    "📸 Cámara": "📸 Fotocamera",
+    "🖼️ Galería": "🖼️ Galleria",
+    "⚡ Procesar documento": "⚡ Elabora documento",
+    "📸 Escanear": "📸 Scansiona",
+    "Cerrar": "Chiudi",
+    "📸 Escanear más": "📸 Scansiona altro",
     '% Com.': '% Comm.',
     '0 ya procesados (se saltarán)': '0 già elaborati (verranno saltati)',
     '2 minutos para conocer todo Yve': '2 minuti per scoprire Yve',
@@ -5766,6 +5806,14 @@ var _i18nStrMap = {
     'Administrador': 'Amministratore',
     '👤 Administrador': '👤 Amministratore',},
   pt: {
+    "📸 Escanear Documento": "📸 Escanear Documento",
+    "Haz una foto al documento físico (factura, BEO, contrato, extracto...) y Yve lo leerá con IA.": "Tire uma foto do documento físico (fatura, BEO, contrato, extrato...) e a Yve o lerá com IA.",
+    "📸 Cámara": "📸 Câmera",
+    "🖼️ Galería": "🖼️ Galeria",
+    "⚡ Procesar documento": "⚡ Processar documento",
+    "📸 Escanear": "📸 Escanear",
+    "Cerrar": "Fechar",
+    "📸 Escanear más": "📸 Escanear mais",
     '0 ya procesados (se saltarán)': '0 já processados (serão ignorados)',
     '2 minutos para conocer todo Yve': '2 minutos para conhecer Yve',
     'AP firma': 'Assinatura AP',
@@ -5955,9 +6003,8 @@ function _applyStrMap(lang) {
 }
 
 // ── Hook into applyI18n ───────────────────────────────────────────────────
-var _origApplyI18n = applyI18n;
 function applyI18n(data) {
-  _origApplyI18n(data);
+  _applyI18nBase(data);
   // After translating data-i18n elements, also walk text nodes
   if (_i18nLang && _i18nLang !== 'es') {
     // Small delay to let any pending renders finish
@@ -6001,9 +6048,560 @@ async function loadI18n(lang) {
   } catch(e) { console.warn('i18n error:', e); }
 }
 
-function t(key) { var v = _i18nData[key] || _i18nOriginal[key]; return (v && v !== key) ? v : null; }
+function t(key, fb) {
+  var v = _i18nData[key] || _i18nOriginal[key];
+  if (v && v !== key) return v;
+  if (fb !== undefined && fb !== null) return fb;
+  return key;
+}
 
-function applyI18n(data) {
+
+// ── Traducción de mensajes SSE / dinámicos por fragmentos ──────────────────
+var _sseFrags = [
+  "hoja de cálculo sin clasificar — revisar manualmente",
+  "extracto detectado pero error al guardar",
+  "rooming list detectado (ocupación)",
+  "inventario detectado (sin items extraíbles)",
+  "mermas detectadas (sin items extraíbles)",
+  "Ya hay un proceso AP en ejecucion — espera",
+  "Ya hay un proceso Oracle en ejecucion — espera",
+  "Ya hay un proceso en ejecucion — espera",
+  "Ya hay un proceso activo — espera",
+  "Ya hay un proceso — espera",
+  "No se especificaron archivos",
+  "No hay archivos nuevos que procesar",
+  "archivo cargado (revisar formato)",
+  "archivo cargado (revisar columnas)",
+  "archivo copiado (formato",
+  "archivo copiado",
+  "archivo no encontrado",
+  "archivos ya procesados",
+  "Verificación comisiones completada",
+  "Verificando comisiones OTA...",
+  "Verificación completada",
+  "Análisis doble imposición completado",
+  "Iniciando procesamiento batch",
+  "copiado para procesamiento",
+  "Procesado finalizado con avisos",
+  "Procesado completado",
+  "movimientos integrados",
+  "registros integrados",
+  "integrados por IA",
+  "extraídos por IA",
+  "detectadas por IA",
+  "detectado por IA",
+  "detectado pero error",
+  "factura cuadra con",
+  "ventas detectadas",
+  "datos cargados",
+  "inventario detectado",
+  "mermas detectadas",
+  "demasiado grande",
+  "alerta(s) procesada(s)",
+  "Batch completado",
+  "ERROR CRÍTICO",
+  "tardo demasiado",
+  "Evento tiene",
+  "Pipeline completado con éxito",
+  "Pipeline finalizado con errores",
+  "Pipeline AP completado",
+  "Pipeline AP con errores",
+  "Oracle: contabilización completada",
+  "Oracle: pipeline con errores",
+  "conexión con servidor perdida",
+  "Error de conexión",
+  "Timeout en lote",
+  "Reconectando",
+  "continuando",
+  "Contabilizar en Oracle",
+  "Contabilizando",
+  "Procesar Archivos",
+  "archivo(s) nuevos",
+  "Saltando",
+  "Procesando",
+  ": procesado",
+  ": cargado",
+  "no encontrado",
+  "archivo(s)",
+  "Notificaciones:",
+  "completado",
+  "movimientos",
+  "registros",
+  "productos",
+  "platos",
+  "Consulta:",
+  "comisiones",
+  "ventas"
+];
+var _sseTrans = {
+  en: [
+  "unclassified spreadsheet — review manually",
+  "bank statement detected but error saving",
+  "rooming list detected (occupancy)",
+  "inventory detected (no extractable items)",
+  "waste detected (no extractable items)",
+  "An AP process is already running — wait",
+  "An Oracle process is already running — wait",
+  "A process is already running — wait",
+  "A process is already running — wait",
+  "A process is already running — wait",
+  "No files specified",
+  "No new files to process",
+  "file loaded (check format)",
+  "file loaded (check columns)",
+  "file copied (format",
+  "file copied",
+  "file not found",
+  "files already processed",
+  "Commission verification completed",
+  "Verifying OTA commissions...",
+  "Verification completed",
+  "Double taxation analysis completed",
+  "Starting batch processing",
+  "copied for processing",
+  "Processing finished with warnings",
+  "Processing completed",
+  "transactions integrated",
+  "records integrated",
+  "integrated by AI",
+  "extracted by AI",
+  "detected by AI",
+  "detected by AI",
+  "detected but error",
+  "invoice matches",
+  "sales detected",
+  "data loaded",
+  "inventory detected",
+  "waste detected",
+  "too large",
+  "alert(s) processed",
+  "Batch completed",
+  "CRITICAL ERROR",
+  "took too long",
+  "Event has",
+  "Pipeline completed successfully",
+  "Pipeline finished with errors",
+  "AP pipeline completed",
+  "AP pipeline with errors",
+  "Oracle: posting completed",
+  "Oracle: pipeline with errors",
+  "connection to server lost",
+  "Connection error",
+  "Timeout in batch",
+  "Reconnecting",
+  "continuing",
+  "Post to Oracle",
+  "Posting",
+  "Process Files",
+  "new file(s)",
+  "Skipping",
+  "Processing",
+  ": processed",
+  ": loaded",
+  "not found",
+  "file(s)",
+  "Notifications:",
+  "completed",
+  "transactions",
+  "records",
+  "products",
+  "dishes",
+  "Query:",
+  "commissions",
+  "sales"
+  ],
+  ca: [
+  "full de càlcul sense classificar — revisar manualment",
+  "extracte detectat però error en desar",
+  "rooming list detectada (ocupació)",
+  "inventari detectat (sense ítems extraïbles)",
+  "minves detectades (sense ítems extraïbles)",
+  "Ja hi ha un procés AP en execució — espera",
+  "Ja hi ha un procés Oracle en execució — espera",
+  "Ja hi ha un procés en execució — espera",
+  "Ja hi ha un procés actiu — espera",
+  "Ja hi ha un procés — espera",
+  "No s'han especificat fitxers",
+  "No hi ha fitxers nous per processar",
+  "fitxer carregat (revisar format)",
+  "fitxer carregat (revisar columnes)",
+  "fitxer copiat (format",
+  "fitxer copiat",
+  "fitxer no trobat",
+  "fitxers ja processats",
+  "Verificació de comissions completada",
+  "Verificant comissions OTA...",
+  "Verificació completada",
+  "Anàlisi de doble imposició completada",
+  "Iniciant processament batch",
+  "copiat per processar",
+  "Processament finalitzat amb avisos",
+  "Processament completat",
+  "moviments integrats",
+  "registres integrats",
+  "integrats per IA",
+  "extrets per IA",
+  "detectades per IA",
+  "detectat per IA",
+  "detectat però error",
+  "factura quadra amb",
+  "vendes detectades",
+  "dades carregades",
+  "inventari detectat",
+  "minves detectades",
+  "massa gran",
+  "alerta/es processada/es",
+  "Batch completat",
+  "ERROR CRÍTIC",
+  "ha trigat massa",
+  "L'esdeveniment té",
+  "Pipeline completat amb èxit",
+  "Pipeline finalitzat amb errors",
+  "Pipeline AP completat",
+  "Pipeline AP amb errors",
+  "Oracle: comptabilització completada",
+  "Oracle: pipeline amb errors",
+  "connexió amb el servidor perduda",
+  "Error de connexió",
+  "Timeout al lot",
+  "Reconnectant",
+  "continuant",
+  "Comptabilitzar a Oracle",
+  "Comptabilitzant",
+  "Processar Fitxers",
+  "fitxer(s) nous",
+  "Saltant",
+  "Processant",
+  ": processat",
+  ": carregat",
+  "no trobat",
+  "fitxer(s)",
+  "Notificacions:",
+  "completat",
+  "moviments",
+  "registres",
+  "productes",
+  "plats",
+  "Consulta:",
+  "comissions",
+  "vendes"
+  ],
+  fr: [
+  "feuille de calcul non classée — vérifier manuellement",
+  "relevé détecté mais erreur d'enregistrement",
+  "rooming list détectée (occupation)",
+  "inventaire détecté (aucun élément extractible)",
+  "pertes détectées (aucun élément extractible)",
+  "Un processus AP est déjà en cours — patientez",
+  "Un processus Oracle est déjà en cours — patientez",
+  "Un processus est déjà en cours — patientez",
+  "Un processus est déjà actif — patientez",
+  "Un processus est déjà en cours — patientez",
+  "Aucun fichier spécifié",
+  "Aucun nouveau fichier à traiter",
+  "fichier chargé (vérifier le format)",
+  "fichier chargé (vérifier les colonnes)",
+  "fichier copié (format",
+  "fichier copié",
+  "fichier introuvable",
+  "fichiers déjà traités",
+  "Vérification des commissions terminée",
+  "Vérification des commissions OTA...",
+  "Vérification terminée",
+  "Analyse double imposition terminée",
+  "Démarrage du traitement batch",
+  "copié pour traitement",
+  "Traitement terminé avec avertissements",
+  "Traitement terminé",
+  "mouvements intégrés",
+  "enregistrements intégrés",
+  "intégrés par IA",
+  "extraits par IA",
+  "détectées par IA",
+  "détecté par IA",
+  "détecté mais erreur",
+  "la facture correspond à",
+  "ventes détectées",
+  "données chargées",
+  "inventaire détecté",
+  "pertes détectées",
+  "trop volumineux",
+  "alerte(s) traitée(s)",
+  "Batch terminé",
+  "ERREUR CRITIQUE",
+  "a pris trop de temps",
+  "L'événement a",
+  "Pipeline terminé avec succès",
+  "Pipeline terminé avec des erreurs",
+  "Pipeline AP terminé",
+  "Pipeline AP avec erreurs",
+  "Oracle : comptabilisation terminée",
+  "Oracle : pipeline avec erreurs",
+  "connexion au serveur perdue",
+  "Erreur de connexion",
+  "Timeout sur le lot",
+  "Reconnexion",
+  "poursuite",
+  "Comptabiliser dans Oracle",
+  "Comptabilisation",
+  "Traiter les fichiers",
+  "nouveau(x) fichier(s)",
+  "Ignore",
+  "Traitement",
+  ": traité",
+  ": chargé",
+  "introuvable",
+  "fichier(s)",
+  "Notifications :",
+  "terminé",
+  "mouvements",
+  "enregistrements",
+  "produits",
+  "plats",
+  "Requête :",
+  "commissions",
+  "ventes"
+  ],
+  de: [
+  "Tabelle nicht klassifiziert — manuell prüfen",
+  "Kontoauszug erkannt, aber Fehler beim Speichern",
+  "Rooming-Liste erkannt (Belegung)",
+  "Inventar erkannt (keine extrahierbaren Positionen)",
+  "Schwund erkannt (keine extrahierbaren Positionen)",
+  "Ein AP-Prozess läuft bereits — bitte warten",
+  "Ein Oracle-Prozess läuft bereits — bitte warten",
+  "Ein Prozess läuft bereits — bitte warten",
+  "Ein Prozess läuft bereits — bitte warten",
+  "Ein Prozess läuft bereits — bitte warten",
+  "Keine Dateien angegeben",
+  "Keine neuen Dateien zu verarbeiten",
+  "Datei geladen (Format prüfen)",
+  "Datei geladen (Spalten prüfen)",
+  "Datei kopiert (Format",
+  "Datei kopiert",
+  "Datei nicht gefunden",
+  "Dateien bereits verarbeitet",
+  "Provisionsprüfung abgeschlossen",
+  "OTA-Provisionen werden geprüft...",
+  "Prüfung abgeschlossen",
+  "Doppelbesteuerungsanalyse abgeschlossen",
+  "Batch-Verarbeitung gestartet",
+  "zur Verarbeitung kopiert",
+  "Verarbeitung mit Warnungen beendet",
+  "Verarbeitung abgeschlossen",
+  "Bewegungen integriert",
+  "Datensätze integriert",
+  "per KI integriert",
+  "per KI extrahiert",
+  "per KI erkannt",
+  "per KI erkannt",
+  "erkannt, aber Fehler",
+  "Rechnung stimmt überein mit",
+  "Verkäufe erkannt",
+  "Daten geladen",
+  "Inventar erkannt",
+  "Schwund erkannt",
+  "zu groß",
+  "Alarm(e) verarbeitet",
+  "Batch abgeschlossen",
+  "KRITISCHER FEHLER",
+  "hat zu lange gedauert",
+  "Event hat",
+  "Pipeline erfolgreich abgeschlossen",
+  "Pipeline mit Fehlern beendet",
+  "AP-Pipeline abgeschlossen",
+  "AP-Pipeline mit Fehlern",
+  "Oracle: Buchung abgeschlossen",
+  "Oracle: Pipeline mit Fehlern",
+  "Verbindung zum Server verloren",
+  "Verbindungsfehler",
+  "Timeout bei Los",
+  "Verbinde neu",
+  "fahre fort",
+  "In Oracle buchen",
+  "Buche",
+  "Dateien verarbeiten",
+  "neue Datei(en)",
+  "Überspringe",
+  "Verarbeite",
+  ": verarbeitet",
+  ": geladen",
+  "nicht gefunden",
+  "Datei(en)",
+  "Benachrichtigungen:",
+  "abgeschlossen",
+  "Bewegungen",
+  "Datensätze",
+  "Produkte",
+  "Gerichte",
+  "Abfrage:",
+  "Provisionen",
+  "Verkäufe"
+  ],
+  it: [
+  "foglio di calcolo non classificato — verificare manualmente",
+  "estratto conto rilevato ma errore nel salvataggio",
+  "rooming list rilevata (occupazione)",
+  "inventario rilevato (nessun elemento estraibile)",
+  "sprechi rilevati (nessun elemento estraibile)",
+  "Un processo AP è già in esecuzione — attendere",
+  "Un processo Oracle è già in esecuzione — attendere",
+  "Un processo è già in esecuzione — attendere",
+  "Un processo è già attivo — attendere",
+  "Un processo è già in esecuzione — attendere",
+  "Nessun file specificato",
+  "Nessun nuovo file da elaborare",
+  "file caricato (verificare formato)",
+  "file caricato (verificare colonne)",
+  "file copiato (formato",
+  "file copiato",
+  "file non trovato",
+  "file già elaborati",
+  "Verifica commissioni completata",
+  "Verifica commissioni OTA...",
+  "Verifica completata",
+  "Analisi doppia imposizione completata",
+  "Avvio elaborazione batch",
+  "copiato per l'elaborazione",
+  "Elaborazione terminata con avvisi",
+  "Elaborazione completata",
+  "movimenti integrati",
+  "record integrati",
+  "integrati da IA",
+  "estratti da IA",
+  "rilevate da IA",
+  "rilevato da IA",
+  "rilevato ma errore",
+  "la fattura corrisponde a",
+  "vendite rilevate",
+  "dati caricati",
+  "inventario rilevato",
+  "sprechi rilevati",
+  "troppo grande",
+  "avvisi elaborati",
+  "Batch completato",
+  "ERRORE CRITICO",
+  "ha impiegato troppo tempo",
+  "L'evento ha",
+  "Pipeline completata con successo",
+  "Pipeline terminata con errori",
+  "Pipeline AP completata",
+  "Pipeline AP con errori",
+  "Oracle: contabilizzazione completata",
+  "Oracle: pipeline con errori",
+  "connessione al server persa",
+  "Errore di connessione",
+  "Timeout nel lotto",
+  "Riconnessione",
+  "continuo",
+  "Contabilizza in Oracle",
+  "Contabilizzazione",
+  "Elabora file",
+  "nuovo/i file",
+  "Salto",
+  "Elaborazione",
+  ": elaborato",
+  ": caricato",
+  "non trovato",
+  "file",
+  "Notifiche:",
+  "completato",
+  "movimenti",
+  "record",
+  "prodotti",
+  "piatti",
+  "Query:",
+  "commissioni",
+  "vendite"
+  ],
+  pt: [
+  "planilha sem classificar — revisar manualmente",
+  "extrato detectado mas erro ao salvar",
+  "rooming list detectada (ocupação)",
+  "inventário detectado (sem itens extraíveis)",
+  "perdas detectadas (sem itens extraíveis)",
+  "Já existe um processo AP em execução — aguarde",
+  "Já existe um processo Oracle em execução — aguarde",
+  "Já existe um processo em execução — aguarde",
+  "Já existe um processo ativo — aguarde",
+  "Já existe um processo — aguarde",
+  "Nenhum arquivo especificado",
+  "Nenhum arquivo novo para processar",
+  "arquivo carregado (revisar formato)",
+  "arquivo carregado (revisar colunas)",
+  "arquivo copiado (formato",
+  "arquivo copiado",
+  "arquivo não encontrado",
+  "arquivos já processados",
+  "Verificação de comissões concluída",
+  "Verificando comissões OTA...",
+  "Verificação concluída",
+  "Análise de dupla tributação concluída",
+  "Iniciando processamento batch",
+  "copiado para processamento",
+  "Processamento finalizado com avisos",
+  "Processamento concluído",
+  "movimentos integrados",
+  "registros integrados",
+  "integrados por IA",
+  "extraídos por IA",
+  "detectadas por IA",
+  "detectado por IA",
+  "detectado mas erro",
+  "fatura confere com",
+  "vendas detectadas",
+  "dados carregados",
+  "inventário detectado",
+  "perdas detectadas",
+  "muito grande",
+  "alerta(s) processado(s)",
+  "Batch concluído",
+  "ERRO CRÍTICO",
+  "demorou demais",
+  "Evento tem",
+  "Pipeline concluído com sucesso",
+  "Pipeline finalizado com erros",
+  "Pipeline AP concluído",
+  "Pipeline AP com erros",
+  "Oracle: contabilização concluída",
+  "Oracle: pipeline com erros",
+  "conexão com o servidor perdida",
+  "Erro de conexão",
+  "Timeout no lote",
+  "Reconectando",
+  "continuando",
+  "Contabilizar no Oracle",
+  "Contabilizando",
+  "Processar Arquivos",
+  "arquivo(s) novos",
+  "Pulando",
+  "Processando",
+  ": processado",
+  ": carregado",
+  "não encontrado",
+  "arquivo(s)",
+  "Notificações:",
+  "concluído",
+  "movimentos",
+  "registros",
+  "produtos",
+  "pratos",
+  "Consulta:",
+  "comissões",
+  "vendas"
+  ],
+};
+function _tSSE(txt) {
+  if (!txt || !_i18nLang || _i18nLang === 'es') return txt;
+  var tr = _sseTrans[_i18nLang];
+  if (!tr) return txt;
+  for (var i = 0; i < _sseFrags.length; i++) {
+    if (txt.indexOf(_sseFrags[i]) !== -1) txt = txt.split(_sseFrags[i]).join(tr[i]);
+  }
+  return txt;
+}
+
+function _applyI18nBase(data) {
   document.querySelectorAll('[data-i18n]').forEach(el => {
     const k = el.getAttribute('data-i18n');
     if (data[k] !== undefined) el.textContent = data[k];
@@ -7400,7 +7998,7 @@ function _runBatchPipeline(fileNames) {
   if (lbl) lbl.textContent = 'Procesando...';
   if (btnCl) btnCl.disabled = true;
   if (icon) icon.textContent = '⚡';
-  if (title) title.textContent = 'Procesando ' + fileNames.length + ' archivo(s)...';
+  if (title) title.textContent = _tSSE('Procesando ' + fileNames.length + ' archivo(s)...');
 
   var total = fileNames.length;
   var hadError = false;
@@ -7409,19 +8007,19 @@ function _runBatchPipeline(fileNames) {
     if (!log) return;
     var p = document.createElement('p');
     p.className = cls || 'l-dim';
-    p.textContent = txt;
+    p.textContent = _tSSE(txt);
     log.appendChild(p);
     log.scrollTop = log.scrollHeight;
   }
 
   function _finish(ok) {
     if (icon) icon.textContent = ok ? '✅' : '⚠️';
-    if (title) title.textContent = ok ? 'Procesado completado' : 'Procesado finalizado con avisos';
+    if (title) title.textContent = _tSSE(ok ? 'Procesado completado' : 'Procesado finalizado con avisos');
     // Mostrar badges verdes en los tabs que se actualizaron
     if (log) _showTabBadges(log.textContent || '');
     if (btn) btn.disabled = false;
     if (spin) spin.style.display = 'none';
-    if (lbl) lbl.textContent = '⚡ Procesar Archivos';
+    if (lbl) lbl.textContent = _tSSE('⚡ Procesar Archivos');
     if (btnCl) { btnCl.disabled = false; btnCl.textContent = 'Cerrar'; }
     var retryBtn = document.getElementById('btn-retry');
     if (retryBtn) retryBtn.style.display = 'none';
@@ -7832,8 +8430,9 @@ async function processScan() {
   resHtml += '</div></div>';
   logEl.innerHTML += resHtml;
   logEl.scrollTop = logEl.scrollHeight;
+  _i18nAfterRender();
   
-  btn.textContent = '⚡ Procesar documento';
+  btn.textContent = t('nav.procesarDoc', '⚡ Procesar documento');
   btn.disabled = false;
   setTimeout(function() { loadAll(); }, 500);
 }
@@ -8279,16 +8878,16 @@ async function loadFBResumen() {
     // ── Header: título a la izquierda, botón recalcular a la derecha ──
     let html = '<div style="display:flex;align-items:flex-start;justify-content:space-between;margin-bottom:18px;gap:12px">';
     html += '<div><h2 style="font-size:18px;font-weight:700;margin:0">F&B Cost Control</h2>';
-    html += '<div style="font-size:12px;color:var(--mut);margin-top:4px">' + (t('fb.datosReales')||'Datos calculados desde ventas reales') + ' · ' + data.ventas_diarias.fechas.length + ' ' + (t('fb.dias')||'días') + '</div></div>';
+    html += '<div style="font-size:12px;color:var(--mut);margin-top:4px">' + (t('fb.datosReales', 'Datos calculados desde ventas reales')) + ' · ' + data.ventas_diarias.fechas.length + ' ' + (t('fb.dias', 'días')) + '</div></div>';
     html += '<button class="btn-ref" onclick="runFB()" style="font-size:12px;flex-shrink:0" data-i18n="btn.recalcular">↺ Recalcular</button>';
     html += '</div>';
 
     // ── KPIs: 4 cards en fila ──
     html += '<div class="fb-kpi-grid" style="display:grid;grid-template-columns:repeat(4,1fr);gap:12px;margin-bottom:16px">';
-    html += _fbKpi(t('fb.ventasFb')||'Ventas F&B', '€' + Math.round(r.total_ventas).toLocaleString('es-ES'), t('fb.periodoCompleto')||'período completo', 'var(--acc2)');
-    html += _fbKpi(t('fb.fcTeorico')||'FC Teórico', r.fc_teorico_pct + '%', t('fb.objetivoCalc')||'objetivo calculado', 'var(--grn)');
-    html += _fbKpi(t('fb.fcReal')||'FC Real', r.fc_real_pct + '%', fcSign + fcDiff + ' ' + (t('fb.vsObjetivo')||'pp vs objetivo'), fcColor);
-    html += _fbKpi(t('fb.mermasLabel')||'Mermas', '€' + r.coste_mermas.toLocaleString('es-ES'), r.alerta ? t('fb.revisar')||'⚠ Revisar' : t('fb.bajoControl')||'bajo control', r.alerta ? 'var(--red)' : 'var(--mut)');
+    html += _fbKpi(t('fb.ventasFb', 'Ventas F&B'), '€' + Math.round(r.total_ventas).toLocaleString('es-ES'), t('fb.periodoCompleto', 'período completo'), 'var(--acc2)');
+    html += _fbKpi(t('fb.fcTeorico', 'FC Teórico'), r.fc_teorico_pct + '%', t('fb.objetivoCalc', 'objetivo calculado'), 'var(--grn)');
+    html += _fbKpi(t('fb.fcReal', 'FC Real'), r.fc_real_pct + '%', fcSign + fcDiff + ' ' + (t('fb.vsObjetivo', 'pp vs objetivo')), fcColor);
+    html += _fbKpi(t('fb.mermasLabel', 'Mermas'), '€' + r.coste_mermas.toLocaleString('es-ES'), r.alerta ? t('fb.revisar', '⚠ Revisar') : t('fb.bajoControl', 'bajo control'), r.alerta ? 'var(--red)' : 'var(--mut)');
     html += '</div>';
 
     // ── Fila: gráfico ventas (izq, ancho) + gauge FC% (der, estrecho) ──
@@ -8297,16 +8896,16 @@ async function loadFBResumen() {
     html += '<div class="card"><div class="card-title" data-i18n="card.ventasDiarias">Ventas diarias F&B</div>';
     html += '<div style="height:200px;position:relative"><canvas id="fb-ventas-chart"></canvas></div></div>';
     html += '<div class="card"><div class="card-title" style="margin-bottom:16px" data-i18n="fb.gaugeTitle">Food Cost % — Teórico vs Real</div>';
-    html += _fcBar(t('fb.gaugeTeorico')||'Teórico', r.fc_teorico_pct, maxG, 'var(--grn)');
+    html += _fcBar(t('fb.gaugeTeorico', 'Teórico'), r.fc_teorico_pct, maxG, 'var(--grn)');
     html += '<div style="height:14px"></div>';
-    html += _fcBar(t('fb.gaugeReal')||'Real',    r.fc_real_pct,    maxG, fcColor);
+    html += _fcBar(t('fb.gaugeReal', 'Real'),    r.fc_real_pct,    maxG, fcColor);
     html += '</div></div>';
 
     // ── Fila: categorías (izq) + top platos (der) ──
     html += '<div style="display:grid;grid-template-columns:1.2fr 0.8fr;gap:16px">';
     html += '<div class="card"><div class="card-title" data-i18n="card.fcCategoria">Food Cost por Categoría</div>';
     html += '<div class="tbl-wrap" style="overflow-x:auto;-webkit-overflow-scrolling:touch"><table style="min-width:0;width:100%"><thead><tr>';
-    html += '<th>' + (t('fb.thCategoria')||'Categoría') + '</th><th style="text-align:right">' + (t('fb.thVentas')||'Ventas') + '</th><th style="text-align:right">FC%</th><th style="text-align:center">' + (t('fb.thEstado')||'Estado') + '</th>';
+    html += '<th>' + (t('fb.thCategoria', 'Categoría')) + '</th><th style="text-align:right">' + (t('fb.thVentas', 'Ventas')) + '</th><th style="text-align:right">FC%</th><th style="text-align:center">' + (t('fb.thEstado', 'Estado')) + '</th>';
     html += '</tr></thead><tbody id="mh-tbody">';
     data.categorias.forEach(c => {
       const cC = c.alerta ? 'var(--red)' : 'var(--grn)';
@@ -8319,7 +8918,7 @@ async function loadFBResumen() {
     html += '</tbody></table></div></div>';
 
     html += '<div class="card"><div class="card-title" data-i18n="card.topPlatos">Top Platos</div>';
-    html += '<div class="tbl-wrap" style="overflow-x:auto;-webkit-overflow-scrolling:touch"><table style="min-width:0;width:100%"><thead><tr><th>' + (t('fb.thPlato')||'Plato') + '</th><th style="text-align:right">€</th><th style="text-align:right">FC%</th></tr></thead><tbody>';
+    html += '<div class="tbl-wrap" style="overflow-x:auto;-webkit-overflow-scrolling:touch"><table style="min-width:0;width:100%"><thead><tr><th>' + (t('fb.thPlato', 'Plato')) + '</th><th style="text-align:right">€</th><th style="text-align:right">FC%</th></tr></thead><tbody>';
     data.ranking_top.forEach((p, i) => {
       const pC = p.fc_real_pct > 30 ? 'var(--ora)' : 'var(--grn)';
       html += '<tr><td><span style="color:var(--dim);font-size:10px;margin-right:5px">#' + (i+1) + '</span>' + p.nombre + '</td>' +
@@ -8370,15 +8969,15 @@ async function loadFBInventario() {
 
     const alertas = data.items.filter(i => i.alerta);
     let html = '<div class="fb-kpi-grid" style="display:grid;grid-template-columns:repeat(auto-fit,minmax(140px,1fr));gap:14px;margin-bottom:20px">';
-    html += _fbKpi(t('fb.itemsStock')||'Items en Stock', data.items.length, t('fb.ingredientes')||'ingredientes', 'var(--acc2)');
-    html += _fbKpi(t('fb.valorInv')||'Valor Inventario', '€' + data.valor_total.toLocaleString('es-ES'), t('fb.valorActual')||'valoración actual', 'var(--grn)');
-    html += _fbKpi(t('fb.alertasStock')||'Alertas Stock Bajo', alertas.length, alertas.length > 0 ? 'revisar urgente' : t('fb.todoOk')||'todo OK', alertas.length > 0 ? 'var(--red)' : 'var(--grn)');
+    html += _fbKpi(t('fb.itemsStock', 'Items en Stock'), data.items.length, t('fb.ingredientes', 'ingredientes'), 'var(--acc2)');
+    html += _fbKpi(t('fb.valorInv', 'Valor Inventario'), '€' + data.valor_total.toLocaleString('es-ES'), t('fb.valorActual', 'valoración actual'), 'var(--grn)');
+    html += _fbKpi(t('fb.alertasStock', 'Alertas Stock Bajo'), alertas.length, alertas.length > 0 ? 'revisar urgente' : t('fb.todoOk', 'todo OK'), alertas.length > 0 ? 'var(--red)' : 'var(--grn)');
     html += '</div>';
 
     html += '<div class="card"><div class="card-title" data-i18n="card.stockIngredientes">Stock de Ingredientes</div>';
     html += '<div class="tbl-wrap" style="overflow-x:auto;-webkit-overflow-scrolling:touch"><table style="min-width:0;width:100%"><thead><tr>';
-    html += '<th>' + (t('fb.thIngrediente')||'Ingrediente') + '</th><th>' + (t('fb.thCategoria')||'Categoría') + '</th><th>' + (t('th.proveedor')||'Proveedor') + '</th>';
-    html += '<th style="text-align:right">' + (t('fb.thActual')||'Actual') + '</th><th style="text-align:right">€/u</th>';
+    html += '<th>' + (t('fb.thIngrediente', 'Ingrediente')) + '</th><th>' + (t('fb.thCategoria', 'Categoría')) + '</th><th>' + (t('th.proveedor', 'Proveedor')) + '</th>';
+    html += '<th style="text-align:right">' + (t('fb.thActual', 'Actual')) + '</th><th style="text-align:right">€/u</th>';
     html += '<th style="text-align:right;width:130px">Stock</th><th style="text-align:center">Estado</th>';
     html += '</tr></thead><tbody>';
     data.items.forEach(item => {
@@ -8517,7 +9116,7 @@ async function loadFBRecetas() {
 
     const avg = data.recetas.reduce((a,r)=>a+r.fc_pct,0)/data.recetas.length;
     let html = '<div style="display:grid;grid-template-columns:repeat(3,1fr);gap:14px;margin-bottom:20px">';
-    html += _fbKpi((t('fb.recetas')||'Recetas activas'), data.recetas.length, (t('fb.recetas')||'recetas') + ' en carta', 'var(--acc2)');
+    html += _fbKpi((t('fb.recetas', 'Recetas activas')), data.recetas.length, (t('fb.recetas', 'recetas')) + ' en carta', 'var(--acc2)');
     if (data.avg_fc_pct) html += _fbKpi('FC% Medio', data.avg_fc_pct + '%', 'media del menú', data.avg_fc_pct <= 22 ? 'var(--grn)' : 'var(--ora)');
     if (data.best_margin) html += _fbKpi('Mejor margen', data.best_margin.split(' ').slice(0,2).join(' '), 'menor FC%', 'var(--grn)');
     html += _fbKpi('FC% promedio', avg.toFixed(1) + '%', 'media ponderada', avg < 30 ? 'var(--grn)' : 'var(--ora)');
@@ -8606,7 +9205,7 @@ async function loadAP() {
 
     const tbody = el('ap-tbody');
     if (tbody) tbody.innerHTML = '';
-    document.getElementById('ap-count').textContent = facts.length + ' ' + (t('lbl.facturas')||'facturas');
+    document.getElementById('ap-count').textContent = facts.length + ' ' + (t('lbl.facturas', 'facturas'));
 
     facts.forEach(f => {
       const tr = document.createElement('tr');
@@ -8667,7 +9266,7 @@ function procesarAP() {
   log.innerHTML = '';
   btnCl.disabled = true;
   icon.textContent = '⚙️';
-  title.textContent = 'Pipeline AP — Procesando...';
+  title.textContent = _tSSE('Pipeline AP — Procesando...');
   document.getElementById('overlay').classList.add('on');
 
   const src = new EventSource('/api/procesar_ap');
@@ -8683,7 +9282,7 @@ function procesarAP() {
     else if (txt.includes('✓'))              p.className = 'l-ok';
     else if (txt.includes('✗'))              p.className = 'l-err';
     else p.className = 'l-dim';
-    p.textContent = txt;
+    p.textContent = _tSSE(txt);
     log.appendChild(p);
     log.scrollTop = log.scrollHeight;
 
@@ -8691,10 +9290,10 @@ function procesarAP() {
       src.close();
       const ok = txt === 'PIPELINE_COMPLETO';
       icon.textContent  = ok ? '✅' : '⚠️';
-      title.textContent = ok ? 'Pipeline AP completado' : 'Pipeline AP con errores';
+      title.textContent = _tSSE(ok ? 'Pipeline AP completado' : 'Pipeline AP con errores');
       btn.disabled = false;
       spin.style.display = 'none';
-      lbl.textContent = '⚡ Procesar Archivos';
+      lbl.textContent = _tSSE('⚡ Procesar Archivos');
       btnCl.disabled = false;
       setTimeout(loadAP, 800);
     }
@@ -8708,7 +9307,7 @@ function procesarAP() {
     log.appendChild(p);
     btn.disabled = false;
     spin.style.display = 'none';
-    lbl.textContent = '⚡ Procesar Archivos';
+    lbl.textContent = _tSSE('⚡ Procesar Archivos');
     btnCl.disabled = false;
   };
 }
@@ -8733,7 +9332,7 @@ function procesarOracle() {
   log.innerHTML = '';
   btnCl.disabled = true;
   icon.textContent = '🔮';
-  title.textContent = 'Oracle Pipeline — Contabilizando...';
+  title.textContent = _tSSE('Oracle Pipeline — Contabilizando...');
   document.getElementById('overlay').classList.add('on');
 
   const src = new EventSource('/api/procesar_oracle');
@@ -8751,7 +9350,7 @@ function procesarOracle() {
     else if (txt.includes('✓') || txt.includes('✅') || txt.startsWith('OK ')) p.className = 'l-ok';
     else if (txt.includes('✗') || txt.includes('❌') || txt.startsWith('ERROR')) p.className = 'l-err';
     else p.className = 'l-dim';
-    p.textContent = txt;
+    p.textContent = _tSSE(txt);
     log.appendChild(p);
     log.scrollTop = log.scrollHeight;
 
@@ -8759,10 +9358,10 @@ function procesarOracle() {
       src.close();
       const ok = txt === 'PIPELINE_COMPLETO';
       icon.textContent  = ok ? '✅' : '⚠️';
-      title.textContent = ok ? 'Oracle: contabilización completada' : 'Oracle: pipeline con errores';
+      title.textContent = _tSSE(ok ? 'Oracle: contabilización completada' : 'Oracle: pipeline con errores');
       btn.disabled = false;
       spin.style.display = 'none';
-      lbl.textContent = '🔮 Contabilizar en Oracle';
+      lbl.textContent = _tSSE('🔮 Contabilizar en Oracle');
       btnCl.disabled = false;
       setTimeout(loadAP, 800);
     }
@@ -8772,11 +9371,11 @@ function procesarOracle() {
     src.close();
     const p = document.createElement('p');
     p.className = 'l-err';
-    p.textContent = 'ERROR: conexión con servidor perdida';
+    p.textContent = _tSSE('ERROR: conexión con servidor perdida');
     log.appendChild(p);
     btn.disabled = false;
     spin.style.display = 'none';
-    lbl.textContent = '🔮 Contabilizar en Oracle';
+    lbl.textContent = _tSSE('🔮 Contabilizar en Oracle');
     btnCl.disabled = false;
   };
 }
@@ -8916,7 +9515,7 @@ async function uploadDRR(input) {
     if (data.ok && data.stats) {
       const diasStr = data.stats.total_dias || '?';
       const oob     = data.stats.dias_oob   || 0;
-      status.textContent = '✓ ' + file.name + ' · ' + diasStr + ' ' + (t('drr.diasLabel')||'días');
+      status.textContent = '✓ ' + file.name + ' · ' + diasStr + ' ' + (t('drr.diasLabel', 'días'));
       const badge = document.getElementById('drr-oob-badge');
       if (badge) {
         if (oob > 0) { badge.style.display='block'; badge.textContent='⚠ ' + oob + ' OOB'; }
@@ -9084,7 +9683,7 @@ function filtrarAPPorEstado(estado) {
   });
   const visible = [...rows].filter(r => r.style.display !== 'none').length;
   const countEl = document.getElementById('ap-count');
-  if (countEl) countEl.textContent = visible + ' ' + (t('lbl.facturas')||'facturas');
+  if (countEl) countEl.textContent = visible + ' ' + (t('lbl.facturas', 'facturas'));
 }
 function exportarSeleccionados() {
   const selected = [...document.querySelectorAll('.ar-row-cb:checked')]
@@ -9321,7 +9920,7 @@ async function loadNotif() {
       count.textContent = '';
       return;
     }
-    count.textContent = data.length + ' ' + (t('lbl.registros')||'registros');
+    count.textContent = data.length + ' ' + (t('lbl.registros', 'registros'));
     // Mostrar en orden inverso (más reciente primero)
     const rows = data.slice().reverse();
     tbody.innerHTML = rows.map(function(n) {
