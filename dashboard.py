@@ -2802,11 +2802,11 @@ body::before{
 .logo-mark{display:none}
 .nav-mid{flex:1}
 .nav-right{display:flex;align-items:center;gap:10px;flex-shrink:0}
-.pill{font-size:11px;color:var(--mut);background:var(--s2);padding:4px 12px;border-radius:20px;white-space:nowrap}
+.pill{font-size:11px;color:var(--mut);background:rgba(255,255,255,.04);border:1px solid rgba(255,255,255,.07);padding:4px 12px;border-radius:20px;white-space:nowrap;letter-spacing:.2px}
 .btn-ref{background:none;border:1px solid var(--s2);color:var(--mut);padding:6px 12px;border-radius:8px;font-size:12px;cursor:pointer;transition:.15s;white-space:nowrap}
 .btn-ref:hover{border-color:var(--acc);color:var(--acc2)}
-.btn-run{background:linear-gradient(135deg,var(--acc),var(--acc-dark));color:#fff;border:none;padding:9px 18px;border-radius:9px;font-size:13px;font-weight:700;cursor:pointer;display:flex;align-items:center;gap:8px;white-space:nowrap;box-shadow:0 0 20px rgba(var(--acc-r,59),var(--acc-g,130),var(--acc-b,246),.35);transition:.15s}
-.btn-run:hover{box-shadow:0 0 28px rgba(var(--acc-r,59),var(--acc-g,130),var(--acc-b,246),.55);transform:translateY(-1px)}
+.btn-run{background:linear-gradient(135deg,rgba(var(--acc-r,59),var(--acc-g,130),var(--acc-b,246),.18),rgba(var(--acc-r,59),var(--acc-g,130),var(--acc-b,246),.10));color:var(--acc2);border:1px solid rgba(var(--acc-r,59),var(--acc-g,130),var(--acc-b,246),.4);padding:9px 18px;border-radius:9px;font-size:13px;font-weight:700;cursor:pointer;display:flex;align-items:center;gap:8px;white-space:nowrap;transition:.15s}
+.btn-run:hover{background:linear-gradient(135deg,rgba(var(--acc-r,59),var(--acc-g,130),var(--acc-b,246),.30),rgba(var(--acc-r,59),var(--acc-g,130),var(--acc-b,246),.18));border-color:rgba(var(--acc-r,59),var(--acc-g,130),var(--acc-b,246),.7)}
 .btn-run:disabled{opacity:.5;cursor:not-allowed;transform:none;box-shadow:none}
 @media(max-width:640px){
   .logo-tag,.pill{display:none}
@@ -3358,16 +3358,13 @@ button, a { touch-action: manipulation; }
     <span class="pill hide-mobile" id="date-pill">—</span>
     <button id="btn-install-pwa" onclick="if(_deferredInstall){_deferredInstall.prompt();}" style="display:none;background:rgba(34,197,94,.1);border:1px solid rgba(34,197,94,.2);color:#22c55e;padding:4px 10px;border-radius:8px;font-size:11px;cursor:pointer">📲 Instalar</button>
     
-    <button id="btn-atajos" onclick="toggleAtajos()" class="hide-mobile" data-i18n="nav.atajos" style="background:rgba(59,130,246,.1);border:1px solid rgba(59,130,246,.2);color:#60a5fa;padding:5px 12px;border-radius:8px;font-size:12px;cursor:pointer;font-weight:500" title="Ver atajos (?)">⌨ Atajos</button>
     <span class="pill hide-mobile" style="color:var(--acc2)">👤 __USER_NAME__</span>
 
     <button class="btn-ref show-mobile" onclick="toggleChat()" style="background:linear-gradient(135deg,rgba(124,58,237,.15),rgba(59,130,246,.15));border-color:rgba(124,58,237,.35);color:#a78bfa;font-weight:700" title="Pregunta a Yve IA">💬 Yve</button>
-    <button class="show-mobile" onclick="openUploadModal()" title="Procesar Archivos" style="background:rgba(59,130,246,.1);border:1px solid rgba(59,130,246,.25);color:#60a5fa;padding:7px 11px;border-radius:8px;font-size:16px;cursor:pointer;line-height:1;transition:.15s">⚡</button>
 
 
 
 
-    <button class="btn-ref hide-mobile" onclick="loadAll()" title="Actualizar datos" data-i18n="nav.actualizar">↻ Actualizar</button>
 
     <button class="btn-run" id="btn-run" onclick="openUploadModal()">
       <div class="spin" id="spin"></div>
@@ -4858,6 +4855,21 @@ const _i18nCache = {};
 const _i18nOriginal = {}; // textos ES originales — para restaurar al volver a español
 var _i18nStrMap = {
   en: {
+    "👋 Bienvenido a Yve.01": "👋 Welcome to Yve.01",
+    "El sistema de finanzas hoteleras que automatiza AR, AP, DRR y reporting. Este tour te lleva por cada módulo de izquierda a derecha — 3 minutos y ya lo dominas todo. Arrástrame si te estorbo: me acoplo solo donde me sueltes.": "The hotel finance system that automates AR, AP, DRR and reporting. This tour walks you through every module from left to right — 3 minutes and you'll master it all. Drag me out of the way: I'll dock wherever you drop me.",
+    "📥 AR — Comisiones OTA": "📥 AR — OTA Commissions",
+    "Verifica automáticamente las comisiones de Booking.com y Expedia. Facturas procesadas, importe total, discrepancias reclamables y certificados DI pendientes. El número rojo son euros que puedes recuperar.": "Automatically verifies Booking.com and Expedia commissions. Processed invoices, total amount, claimable discrepancies and pending DI certificates. The red number is euros you can recover.",
+    "Para cada factura de proveedor, Yve cruza 3 documentos: factura, pedido (PO) y albarán. Si cuadra todo → Match OK automático. Si hay diferencia → alerta y email al proveedor generado con IA.": "For every supplier invoice, Yve cross-checks 3 documents: invoice, purchase order (PO) and delivery note. Everything matches → automatic Match OK. Any difference → alert plus an AI-generated email to the supplier.",
+    "Arrastra tu archivo .xlsm aquí. Yve extrae RevPAR, ADR, GOP%, ocupación y las 7.000+ líneas del Trial Balance en segundos. Detecta Out of Balance automáticamente y te avisa al instante.": "Drag your .xlsm file here. Yve extracts RevPAR, ADR, GOP%, occupancy and the 7,000+ Trial Balance lines in seconds. It detects Out of Balance automatically and alerts you instantly.",
+    "🏦 Banco — Conciliación": "🏦 Bank — Reconciliation",
+    "Cruza automáticamente el extracto bancario con las facturas de proveedores. Identifica movimientos no conciliados, diferencias de importe y pagos duplicados. Desde 8 horas a 2 minutos.": "Automatically matches the bank statement against supplier invoices. It flags unmatched transactions, amount differences and duplicate payments. From 8 hours down to 2 minutes.",
+    "🔔 Notificaciones": "🔔 Notifications",
+    "Configura alertas automáticas por email o Telegram: discrepancias OTA, facturas sin firmar, Out of Balance en el DRR o stock bajo en F&B. Yve te avisa proactivamente.": "Set up automatic alerts by email or Telegram: OTA discrepancies, unsigned invoices, DRR Out of Balance or low F&B stock. Yve warns you proactively.",
+    "Calcula el Food Cost real vs teórico por categoría. Conecta los datos POS, recetas e inventario. Detecta mermas, identifica qué platos tienen mejor margen y optimiza el rendimiento del restaurante.": "Calculates real vs theoretical Food Cost by category. It connects POS data, recipes and inventory. Detects waste, spots the dishes with the best margin and optimizes restaurant performance.",
+    "🏢 AR Real — Grupos Corporativos": "🏢 Real AR — Corporate Groups",
+    "Gestión completa de clientes corporativos: emite facturas, controla el aging (0-30 / 31-60 / +90 días), cobra con un clic y envía recordatorios automáticos por email.": "Full corporate client management: issue invoices, track aging (0-30 / 31-60 / +90 days), collect with one click and send automatic email reminders.",
+    "🌍 Multi-Hotel — Vista de Grupo": "🌍 Multi-Hotel — Group View",
+    "Para el Financial Controller del grupo: KPIs consolidados, ranking de performance por hotel, tendencia de 6 meses y alertas centralizadas. Una pantalla, todo el grupo.": "For the group's Financial Controller: consolidated KPIs, per-hotel performance ranking, 6-month trend and centralized alerts. One screen, the whole group.",
     "¡Ya conoces Yve.01!": "You now know Yve.01!",
     "Empezar con AR →": "Start with AR →",
     "Sin alertas bancarias pendientes.": "No pending bank alerts.",
@@ -5073,6 +5085,21 @@ var _i18nStrMap = {
     'Administrador': 'Administrator',
     '👤 Administrador': '👤 Administrator',},
   ca: {
+    "👋 Bienvenido a Yve.01": "👋 Benvingut a Yve.01",
+    "El sistema de finanzas hoteleras que automatiza AR, AP, DRR y reporting. Este tour te lleva por cada módulo de izquierda a derecha — 3 minutos y ya lo dominas todo. Arrástrame si te estorbo: me acoplo solo donde me sueltes.": "El sistema de finances hoteleres que automatitza AR, AP, DRR i reporting. Aquest tour et porta per cada mòdul d'esquerra a dreta — 3 minuts i ja ho domines tot. Arrossega'm si et faig nosa: m'acoblo sol on em deixis anar.",
+    "📥 AR — Comisiones OTA": "📥 AR — Comissions OTA",
+    "Verifica automáticamente las comisiones de Booking.com y Expedia. Facturas procesadas, importe total, discrepancias reclamables y certificados DI pendientes. El número rojo son euros que puedes recuperar.": "Verifica automàticament les comissions de Booking.com i Expedia. Factures processades, import total, discrepàncies reclamables i certificats DI pendents. El número vermell són euros que pots recuperar.",
+    "Para cada factura de proveedor, Yve cruza 3 documentos: factura, pedido (PO) y albarán. Si cuadra todo → Match OK automático. Si hay diferencia → alerta y email al proveedor generado con IA.": "Per a cada factura de proveïdor, Yve creua 3 documents: factura, comanda (PO) i albarà. Si tot quadra → Match OK automàtic. Si hi ha diferència → alerta i email al proveïdor generat amb IA.",
+    "Arrastra tu archivo .xlsm aquí. Yve extrae RevPAR, ADR, GOP%, ocupación y las 7.000+ líneas del Trial Balance en segundos. Detecta Out of Balance automáticamente y te avisa al instante.": "Arrossega el teu fitxer .xlsm aquí. Yve extreu RevPAR, ADR, GOP%, ocupació i les més de 7.000 línies del Trial Balance en segons. Detecta Out of Balance automàticament i t'avisa a l'instant.",
+    "🏦 Banco — Conciliación": "🏦 Banc — Conciliació",
+    "Cruza automáticamente el extracto bancario con las facturas de proveedores. Identifica movimientos no conciliados, diferencias de importe y pagos duplicados. Desde 8 horas a 2 minutos.": "Creua automàticament l'extracte bancari amb les factures de proveïdors. Identifica moviments no conciliats, diferències d'import i pagaments duplicats. De 8 hores a 2 minuts.",
+    "🔔 Notificaciones": "🔔 Notificacions",
+    "Configura alertas automáticas por email o Telegram: discrepancias OTA, facturas sin firmar, Out of Balance en el DRR o stock bajo en F&B. Yve te avisa proactivamente.": "Configura alertes automàtiques per email o Telegram: discrepàncies OTA, factures sense signar, Out of Balance al DRR o estoc baix a F&B. Yve t'avisa proactivament.",
+    "Calcula el Food Cost real vs teórico por categoría. Conecta los datos POS, recetas e inventario. Detecta mermas, identifica qué platos tienen mejor margen y optimiza el rendimiento del restaurante.": "Calcula el Food Cost real vs teòric per categoria. Connecta les dades del POS, receptes i inventari. Detecta minves, identifica quins plats tenen millor marge i optimitza el rendiment del restaurant.",
+    "🏢 AR Real — Grupos Corporativos": "🏢 AR Real — Grups Corporatius",
+    "Gestión completa de clientes corporativos: emite facturas, controla el aging (0-30 / 31-60 / +90 días), cobra con un clic y envía recordatorios automáticos por email.": "Gestió completa de clients corporatius: emet factures, controla l'aging (0-30 / 31-60 / +90 dies), cobra amb un clic i envia recordatoris automàtics per email.",
+    "🌍 Multi-Hotel — Vista de Grupo": "🌍 Multi-Hotel — Vista de Grup",
+    "Para el Financial Controller del grupo: KPIs consolidados, ranking de performance por hotel, tendencia de 6 meses y alertas centralizadas. Una pantalla, todo el grupo.": "Per al Financial Controller del grup: KPIs consolidats, rànquing de rendiment per hotel, tendència de 6 mesos i alertes centralitzades. Una pantalla, tot el grup.",
     "¡Ya conoces Yve.01!": "Ja coneixes Yve.01!",
     "Empezar con AR →": "Començar amb AR →",
     "Sin alertas bancarias pendientes.": "Sense alertes bancàries pendents.",
@@ -5281,6 +5308,21 @@ var _i18nStrMap = {
     'Sin datos F&B.': 'Sense dades F&B.',
     'Reportes': 'Informes',},
   fr: {
+    "👋 Bienvenido a Yve.01": "👋 Bienvenue sur Yve.01",
+    "El sistema de finanzas hoteleras que automatiza AR, AP, DRR y reporting. Este tour te lleva por cada módulo de izquierda a derecha — 3 minutos y ya lo dominas todo. Arrástrame si te estorbo: me acoplo solo donde me sueltes.": "Le système de finances hôtelières qui automatise AR, AP, DRR et reporting. Ce tour vous guide module par module — 3 minutes et vous maîtrisez tout. Déplacez-moi si je gêne : je m'ancre là où vous me lâchez.",
+    "📥 AR — Comisiones OTA": "📥 AR — Commissions OTA",
+    "Verifica automáticamente las comisiones de Booking.com y Expedia. Facturas procesadas, importe total, discrepancias reclamables y certificados DI pendientes. El número rojo son euros que puedes recuperar.": "Vérifie automatiquement les commissions de Booking.com et Expedia. Factures traitées, montant total, écarts réclamables et certificats DI en attente. Le chiffre rouge, ce sont des euros à récupérer.",
+    "Para cada factura de proveedor, Yve cruza 3 documentos: factura, pedido (PO) y albarán. Si cuadra todo → Match OK automático. Si hay diferencia → alerta y email al proveedor generado con IA.": "Pour chaque facture fournisseur, Yve croise 3 documents : facture, bon de commande (PO) et bon de livraison. Tout correspond → Match OK automatique. Un écart → alerte et email au fournisseur généré par IA.",
+    "Arrastra tu archivo .xlsm aquí. Yve extrae RevPAR, ADR, GOP%, ocupación y las 7.000+ líneas del Trial Balance en segundos. Detecta Out of Balance automáticamente y te avisa al instante.": "Glissez votre fichier .xlsm ici. Yve extrait RevPAR, ADR, GOP%, occupation et les 7 000+ lignes du Trial Balance en quelques secondes. Il détecte l'Out of Balance automatiquement et vous alerte aussitôt.",
+    "🏦 Banco — Conciliación": "🏦 Banque — Rapprochement",
+    "Cruza automáticamente el extracto bancario con las facturas de proveedores. Identifica movimientos no conciliados, diferencias de importe y pagos duplicados. Desde 8 horas a 2 minutos.": "Rapproche automatiquement le relevé bancaire des factures fournisseurs. Il identifie les mouvements non rapprochés, les écarts de montant et les paiements en double. De 8 heures à 2 minutes.",
+    "🔔 Notificaciones": "🔔 Notifications",
+    "Configura alertas automáticas por email o Telegram: discrepancias OTA, facturas sin firmar, Out of Balance en el DRR o stock bajo en F&B. Yve te avisa proactivamente.": "Configurez des alertes automatiques par email ou Telegram : écarts OTA, factures non signées, Out of Balance du DRR ou stock F&B bas. Yve vous prévient proactivement.",
+    "Calcula el Food Cost real vs teórico por categoría. Conecta los datos POS, recetas e inventario. Detecta mermas, identifica qué platos tienen mejor margen y optimiza el rendimiento del restaurante.": "Calcule le Food Cost réel vs théorique par catégorie. Il connecte les données POS, recettes et inventaire. Détecte les pertes, identifie les plats les plus rentables et optimise la performance du restaurant.",
+    "🏢 AR Real — Grupos Corporativos": "🏢 AR Réel — Groupes Corporate",
+    "Gestión completa de clientes corporativos: emite facturas, controla el aging (0-30 / 31-60 / +90 días), cobra con un clic y envía recordatorios automáticos por email.": "Gestion complète des clients corporate : émettez des factures, suivez l'aging (0-30 / 31-60 / +90 jours), encaissez en un clic et envoyez des rappels automatiques par email.",
+    "🌍 Multi-Hotel — Vista de Grupo": "🌍 Multi-Hôtel — Vue Groupe",
+    "Para el Financial Controller del grupo: KPIs consolidados, ranking de performance por hotel, tendencia de 6 meses y alertas centralizadas. Una pantalla, todo el grupo.": "Pour le Financial Controller du groupe : KPIs consolidés, classement de performance par hôtel, tendance sur 6 mois et alertes centralisées. Un écran, tout le groupe.",
     "¡Ya conoces Yve.01!": "Vous connaissez Yve.01 !",
     "Empezar con AR →": "Commencer avec AR →",
     "Sin alertas bancarias pendientes.": "Aucune alerte bancaire en attente.",
@@ -5500,6 +5542,21 @@ var _i18nStrMap = {
     'Administrador': 'Administrateur',
     '👤 Administrador': '👤 Administrateur',},
   de: {
+    "👋 Bienvenido a Yve.01": "👋 Willkommen bei Yve.01",
+    "El sistema de finanzas hoteleras que automatiza AR, AP, DRR y reporting. Este tour te lleva por cada módulo de izquierda a derecha — 3 minutos y ya lo dominas todo. Arrástrame si te estorbo: me acoplo solo donde me sueltes.": "Das Hotelfinanz-System, das AR, AP, DRR und Reporting automatisiert. Diese Tour führt dich Modul für Modul von links nach rechts — 3 Minuten und du beherrschst alles. Zieh mich beiseite: Ich docke dort an, wo du mich loslässt.",
+    "📥 AR — Comisiones OTA": "📥 AR — OTA-Provisionen",
+    "Verifica automáticamente las comisiones de Booking.com y Expedia. Facturas procesadas, importe total, discrepancias reclamables y certificados DI pendientes. El número rojo son euros que puedes recuperar.": "Prüft automatisch die Provisionen von Booking.com und Expedia. Verarbeitete Rechnungen, Gesamtbetrag, reklamierbare Abweichungen und offene DI-Zertifikate. Die rote Zahl sind Euros, die du zurückholen kannst.",
+    "Para cada factura de proveedor, Yve cruza 3 documentos: factura, pedido (PO) y albarán. Si cuadra todo → Match OK automático. Si hay diferencia → alerta y email al proveedor generado con IA.": "Für jede Lieferantenrechnung gleicht Yve 3 Dokumente ab: Rechnung, Bestellung (PO) und Lieferschein. Stimmt alles → automatisches Match OK. Bei Differenz → Warnung und KI-generierte E-Mail an den Lieferanten.",
+    "Arrastra tu archivo .xlsm aquí. Yve extrae RevPAR, ADR, GOP%, ocupación y las 7.000+ líneas del Trial Balance en segundos. Detecta Out of Balance automáticamente y te avisa al instante.": "Zieh deine .xlsm-Datei hierher. Yve extrahiert RevPAR, ADR, GOP%, Auslastung und die 7.000+ Zeilen der Trial Balance in Sekunden. Out of Balance wird automatisch erkannt und sofort gemeldet.",
+    "🏦 Banco — Conciliación": "🏦 Bank — Abstimmung",
+    "Cruza automáticamente el extracto bancario con las facturas de proveedores. Identifica movimientos no conciliados, diferencias de importe y pagos duplicados. Desde 8 horas a 2 minutos.": "Gleicht den Kontoauszug automatisch mit den Lieferantenrechnungen ab. Erkennt nicht abgestimmte Bewegungen, Betragsdifferenzen und Doppelzahlungen. Von 8 Stunden auf 2 Minuten.",
+    "🔔 Notificaciones": "🔔 Benachrichtigungen",
+    "Configura alertas automáticas por email o Telegram: discrepancias OTA, facturas sin firmar, Out of Balance en el DRR o stock bajo en F&B. Yve te avisa proactivamente.": "Richte automatische Alerts per E-Mail oder Telegram ein: OTA-Abweichungen, unsignierte Rechnungen, Out of Balance im DRR oder niedriger F&B-Bestand. Yve warnt dich proaktiv.",
+    "Calcula el Food Cost real vs teórico por categoría. Conecta los datos POS, recetas e inventario. Detecta mermas, identifica qué platos tienen mejor margen y optimiza el rendimiento del restaurante.": "Berechnet den realen vs. theoretischen Food Cost pro Kategorie. Verbindet POS-Daten, Rezepte und Inventar. Erkennt Schwund, findet die margenstärksten Gerichte und optimiert die Restaurant-Performance.",
+    "🏢 AR Real — Grupos Corporativos": "🏢 AR Real — Firmenkunden",
+    "Gestión completa de clientes corporativos: emite facturas, controla el aging (0-30 / 31-60 / +90 días), cobra con un clic y envía recordatorios automáticos por email.": "Komplette Verwaltung von Firmenkunden: Rechnungen ausstellen, Aging überwachen (0-30 / 31-60 / +90 Tage), mit einem Klick einziehen und automatische E-Mail-Erinnerungen senden.",
+    "🌍 Multi-Hotel — Vista de Grupo": "🌍 Multi-Hotel — Gruppenansicht",
+    "Para el Financial Controller del grupo: KPIs consolidados, ranking de performance por hotel, tendencia de 6 meses y alertas centralizadas. Una pantalla, todo el grupo.": "Für den Financial Controller der Gruppe: konsolidierte KPIs, Performance-Ranking pro Hotel, 6-Monats-Trend und zentrale Alerts. Ein Bildschirm, die ganze Gruppe.",
     "¡Ya conoces Yve.01!": "Du kennst jetzt Yve.01!",
     "Empezar con AR →": "Mit AR starten →",
     "Sin alertas bancarias pendientes.": "Keine offenen Bankwarnungen.",
@@ -5723,6 +5780,21 @@ var _i18nStrMap = {
     'Administrador': 'Administrator',
     '👤 Administrador': '👤 Administrator',},
   it: {
+    "👋 Bienvenido a Yve.01": "👋 Benvenuto in Yve.01",
+    "El sistema de finanzas hoteleras que automatiza AR, AP, DRR y reporting. Este tour te lleva por cada módulo de izquierda a derecha — 3 minutos y ya lo dominas todo. Arrástrame si te estorbo: me acoplo solo donde me sueltes.": "Il sistema di finanza alberghiera che automatizza AR, AP, DRR e reporting. Questo tour ti guida modulo per modulo — 3 minuti e padroneggi tutto. Trascinami se ti intralcio: mi aggancio dove mi lasci.",
+    "📥 AR — Comisiones OTA": "📥 AR — Commissioni OTA",
+    "Verifica automáticamente las comisiones de Booking.com y Expedia. Facturas procesadas, importe total, discrepancias reclamables y certificados DI pendientes. El número rojo son euros que puedes recuperar.": "Verifica automaticamente le commissioni di Booking.com ed Expedia. Fatture elaborate, importo totale, discrepanze reclamabili e certificati DI in sospeso. Il numero rosso sono euro che puoi recuperare.",
+    "Para cada factura de proveedor, Yve cruza 3 documentos: factura, pedido (PO) y albarán. Si cuadra todo → Match OK automático. Si hay diferencia → alerta y email al proveedor generado con IA.": "Per ogni fattura fornitore, Yve incrocia 3 documenti: fattura, ordine (PO) e bolla di consegna. Se tutto quadra → Match OK automatico. Se c'è differenza → avviso ed email al fornitore generata con IA.",
+    "Arrastra tu archivo .xlsm aquí. Yve extrae RevPAR, ADR, GOP%, ocupación y las 7.000+ líneas del Trial Balance en segundos. Detecta Out of Balance automáticamente y te avisa al instante.": "Trascina qui il tuo file .xlsm. Yve estrae RevPAR, ADR, GOP%, occupazione e le oltre 7.000 righe del Trial Balance in pochi secondi. Rileva l'Out of Balance automaticamente e ti avvisa subito.",
+    "🏦 Banco — Conciliación": "🏦 Banca — Riconciliazione",
+    "Cruza automáticamente el extracto bancario con las facturas de proveedores. Identifica movimientos no conciliados, diferencias de importe y pagos duplicados. Desde 8 horas a 2 minutos.": "Incrocia automaticamente l'estratto conto con le fatture dei fornitori. Identifica movimenti non riconciliati, differenze di importo e pagamenti duplicati. Da 8 ore a 2 minuti.",
+    "🔔 Notificaciones": "🔔 Notifiche",
+    "Configura alertas automáticas por email o Telegram: discrepancias OTA, facturas sin firmar, Out of Balance en el DRR o stock bajo en F&B. Yve te avisa proactivamente.": "Configura avvisi automatici via email o Telegram: discrepanze OTA, fatture non firmate, Out of Balance nel DRR o scorte F&B basse. Yve ti avvisa proattivamente.",
+    "Calcula el Food Cost real vs teórico por categoría. Conecta los datos POS, recetas e inventario. Detecta mermas, identifica qué platos tienen mejor margen y optimiza el rendimiento del restaurante.": "Calcola il Food Cost reale vs teorico per categoria. Collega dati POS, ricette e inventario. Rileva sprechi, individua i piatti con il margine migliore e ottimizza le prestazioni del ristorante.",
+    "🏢 AR Real — Grupos Corporativos": "🏢 AR Reale — Gruppi Corporate",
+    "Gestión completa de clientes corporativos: emite facturas, controla el aging (0-30 / 31-60 / +90 días), cobra con un clic y envía recordatorios automáticos por email.": "Gestione completa dei clienti corporate: emetti fatture, controlla l'aging (0-30 / 31-60 / +90 giorni), incassa con un clic e invia promemoria automatici via email.",
+    "🌍 Multi-Hotel — Vista de Grupo": "🌍 Multi-Hotel — Vista di Gruppo",
+    "Para el Financial Controller del grupo: KPIs consolidados, ranking de performance por hotel, tendencia de 6 meses y alertas centralizadas. Una pantalla, todo el grupo.": "Per il Financial Controller del gruppo: KPI consolidati, ranking di performance per hotel, trend a 6 mesi e avvisi centralizzati. Uno schermo, tutto il gruppo.",
     "¡Ya conoces Yve.01!": "Ora conosci Yve.01!",
     "Empezar con AR →": "Inizia con AR →",
     "Sin alertas bancarias pendientes.": "Nessun avviso bancario in sospeso.",
@@ -5936,6 +6008,21 @@ var _i18nStrMap = {
     'Administrador': 'Amministratore',
     '👤 Administrador': '👤 Amministratore',},
   pt: {
+    "👋 Bienvenido a Yve.01": "👋 Bem-vindo ao Yve.01",
+    "El sistema de finanzas hoteleras que automatiza AR, AP, DRR y reporting. Este tour te lleva por cada módulo de izquierda a derecha — 3 minutos y ya lo dominas todo. Arrástrame si te estorbo: me acoplo solo donde me sueltes.": "O sistema de finanças hoteleiras que automatiza AR, AP, DRR e reporting. Este tour percorre cada módulo da esquerda para a direita — 3 minutos e você domina tudo. Arraste-me se atrapalhar: eu me encaixo onde você me soltar.",
+    "📥 AR — Comisiones OTA": "📥 AR — Comissões OTA",
+    "Verifica automáticamente las comisiones de Booking.com y Expedia. Facturas procesadas, importe total, discrepancias reclamables y certificados DI pendientes. El número rojo son euros que puedes recuperar.": "Verifica automaticamente as comissões de Booking.com e Expedia. Faturas processadas, valor total, discrepâncias reclamáveis e certificados DI pendentes. O número vermelho são euros que você pode recuperar.",
+    "Para cada factura de proveedor, Yve cruza 3 documentos: factura, pedido (PO) y albarán. Si cuadra todo → Match OK automático. Si hay diferencia → alerta y email al proveedor generado con IA.": "Para cada fatura de fornecedor, o Yve cruza 3 documentos: fatura, pedido (PO) e guia de remessa. Tudo confere → Match OK automático. Diferença → alerta e email ao fornecedor gerado com IA.",
+    "Arrastra tu archivo .xlsm aquí. Yve extrae RevPAR, ADR, GOP%, ocupación y las 7.000+ líneas del Trial Balance en segundos. Detecta Out of Balance automáticamente y te avisa al instante.": "Arraste seu arquivo .xlsm aqui. O Yve extrai RevPAR, ADR, GOP%, ocupação e as mais de 7.000 linhas do Trial Balance em segundos. Detecta Out of Balance automaticamente e avisa na hora.",
+    "🏦 Banco — Conciliación": "🏦 Banco — Conciliação",
+    "Cruza automáticamente el extracto bancario con las facturas de proveedores. Identifica movimientos no conciliados, diferencias de importe y pagos duplicados. Desde 8 horas a 2 minutos.": "Cruza automaticamente o extrato bancário com as faturas de fornecedores. Identifica movimentos não conciliados, diferenças de valor e pagamentos duplicados. De 8 horas para 2 minutos.",
+    "🔔 Notificaciones": "🔔 Notificações",
+    "Configura alertas automáticas por email o Telegram: discrepancias OTA, facturas sin firmar, Out of Balance en el DRR o stock bajo en F&B. Yve te avisa proactivamente.": "Configure alertas automáticos por email ou Telegram: discrepâncias OTA, faturas sem assinatura, Out of Balance no DRR ou estoque baixo no F&B. O Yve avisa você proativamente.",
+    "Calcula el Food Cost real vs teórico por categoría. Conecta los datos POS, recetas e inventario. Detecta mermas, identifica qué platos tienen mejor margen y optimiza el rendimiento del restaurante.": "Calcula o Food Cost real vs teórico por categoria. Conecta dados do POS, receitas e inventário. Detecta perdas, identifica os pratos com melhor margem e otimiza o desempenho do restaurante.",
+    "🏢 AR Real — Grupos Corporativos": "🏢 AR Real — Grupos Corporativos",
+    "Gestión completa de clientes corporativos: emite facturas, controla el aging (0-30 / 31-60 / +90 días), cobra con un clic y envía recordatorios automáticos por email.": "Gestão completa de clientes corporativos: emita faturas, controle o aging (0-30 / 31-60 / +90 dias), cobre com um clique e envie lembretes automáticos por email.",
+    "🌍 Multi-Hotel — Vista de Grupo": "🌍 Multi-Hotel — Visão de Grupo",
+    "Para el Financial Controller del grupo: KPIs consolidados, ranking de performance por hotel, tendencia de 6 meses y alertas centralizadas. Una pantalla, todo el grupo.": "Para o Financial Controller do grupo: KPIs consolidados, ranking de desempenho por hotel, tendência de 6 meses e alertas centralizados. Uma tela, todo o grupo.",
     "¡Ya conoces Yve.01!": "Você já conhece o Yve.01!",
     "Empezar con AR →": "Começar com AR →",
     "Sin alertas bancarias pendientes.": "Sem alertas bancários pendentes.",
@@ -6182,7 +6269,7 @@ function applyI18n(data) {
   // After translating data-i18n elements, also walk text nodes
   if (_i18nLang && _i18nLang !== 'es') {
     // Small delay to let any pending renders finish
-    setTimeout(function() { _applyStrMap(_i18nLang); if (typeof _applyPlaceholders === 'function') _applyPlaceholders(_i18nLang); }, 800);
+    setTimeout(function() { _applyStrMap(_i18nLang); if (typeof _applyPlaceholders === 'function') _applyPlaceholders(_i18nLang); }, 120);
   }
 }
 
@@ -7105,7 +7192,6 @@ async function cambiarIdioma(lang) {
     b.style.borderRadius = active ? '6px' : '';
     b.style.color = active ? 'var(--acc2)' : 'var(--tx)';
   });
-  applyMobileLite();
   // Translate select option text (can't use data-i18n on options reliably)
   var apFilter = document.getElementById('ap-filter-estado');
   if (apFilter && _i18nStrMap[_i18nLang]) {
@@ -7162,7 +7248,7 @@ function _applyPlaceholders(lang) {
       _i18nApplying = true;
       try { _applyStrMap(_i18nLang); _applyPlaceholders(_i18nLang); }
       finally { setTimeout(function() { _i18nApplying = false; }, 60); }
-    }, 250);
+    }, 100);
   });
   obs.observe(document.body, {childList: true, subtree: true});
 })();
@@ -7282,7 +7368,7 @@ var _tourSteps = [
     // Paso 1 — siempre centrado, no highlight
     el: null, tab: null, pos: 'center',
     title: '👋 Bienvenido a Yve.01',
-    text: 'El sistema de finanzas hoteleras que automatiza AR, AP, DRR y reporting. Este tour te lleva por cada módulo de izquierda a derecha — 3 minutos y ya lo dominas todo. Puedes moverme con los botones de posición ⊙↖↗↙↘.'
+    text: 'El sistema de finanzas hoteleras que automatiza AR, AP, DRR y reporting. Este tour te lleva por cada módulo de izquierda a derecha — 3 minutos y ya lo dominas todo. Arrástrame si te estorbo: me acoplo solo donde me sueltes.'
   },
   {
     el: '#ar-stats-section', tab: 'ar', pos: 'auto',
@@ -7484,8 +7570,7 @@ function _renderTourBox(step) {
 
   box.innerHTML =
     // Header row: drag grip + close
-    '<div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:12px">' +
-      '<div title="Arrastra para mover" style="color:#475569;font-size:15px;letter-spacing:3px;cursor:grab;user-select:none">⠿</div>' +
+    '<div style="display:flex;align-items:center;justify-content:flex-end;margin-bottom:8px">' +
       '<button onclick="endTour()" style="background:none;border:none;color:#475569;font-size:20px;' +
         'cursor:pointer;padding:0 2px;line-height:1;transition:.15s" ' +
         'onmouseover="this.style.color=\'#94a3b8\'" onmouseout="this.style.color=\'#475569\'">×</button>' +
@@ -7518,6 +7603,7 @@ function _renderTourBox(step) {
       '</div>' +
     '</div>';
   _initTourDrag(box);
+  if (typeof _i18nAfterRender === 'function') _i18nAfterRender();
 }
 
 // ── Drag & imán: arrastra la burbuja y se acopla sola a la zona más cercana ──
@@ -9027,7 +9113,7 @@ async function loadFBResumen() {
     const res = await fetch('/fb/api/resultados');
     const data = await res.json();
     if (!data.ok) {
-      cont.innerHTML = '<div class="empty"><p>Sin datos F&B.</p><button class="btn-run" onclick="runFB()" style="margin-top:16px;font-size:13px">▶ Ejecutar Análisis</button></div>';
+      cont.innerHTML = _emptyState('🍽️', t('fb.vacioTitulo', 'Aún no hay datos de F&B'), t('fb.vacioSub', 'Sube ventas POS, inventario o mermas y Yve calculará el Food Cost automáticamente.'));
       return;
     }
     const r = data.resumen;
@@ -9126,7 +9212,7 @@ async function loadFBInventario() {
     const res = await fetch('/fb/api/inventario');
     const data = await res.json();
     if (!data.ok) { cont.innerHTML = '<div class="empty"><p>Error inventario</p></div>'; return; }
-    if (!data.items || !data.items.length) { cont.innerHTML = '<div class="empty"><p>' + t('fb.sinInventario', 'Sin datos de inventario. Sube un inventario con ⚡ Procesar Archivos.') + '</p></div>'; return; }
+    if (!data.items || !data.items.length) { cont.innerHTML = _emptyState('📦', t('fb.invVacioTitulo', 'Inventario vacío'), t('fb.sinInventario', 'Sin datos de inventario. Sube un inventario con ⚡ Procesar Archivos.')); return; }
 
     const alertas = data.items.filter(i => i.alerta);
     let html = '<div class="fb-kpi-grid" style="display:grid;grid-template-columns:repeat(auto-fit,minmax(140px,1fr));gap:14px;margin-bottom:20px">';
@@ -9173,7 +9259,7 @@ async function loadFBMermas() {
     const res = await fetch('/fb/api/mermas');
     const data = await res.json();
     if (!data.ok) { cont.innerHTML = '<div class="empty"><p>Error mermas</p></div>'; return; }
-    if (!data.mermas || !data.mermas.length) { cont.innerHTML = '<div class="empty"><p>' + t('fb.sinMermas', 'Sin mermas registradas.') + '</p></div>'; return; }
+    if (!data.mermas || !data.mermas.length) { cont.innerHTML = _emptyState('🗑️', t('fb.sinMermas', 'Sin mermas registradas.'), t('fb.merVacioSub', 'Cuando registres mermas o subas un archivo, aparecerán aquí con su coste y causa.')); return; }
 
     // Add summary KPI if total available
     const totalCoste  = data.total_coste  || 0;
@@ -9275,7 +9361,7 @@ async function loadFBRecetas() {
     const res = await fetch('/fb/api/recetas');
     const data = await res.json();
     if (!data.ok) { cont.innerHTML = '<div class="empty"><p>Error recetas</p></div>'; return; }
-    if (!data.recetas || !data.recetas.length) { cont.innerHTML = '<div class="empty"><p>' + t('fb.sinRecetas', 'Sin recetas. Procesa documentos F&B para cargarlas.') + '</p></div>'; return; }
+    if (!data.recetas || !data.recetas.length) { cont.innerHTML = _emptyState('📖', t('fb.recVacioTitulo', 'Sin recetas cargadas'), t('fb.sinRecetas', 'Sin recetas. Procesa documentos F&B para cargarlas.')); return; }
 
     const avg = data.recetas.length ? data.recetas.reduce((a,r)=>a+r.fc_pct,0)/data.recetas.length : 0;
     let html = '<div class="fb-kpi-grid" style="display:grid;grid-template-columns:repeat(3,1fr);gap:14px;margin-bottom:20px">';
@@ -9308,6 +9394,15 @@ async function loadFBRecetas() {
     html += '</tbody></table></div></div>';
     cont.innerHTML = html;
   } catch(e) { cont.innerHTML = '<div class="empty"><p>Error: ' + e.message + '</p></div>'; }
+}
+
+function _emptyState(emoji, titulo, sub, conCta) {
+  return '<div style="text-align:center;padding:44px 20px">' +
+    '<div style="font-size:44px;margin-bottom:12px;opacity:.85">' + emoji + '</div>' +
+    '<div style="font-size:15px;font-weight:700;color:var(--tx);margin-bottom:6px">' + titulo + '</div>' +
+    '<div style="font-size:12.5px;color:var(--mut);max-width:340px;margin:0 auto 18px;line-height:1.6">' + sub + '</div>' +
+    (conCta !== false ? '<button class="btn-run" onclick="openUploadModal()" style="margin:0 auto;font-size:13px">' + t('nav.procesar', '⚡ Procesar Archivos') + '</button>' : '') +
+    '</div>';
 }
 
 function _fbKpi(lbl, val, sub, color) {
@@ -10011,6 +10106,27 @@ function notifField(key, label, ph, val) {
 function toggleNotifCanal(key) {
   if (!_notifConfig.canales) _notifConfig.canales = {};
   _notifConfig.canales[key] = !_notifConfig.canales[key];
+  // Push: pedir permiso real de notificaciones al navegador (PC y móvil)
+  if (key === 'push' && _notifConfig.canales[key] && 'Notification' in window) {
+    Notification.requestPermission().then(function(p) {
+      if (p === 'granted') {
+        var titulo = 'Yve.01', cuerpo = t('notif.pushOk', 'Notificaciones activadas ✓ Te avisaré de discrepancias y alertas.');
+        try {
+          if (navigator.serviceWorker && navigator.serviceWorker.ready) {
+            navigator.serviceWorker.ready.then(function(reg) {
+              reg.showNotification(titulo, { body: cuerpo, icon: '/static/yve-logo-128.png', badge: '/static/yve-logo-64.png' });
+            }).catch(function() { new Notification(titulo, { body: cuerpo, icon: '/static/yve-logo-128.png' }); });
+          } else {
+            new Notification(titulo, { body: cuerpo, icon: '/static/yve-logo-128.png' });
+          }
+        } catch(e) {}
+      } else {
+        _notifConfig.canales[key] = false;
+        showNotification(t('notif.pushDenegado', 'Permiso de notificaciones denegado por el navegador'), 'error');
+      }
+      renderNotifConfig();
+    });
+  }
   renderNotifConfig();
 }
 
@@ -10464,10 +10580,7 @@ async function loadMultiHotel() {
     var esEstadoVacio = msg.indexOf('Sin hoteles') >= 0 || msg.indexOf('Sin datos') >= 0;
     if (el) {
       if (esEstadoVacio) {
-        el.innerHTML = '<div style="text-align:center;padding:48px 20px;color:#64748b">'+
-          '<div style="font-size:40px;margin-bottom:12px;opacity:.5">🏨</div>'+
-          '<div style="font-size:15px;font-weight:600;color:#94a3b8;margin-bottom:6px">No hay hoteles en el grupo</div>'+
-          '</div>';
+        el.innerHTML = _emptyState('🏨', t('mh.vacioTitulo', 'No hay hoteles en el grupo'), t('mh.vacioSub', 'Cuando conectes los hoteles del grupo, aquí verás sus KPIs consolidados, el ranking y las alertas.'), false);
       } else {
         el.innerHTML = '<div style="color:#ef4444;padding:20px;font-size:13px">⚠ Error cargando datos: '+msg+'</div>';
       }
@@ -10725,7 +10838,7 @@ function _renderFacturasAR(facturas, stats) {
   const display = estado_filter ? facturas.filter(f => f.estado === estado_filter) : facturas;
 
   if (!display.length) {
-    tbody.innerHTML = '<tr><td colspan="4" style="padding:32px;text-align:center"><div style="font-size:32px;margin-bottom:8px">📋</div><div style="color:var(--mut);font-size:13px">No hay facturas con este filtro</div></td></tr>';
+    tbody.innerHTML = '<tr><td colspan="4">' + _emptyState('📋', t('ar.vacioTitulo', 'Sin facturas todavía'), t('ar.vacioSub', 'Crea una factura con “Nueva factura” o procesa documentos de grupos y aparecerán aquí.'), false) + '</td></tr>';
     return;
   }
 

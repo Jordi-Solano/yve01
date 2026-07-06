@@ -358,5 +358,16 @@
   "bk.sinConciliar": "non rapproché :",
   "ar.activos": "actifs",
   "hist.vacio": "Aucun fichier traité pour l'instant.",
-  "ar.selCliente": "Sélectionnez un client"
+  "ar.selCliente": "Sélectionnez un client",
+  "fb.vacioTitulo": "Pas encore de données F&B",
+  "fb.vacioSub": "Chargez ventes POS, inventaire ou pertes et Yve calculera le Food Cost automatiquement.",
+  "fb.invVacioTitulo": "Inventaire vide",
+  "fb.merVacioSub": "Quand vous enregistrerez des pertes ou chargerez un fichier, elles apparaîtront ici avec coût et cause.",
+  "fb.recVacioTitulo": "Aucune recette chargée",
+  "mh.vacioTitulo": "Aucun hôtel dans le groupe",
+  "mh.vacioSub": "Une fois les hôtels du groupe connectés, vous verrez ici les KPIs consolidés, le classement et les alertes.",
+  "ar.vacioTitulo": "Pas encore de factures",
+  "ar.vacioSub": "Créez-en une avec « Nouvelle facture » ou traitez des documents de groupes et elles apparaîtront ici.",
+  "notif.pushOk": "Notifications activées ✓ Je vous alerterai des écarts et alertes.",
+  "notif.pushDenegado": "Permission de notifications refusée par le navigateur"
 }

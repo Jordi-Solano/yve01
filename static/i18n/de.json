@@ -358,5 +358,16 @@
   "bk.sinConciliar": "nicht abgestimmt:",
   "ar.activos": "aktiv",
   "hist.vacio": "Noch keine Dateien verarbeitet.",
-  "ar.selCliente": "Wähle einen Kunden"
+  "ar.selCliente": "Wähle einen Kunden",
+  "fb.vacioTitulo": "Noch keine F&B-Daten",
+  "fb.vacioSub": "Lade POS-Verkäufe, Inventar oder Schwund hoch und Yve berechnet den Food Cost automatisch.",
+  "fb.invVacioTitulo": "Inventar ist leer",
+  "fb.merVacioSub": "Sobald du Schwund erfasst oder eine Datei hochlädst, erscheint er hier mit Kosten und Ursache.",
+  "fb.recVacioTitulo": "Keine Rezepte geladen",
+  "mh.vacioTitulo": "Keine Hotels in der Gruppe",
+  "mh.vacioSub": "Sobald du die Hotels der Gruppe verbindest, siehst du hier konsolidierte KPIs, Ranking und Alerts.",
+  "ar.vacioTitulo": "Noch keine Rechnungen",
+  "ar.vacioSub": "Erstelle eine mit „Neue Rechnung“ oder verarbeite Gruppendokumente – sie erscheinen hier.",
+  "notif.pushOk": "Benachrichtigungen aktiviert ✓ Ich melde dir Abweichungen und Alerts.",
+  "notif.pushDenegado": "Benachrichtigungs-Berechtigung vom Browser verweigert"
 }

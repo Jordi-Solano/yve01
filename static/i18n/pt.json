@@ -358,5 +358,16 @@
   "bk.sinConciliar": "sem conciliar:",
   "ar.activos": "ativos",
   "hist.vacio": "Nenhum arquivo processado ainda.",
-  "ar.selCliente": "Selecione um cliente"
+  "ar.selCliente": "Selecione um cliente",
+  "fb.vacioTitulo": "Ainda sem dados de F&B",
+  "fb.vacioSub": "Envie vendas POS, inventário ou perdas e o Yve calculará o Food Cost automaticamente.",
+  "fb.invVacioTitulo": "Inventário vazio",
+  "fb.merVacioSub": "Quando você registrar perdas ou enviar um arquivo, elas aparecerão aqui com custo e causa.",
+  "fb.recVacioTitulo": "Sem receitas carregadas",
+  "mh.vacioTitulo": "Sem hotéis no grupo",
+  "mh.vacioSub": "Quando você conectar os hotéis do grupo, verá aqui os KPIs consolidados, o ranking e os alertas.",
+  "ar.vacioTitulo": "Ainda sem faturas",
+  "ar.vacioSub": "Crie uma com “Nova fatura” ou processe documentos de grupos e elas aparecerão aqui.",
+  "notif.pushOk": "Notificações ativadas ✓ Avisarei sobre discrepâncias e alertas.",
+  "notif.pushDenegado": "Permissão de notificações negada pelo navegador"
 }

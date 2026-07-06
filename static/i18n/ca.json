@@ -358,5 +358,16 @@
   "bk.sinConciliar": "sense conciliar:",
   "ar.activos": "actius",
   "hist.vacio": "Encara no hi ha fitxers processats.",
-  "ar.selCliente": "Selecciona un client"
+  "ar.selCliente": "Selecciona un client",
+  "fb.vacioTitulo": "Encara no hi ha dades de F&B",
+  "fb.vacioSub": "Puja vendes POS, inventari o minves i Yve calcularà el Food Cost automàticament.",
+  "fb.invVacioTitulo": "Inventari buit",
+  "fb.merVacioSub": "Quan registris minves o pugis un fitxer, apareixeran aquí amb el seu cost i causa.",
+  "fb.recVacioTitulo": "Sense receptes carregades",
+  "mh.vacioTitulo": "No hi ha hotels al grup",
+  "mh.vacioSub": "Quan connectis els hotels del grup, aquí veuràs els KPIs consolidats, el rànquing i les alertes.",
+  "ar.vacioTitulo": "Encara no hi ha factures",
+  "ar.vacioSub": "Crea'n una amb “Nova factura” o processa documents de grups i apareixeran aquí.",
+  "notif.pushOk": "Notificacions activades ✓ T'avisaré de discrepàncies i alertes.",
+  "notif.pushDenegado": "Permís de notificacions denegat pel navegador"
 }

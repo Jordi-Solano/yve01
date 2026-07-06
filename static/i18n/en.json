@@ -358,5 +358,16 @@
   "bk.sinConciliar": "unmatched:",
   "ar.activos": "active",
   "hist.vacio": "No files processed yet.",
-  "ar.selCliente": "Select a client"
+  "ar.selCliente": "Select a client",
+  "fb.vacioTitulo": "No F&B data yet",
+  "fb.vacioSub": "Upload POS sales, inventory or waste and Yve will calculate the Food Cost automatically.",
+  "fb.invVacioTitulo": "Inventory is empty",
+  "fb.merVacioSub": "When you record waste or upload a file, it will appear here with its cost and cause.",
+  "fb.recVacioTitulo": "No recipes loaded",
+  "mh.vacioTitulo": "No hotels in the group",
+  "mh.vacioSub": "Once you connect the group's hotels, you'll see consolidated KPIs, the ranking and alerts here.",
+  "ar.vacioTitulo": "No invoices yet",
+  "ar.vacioSub": "Create one with “New invoice” or process group documents and they'll show up here.",
+  "notif.pushOk": "Notifications enabled ✓ I'll alert you about discrepancies and issues.",
+  "notif.pushDenegado": "Notification permission denied by the browser"
 }
