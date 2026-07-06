@@ -7407,7 +7407,7 @@ var _tourSteps = [
     text: 'Cruza automáticamente el extracto bancario con las facturas de proveedores. Identifica movimientos no conciliados, diferencias de importe y pagos duplicados. Desde 8 horas a 2 minutos.'
   },
   {
-    el: '#notif-canales', tab: 'notif', pos: 'auto',
+    el: '#panel-notif', tab: 'notif', pos: 'auto',
     title: '🔔 Notificaciones',
     text: 'Configura alertas automáticas por email o Telegram: discrepancias OTA, facturas sin firmar, Out of Balance en el DRR o stock bajo en F&B. Yve te avisa proactivamente.'
   },
@@ -7751,18 +7751,25 @@ function _showTourStep() {
 
   // Switch tab first
   if (step.tab) {
-    var tabEl = document.getElementById('tab-' + step.tab);
-    if (tabEl) switchTab(step.tab, tabEl);
+    var tabEl = document.getElementById('tab-' + step.tab) ||
+                document.getElementById('tab-' + step.tab.replace(/_/g, '-'));
+    if (tabEl) {
+      switchTab(step.tab, tabEl);
+      // iluminar también el nombre/emoji de la pestaña activa
+      tabEl.setAttribute('data-tour-active', '1');
+      tabEl.style.position = 'relative';
+      tabEl.style.zIndex = '9950';
+    }
   }
 
   // Run step action
   if (step.action && typeof step.action === 'function') {
-    setTimeout(function() { try { step.action(); } catch(e) {} }, 300);
+    setTimeout(function() { try { step.action(); } catch(e) {} }, 150);
   }
 
   // Tabs with async data loading need longer delays
-  var _asyncTabs = {'ar_real': 1400, 'multi_hotel': 1800};
-  var delay = step.tab ? (_asyncTabs[step.tab] || 700) : 50;
+  var _asyncTabs = {'ar_real': 900, 'multi_hotel': 1000};
+  var delay = step.tab ? (_asyncTabs[step.tab] || 400) : 50;
   setTimeout(function() {
     var target = step.el ? document.querySelector(step.el) : null;
     _tourCurrentTarget = target;
@@ -7782,7 +7789,7 @@ function _showTourStep() {
         // For async tabs, wait until the element has visible content
         var isEmpty = fresh && (fresh.children.length === 0 || fresh.innerHTML.trim() === '');
         if ((!fresh || isEmpty) && attemptsLeft > 0) {
-          setTimeout(function() { _drawAttempt(attemptsLeft - 1); }, 300);
+          setTimeout(function() { _drawAttempt(attemptsLeft - 1); }, 200);
           return;
         }
         if (fresh) { _tourCurrentTarget = fresh; target = fresh; }
@@ -7793,7 +7800,7 @@ function _showTourStep() {
         _applyTourBoxPos(target ? target.getBoundingClientRect() : null);
       });
     };
-    setTimeout(function() { _drawAttempt(6); }, target ? 400 : 0);
+    setTimeout(function() { _drawAttempt(6); }, target ? 150 : 0);
   }, delay);
 }
 
