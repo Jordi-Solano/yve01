@@ -110,10 +110,9 @@ from pricing import pricing_bp
 from tab_multi_hotel import multi_hotel_bp
 from tab_self_service import self_service_bp
 from tab_exportador import exportador_bp
-from tab_calipolis import calipolis_bp
+# calipolis quitado
 from tab_demo import demo_bp
 from tab_demo_simulador import demo_sim_bp
-from tab_calipolis_analisis import calipolis_analisis_bp
 from tab_reportes_pdf import reportes_pdf_bp
 from rol_dashboard import get_dashboard_config
 from demo_completo import generar_hoteles_demo, generar_facturas_demo_ar, generar_facturas_demo_ap, generar_alertas_demo
@@ -125,7 +124,7 @@ from legal import legal_bp
 from signup import signup_bp
 from about import about_bp
 from exportador_pdf import pdf_bp
-for _bp in (auth_bp, config_bp, admin_bp, aprob_ar_bp, aprob_ap_bp, concil_bp, fb_bp, ar_real_bp, multi_hotel_bp, self_service_bp, exportador_bp, calipolis_bp, demo_bp, demo_sim_bp, calipolis_analisis_bp, reportes_pdf_bp, blog_bp, billing_bp, asientos_bp, signup_bp, about_bp, pdf_bp, legal_bp):
+for _bp in (auth_bp, config_bp, admin_bp, aprob_ar_bp, aprob_ap_bp, concil_bp, fb_bp, ar_real_bp, multi_hotel_bp, self_service_bp, exportador_bp, demo_bp, demo_sim_bp, reportes_pdf_bp, blog_bp, billing_bp, asientos_bp, signup_bp, about_bp, pdf_bp, legal_bp):
     app.register_blueprint(_bp)
 
 _pipeline_running = False
@@ -2678,8 +2677,7 @@ def api_cache_clear():
     except Exception:
         pass
     try:
-        from dashboard_calipolis import _CAL_CACHE
-        _CAL_CACHE.clear()
+                _CAL_CACHE.clear()
     except Exception:
         pass
     return jsonify({"ok": True, "message": "Cache limpiado"})
@@ -2925,7 +2923,7 @@ body.mobile-lite #ar-aging-bar,
 body.mobile-lite #ar-filter-estado,
 body.mobile-lite #ar-real-grid > div:last-child { display: none !important; }
 
-/* Calipolis — solo KPI cards */
+
 body.mobile-lite #cal-tendencias,
 body.mobile-lite #cal-ap-chart,
 body.mobile-lite #cal-hoteles,
@@ -2983,7 +2981,7 @@ body.mobile-lite .panel { padding: 12px !important; }
   /* Hide secondary columns on mobile */
   .hide-mobile{display:none}
   .show-mobile{display:inline-flex!important}
-  /* Calipolis cards */
+  
   #cal-grid{grid-template-columns:1fr!important}
   /* Multi-hotel table */
   #mh-kpis .sc-lbl{font-size:9px}
@@ -3355,11 +3353,9 @@ tr:hover td{background:rgba(255,255,255,.025)}
   .drr-metrics{grid-template-columns:1fr!important}
   .drr-days{grid-template-columns:repeat(5,1fr)!important}
 
-  /* Calipolis hotels */
+  
   #cal-hoteles{grid-template-columns:1fr!important}
-  #panel-calipolis [style*="grid-template-columns:1fr 1fr"]{
-    grid-template-columns:1fr!important
-  }
+  
 
   /* Multi-hotel KPIs 4col → 2col */
   #mh-kpis{grid-template-columns:repeat(2,1fr)!important}
@@ -3586,7 +3582,6 @@ button, a { touch-action: manipulation; }
     <button class="tab" id="tab-notif" onclick="switchTab('notif',this)" data-i18n="tab.notif">🔔 Notificaciones</button>
     <button class="tab" onclick="switchTab('fb',this)" id="tab-fb" data-i18n="tab.fb">🍽️ F&amp;B Cost</button>
     <button class="tab" onclick="switchTab('ar_real',this)" id="tab-ar-real" data-i18n="tab.arreal">🏢 AR Real</button>
-    <!-- Calipolis tab quitado temporalmente -->
     <button class="tab hide-mobile" onclick="switchTab('multi_hotel',this)" id="tab-multi-hotel" data-i18n="tab.multihotel">🏨 Multi-Hotel</button>
   </div>
 
@@ -3974,12 +3969,6 @@ button, a { touch-action: manipulation; }
   </div><!-- /panel-ar_real -->
 
 
-  <div id="panel-calipolis" class="panel">
-    <!-- Calipolis usa el mismo motor que Multi-Hotel con filtro de grupo.
-         El contenido se renderiza en panel-multi_hotel cuando el tab activo es calipolis.
-         Ver: _switchToCalipolisView() en JS -->
-    <div id="cal-redirect-notice" style="display:none"></div>
-  </div><!-- /panel-calipolis -->
 
   <div id="panel-multi_hotel" class="panel" style="overflow-x:hidden">
 
@@ -4949,7 +4938,7 @@ function skelSection() {
 setTimeout(async () => {
   const preloads = [
     '/api/stats_drr', '/api/drr_daily_chart',
-    '/api/ar_real/data', '/api/calipolis/kpis',
+    '/api/ar_real/data',
     '/api/stats_banco',
   ];
   preloads.forEach(url => fetch(url).catch(() => {}));
@@ -5101,7 +5090,7 @@ var _i18nStrMap = {
     '⚠️ Alertas activas': '⚠️ Active alerts',
     '⌨ Atajos de teclado': '⌨ Keyboard shortcuts',
     '🔍 Búsqueda global Ctrl+K · ⌨ Atajos 1-9': '🔍 Global search Ctrl+K · ⌨ Shortcuts 1-9',
-    '📱 Vista lite en todos los paneles (F&B, Real AR, Calipolis, Multi)': '📱 Lite view on all panels',
+    '📱 Vista lite en todos los paneles (F&B, Real AR, Multi)': '📱 Lite view on all panels',
     'PDF (facturas) · XLSM (DRR)': 'PDF (invoices) · XLSM (DRR)',
     'Actualizado': 'Updated',
     'facturas cargadas': 'invoices loaded',
@@ -5259,7 +5248,7 @@ var _i18nStrMap = {
     '⚠️ Alertas activas': '⚠️ Alertes actives',
     '⌨ Atajos de teclado': '⌨ Dreceres de teclat',
     '🔍 Búsqueda global Ctrl+K · ⌨ Atajos 1-9': '🔍 Cerca global Ctrl+K · ⌨ Dreceres 1-9',
-    '📱 Vista lite en todos los paneles (F&B, Real AR, Calipolis, Multi)': '📱 Vista reduïda a tots els panells',
+    '📱 Vista lite en todos los paneles (F&B, Real AR, Multi)': '📱 Vista reduïda a tots els panells',
     'PDF (facturas) · XLSM (DRR)': 'PDF (factures) · XLSM (DRR)',
     'Actualizado': 'Actualitzat',
     'facturas cargadas': 'factures carregades',
@@ -5424,7 +5413,7 @@ var _i18nStrMap = {
     '⚠️ Alertas activas': '⚠️ Alertes actives',
     '⌨ Atajos de teclado': '⌨ Raccourcis clavier',
     '🔍 Búsqueda global Ctrl+K · ⌨ Atajos 1-9': '🔍 Recherche globale Ctrl+K · ⌨ Raccourcis 1-9',
-    '📱 Vista lite en todos los paneles (F&B, Real AR, Calipolis, Multi)': '📱 Vue réduite sur tous les panneaux',
+    '📱 Vista lite en todos los paneles (F&B, Real AR, Multi)': '📱 Vue réduite sur tous les panneaux',
     'PDF (facturas) · XLSM (DRR)': 'PDF (factures) · XLSM (DRR)',
     'Actualizado': 'Mis à jour',
     'facturas cargadas': 'factures chargées',
@@ -5595,7 +5584,7 @@ var _i18nStrMap = {
     '⚠️ Alertas activas': '⚠️ Aktive Warnungen',
     '⌨ Atajos de teclado': '⌨ Tastenkürzel',
     '🔍 Búsqueda global Ctrl+K · ⌨ Atajos 1-9': '🔍 Globale Suche Ctrl+K · ⌨ Tastenkürzel 1-9',
-    '📱 Vista lite en todos los paneles (F&B, Real AR, Calipolis, Multi)': '📱 Kompaktansicht auf allen Panels',
+    '📱 Vista lite en todos los paneles (F&B, Real AR, Multi)': '📱 Kompaktansicht auf allen Panels',
     'PDF (facturas) · XLSM (DRR)': 'PDF (Rechnungen) · XLSM (DRR)',
     'Actualizado': 'Aktualisiert',
     'facturas cargadas': 'Rechnungen geladen',
@@ -5757,7 +5746,7 @@ var _i18nStrMap = {
     '⚠️ Alertas activas': '⚠️ Avvisi attivi',
     '⌨ Atajos de teclado': '⌨ Scorciatoie',
     '🔍 Búsqueda global Ctrl+K · ⌨ Atajos 1-9': '🔍 Ricerca globale Ctrl+K · ⌨ Scorciatoie 1-9',
-    '📱 Vista lite en todos los paneles (F&B, Real AR, Calipolis, Multi)': '📱 Vista compatta su tutti i pannelli',
+    '📱 Vista lite en todos los paneles (F&B, Real AR, Multi)': '📱 Vista compatta su tutti i pannelli',
     'PDF (facturas) · XLSM (DRR)': 'PDF (fatture) · XLSM (DRR)',
     'Actualizado': 'Aggiornato',
     'facturas cargadas': 'fatture caricate',
@@ -5900,7 +5889,7 @@ var _i18nStrMap = {
     '⚠️ Alertas activas': '⚠️ Alertas ativos',
     '⌨ Atajos de teclado': '⌨ Atalhos de teclado',
     '🔍 Búsqueda global Ctrl+K · ⌨ Atajos 1-9': '🔍 Pesquisa global Ctrl+K · ⌨ Atalhos 1-9',
-    '📱 Vista lite en todos los paneles (F&B, Real AR, Calipolis, Multi)': '📱 Vista compacta em todos os painéis',
+    '📱 Vista lite en todos los paneles (F&B, Real AR, Multi)': '📱 Vista compacta em todos os painéis',
     'PDF (facturas) · XLSM (DRR)': 'PDF (faturas) · XLSM (DRR)',
     'Actualizado': 'Atualizado',
     'facturas cargadas': 'faturas carregadas',
@@ -6535,11 +6524,8 @@ var _tourSteps = [
     text: 'Gestión completa de clientes corporativos: emite facturas, controla el aging (0-30 / 31-60 / +90 días), cobra con un clic y envía recordatorios automáticos por email.'
   },
   {
-    el: '#cal-kpis', tab: 'calipolis', pos: 'auto',
-    title: '🏨 Grupo Calipolis',
     text: 'Dashboard consolidado de las 3 propiedades: Sitges, Mar y Boutique. GOP%, RevPAR, ocupación y tendencias de 6 meses gestionados desde una sola pantalla.',
     action: function() {
-      if (typeof loadCalipolis === 'function') loadCalipolis();
     }
   },
   {
@@ -6802,7 +6788,6 @@ function _showTourStep() {
   }
 
   // Tabs with async data loading need longer delays
-  var _asyncTabs = {'ar_real': 1400, 'multi_hotel': 1800, 'calipolis': 1200};
   var delay = step.tab ? (_asyncTabs[step.tab] || 700) : 50;
   setTimeout(function() {
     var target = step.el ? document.querySelector(step.el) : null;
@@ -7935,7 +7920,6 @@ function copyToClip(text, label) {
 // ── Keyboard shortcuts ────────────────────────────────────────────────────
 document.addEventListener('keydown', e => {
   if (e.target.tagName === 'INPUT' || e.target.tagName === 'TEXTAREA' || e.metaKey || e.ctrlKey) return;
-  const tabKeys = {'1':'ar_otas','2':'ap','3':'drr','4':'banco','5':'notificaciones','6':'fb_cost','7':'ar_real','8':'calipolis','9':'multi_hotel'};
   if (tabKeys[e.key]) {
     const tabEl = document.getElementById('tab-' + tabKeys[e.key]);
     if (tabEl) { switchTab(tabKeys[e.key], tabEl); }
@@ -7956,7 +7940,6 @@ window.addEventListener('resize', function() {
 // ── Swipe gestures for mobile ────────────────────────────────────────────
 (function() {
   var touchStartX = 0, touchStartY = 0;
-  var TABS_ORDER = ['ar','ap','drr','banco','notif','fb','ar_real','calipolis','multi_hotel'];
   var currentTabIdx = 0;
 
   document.addEventListener('touchstart', function(e) {
@@ -8060,15 +8043,11 @@ async function toggleDemoMode() {
       document.getElementById('main-menu')?.classList.remove('open');
       // Switch to Calipolis tab
       setTimeout(() => {
-        const calTab = document.getElementById('tab-calipolis');
-        if (calTab) switchTab('calipolis', calTab);
         // Load Calipolis data
-        loadCalipolis();
         // Show tour prompt after 1.5s
         setTimeout(() => {
           const tourMsg = document.createElement('div');
           tourMsg.style.cssText = 'position:fixed;bottom:80px;right:20px;background:linear-gradient(135deg,#1e293b,#0d1827);border:1px solid rgba(245,158,11,.4);border-radius:14px;padding:18px 20px;z-index:8500;max-width:280px;box-shadow:0 8px 32px rgba(0,0,0,.5)';
-          tourMsg.innerHTML = '<div style="font-size:14px;font-weight:700;margin-bottom:8px;color:#f59e0b">🎭 Demo Calipolis</div><div style="font-size:13px;color:#94a3b8;line-height:1.5;margin-bottom:14px">Estás viendo los datos reales del Grupo Calipolis Hotels (3 propiedades, 307 hab.).</div><button onclick="startTour();this.parentElement.remove()" style="background:linear-gradient(135deg,#3b82f6,#2563eb);border:none;color:#fff;padding:8px 16px;border-radius:8px;cursor:pointer;font-size:12px;font-weight:700;width:100%">🎯 Iniciar Tour Guiado →</button><button onclick="this.parentElement.remove()" style="background:none;border:none;color:#64748b;font-size:11px;margin-top:8px;cursor:pointer;width:100%">Explorar sin tour</button>';
           document.body.appendChild(tourMsg);
           setTimeout(() => tourMsg.remove(), 12000);
         }, 1500);
@@ -8186,7 +8165,6 @@ function switchTab(tab, el) {
     if (el) setTimeout(function(){ el.scrollIntoView({behavior:'smooth',block:'nearest',inline:'center'}); }, 50);
     var bnBtns = document.querySelectorAll('#mobile-bottom-nav button');
     bnBtns.forEach(function(b){ b.style.color = ''; });
-    var bnMap = {'ar':0,'ap':1,'drr':2,'calipolis':3};
     if (bnMap[tab] !== undefined && bnBtns[bnMap[tab]]) bnBtns[bnMap[tab]].style.color = 'var(--acc2)';
   }
   if (tab === 'fb') loadFBTab();
@@ -8194,7 +8172,6 @@ function switchTab(tab, el) {
   if (tab === 'drr') loadDRR();
   if (tab === 'banco') loadBanco();
   if (tab === 'notif') loadNotifConfig();
-  if (tab === 'calipolis') loadCalipolis();
   if (tab === 'multi_hotel') loadMultiHotel();
 }
 // ══ F&B COST CONTROL ══════════════════════════════════
@@ -9543,23 +9520,6 @@ function renderMHTableFull(hoteles) {
 }
 
 
-function switchCalipolisTab(tabEl) {
-  // Establecer filtro de grupo ANTES de llamar a switchTab
-  window._mhGrupo = 'calipolis';
-  window._mhGrupoLabel = '🏖️ Calipolis Hotels Group';
-  window._mhGrupoSub   = 'Sitges · 3 propiedades · 307 habitaciones';
-  _mh_loaded = false;
-  // Usar el switchTab estándar que maneja correctamente la visibilidad de paneles
-  // pero pasando 'multi_hotel' como destino
-  switchTab('multi_hotel', tabEl);
-  // Después de switchTab, mover el underline visual al tab Calipolis
-  setTimeout(function() {
-    document.querySelectorAll('.tab').forEach(function(t){ t.classList.remove('active'); });
-    if (tabEl) tabEl.classList.add('active');
-  }, 0);
-  localStorage.setItem('yve_last_tab', 'calipolis');
-}
-
 async function loadMultiHotel() {
   if (_mh_loaded) return;
   try {
@@ -9589,7 +9549,6 @@ async function loadMultiHotel() {
       '<div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(min(200px,45%),1fr));gap:10px">' +
       [
         {l:'REVENUE MTD',     v:'€' + Math.round((k.total_revenue||0)/1000) + 'K',
-         s:(k.n_hoteles||0)+' propiedades · Grupo Calipolis', c:'#60a5fa'},
         {l:'GOP TOTAL',       v:'€' + Math.round((k.total_gop||0)/1000) + 'K',
          s:'GOP% medio: '+(k.avg_gop_pct||0)+'%', c:gopC},
         {l:'OCUPACIÓN MEDIA', v:(k.avg_occ_pct||0)+'%',
@@ -9743,7 +9702,6 @@ async function loadMultiHotel() {
         el.innerHTML = '<div style="text-align:center;padding:48px 20px;color:#64748b">'+
           '<div style="font-size:40px;margin-bottom:12px;opacity:.5">🏨</div>'+
           '<div style="font-size:15px;font-weight:600;color:#94a3b8;margin-bottom:6px">No hay hoteles en el grupo</div>'+
-          '<div style="font-size:13px">El dashboard Multi-Hotel consolida varios hoteles de un grupo.<br>Añade hoteles desde administración o consulta el grupo Calipolis como ejemplo.</div>'+
           '</div>';
       } else {
         el.innerHTML = '<div style="color:#ef4444;padding:20px;font-size:13px">⚠ Error cargando datos: '+msg+'</div>';
@@ -10162,10 +10120,7 @@ async function openHotelDetail(hotelId) {
 // ═══════════════════════════════════════════════════════════════════
 var _calCharts = {};
 
-async function loadCalipolis() {
   // Delegado a loadMultiHotel con filtro grupo=calipolis
-  window._mhGrupo = 'calipolis';
-  window._mhGrupoLabel = '🏖️ Calipolis Hotels Group';
   window._mhGrupoSub   = 'Sitges · 3 propiedades · 307 habitaciones';
   _mh_loaded = false;
   if (typeof loadMultiHotel === 'function') await loadMultiHotel();
@@ -10188,7 +10143,6 @@ function _calSparkline(data, color) {
   return '<svg width="80" height="40" style="overflow:visible"><polyline points="'+pts+'" fill="none" stroke="'+color+'" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>';
 }
 
-function renderCalipolisTrends(tendencias) {
   if (!tendencias) return;
   var meses  = tendencias.meses || [];
   var gop    = tendencias.gop_mensual  || tendencias.gop_pct_grupo || [];
@@ -10242,7 +10196,6 @@ function renderCalipolisTrends(tendencias) {
   }
 }
 
-function addCalipolisInsights(hoteles) {
   var el = document.getElementById('cal-insights');
   if (!el || !hoteles || !hoteles.length) return;
   var top = hoteles.reduce(function(a,b){ return a.gop_pct > b.gop_pct ? a : b; });
@@ -10273,7 +10226,6 @@ function addCalipolisInsights(hoteles) {
 }
 
 
-function renderCalipolisKpis(kpis) {
   var cont = document.getElementById('cal-kpis');
   if (!cont || !kpis) return;
   cont.dataset.loaded = '1';
@@ -10282,7 +10234,6 @@ function renderCalipolisKpis(kpis) {
   var gopColor  = kpis.avg_gop_pct >= 22 ? 'var(--grn)' : kpis.avg_gop_pct >= 18 ? 'var(--ora)' : 'var(--red)';
   var occColor  = kpis.avg_ocupacion >= 80 ? 'var(--grn)' : kpis.avg_ocupacion >= 65 ? 'var(--ora)' : 'var(--red)';
   var cards = [
-    {l:'REVENUE MTD',     v:'€' + totalRevM + 'M', s:(kpis.num_hoteles||3)+' propiedades · Grupo Calipolis', c:'var(--acc2)'},
     {l:'GOP TOTAL',       v:'€' + totalGopK + 'K', s:'GOP% medio: '+(kpis.avg_gop_pct||0)+'%',              c:gopColor},
     {l:'OCUPACIÓN MEDIA', v:(kpis.avg_ocupacion||0)+'%',  s:'ADR €'+(kpis.avg_adr||0),                      c:occColor},
     {l:'REVPAR MEDIO',    v:'€'+(kpis.avg_revpar||0),      s:'Sobre '+(kpis.total_rooms||0)+' hab.',          c:'var(--tx)'},
@@ -10297,7 +10248,6 @@ function renderCalipolisKpis(kpis) {
   if (_i18nLang && _i18nLang !== 'es') applyI18n(_i18nData);
 }
 
-function renderCalipolisHoteles(hoteles) {
   const cont = document.getElementById('cal-hoteles');
   if (!cont) return;
   cont.innerHTML = '';
@@ -10467,7 +10417,6 @@ const SEARCH_INDEX = [
   {q:['notif','alerta','email','slack','whatsapp'],tab:'notificaciones',       label:'Notificaciones',      desc:'Canales y configuración de alertas'},
   {q:['fb','food cost','restaurante','merma','receta','inventario'],tab:'fb_cost', label:'F&B Cost',        desc:'Control de coste de alimentos y bebidas'},
   {q:['ar real','grupo','corporativo','cliente','beo'],tab:'ar_real',         label:'AR Real',             desc:'Facturación a clientes corporativos'},
-  {q:['calipolis','sitges','multi','grupo hotelero'],tab:'calipolis',         label:'Calipolis',           desc:'Dashboard del Grupo Calipolis Hotels'},
   {q:['multi','hotel','consolidado','grupo'],tab:'multi_hotel',              label:'Multi-Hotel',         desc:'Vista consolidada de todos los hoteles'},
   {q:['admin','usuario','configuracion','cuenta'],link:'/admin/',            label:'Administración',      desc:'Panel de administración y usuarios'},
   {q:['precio','plan','stripe','pago','billing'],link:'/checkout/starter',  label:'Planes y precios',    desc:'Contratar o cambiar el plan'},
@@ -10531,7 +10480,7 @@ document.addEventListener('keydown', e => {
           <li>🏨 /unirse — registro self-service para nuevos hoteles</li>
           <li>📊 DRR GOP% — estimación automática cuando Excel tiene fórmulas</li>
           <li>🏢 Multi-Hotel — gráficos aislados, KPI cards siempre visibles</li>
-          <li>📱 Vista lite en todos los paneles (F&B, Real AR, Calipolis, Multi)</li>
+          <li>📱 Vista lite en todos los paneles (F&B, Real AR, Multi)</li>
           <li>💬 Chat Yve — abre desde nav, panel full-screen en móvil</li>
           <li>🧾 Signup → redirige a checkout automáticamente</li>
           <li>💰 Página pricing con CTAs directos a Stripe</li>
@@ -10544,7 +10493,6 @@ document.addEventListener('keydown', e => {
         <div style="color:#a78bfa;font-weight:700;font-size:11px;text-transform:uppercase;letter-spacing:.4px;margin-bottom:8px">Mayo 2026</div>
         <ul style="color:#94a3b8;padding-left:16px;line-height:1.8">
           <li>🌍 Multi-idioma: ES/EN/CA/FR/DE/IT/PT</li>
-          <li>🎭 Demo Mode con tour guiado Calipolis</li>
           <li>💳 Integración Stripe (simulación)</li>
           <li>📊 Blog SEO con 6 artículos</li>
           <li>📱 Responsive móvil mejorado</li>
