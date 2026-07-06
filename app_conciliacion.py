@@ -56,19 +56,23 @@ def api_stats():
         imp_pend = df.loc[df.get("estado", pd.Series()) == "PENDIENTE", "importe"].apply(lambda v: abs(_sf(v))).sum() if "estado" in df.columns else 0
         saldo = _sf(df["saldo"].iloc[-1]) if "saldo" in df.columns and len(df) > 0 else 0
 
+        def _s(v):
+            s = str(v)
+            return "" if s in ("nan", "None", "NaT") else s
+
         rows = []
         for _, r in df.iterrows():
             rows.append({
                 "fecha": str(r.get("fecha", ""))[:10],
-                "concepto": str(r.get("concepto", "")),
+                "concepto": _s(r.get("concepto", "")),
                 "importe": _sf(r.get("importe", 0)),
-                "tipo": str(r.get("tipo", "")),
-                "referencia": str(r.get("referencia", "")),
+                "tipo": _s(r.get("tipo", "")),
+                "referencia": _s(r.get("referencia", "")),
                 "saldo": _sf(r.get("saldo", 0)),
                 "estado": str(r.get("estado", "PENDIENTE")),
-                "factura_ref": str(r.get("factura_ref", "")),
-                "origen": str(r.get("origen", "")),
-                "match_proveedor": str(r.get("match_proveedor", "")),
+                "factura_ref": _s(r.get("factura_ref", "")),
+                "origen": _s(r.get("origen", "")),
+                "match_proveedor": _s(r.get("match_proveedor", "")),
                 "diferencia": _sf(r.get("diferencia", 0)),
             })
 
