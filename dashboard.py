@@ -10651,7 +10651,7 @@ async function loadMultiHotel() {
       '<div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(min(200px,45%),1fr));gap:10px">' +
       [
         {l:'REVENUE MTD',     v:'€' + Math.round((k.total_revenue||0)/1000) + 'K',
-          s:k.total_hoteles+' hoteles', c:'var(--acc2)'},
+          s:(k.n_hoteles || k.total_hoteles || 0)+' hoteles', c:'var(--acc2)'},
         {l:'GOP TOTAL',       v:'€' + Math.round((k.total_gop||0)/1000) + 'K',
          s:'GOP% medio: '+(k.avg_gop_pct||0)+'%', c:gopC},
         {l:'OCUPACIÓN MEDIA', v:(k.avg_occ_pct||0)+'%',
