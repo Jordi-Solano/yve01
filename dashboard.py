@@ -644,19 +644,44 @@ def api_procesar_batch_stream():
                         _mark(fname, 'FB_OK')
                         continue
                     if is_inventory:
-                        import shutil as _sh5
-                        ext = os.path.splitext(fname)[1]
-                        dest = os.path.join(BASE_DIR, 'datos-referencia', 'inventario_upload' + ext)
-                        _sh5.copy2(fpath, dest)
-                        yield f'data: ✓ Inventario {fname}: datos cargados\n\n'
+                        ext = os.path.splitext(fname)[1].lower()
+                        try:
+                            import pandas as _pdi
+                            _df_i = _pdi.read_csv(fpath) if ext == '.csv' else _pdi.read_excel(fpath)
+                            _df_i = _normalize_cols(_df_i, _INV_COL_MAP)
+                            inv_path = os.path.join(BASE_DIR, 'datos-referencia', 'inventario.xlsx')
+                            if os.path.exists(inv_path):
+                                _df_ei = _pdi.read_excel(inv_path)
+                                if not _df_ei.empty:
+                                    _df_i = _pdi.concat([_df_ei, _df_i], ignore_index=True)
+                                    if 'ingrediente' in _df_i.columns:
+                                        _df_i.drop_duplicates(subset=['ingrediente'], keep='last', inplace=True)
+                            _df_i.to_excel(inv_path, index=False)
+                            yield f'data: ✓ Inventario {fname}: {len(_df_i)} items integrados\n\n'
+                        except Exception:
+                            import shutil as _sh5
+                            _sh5.copy2(fpath, os.path.join(BASE_DIR, 'datos-referencia', 'inventario_upload' + ext))
+                            yield f'data: ✓ Inventario {fname}: archivo cargado (revisar columnas)\n\n'
                         _mark(fname, 'INV_OK')
                         continue
                     if is_merma:
-                        import shutil as _sh5m
-                        ext = os.path.splitext(fname)[1]
-                        dest = os.path.join(BASE_DIR, 'datos-referencia', 'mermas_upload' + ext)
-                        _sh5m.copy2(fpath, dest)
-                        yield f'data: ✓ Mermas {fname}: datos cargados\n\n'
+                        ext = os.path.splitext(fname)[1].lower()
+                        try:
+                            import pandas as _pdm
+                            _df_m = _pdm.read_csv(fpath) if ext == '.csv' else _pdm.read_excel(fpath)
+                            _df_m = _normalize_cols(_df_m, _MER_COL_MAP)
+                            mer_path = os.path.join(BASE_DIR, 'datos-referencia', 'mermas.xlsx')
+                            if os.path.exists(mer_path):
+                                _df_em = _pdm.read_excel(mer_path)
+                                if not _df_em.empty:
+                                    _df_m = _pdm.concat([_df_em, _df_m], ignore_index=True)
+                                    _df_m.drop_duplicates(keep='last', inplace=True)
+                            _df_m.to_excel(mer_path, index=False)
+                            yield f'data: ✓ Mermas {fname}: {len(_df_m)} registros integrados\n\n'
+                        except Exception:
+                            import shutil as _sh5m
+                            _sh5m.copy2(fpath, os.path.join(BASE_DIR, 'datos-referencia', 'mermas_upload' + ext))
+                            yield f'data: ✓ Mermas {fname}: archivo cargado (revisar columnas)\n\n'
                         _mark(fname, 'INV_OK')
                         continue
                     if is_rooming:

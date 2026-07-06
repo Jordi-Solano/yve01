@@ -34,13 +34,15 @@ PATRONES = {
     # ── Número de factura ──────────────────────────────────────────────────
     "numero_factura": [
         # "Invoice number: EXP-INV-2024-110034"  /  "Invoice number: 2410088472"
-        r"(?:invoice\s*(?:number|no\.?|#|num\.?)|n[uú]mero\s*(?:de\s*)?factura|factura\s*n[uú]m\.?)[:\s#]*([A-Z0-9][A-Z0-9\-\/]{2,30})",
+        r"(?:invoice\s*(?:number|no\.?|#|num\.?|n[º°o]\.?)|n[uú]mero\s*(?:de\s*)?factura|factura\s*n[uú]m\.?)[:\s#]*([A-Z0-9][A-Z0-9\-\/]{2,30})",
         # Fallback genérico: "invoice" seguido de código
         r"(?:invoice|factura)[:\s]+([A-Z]{0,5}[\-]?[0-9]{4,}[\-\/]?[A-Z0-9]*)",
     ],
 
     # ── Fecha de emisión ───────────────────────────────────────────────────
     "fecha": [
+        # "Fecha: 30/06/2026" (español, a secas)
+        r"fecha[:\s]+(\d{1,2}[\/\-\.]\d{1,2}[\/\-\.]\d{2,4})",
         # "Invoice Date: 05/11/2024"  /  "Date: 03/11/2024"
         r"(?:invoice\s+date|fecha\s*(?:de\s*)?(?:factura|emisi[oó]n)|date)[:\s]*(\d{1,2}[\/\-\.]\d{1,2}[\/\-\.]\d{2,4})",
         # "Date: 03 November 2024"
@@ -77,6 +79,8 @@ PATRONES = {
 
     # ── Importe bruto (ventas de habitaciones) ────────────────────────────
     "importe_bruto": [
+        # Español con moneda detrás: "Importe reservas: 28.333,33 EUR" / "Importe bruto: 12.450,00 €"
+        r"(?:importe\s+(?:de\s+)?reservas|importe\s+bruto|total\s+reservas)[:\s]+" + _AMT + r"\s*(?:EUR|€)",
         # Expedia explícito: "Gross booking revenue: EUR 2,460.00"
         r"(?:gross\s+booking\s+revenue|gross\s+revenue|total\s+room\s+revenue|importe\s+bruto)[:\s]+" + _EUR + _AMT,
         # Booking tabla: "Reservations EUR 12,450.00 EUR 1,867.50" → primer importe
