@@ -8532,11 +8532,8 @@ function switchTab(tab, el) {
   if (panel) panel.classList.add('active');
   window.scrollTo({top:0, behavior:'smooth'});
   // Mobile: scroll tab into view + highlight bottom nav
-  if (IS_MOBILE) {
-    if (el) setTimeout(function(){ el.scrollIntoView({behavior:'smooth',block:'nearest',inline:'center'}); }, 50);
-    var bnBtns = document.querySelectorAll('#mobile-bottom-nav button');
-    bnBtns.forEach(function(b){ b.style.color = ''; });
-    if (bnMap[tab] !== undefined && bnBtns[bnMap[tab]]) bnBtns[bnMap[tab]].style.color = 'var(--acc2)';
+  if (IS_MOBILE && el) {
+    setTimeout(function(){ el.scrollIntoView({behavior:'smooth',block:'nearest',inline:'center'}); }, 50);
   }
   if (tab === 'fb') loadFBTab();
   if (tab === 'ar_real') cargarARRealData();
