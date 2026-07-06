@@ -10583,6 +10583,18 @@ function renderMHAlertasClasica(alertas) {
   }).join('');
 }
 
+function _calSparkline(data, color) {
+  if (!data || !data.length) return '<div style="width:80px;height:40px"></div>';
+  var max = Math.max.apply(null, data.concat([0.1]));
+  var min = Math.min.apply(null, data);
+  var pts = data.map(function(v, i) {
+    var x = (i / ((data.length - 1) || 1)) * 80;
+    var y = 40 - ((v - min) / ((max - min) || 1)) * 36 - 2;
+    return x.toFixed(1) + ',' + y.toFixed(1);
+  }).join(' ');
+  return '<svg width="80" height="40" style="overflow:visible"><polyline points="' + pts + '" fill="none" stroke="' + color + '" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>';
+}
+
 function renderMHTableFull(hoteles) {
   var tbody = document.getElementById('mh-tbody-full');
   if (!tbody) return;
