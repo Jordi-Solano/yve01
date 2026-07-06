@@ -7750,6 +7750,7 @@ function _showTourStep() {
   }
 
   // Tabs with async data loading need longer delays
+  var _asyncTabs = {'ar_real': 1400, 'multi_hotel': 1800};
   var delay = step.tab ? (_asyncTabs[step.tab] || 700) : 50;
   setTimeout(function() {
     var target = step.el ? document.querySelector(step.el) : null;
