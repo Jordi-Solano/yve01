@@ -3986,6 +3986,23 @@ button, a { touch-action: manipulation; }
 
 <!-- MODAL PIPELINE -->
 <!-- ── File Upload Modal ─────────────────────────────────────────────── -->
+<div id="demo-setup-modal" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,.7);z-index:9100;align-items:center;justify-content:center">
+  <div style="background:var(--s1);border:1px solid rgba(245,158,11,.35);border-radius:20px;padding:26px;width:min(520px,95vw);max-height:85vh;overflow-y:auto">
+    <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:14px">
+      <h2 style="font-size:17px;font-weight:800;margin:0">🎭 Modo Demo personalizado</h2>
+      <button onclick="document.getElementById('demo-setup-modal').style.display='none'" style="background:none;border:none;color:var(--mut);font-size:22px;cursor:pointer">×</button>
+    </div>
+    <div style="font-size:12.5px;color:var(--mut);line-height:1.6;margin-bottom:14px">Escribe tu hotel, tu cadena o varias cadenas y genero datos de ejemplo realistas con esos nombres: facturas, banco, F&B y Multi-Hotel. Ideal para enseñar el producto a clientes y gestorías.</div>
+    <div style="font-size:11px;font-weight:700;color:var(--dim);text-transform:uppercase;letter-spacing:.5px;margin-bottom:6px">Una línea por cadena · formato "Cadena: Hotel 1, Hotel 2"</div>
+    <textarea id="demo-setup-input" rows="4" placeholder="Hotel Miramar
+Cadena Sol: Hotel Sol Mar, Hotel Sol Playa
+Gestoría Nord: Hotel Pirineus, Hotel Vall" style="width:100%;background:var(--bg);border:1px solid var(--s2);color:var(--tx);border-radius:10px;padding:12px;font-size:13px;font-family:inherit;resize:vertical;outline:none"></textarea>
+    <div style="display:flex;gap:10px;justify-content:flex-end;margin-top:14px">
+      <button onclick="document.getElementById('demo-setup-modal').style.display='none'" style="background:var(--s2);border:1px solid var(--s3);color:var(--tx);padding:9px 18px;border-radius:9px;font-size:13px;cursor:pointer">Cancelar</button>
+      <button id="btn-demo-generar" onclick="generarDemo()" style="background:linear-gradient(135deg,#f59e0b,#d97706);border:none;color:#000;padding:9px 20px;border-radius:9px;font-size:13px;font-weight:700;cursor:pointer">🎭 Generar demo</button>
+    </div>
+  </div>
+</div>
 <div id="upload-modal" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,.7);z-index:9000;align-items:center;justify-content:center">
   <div style="background:var(--s1);border:1px solid var(--s2);border-radius:20px;padding:28px;width:min(600px,95vw);max-height:85vh;overflow-y:auto;position:relative">
     <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:22px">
@@ -4880,6 +4897,11 @@ const _i18nCache = {};
 const _i18nOriginal = {}; // textos ES originales — para restaurar al volver a español
 var _i18nStrMap = {
   en: {
+    "🎭 Modo Demo personalizado": "🎭 Custom Demo Mode",
+    "Escribe tu hotel, tu cadena o varias cadenas y genero datos de ejemplo realistas con esos nombres: facturas, banco, F&B y Multi-Hotel. Ideal para enseñar el producto a clientes y gestorías.": "Type your hotel, your chain or several chains and I'll generate realistic sample data with those names: invoices, bank, F&B and Multi-Hotel. Perfect for showing the product to clients and accounting firms.",
+    "Una línea por cadena · formato \"Cadena: Hotel 1, Hotel 2\"": "One line per chain · format \"Chain: Hotel 1, Hotel 2\"",
+    "🎭 Generar demo": "🎭 Generate demo",
+    "Cancelar": "Cancel",
     "El sistema está listo para automatizar las finanzas de tu hotel.": "The system is ready to automate your hotel's finances.",
     "El primer paso: procesa las facturas OTA del mes en": "First step: process this month's OTA invoices in",
     "👋 Bienvenido a Yve.01": "👋 Welcome to Yve.01",
@@ -5112,6 +5134,11 @@ var _i18nStrMap = {
     'Administrador': 'Administrator',
     '👤 Administrador': '👤 Administrator',},
   ca: {
+    "🎭 Modo Demo personalizado": "🎭 Mode Demo personalitzat",
+    "Escribe tu hotel, tu cadena o varias cadenas y genero datos de ejemplo realistas con esos nombres: facturas, banco, F&B y Multi-Hotel. Ideal para enseñar el producto a clientes y gestorías.": "Escriu el teu hotel, la teva cadena o diverses cadenes i genero dades d'exemple realistes amb aquests noms: factures, banc, F&B i Multi-Hotel. Ideal per ensenyar el producte a clients i gestories.",
+    "Una línea por cadena · formato \"Cadena: Hotel 1, Hotel 2\"": "Una línia per cadena · format \"Cadena: Hotel 1, Hotel 2\"",
+    "🎭 Generar demo": "🎭 Generar demo",
+    "Cancelar": "Cancel·lar",
     "El sistema está listo para automatizar las finanzas de tu hotel.": "El sistema està a punt per automatitzar les finances del teu hotel.",
     "El primer paso: procesa las facturas OTA del mes en": "El primer pas: processa les factures OTA del mes a",
     "👋 Bienvenido a Yve.01": "👋 Benvingut a Yve.01",
@@ -5337,6 +5364,11 @@ var _i18nStrMap = {
     'Sin datos F&B.': 'Sense dades F&B.',
     'Reportes': 'Informes',},
   fr: {
+    "🎭 Modo Demo personalizado": "🎭 Mode Démo personnalisé",
+    "Escribe tu hotel, tu cadena o varias cadenas y genero datos de ejemplo realistas con esos nombres: facturas, banco, F&B y Multi-Hotel. Ideal para enseñar el producto a clientes y gestorías.": "Saisissez votre hôtel, votre chaîne ou plusieurs chaînes et je génère des données d'exemple réalistes avec ces noms : factures, banque, F&B et Multi-Hôtel. Idéal pour présenter le produit aux clients et cabinets comptables.",
+    "Una línea por cadena · formato \"Cadena: Hotel 1, Hotel 2\"": "Une ligne par chaîne · format « Chaîne : Hôtel 1, Hôtel 2 »",
+    "🎭 Generar demo": "🎭 Générer la démo",
+    "Cancelar": "Annuler",
     "El sistema está listo para automatizar las finanzas de tu hotel.": "Le système est prêt à automatiser les finances de votre hôtel.",
     "El primer paso: procesa las facturas OTA del mes en": "Première étape : traitez les factures OTA du mois dans",
     "👋 Bienvenido a Yve.01": "👋 Bienvenue sur Yve.01",
@@ -5573,6 +5605,11 @@ var _i18nStrMap = {
     'Administrador': 'Administrateur',
     '👤 Administrador': '👤 Administrateur',},
   de: {
+    "🎭 Modo Demo personalizado": "🎭 Individueller Demo-Modus",
+    "Escribe tu hotel, tu cadena o varias cadenas y genero datos de ejemplo realistas con esos nombres: facturas, banco, F&B y Multi-Hotel. Ideal para enseñar el producto a clientes y gestorías.": "Gib dein Hotel, deine Kette oder mehrere Ketten ein und ich erzeuge realistische Beispieldaten mit diesen Namen: Rechnungen, Bank, F&B und Multi-Hotel. Ideal, um das Produkt Kunden und Steuerbüros zu zeigen.",
+    "Una línea por cadena · formato \"Cadena: Hotel 1, Hotel 2\"": "Eine Zeile pro Kette · Format \"Kette: Hotel 1, Hotel 2\"",
+    "🎭 Generar demo": "🎭 Demo erzeugen",
+    "Cancelar": "Abbrechen",
     "El sistema está listo para automatizar las finanzas de tu hotel.": "Das System ist bereit, die Finanzen deines Hotels zu automatisieren.",
     "El primer paso: procesa las facturas OTA del mes en": "Erster Schritt: Verarbeite die OTA-Rechnungen des Monats in",
     "👋 Bienvenido a Yve.01": "👋 Willkommen bei Yve.01",
@@ -5813,6 +5850,11 @@ var _i18nStrMap = {
     'Administrador': 'Administrator',
     '👤 Administrador': '👤 Administrator',},
   it: {
+    "🎭 Modo Demo personalizado": "🎭 Modalità Demo personalizzata",
+    "Escribe tu hotel, tu cadena o varias cadenas y genero datos de ejemplo realistas con esos nombres: facturas, banco, F&B y Multi-Hotel. Ideal para enseñar el producto a clientes y gestorías.": "Scrivi il tuo hotel, la tua catena o più catene e genero dati di esempio realistici con quei nomi: fatture, banca, F&B e Multi-Hotel. Ideale per mostrare il prodotto a clienti e studi contabili.",
+    "Una línea por cadena · formato \"Cadena: Hotel 1, Hotel 2\"": "Una riga per catena · formato \"Catena: Hotel 1, Hotel 2\"",
+    "🎭 Generar demo": "🎭 Genera demo",
+    "Cancelar": "Annulla",
     "El sistema está listo para automatizar las finanzas de tu hotel.": "Il sistema è pronto ad automatizzare le finanze del tuo hotel.",
     "El primer paso: procesa las facturas OTA del mes en": "Primo passo: elabora le fatture OTA del mese in",
     "👋 Bienvenido a Yve.01": "👋 Benvenuto in Yve.01",
@@ -6043,6 +6085,11 @@ var _i18nStrMap = {
     'Administrador': 'Amministratore',
     '👤 Administrador': '👤 Amministratore',},
   pt: {
+    "🎭 Modo Demo personalizado": "🎭 Modo Demo personalizado",
+    "Escribe tu hotel, tu cadena o varias cadenas y genero datos de ejemplo realistas con esos nombres: facturas, banco, F&B y Multi-Hotel. Ideal para enseñar el producto a clientes y gestorías.": "Escreva seu hotel, sua rede ou várias redes e eu gero dados de exemplo realistas com esses nomes: faturas, banco, F&B e Multi-Hotel. Ideal para mostrar o produto a clientes e escritórios contábeis.",
+    "Una línea por cadena · formato \"Cadena: Hotel 1, Hotel 2\"": "Uma linha por rede · formato \"Rede: Hotel 1, Hotel 2\"",
+    "🎭 Generar demo": "🎭 Gerar demo",
+    "Cancelar": "Cancelar",
     "El sistema está listo para automatizar las finanzas de tu hotel.": "O sistema está pronto para automatizar as finanças do seu hotel.",
     "El primer paso: procesa las facturas OTA del mes en": "Primeiro passo: processe as faturas OTA do mês em",
     "👋 Bienvenido a Yve.01": "👋 Bem-vindo ao Yve.01",
@@ -8952,7 +8999,56 @@ _resetSessionTimer();
 // ═══════════════════════════════════════════════════════════════════
 var demoModeActive = false;
 
+function parseCadenasDemo(texto) {
+  var cadenas = [];
+  texto.split('\n').map(function(l){ return l.trim(); }).filter(Boolean).forEach(function(linea) {
+    if (linea.indexOf(':') > -1) {
+      var partes = linea.split(':');
+      var nombre = partes[0].trim();
+      var hoteles = partes.slice(1).join(':').split(',').map(function(h){ return h.trim(); }).filter(Boolean);
+      if (nombre && hoteles.length) cadenas.push({nombre: nombre, hoteles: hoteles});
+    } else {
+      cadenas.push({nombre: linea, hoteles: [linea]});
+    }
+  });
+  return cadenas;
+}
+
+async function generarDemo() {
+  var cadenas = parseCadenasDemo(document.getElementById('demo-setup-input').value || '');
+  if (!cadenas.length) { showNotification(t('demo.faltaNombre', 'Escribe al menos un hotel o cadena'), 'info'); return; }
+  var btn = document.getElementById('btn-demo-generar');
+  btn.disabled = true; btn.textContent = '⏳ ' + t('demo.generando', 'Generando datos...');
+  try {
+    var r = await _postJson('/api/demo/generar', {cadenas: cadenas});
+    var d = await r.json();
+    if (!d.ok) throw new Error(d.error || 'error');
+    document.getElementById('demo-setup-modal').style.display = 'none';
+    demoModeActive = true;
+    var banner = document.getElementById('demo-banner');
+    if (banner) { banner.style.display = 'block'; document.body.style.paddingTop = '36px'; }
+    var btnD = document.getElementById('btn-demo');
+    if (btnD) { btnD.style.color = '#f59e0b'; btnD.querySelector('span') && (btnD.querySelector('span').textContent = '🎭 Demo ON'); }
+    showNotification('🎭 ' + d.hoteles + ' ' + t('demo.hotelesListos', 'hotel(es) con datos de ejemplo listos'), 'success');
+    _mhClasicaLoaded = false;
+    loadAll(); loadAP(); loadBanco();
+    var tabDestino = d.hoteles > 1 ? 'multi_hotel' : 'ar';
+    var tabEl = document.getElementById('tab-' + tabDestino) || document.getElementById('tab-' + tabDestino.replace(/_/g, '-'));
+    if (tabEl) switchTab(tabDestino, tabEl);
+  } catch(e) {
+    showNotification('✗ Demo: ' + e.message, 'error');
+  }
+  btn.disabled = false; btn.textContent = '🎭 ' + t('demo.generar', 'Generar demo');
+}
+
 async function toggleDemoMode() {
+  // Activar → pedir nombres primero; el toggle real solo apaga
+  if (!demoModeActive) {
+    document.getElementById('main-menu')?.classList.remove('open');
+    document.getElementById('demo-setup-modal').style.display = 'flex';
+    setTimeout(function() { document.getElementById('demo-setup-input').focus(); }, 150);
+    return;
+  }
   try {
     const res = await _postJson('/api/demo/toggle', {});
     const data = await res.json();
@@ -8980,6 +9076,9 @@ async function toggleDemoMode() {
     } else {
       if (banner) { banner.style.display = 'none'; document.body.style.paddingTop = ''; }
       if (btn) { btn.style.color = ''; btn.querySelector('span') && (btn.querySelector('span').textContent = '🎭 Demo Mode'); }
+      _mhClasicaLoaded = false; _mhGrupoActivo = '';
+      showNotification(t('demo.off', 'Demo desactivado — datos de ejemplo eliminados'), 'info');
+      loadAll(); loadAP(); loadBanco();
     }
   } catch(e) {
     console.error('Error en demo:', e);
@@ -10386,18 +10485,47 @@ function setMHView(view) {
   }
 }
 
+var _mhGrupoActivo = '';
+
+function renderMHGrupos(grupos) {
+  var host = document.getElementById('mh-grupo-chips');
+  if (!host) {
+    var stat = document.getElementById('mh-status');
+    if (!stat || !stat.parentNode) return;
+    host = document.createElement('div');
+    host.id = 'mh-grupo-chips';
+    host.style.cssText = 'display:flex;gap:8px;flex-wrap:wrap;margin:0 0 14px';
+    stat.parentNode.insertBefore(host, stat);
+  }
+  if (!grupos || grupos.length < 2) { host.innerHTML = ''; return; }
+  var chips = [''].concat(grupos);
+  host.innerHTML = chips.map(function(g) {
+    var sel = (g || '') === (_mhGrupoActivo || '');
+    var label = g ? '🏨 ' + g : t('mh.todasCadenas', 'Todas las cadenas');
+    return '<button onclick="filtrarMHGrupo(this.dataset.g)" data-g="' + g.replace(/"/g, '&quot;') + '" style="padding:6px 14px;border-radius:18px;font-size:12px;cursor:pointer;font-weight:600;transition:.15s;' +
+      (sel ? 'background:var(--acc,#3b82f6);border:1px solid var(--acc,#3b82f6);color:#fff' : 'background:rgba(255,255,255,.05);border:1px solid var(--s2);color:var(--mut)') + '">' + label + '</button>';
+  }).join('');
+}
+
+function filtrarMHGrupo(g) {
+  _mhGrupoActivo = g || '';
+  _mhClasicaLoaded = false;
+  loadMHClasica();
+}
+
 async function loadMHClasica() {
   if (_mhClasicaLoaded) return;
   try {
+    var _q = _mhGrupoActivo ? '?grupo=' + encodeURIComponent(_mhGrupoActivo) : '';
     var [ovRes, rkRes, alRes] = await Promise.all([
-      fetch('/api/multi_hotel/overview'),
-      fetch('/api/multi_hotel/rankings'),
+      fetch('/api/multi_hotel/overview' + _q),
+      fetch('/api/multi_hotel/rankings' + _q),
       fetch('/api/multi_hotel/alertas')
     ]);
     var ov = await ovRes.json();
     var rk = await rkRes.json();
     var al = await alRes.json();
-    if (ov.ok) { renderMHStatus(ov); renderMHTableFull(ov.hoteles || []); }
+    if (ov.ok) { renderMHGrupos(ov.grupos || []); renderMHStatus(ov); renderMHTableFull(ov.hoteles || []); }
     if (rk.ok) renderMHRankings(rk.revpar || []);
     if (al.ok) renderMHAlertasClasica(al.alertas || []);
     _mhClasicaLoaded = true;
@@ -10463,7 +10591,8 @@ function renderMHTableFull(hoteles) {
     var stColor = alertas === 0 ? '#22c55e' : alertas <= 2 ? '#f59e0b' : '#ef4444';
     var stIcon = alertas === 0 ? '●' : alertas <= 2 ? '▲' : '■';
     return '<tr>' +
-      '<td style="font-weight:600">' + (h.nombre || h.hotel_nombre || '') + '</td>' +
+      '<td style="font-weight:600">' + (h.nombre || h.hotel_nombre || '') +
+        (h.grupo && !_mhGrupoActivo ? '<div style="font-size:10px;color:var(--dim);font-weight:400">' + h.grupo + '</div>' : '') + '</td>' +
       '<td style="color:var(--mut)">' + (h.stars ? '★'.repeat(h.stars) : '—') + '</td>' +
       '<td style="text-align:right">' + (h.habitaciones || 0) + '</td>' +
       '<td style="text-align:right">' + (h.ocupacion_pct || 0) + '%</td>' +
@@ -11221,12 +11350,41 @@ window.addEventListener('scroll', () => {
 </html>"""
 
 
-@app.route('/api/demo/toggle', methods=['POST'])
-def toggle_demo():
-    """Activa/desactiva demo mode"""
+@app.route('/api/demo/generar', methods=['POST'])
+@login_required
+def api_demo_generar():
+    """Genera datos demo con los nombres de hotel/cadena(s) que da el usuario."""
     global DEMO_MODE
-    DEMO_MODE = not DEMO_MODE
-    return jsonify({"demo_mode": DEMO_MODE, "status": "activado" if DEMO_MODE else "desactivado"})
+    data = request.get_json(force=True) or {}
+    cadenas = data.get('cadenas') or []
+    cadenas = [c for c in cadenas if c.get('nombre') and c.get('hoteles')]
+    if not cadenas:
+        return jsonify({'ok': False, 'error': 'Indica al menos un hotel o cadena'}), 400
+    try:
+        from demo_generator import generar_demo
+        resumen = generar_demo(cadenas)
+        DEMO_MODE = True
+        _audit('DEMO_ON', f"{resumen['hoteles']} hoteles, {resumen['cadenas']} cadenas")
+        return jsonify({'ok': True, 'demo_mode': True, **resumen})
+    except Exception as e:
+        return jsonify({'ok': False, 'error': str(e)[:200]}), 500
+
+
+@app.route('/api/demo/toggle', methods=['POST'])
+@login_required
+def toggle_demo():
+    """Desactiva demo mode y limpia los datos generados."""
+    global DEMO_MODE
+    if DEMO_MODE:
+        DEMO_MODE = False
+        try:
+            from demo_generator import limpiar_demo
+            limpiar_demo()
+        except Exception:
+            pass
+        return jsonify({"demo_mode": False, "status": "desactivado"})
+    DEMO_MODE = True
+    return jsonify({"demo_mode": True, "status": "activado"})
 
 @app.route('/api/demo/status')
 def demo_status():

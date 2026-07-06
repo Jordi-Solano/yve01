@@ -369,5 +369,11 @@
   "ar.vacioTitulo": "Encara no hi ha factures",
   "ar.vacioSub": "Crea'n una amb “Nova factura” o processa documents de grups i apareixeran aquí.",
   "notif.pushOk": "Notificacions activades ✓ T'avisaré de discrepàncies i alertes.",
-  "notif.pushDenegado": "Permís de notificacions denegat pel navegador"
+  "notif.pushDenegado": "Permís de notificacions denegat pel navegador",
+  "demo.faltaNombre": "Escriu almenys un hotel o cadena",
+  "demo.generando": "Generant dades...",
+  "demo.hotelesListos": "hotel(s) amb dades d'exemple a punt",
+  "demo.generar": "Generar demo",
+  "demo.off": "Demo desactivada — dades d'exemple eliminades",
+  "mh.todasCadenas": "Totes les cadenes"
 }

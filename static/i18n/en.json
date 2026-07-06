@@ -369,5 +369,11 @@
   "ar.vacioTitulo": "No invoices yet",
   "ar.vacioSub": "Create one with “New invoice” or process group documents and they'll show up here.",
   "notif.pushOk": "Notifications enabled ✓ I'll alert you about discrepancies and issues.",
-  "notif.pushDenegado": "Notification permission denied by the browser"
+  "notif.pushDenegado": "Notification permission denied by the browser",
+  "demo.faltaNombre": "Type at least one hotel or chain",
+  "demo.generando": "Generating data...",
+  "demo.hotelesListos": "hotel(s) with sample data ready",
+  "demo.generar": "Generate demo",
+  "demo.off": "Demo off — sample data removed",
+  "mh.todasCadenas": "All chains"
 }

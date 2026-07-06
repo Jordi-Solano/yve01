@@ -369,5 +369,11 @@
   "ar.vacioTitulo": "Pas encore de factures",
   "ar.vacioSub": "Créez-en une avec « Nouvelle facture » ou traitez des documents de groupes et elles apparaîtront ici.",
   "notif.pushOk": "Notifications activées ✓ Je vous alerterai des écarts et alertes.",
-  "notif.pushDenegado": "Permission de notifications refusée par le navigateur"
+  "notif.pushDenegado": "Permission de notifications refusée par le navigateur",
+  "demo.faltaNombre": "Saisissez au moins un hôtel ou une chaîne",
+  "demo.generando": "Génération des données...",
+  "demo.hotelesListos": "hôtel(s) avec données d'exemple prêts",
+  "demo.generar": "Générer la démo",
+  "demo.off": "Démo désactivée — données d'exemple supprimées",
+  "mh.todasCadenas": "Toutes les chaînes"
 }

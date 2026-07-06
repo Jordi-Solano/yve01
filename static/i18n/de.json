@@ -369,5 +369,11 @@
   "ar.vacioTitulo": "Noch keine Rechnungen",
   "ar.vacioSub": "Erstelle eine mit „Neue Rechnung“ oder verarbeite Gruppendokumente – sie erscheinen hier.",
   "notif.pushOk": "Benachrichtigungen aktiviert ✓ Ich melde dir Abweichungen und Alerts.",
-  "notif.pushDenegado": "Benachrichtigungs-Berechtigung vom Browser verweigert"
+  "notif.pushDenegado": "Benachrichtigungs-Berechtigung vom Browser verweigert",
+  "demo.faltaNombre": "Gib mindestens ein Hotel oder eine Kette ein",
+  "demo.generando": "Erzeuge Daten...",
+  "demo.hotelesListos": "Hotel(s) mit Beispieldaten bereit",
+  "demo.generar": "Demo erzeugen",
+  "demo.off": "Demo aus — Beispieldaten entfernt",
+  "mh.todasCadenas": "Alle Ketten"
 }

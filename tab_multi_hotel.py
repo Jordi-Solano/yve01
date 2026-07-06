@@ -30,13 +30,8 @@ def api_multi_overview():
 
     # Filtro de grupo (para Calipolis y futuros grupos)
     grupo_param = _freq.args.get('grupo', '').strip().lower()
-    if 'grupo' in df.columns:
-        if grupo_param:
-            df = df[df['grupo'].str.lower() == grupo_param].copy()
-        else:
-            # Sin filtro de grupo: excluir hoteles que pertenecen a un grupo específico
-            # Solo mostrar hoteles sin grupo (grupo='default' o vacío)
-            df = df[df['grupo'].str.lower().isin(['default', ''])].copy()
+    if 'grupo' in df.columns and grupo_param:
+        df = df[df['grupo'].astype(str).str.lower() == grupo_param].copy()
     if df.empty:
         error_msg = f'Sin datos para grupo: {grupo_param}' if grupo_param else 'Sin hoteles configurados en Multi-Hotel. Añade hoteles desde el panel de administración.'
         return jsonify({'ok': False, 'error': error_msg}), 404
@@ -102,6 +97,7 @@ def api_multi_overview():
             'estado_oracle':  str(row.get('estado_oracle', 'SIMULACION')),
             'gop_trend':      gop_trend,
             'avg_gop':        round(float(h_hist['gop_pct'].mean()), 1),
+            'grupo':          str(row.get('grupo', '') or ''),
         })
     
     # Sort by GOP%
@@ -125,15 +121,20 @@ def api_multi_overview():
             'alertas_activas': total_alerts,
         },
         'hoteles': hoteles,
-        'grupos': [{'id': 'CAL', 'nombre': 'Grupo Calipolis', 'n_hoteles': len(hoteles)}],
+        'grupos': sorted(set(h['grupo'] for h in hoteles if h.get('grupo') and h['grupo'].lower() not in ('default', 'nan'))),
         'rev_trend': rev_trend,
     })
 
 @multi_hotel_bp.route('/api/multi_hotel/rankings')
 def api_multi_rankings():
     """Hotel performance rankings."""
+    from flask import request as _frq2
     df = _load_kpis()
     if df.empty: return jsonify({'ok': False, 'error': 'Sin datos'}), 404
+    _g = _frq2.args.get('grupo', '').strip().lower()
+    if _g and 'grupo' in df.columns:
+        df = df[df['grupo'].astype(str).str.lower() == _g].copy()
+        if df.empty: return jsonify({'ok': False, 'error': 'Sin datos'}), 404
     latest = _latest_month(df)
     
     by_gop    = latest.sort_values('gop_pct', ascending=False)[['hotel_nombre','gop_pct']].to_dict('records')

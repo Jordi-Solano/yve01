@@ -369,5 +369,11 @@
   "ar.vacioTitulo": "Ancora nessuna fattura",
   "ar.vacioSub": "Creane una con “Nuova fattura” o elabora documenti di gruppi e appariranno qui.",
   "notif.pushOk": "Notifiche attivate ✓ Ti avviserò di discrepanze e avvisi.",
-  "notif.pushDenegado": "Permesso notifiche negato dal browser"
+  "notif.pushDenegado": "Permesso notifiche negato dal browser",
+  "demo.faltaNombre": "Scrivi almeno un hotel o una catena",
+  "demo.generando": "Generazione dati...",
+  "demo.hotelesListos": "hotel con dati di esempio pronti",
+  "demo.generar": "Genera demo",
+  "demo.off": "Demo disattivata — dati di esempio rimossi",
+  "mh.todasCadenas": "Tutte le catene"
 }
