@@ -184,7 +184,7 @@ def api_inventario():
         inv_path = _os2.path.join(_os2.path.dirname(_os2.path.abspath(__file__)), "datos-referencia", "inventario.xlsx")
         _df_inv_check = pd.read_excel(inv_path)
         if _df_inv_check.empty or len(_df_inv_check) < 1:
-            return jsonify({"items": [], "total_valor": 0, "categorias": {}})
+            return jsonify({'ok': True, 'items': [], 'valor_total': 0, 'alertas_count': 0, 'criticos_count': 0, 'top_alerts': []})
         df = _xlsx("inventario.xlsx")
         df['stock_actual_kg_l'] = pd.to_numeric(df['stock_actual_kg_l'], errors='coerce').fillna(0)
         df['stock_inicial_kg_l'] = pd.to_numeric(df['stock_inicial_kg_l'], errors='coerce').fillna(0)
@@ -224,7 +224,7 @@ def api_mermas():
         mer_path = _os3.path.join(_os3.path.dirname(_os3.path.abspath(__file__)), "datos-referencia", "mermas.xlsx")
         _df_mer_check = pd.read_excel(mer_path)
         if _df_mer_check.empty or len(_df_mer_check) < 1:
-            return jsonify({"mermas": [], "total": 0})
+            return jsonify({'ok': True, 'mermas': [], 'total_coste': 0, 'por_categoria': {}, 'total': 0, 'por_causa': {}})
         df = _xlsx("mermas.xlsx")
         # Normalizar: Claude puede devolver 'coste' en vez de 'coste_merma'
         if 'coste_merma' not in df.columns and 'coste' in df.columns:

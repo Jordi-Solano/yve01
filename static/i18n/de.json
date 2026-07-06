@@ -349,5 +349,12 @@
   "tour.title7": "Multi-Hotel",
   "nav.procesarDoc": "⚡ Dokument verarbeiten",
   "bk.conciliacionOk": "Abstimmung abgeschlossen",
-  "bk.sinFacturas": "keine AP/AR-Rechnungen zum Abgleich: zuerst Rechnungen verarbeiten"
+  "bk.sinFacturas": "keine AP/AR-Rechnungen zum Abgleich: zuerst Rechnungen verarbeiten",
+  "fb.sinInventario": "Keine Inventardaten. Lade ein Inventar mit ⚡ hoch.",
+  "fb.sinMermas": "Kein Schwund erfasst.",
+  "fb.sinRecetas": "Keine Rezepte. Verarbeite F&B-Dokumente, um sie zu laden.",
+  "fb.enCarta": "Rezepte auf der Karte",
+  "bk.dias": "Tage",
+  "bk.sinConciliar": "nicht abgestimmt:",
+  "ar.activos": "aktiv"
 }

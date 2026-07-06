@@ -349,5 +349,12 @@
   "tour.title7": "Multi-Hotel",
   "nav.procesarDoc": "⚡ Process document",
   "bk.conciliacionOk": "Reconciliation completed",
-  "bk.sinFacturas": "no AP/AR invoices to match: process invoices first"
+  "bk.sinFacturas": "no AP/AR invoices to match: process invoices first",
+  "fb.sinInventario": "No inventory data. Upload an inventory with ⚡ Process Files.",
+  "fb.sinMermas": "No waste recorded.",
+  "fb.sinRecetas": "No recipes. Process F&B documents to load them.",
+  "fb.enCarta": "recipes on the menu",
+  "bk.dias": "days",
+  "bk.sinConciliar": "unmatched:",
+  "ar.activos": "active"
 }

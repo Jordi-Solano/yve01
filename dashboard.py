@@ -4858,6 +4858,48 @@ const _i18nCache = {};
 const _i18nOriginal = {}; // textos ES originales — para restaurar al volver a español
 var _i18nStrMap = {
   en: {
+    "Sin alertas bancarias pendientes.": "No pending bank alerts.",
+    "Sin alertas bancarias.": "No bank alerts.",
+    "● Activo": "● Active",
+    "○ Inactivo": "○ Inactive",
+    "Email de notificaciones": "Notification email",
+    "No hay facturas con este filtro": "No invoices with this filter",
+    "No hay hoteles en el grupo": "No hotels in the group",
+    "Mes actual": "Current month",
+    "🏆 Top Performers (RevPAR)": "🏆 Top Performers (RevPAR)",
+    "Todos los hoteles": "All hotels",
+    "Hab.": "Rooms",
+    "Ocup.": "Occ.",
+    "Categoría": "Category",
+    "Estado": "Status",
+    "📄 Diario": "📄 Daily",
+    "📊 Semanal": "📊 Weekly",
+    "📈 Mensual": "📈 Monthly",
+    "🎯 Ejecutivo PDF": "🎯 Executive PDF",
+    "📊 Consolidado Excel": "📊 Consolidated Excel",
+    "📋 Historial de procesado": "📋 Processing history",
+    "↻ Actualizar datos": "↻ Refresh data",
+    "🎨 Personalizar colores": "🎨 Customize colors",
+    "🌅 Briefing de hoy": "🌅 Today's briefing",
+    "⚠️ ¿Qué discrepancias tengo abiertas?": "⚠️ What open discrepancies do I have?",
+    "💰 ¿Cuánto puedo reclamar este mes?": "💰 How much can I claim this month?",
+    "📋 ¿Qué necesita mi firma hoy?": "📋 What needs my signature today?",
+    "Escribe aquí…": "Type here…",
+    "Conciliado:": "Matched:",
+    "FC% promedio": "Average FC%",
+    "media ponderada": "weighted average",
+    "Alertas FC alto": "High FC alerts",
+    "media del menú": "menu average",
+    "Mejor margen": "Best margin",
+    "menor FC%": "lowest FC%",
+    "FC% Medio": "Avg FC%",
+    "revisar urgente": "review urgently",
+    "Receta": "Recipe",
+    "PVP": "Price",
+    "Coste": "Cost",
+    "Margen": "Margin",
+    "Crítico": "Critical",
+    "Bajo": "Low",
     "📸 Escanear Documento": "📸 Scan Document",
     "Haz una foto al documento físico (factura, BEO, contrato, extracto...) y Yve lo leerá con IA.": "Take a photo of the physical document (invoice, BEO, contract, statement...) and Yve will read it with AI.",
     "📸 Cámara": "📸 Camera",
@@ -5029,6 +5071,48 @@ var _i18nStrMap = {
     'Administrador': 'Administrator',
     '👤 Administrador': '👤 Administrator',},
   ca: {
+    "Sin alertas bancarias pendientes.": "Sense alertes bancàries pendents.",
+    "Sin alertas bancarias.": "Sense alertes bancàries.",
+    "● Activo": "● Actiu",
+    "○ Inactivo": "○ Inactiu",
+    "Email de notificaciones": "Email de notificacions",
+    "No hay facturas con este filtro": "No hi ha factures amb aquest filtre",
+    "No hay hoteles en el grupo": "No hi ha hotels al grup",
+    "Mes actual": "Mes actual",
+    "🏆 Top Performers (RevPAR)": "🏆 Millors hotels (RevPAR)",
+    "Todos los hoteles": "Tots els hotels",
+    "Hab.": "Hab.",
+    "Ocup.": "Ocup.",
+    "Categoría": "Categoria",
+    "Estado": "Estat",
+    "📄 Diario": "📄 Diari",
+    "📊 Semanal": "📊 Setmanal",
+    "📈 Mensual": "📈 Mensual",
+    "🎯 Ejecutivo PDF": "🎯 Executiu PDF",
+    "📊 Consolidado Excel": "📊 Consolidat Excel",
+    "📋 Historial de procesado": "📋 Historial de processament",
+    "↻ Actualizar datos": "↻ Actualitzar dades",
+    "🎨 Personalizar colores": "🎨 Personalitzar colors",
+    "🌅 Briefing de hoy": "🌅 Briefing d'avui",
+    "⚠️ ¿Qué discrepancias tengo abiertas?": "⚠️ Quines discrepàncies tinc obertes?",
+    "💰 ¿Cuánto puedo reclamar este mes?": "💰 Quant puc reclamar aquest mes?",
+    "📋 ¿Qué necesita mi firma hoy?": "📋 Què necessita la meva signatura avui?",
+    "Escribe aquí…": "Escriu aquí…",
+    "Conciliado:": "Conciliat:",
+    "FC% promedio": "FC% mitjà",
+    "media ponderada": "mitjana ponderada",
+    "Alertas FC alto": "Alertes FC alt",
+    "media del menú": "mitjana de la carta",
+    "Mejor margen": "Millor marge",
+    "menor FC%": "menor FC%",
+    "FC% Medio": "FC% mitjà",
+    "revisar urgente": "revisar urgent",
+    "Receta": "Recepta",
+    "PVP": "PVP",
+    "Coste": "Cost",
+    "Margen": "Marge",
+    "Crítico": "Crític",
+    "Bajo": "Baix",
     "📸 Escanear Documento": "📸 Escanejar Document",
     "Haz una foto al documento físico (factura, BEO, contrato, extracto...) y Yve lo leerá con IA.": "Fes una foto al document físic (factura, BEO, contracte, extracte...) i Yve el llegirà amb IA.",
     "📸 Cámara": "📸 Càmera",
@@ -5193,6 +5277,48 @@ var _i18nStrMap = {
     'Sin datos F&B.': 'Sense dades F&B.',
     'Reportes': 'Informes',},
   fr: {
+    "Sin alertas bancarias pendientes.": "Aucune alerte bancaire en attente.",
+    "Sin alertas bancarias.": "Aucune alerte bancaire.",
+    "● Activo": "● Actif",
+    "○ Inactivo": "○ Inactif",
+    "Email de notificaciones": "Email de notifications",
+    "No hay facturas con este filtro": "Aucune facture avec ce filtre",
+    "No hay hoteles en el grupo": "Aucun hôtel dans le groupe",
+    "Mes actual": "Mois en cours",
+    "🏆 Top Performers (RevPAR)": "🏆 Meilleurs hôtels (RevPAR)",
+    "Todos los hoteles": "Tous les hôtels",
+    "Hab.": "Ch.",
+    "Ocup.": "Occ.",
+    "Categoría": "Catégorie",
+    "Estado": "Statut",
+    "📄 Diario": "📄 Quotidien",
+    "📊 Semanal": "📊 Hebdomadaire",
+    "📈 Mensual": "📈 Mensuel",
+    "🎯 Ejecutivo PDF": "🎯 PDF exécutif",
+    "📊 Consolidado Excel": "📊 Excel consolidé",
+    "📋 Historial de procesado": "📋 Historique de traitement",
+    "↻ Actualizar datos": "↻ Actualiser les données",
+    "🎨 Personalizar colores": "🎨 Personnaliser les couleurs",
+    "🌅 Briefing de hoy": "🌅 Briefing du jour",
+    "⚠️ ¿Qué discrepancias tengo abiertas?": "⚠️ Quels écarts sont ouverts ?",
+    "💰 ¿Cuánto puedo reclamar este mes?": "💰 Combien puis-je réclamer ce mois-ci ?",
+    "📋 ¿Qué necesita mi firma hoy?": "📋 Qu'attend ma signature aujourd'hui ?",
+    "Escribe aquí…": "Écris ici…",
+    "Conciliado:": "Rapproché :",
+    "FC% promedio": "FC% moyen",
+    "media ponderada": "moyenne pondérée",
+    "Alertas FC alto": "Alertes FC élevé",
+    "media del menú": "moyenne du menu",
+    "Mejor margen": "Meilleure marge",
+    "menor FC%": "FC% le plus bas",
+    "FC% Medio": "FC% moyen",
+    "revisar urgente": "à vérifier d'urgence",
+    "Receta": "Recette",
+    "PVP": "Prix",
+    "Coste": "Coût",
+    "Margen": "Marge",
+    "Crítico": "Critique",
+    "Bajo": "Bas",
     "📸 Escanear Documento": "📸 Scanner un document",
     "Haz una foto al documento físico (factura, BEO, contrato, extracto...) y Yve lo leerá con IA.": "Prenez une photo du document physique (facture, BEO, contrat, relevé...) et Yve le lira avec l'IA.",
     "📸 Cámara": "📸 Caméra",
@@ -5368,6 +5494,48 @@ var _i18nStrMap = {
     'Administrador': 'Administrateur',
     '👤 Administrador': '👤 Administrateur',},
   de: {
+    "Sin alertas bancarias pendientes.": "Keine offenen Bankwarnungen.",
+    "Sin alertas bancarias.": "Keine Bankwarnungen.",
+    "● Activo": "● Aktiv",
+    "○ Inactivo": "○ Inaktiv",
+    "Email de notificaciones": "Benachrichtigungs-E-Mail",
+    "No hay facturas con este filtro": "Keine Rechnungen mit diesem Filter",
+    "No hay hoteles en el grupo": "Keine Hotels in der Gruppe",
+    "Mes actual": "Aktueller Monat",
+    "🏆 Top Performers (RevPAR)": "🏆 Top-Hotels (RevPAR)",
+    "Todos los hoteles": "Alle Hotels",
+    "Hab.": "Zim.",
+    "Ocup.": "Ausl.",
+    "Categoría": "Kategorie",
+    "Estado": "Status",
+    "📄 Diario": "📄 Täglich",
+    "📊 Semanal": "📊 Wöchentlich",
+    "📈 Mensual": "📈 Monatlich",
+    "🎯 Ejecutivo PDF": "🎯 Executive-PDF",
+    "📊 Consolidado Excel": "📊 Konsolidiertes Excel",
+    "📋 Historial de procesado": "📋 Verarbeitungsverlauf",
+    "↻ Actualizar datos": "↻ Daten aktualisieren",
+    "🎨 Personalizar colores": "🎨 Farben anpassen",
+    "🌅 Briefing de hoy": "🌅 Briefing von heute",
+    "⚠️ ¿Qué discrepancias tengo abiertas?": "⚠️ Welche offenen Abweichungen habe ich?",
+    "💰 ¿Cuánto puedo reclamar este mes?": "💰 Wie viel kann ich diesen Monat zurückfordern?",
+    "📋 ¿Qué necesita mi firma hoy?": "📋 Was braucht heute meine Unterschrift?",
+    "Escribe aquí…": "Hier schreiben…",
+    "Conciliado:": "Abgestimmt:",
+    "FC% promedio": "Ø WEK %",
+    "media ponderada": "gewichteter Durchschnitt",
+    "Alertas FC alto": "Warnungen hoher WEK",
+    "media del menú": "Menü-Durchschnitt",
+    "Mejor margen": "Beste Marge",
+    "menor FC%": "niedrigster WEK %",
+    "FC% Medio": "Ø WEK %",
+    "revisar urgente": "dringend prüfen",
+    "Receta": "Rezept",
+    "PVP": "VK-Preis",
+    "Coste": "Kosten",
+    "Margen": "Marge",
+    "Crítico": "Kritisch",
+    "Bajo": "Niedrig",
     "📸 Escanear Documento": "📸 Dokument scannen",
     "Haz una foto al documento físico (factura, BEO, contrato, extracto...) y Yve lo leerá con IA.": "Fotografiere das physische Dokument (Rechnung, BEO, Vertrag, Kontoauszug...) und Yve liest es mit KI.",
     "📸 Cámara": "📸 Kamera",
@@ -5547,6 +5715,48 @@ var _i18nStrMap = {
     'Administrador': 'Administrator',
     '👤 Administrador': '👤 Administrator',},
   it: {
+    "Sin alertas bancarias pendientes.": "Nessun avviso bancario in sospeso.",
+    "Sin alertas bancarias.": "Nessun avviso bancario.",
+    "● Activo": "● Attivo",
+    "○ Inactivo": "○ Inattivo",
+    "Email de notificaciones": "Email di notifica",
+    "No hay facturas con este filtro": "Nessuna fattura con questo filtro",
+    "No hay hoteles en el grupo": "Nessun hotel nel gruppo",
+    "Mes actual": "Mese corrente",
+    "🏆 Top Performers (RevPAR)": "🏆 Migliori hotel (RevPAR)",
+    "Todos los hoteles": "Tutti gli hotel",
+    "Hab.": "Cam.",
+    "Ocup.": "Occ.",
+    "Categoría": "Categoria",
+    "Estado": "Stato",
+    "📄 Diario": "📄 Giornaliero",
+    "📊 Semanal": "📊 Settimanale",
+    "📈 Mensual": "📈 Mensile",
+    "🎯 Ejecutivo PDF": "🎯 PDF esecutivo",
+    "📊 Consolidado Excel": "📊 Excel consolidato",
+    "📋 Historial de procesado": "📋 Cronologia elaborazioni",
+    "↻ Actualizar datos": "↻ Aggiorna dati",
+    "🎨 Personalizar colores": "🎨 Personalizza colori",
+    "🌅 Briefing de hoy": "🌅 Briefing di oggi",
+    "⚠️ ¿Qué discrepancias tengo abiertas?": "⚠️ Quali discrepanze ho aperte?",
+    "💰 ¿Cuánto puedo reclamar este mes?": "💰 Quanto posso reclamare questo mese?",
+    "📋 ¿Qué necesita mi firma hoy?": "📋 Cosa richiede la mia firma oggi?",
+    "Escribe aquí…": "Scrivi qui…",
+    "Conciliado:": "Riconciliato:",
+    "FC% promedio": "FC% medio",
+    "media ponderada": "media ponderata",
+    "Alertas FC alto": "Avvisi FC alto",
+    "media del menú": "media del menu",
+    "Mejor margen": "Miglior margine",
+    "menor FC%": "FC% più basso",
+    "FC% Medio": "FC% medio",
+    "revisar urgente": "verificare urgentemente",
+    "Receta": "Ricetta",
+    "PVP": "Prezzo",
+    "Coste": "Costo",
+    "Margen": "Margine",
+    "Crítico": "Critico",
+    "Bajo": "Basso",
     "📸 Escanear Documento": "📸 Scansiona documento",
     "Haz una foto al documento físico (factura, BEO, contrato, extracto...) y Yve lo leerá con IA.": "Scatta una foto al documento fisico (fattura, BEO, contratto, estratto...) e Yve lo leggerà con l'IA.",
     "📸 Cámara": "📸 Fotocamera",
@@ -5716,6 +5926,48 @@ var _i18nStrMap = {
     'Administrador': 'Amministratore',
     '👤 Administrador': '👤 Amministratore',},
   pt: {
+    "Sin alertas bancarias pendientes.": "Sem alertas bancários pendentes.",
+    "Sin alertas bancarias.": "Sem alertas bancários.",
+    "● Activo": "● Ativo",
+    "○ Inactivo": "○ Inativo",
+    "Email de notificaciones": "Email de notificações",
+    "No hay facturas con este filtro": "Sem faturas com este filtro",
+    "No hay hoteles en el grupo": "Sem hotéis no grupo",
+    "Mes actual": "Mês atual",
+    "🏆 Top Performers (RevPAR)": "🏆 Melhores hotéis (RevPAR)",
+    "Todos los hoteles": "Todos os hotéis",
+    "Hab.": "Qua.",
+    "Ocup.": "Ocup.",
+    "Categoría": "Categoria",
+    "Estado": "Estado",
+    "📄 Diario": "📄 Diário",
+    "📊 Semanal": "📊 Semanal",
+    "📈 Mensual": "📈 Mensal",
+    "🎯 Ejecutivo PDF": "🎯 PDF executivo",
+    "📊 Consolidado Excel": "📊 Excel consolidado",
+    "📋 Historial de procesado": "📋 Histórico de processamento",
+    "↻ Actualizar datos": "↻ Atualizar dados",
+    "🎨 Personalizar colores": "🎨 Personalizar cores",
+    "🌅 Briefing de hoy": "🌅 Briefing de hoje",
+    "⚠️ ¿Qué discrepancias tengo abiertas?": "⚠️ Que discrepâncias tenho em aberto?",
+    "💰 ¿Cuánto puedo reclamar este mes?": "💰 Quanto posso reclamar este mês?",
+    "📋 ¿Qué necesita mi firma hoy?": "📋 O que precisa da minha assinatura hoje?",
+    "Escribe aquí…": "Escreva aqui…",
+    "Conciliado:": "Conciliado:",
+    "FC% promedio": "FC% médio",
+    "media ponderada": "média ponderada",
+    "Alertas FC alto": "Alertas FC alto",
+    "media del menú": "média do menu",
+    "Mejor margen": "Melhor margem",
+    "menor FC%": "menor FC%",
+    "FC% Medio": "FC% médio",
+    "revisar urgente": "revisar urgente",
+    "Receta": "Receita",
+    "PVP": "PVP",
+    "Coste": "Custo",
+    "Margen": "Margem",
+    "Crítico": "Crítico",
+    "Bajo": "Baixo",
     "📸 Escanear Documento": "📸 Escanear Documento",
     "Haz una foto al documento físico (factura, BEO, contrato, extracto...) y Yve lo leerá con IA.": "Tire uma foto do documento físico (fatura, BEO, contrato, extrato...) e a Yve o lerá com IA.",
     "📸 Cámara": "📸 Câmera",
@@ -5918,7 +6170,7 @@ function applyI18n(data) {
   // After translating data-i18n elements, also walk text nodes
   if (_i18nLang && _i18nLang !== 'es') {
     // Small delay to let any pending renders finish
-    setTimeout(function() { _applyStrMap(_i18nLang); }, 800);
+    setTimeout(function() { _applyStrMap(_i18nLang); if (typeof _applyPlaceholders === 'function') _applyPlaceholders(_i18nLang); }, 800);
   }
 }
 
@@ -6879,6 +7131,29 @@ setInterval(_updateClock, 1000);
     loadI18n(_savedLang);
   }
 })();
+// ── Observador i18n: cualquier contenido nuevo del DOM se retraduce solo ──
+var _i18nObsTimer = null, _i18nApplying = false;
+function _applyPlaceholders(lang) {
+  var map = _i18nStrMap[lang];
+  if (!map) return;
+  document.querySelectorAll('input[placeholder],textarea[placeholder]').forEach(function(el) {
+    var p = el.getAttribute('placeholder');
+    if (p && map[p]) el.setAttribute('placeholder', map[p]);
+  });
+}
+(function() {
+  var obs = new MutationObserver(function() {
+    if (_i18nApplying) return;
+    if (!_i18nLang || _i18nLang === 'es') return;
+    clearTimeout(_i18nObsTimer);
+    _i18nObsTimer = setTimeout(function() {
+      _i18nApplying = true;
+      try { _applyStrMap(_i18nLang); _applyPlaceholders(_i18nLang); }
+      finally { setTimeout(function() { _i18nApplying = false; }, 60); }
+    }, 250);
+  });
+  obs.observe(document.body, {childList: true, subtree: true, characterData: true});
+})();
 // Changelog badge
 if (localStorage.getItem('changelog_seen') !== '2026-06-v3') {
   const mb = document.getElementById('menu-badge');
@@ -7066,6 +7341,10 @@ function _tourBoxCoords(pos, bw, bh) {
     case 'tr':     return { top: navH + pad, left: vw - bw - pad };
     case 'bl':     return { top: vh - bh - pad, left: pad };
     case 'br':     return { top: vh - bh - pad, left: vw - bw - pad };
+    case 'tc':     return { top: navH + pad, left: Math.round((vw - bw)/2) };
+    case 'bc':     return { top: vh - bh - pad, left: Math.round((vw - bw)/2) };
+    case 'lc':     return { top: Math.round((vh - bh)/2), left: pad };
+    case 'rc':     return { top: Math.round((vh - bh)/2), left: vw - bw - pad };
     default:       return { top: Math.round((vh - bh)/2), left: Math.round((vw - bw)/2) };
   }
 }
@@ -7225,24 +7504,48 @@ function _renderTourBox(step) {
 // ── Drag & imán: arrastra la burbuja y se acopla sola a la zona más cercana ──
 function _initTourDrag(box) {
   box.style.cursor = 'grab';
+  function _startDrag(cx, cy) {
+    var rect = box.getBoundingClientRect();
+    box.style.transition = 'none';
+    box.style.animation = 'none';
+    box.style.left = rect.left + 'px';
+    box.style.top = rect.top + 'px';
+    box.style.transform = 'none';
+    box.style.willChange = 'transform';
+    return { x: cx, y: cy };
+  }
+  function _makeMover(start) {
+    var dx = 0, dy = 0, raf = null, moved = false;
+    function paint() { raf = null; box.style.transform = 'translate3d(' + dx + 'px,' + dy + 'px,0)'; }
+    return {
+      move: function(cx, cy) {
+        moved = true;
+        dx = cx - start.x; dy = cy - start.y;
+        if (!raf) raf = requestAnimationFrame(paint);
+      },
+      end: function() {
+        if (raf) cancelAnimationFrame(raf);
+        box.style.willChange = '';
+        if (!moved) return;
+        var r = box.getBoundingClientRect();
+        box.style.transform = 'none';
+        box.style.left = r.left + 'px';
+        box.style.top = r.top + 'px';
+        _snapTourBox(box);
+      }
+    };
+  }
   box.onmousedown = function(e) {
     if (e.target.closest('button')) return;
     e.preventDefault();
-    var rect = box.getBoundingClientRect();
-    var offX = e.clientX - rect.left, offY = e.clientY - rect.top;
-    box.style.transition = 'none';
     box.style.cursor = 'grabbing';
-    var moved = false;
-    function mv(ev) {
-      moved = true;
-      box.style.left = (ev.clientX - offX) + 'px';
-      box.style.top  = (ev.clientY - offY) + 'px';
-    }
+    var m = _makeMover(_startDrag(e.clientX, e.clientY));
+    function mv(ev) { m.move(ev.clientX, ev.clientY); }
     function up() {
       document.removeEventListener('mousemove', mv);
       document.removeEventListener('mouseup', up);
       box.style.cursor = 'grab';
-      if (moved) _snapTourBox(box);
+      m.end();
     }
     document.addEventListener('mousemove', mv);
     document.addEventListener('mouseup', up);
@@ -7250,21 +7553,12 @@ function _initTourDrag(box) {
   box.ontouchstart = function(e) {
     if (e.target.closest('button')) return;
     var t0 = e.touches[0];
-    var rect = box.getBoundingClientRect();
-    var offX = t0.clientX - rect.left, offY = t0.clientY - rect.top;
-    box.style.transition = 'none';
-    var moved = false;
-    function mv(ev) {
-      moved = true;
-      var t1 = ev.touches[0];
-      box.style.left = (t1.clientX - offX) + 'px';
-      box.style.top  = (t1.clientY - offY) + 'px';
-      ev.preventDefault();
-    }
+    var m = _makeMover(_startDrag(t0.clientX, t0.clientY));
+    function mv(ev) { m.move(ev.touches[0].clientX, ev.touches[0].clientY); ev.preventDefault(); }
     function up() {
       box.removeEventListener('touchmove', mv);
       box.removeEventListener('touchend', up);
-      if (moved) _snapTourBox(box);
+      m.end();
     }
     box.addEventListener('touchmove', mv, {passive:false});
     box.addEventListener('touchend', up);
@@ -7275,15 +7569,19 @@ function _snapTourBox(box) {
   var vw = window.innerWidth, vh = window.innerHeight;
   var r = box.getBoundingClientRect();
   var cx = r.left + r.width/2, cy = r.top + r.height/2;
+  var col = cx < vw/3 ? 'l' : (cx > vw*2/3 ? 'r' : 'c');
+  var row = cy < vh/3 ? 't' : (cy > vh*2/3 ? 'b' : 'c');
   var pos;
-  if (cx > vw/3 && cx < vw*2/3 && cy > vh/3 && cy < vh*2/3) pos = 'center';
-  else pos = (cy < vh/2 ? 't' : 'b') + (cx < vw/2 ? 'l' : 'r');
+  if (col === 'c' && row === 'c') pos = 'center';
+  else if (row === 'c') pos = (col === 'l') ? 'lc' : 'rc';
+  else if (col === 'c') pos = (row === 't') ? 'tc' : 'bc';
+  else pos = row + col;
   _tourBoxPos = pos;
   var c = _tourBoxCoords(pos, r.width, r.height);
-  box.style.transition = 'top .25s ease, left .25s ease';
+  box.style.transition = 'top .22s cubic-bezier(.22,.9,.35,1), left .22s cubic-bezier(.22,.9,.35,1)';
   box.style.top = c.top + 'px';
   box.style.left = c.left + 'px';
-  setTimeout(function(){ box.style.transition = 'none'; }, 300);
+  setTimeout(function(){ box.style.transition = 'none'; }, 260);
 }
 
 // ── Apply position to box ─────────────────────────────────────────────
@@ -8782,6 +9080,7 @@ async function loadFBInventario() {
     const res = await fetch('/fb/api/inventario');
     const data = await res.json();
     if (!data.ok) { cont.innerHTML = '<div class="empty"><p>Error inventario</p></div>'; return; }
+    if (!data.items || !data.items.length) { cont.innerHTML = '<div class="empty"><p>' + t('fb.sinInventario', 'Sin datos de inventario. Sube un inventario con ⚡ Procesar Archivos.') + '</p></div>'; return; }
 
     const alertas = data.items.filter(i => i.alerta);
     let html = '<div class="fb-kpi-grid" style="display:grid;grid-template-columns:repeat(auto-fit,minmax(140px,1fr));gap:14px;margin-bottom:20px">';
@@ -8828,6 +9127,7 @@ async function loadFBMermas() {
     const res = await fetch('/fb/api/mermas');
     const data = await res.json();
     if (!data.ok) { cont.innerHTML = '<div class="empty"><p>Error mermas</p></div>'; return; }
+    if (!data.mermas || !data.mermas.length) { cont.innerHTML = '<div class="empty"><p>' + t('fb.sinMermas', 'Sin mermas registradas.') + '</p></div>'; return; }
 
     // Add summary KPI if total available
     const totalCoste  = data.total_coste  || 0;
@@ -8929,10 +9229,11 @@ async function loadFBRecetas() {
     const res = await fetch('/fb/api/recetas');
     const data = await res.json();
     if (!data.ok) { cont.innerHTML = '<div class="empty"><p>Error recetas</p></div>'; return; }
+    if (!data.recetas || !data.recetas.length) { cont.innerHTML = '<div class="empty"><p>' + t('fb.sinRecetas', 'Sin recetas. Procesa documentos F&B para cargarlas.') + '</p></div>'; return; }
 
-    const avg = data.recetas.reduce((a,r)=>a+r.fc_pct,0)/data.recetas.length;
+    const avg = data.recetas.length ? data.recetas.reduce((a,r)=>a+r.fc_pct,0)/data.recetas.length : 0;
     let html = '<div class="fb-kpi-grid" style="display:grid;grid-template-columns:repeat(3,1fr);gap:14px;margin-bottom:20px">';
-    html += _fbKpi((t('fb.recetas', 'Recetas activas')), data.recetas.length, (t('fb.recetas', 'recetas')) + ' en carta', 'var(--acc2)');
+    html += _fbKpi((t('fb.recetas', 'Recetas activas')), data.recetas.length, t('fb.enCarta', 'recetas en carta'), 'var(--acc2)');
     if (data.avg_fc_pct) html += _fbKpi('FC% Medio', data.avg_fc_pct + '%', 'media del menú', data.avg_fc_pct <= 22 ? 'var(--grn)' : 'var(--ora)');
     if (data.best_margin) html += _fbKpi('Mejor margen', data.best_margin.split(' ').slice(0,2).join(' '), 'menor FC%', 'var(--grn)');
     html += _fbKpi('FC% promedio', avg.toFixed(1) + '%', 'media ponderada', avg < 30 ? 'var(--grn)' : 'var(--ora)');
@@ -10148,7 +10449,7 @@ async function loadBanco() {
     var el = document.getElementById('bk-alertas');
     if (d.alertas && d.alertas.length) {
       el.innerHTML = d.alertas.map(function(a) {
-        return '<div class="act-item"><div class="adot r"></div><div class="atxt"><b>' + a.dias + ' dias</b> sin conciliar: ' + a.concepto + ' — ' + eur(a.importe) + '</div></div>';
+        return '<div class="act-item"><div class="adot r"></div><div class="atxt"><b>' + a.dias + ' ' + t('bk.dias', 'días') + '</b> ' + t('bk.sinConciliar', 'sin conciliar:') + ' ' + a.concepto + ' — ' + eur(a.importe) + '</div></div>';
       }).join('');
     } else {
       el.innerHTML = '<div class="empty"><p>Sin alertas bancarias pendientes.</p></div>';
@@ -10304,7 +10605,7 @@ async function cargarARRealData() {
       _setText('arp-pendiente', fmt(s.pendiente));
       _setText('arp-vencido',   fmt(s.vencido));
       _setText('arp-cobrado',   fmt(s.cobrado_mes));
-      _setText('arp-nclientes', dc.ok ? dc.clientes.length + ' activos' : '—');
+      _setText('arp-nclientes', dc.ok ? dc.clientes.length + ' ' + t('ar.activos', 'activos') : '—');
       _skelOff(['arp-pendiente','arp-vencido','arp-cobrado','arp-nclientes']);
 
       // Aging bar

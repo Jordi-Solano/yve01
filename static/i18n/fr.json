@@ -349,5 +349,12 @@
   "tour.title7": "Multi-Hôtel",
   "nav.procesarDoc": "⚡ Traiter le document",
   "bk.conciliacionOk": "Rapprochement terminé",
-  "bk.sinFacturas": "aucune facture AP/AR à rapprocher : traitez d'abord les factures"
+  "bk.sinFacturas": "aucune facture AP/AR à rapprocher : traitez d'abord les factures",
+  "fb.sinInventario": "Aucune donnée d'inventaire. Chargez un inventaire avec ⚡.",
+  "fb.sinMermas": "Aucune perte enregistrée.",
+  "fb.sinRecetas": "Aucune recette. Traitez des documents F&B pour les charger.",
+  "fb.enCarta": "recettes à la carte",
+  "bk.dias": "jours",
+  "bk.sinConciliar": "non rapproché :",
+  "ar.activos": "actifs"
 }
