@@ -2756,7 +2756,8 @@ body.light-mode .nav{background:rgba(248,250,252,.9);border-bottom-color:#e2e8f0
 body.light-mode .tab-btn{color:#475569}
 body.light-mode .tab-btn.active{color:var(--acc-dark)}
 /* ── Skeleton loading ─────────────────────────────── */
-@keyframes confettiFall{0%{transform:translateY(0) rotate(0);opacity:1}100%{transform:translateY(110vh) rotate(720deg);opacity:0}}
+@keyframes confettiFall{0%{transform:translateY(0) translateX(0) rotate(0);opacity:1}100%{transform:translateY(110vh) translateX(8vw) rotate(900deg);opacity:0}}
+@keyframes tourRing{0%{width:20px;height:20px;opacity:.9}100%{width:120vmax;height:120vmax;opacity:0}}
 @keyframes shimmer{0%{background-position:-400px 0}100%{background-position:400px 0}}
 .skeleton{background:linear-gradient(90deg,var(--s1) 25%,var(--s2) 50%,var(--s1) 75%);
   background-size:800px 100%;animation:shimmer 1.4s infinite;border-radius:6px;
@@ -4857,6 +4858,8 @@ const _i18nCache = {};
 const _i18nOriginal = {}; // textos ES originales — para restaurar al volver a español
 var _i18nStrMap = {
   en: {
+    "¡Ya conoces Yve.01!": "You now know Yve.01!",
+    "Empezar con AR →": "Start with AR →",
     "Sin alertas bancarias pendientes.": "No pending bank alerts.",
     "Sin alertas bancarias.": "No bank alerts.",
     "● Activo": "● Active",
@@ -5070,6 +5073,8 @@ var _i18nStrMap = {
     'Administrador': 'Administrator',
     '👤 Administrador': '👤 Administrator',},
   ca: {
+    "¡Ya conoces Yve.01!": "Ja coneixes Yve.01!",
+    "Empezar con AR →": "Començar amb AR →",
     "Sin alertas bancarias pendientes.": "Sense alertes bancàries pendents.",
     "Sin alertas bancarias.": "Sense alertes bancàries.",
     "● Activo": "● Actiu",
@@ -5276,6 +5281,8 @@ var _i18nStrMap = {
     'Sin datos F&B.': 'Sense dades F&B.',
     'Reportes': 'Informes',},
   fr: {
+    "¡Ya conoces Yve.01!": "Vous connaissez Yve.01 !",
+    "Empezar con AR →": "Commencer avec AR →",
     "Sin alertas bancarias pendientes.": "Aucune alerte bancaire en attente.",
     "Sin alertas bancarias.": "Aucune alerte bancaire.",
     "● Activo": "● Actif",
@@ -5493,6 +5500,8 @@ var _i18nStrMap = {
     'Administrador': 'Administrateur',
     '👤 Administrador': '👤 Administrateur',},
   de: {
+    "¡Ya conoces Yve.01!": "Du kennst jetzt Yve.01!",
+    "Empezar con AR →": "Mit AR starten →",
     "Sin alertas bancarias pendientes.": "Keine offenen Bankwarnungen.",
     "Sin alertas bancarias.": "Keine Bankwarnungen.",
     "● Activo": "● Aktiv",
@@ -5714,6 +5723,8 @@ var _i18nStrMap = {
     'Administrador': 'Administrator',
     '👤 Administrador': '👤 Administrator',},
   it: {
+    "¡Ya conoces Yve.01!": "Ora conosci Yve.01!",
+    "Empezar con AR →": "Inizia con AR →",
     "Sin alertas bancarias pendientes.": "Nessun avviso bancario in sospeso.",
     "Sin alertas bancarias.": "Nessun avviso bancario.",
     "● Activo": "● Attivo",
@@ -5925,6 +5936,8 @@ var _i18nStrMap = {
     'Administrador': 'Amministratore',
     '👤 Administrador': '👤 Amministratore',},
   pt: {
+    "¡Ya conoces Yve.01!": "Você já conhece o Yve.01!",
+    "Empezar con AR →": "Começar com AR →",
     "Sin alertas bancarias pendientes.": "Sem alertas bancários pendentes.",
     "Sin alertas bancarias.": "Sem alertas bancários.",
     "● Activo": "● Ativo",
@@ -7450,17 +7463,24 @@ function _drawSpotlight(target) {
 // ── Build/update the tour box HTML ───────────────────────────────────
 function _renderTourBox(step) {
   var box = document.getElementById('tour-box');
+  var isNew = !box;
   if (!box) {
     box = document.createElement('div');
     box.id = 'tour-box';
+    box.style.cssText =
+      'position:fixed;background:#0f172a;border:2px solid var(--acc,#3b82f6);border-radius:16px;' +
+      'padding:18px 20px 16px;max-width:360px;width:calc(100vw - 32px);z-index:10000;' +
+      'box-shadow:0 20px 60px rgba(0,0,0,.85),0 0 60px rgba(var(--acc-r,59),var(--acc-g,130),var(--acc-b,246),.08);' +
+      'pointer-events:all;font-family:Inter,system-ui,sans-serif;color:#f1f5f9;' +
+      'animation:tourBoxIn .3s cubic-bezier(.34,1.56,.64,1);user-select:none';
     document.body.appendChild(box);
   }
-  box.style.cssText =
-    'position:fixed;background:#0f172a;border:2px solid var(--acc,#3b82f6);border-radius:16px;' +
-    'padding:18px 20px 16px;max-width:360px;width:calc(100vw - 32px);z-index:10000;' +
-    'box-shadow:0 20px 60px rgba(0,0,0,.85),0 0 60px rgba(var(--acc-r,59),var(--acc-g,130),var(--acc-b,246),.08);' +
-    'pointer-events:all;font-family:Inter,system-ui,sans-serif;color:#f1f5f9;' +
-    'animation:tourBoxIn .3s cubic-bezier(.34,1.56,.64,1);user-select:none';
+  if (!isNew) {
+    // fade suave del contenido al cambiar de paso
+    box.style.transition = 'opacity .15s ease';
+    box.style.opacity = '0.4';
+    setTimeout(function() { box.style.opacity = '1'; }, 160);
+  }
 
   box.innerHTML =
     // Header row: drag grip + close
@@ -7597,6 +7617,11 @@ function _applyTourBoxPos(targetRect) {
   else if (pos === 'auto') pos = 'center';
 
   var coords = _tourBoxCoords(pos, bw, bh);
+  // desliza suavemente hasta la nueva posición (si ya estaba colocada)
+  if (box.style.top) {
+    box.style.transition = 'top .38s cubic-bezier(.22,.9,.35,1), left .38s cubic-bezier(.22,.9,.35,1), opacity .15s ease';
+    setTimeout(function() { box.style.transition = 'none'; }, 420);
+  }
   box.style.top  = coords.top  + 'px';
   box.style.left = coords.left + 'px';
   box.style.transform = '';
@@ -7742,21 +7767,40 @@ function startTour() {
 }
 
 // ── Confetti celebration ─────────────────────────────────────────────
+function _paletteColors() {
+  var cs = getComputedStyle(document.documentElement);
+  var acc  = (cs.getPropertyValue('--acc')  || '#3b82f6').trim() || '#3b82f6';
+  var acc2 = (cs.getPropertyValue('--acc2') || '#60a5fa').trim() || '#60a5fa';
+  var acc3 = (cs.getPropertyValue('--acc3') || '#93c5fd').trim() || '#93c5fd';
+  return [acc, acc2, acc3, '#f1f5f9', '#fbbf24', acc];
+}
+
 function _launchConfetti() {
-  var colors = ['#3b82f6','#a78bfa','#22c55e','#f59e0b','#ec4899','#60a5fa'];
-  var count = 0, max = 80;
+  var colors = _paletteColors();
+  var count = 0, max = 160;
   var interval = setInterval(function() {
     if (count++ > max) { clearInterval(interval); return; }
     var el = document.createElement('div');
-    el.style.cssText = 'position:fixed;top:-10px;left:' + (Math.random()*100) + '%;' +
-      'width:' + (6+Math.random()*8) + 'px;height:' + (6+Math.random()*8) + 'px;' +
-      'border-radius:' + (Math.random()>.5?'50%':'2px') + ';' +
-      'background:' + colors[Math.floor(Math.random()*colors.length)] + ';' +
+    var sz = 5 + Math.random()*10;
+    var c = colors[Math.floor(Math.random()*colors.length)];
+    var shape = Math.random();
+    el.style.cssText = 'position:fixed;top:' + (-20 - Math.random()*30) + 'px;left:' + (Math.random()*100) + '%;' +
+      'width:' + sz + 'px;height:' + (shape > .7 ? sz*0.4 : sz) + 'px;' +
+      'border-radius:' + (shape > .5 ? '50%' : '2px') + ';' +
+      'background:' + c + ';box-shadow:0 0 ' + (4+Math.random()*8) + 'px ' + c + ';' +
       'opacity:1;z-index:99999;pointer-events:none;' +
-      'animation:confettiFall ' + (1.5+Math.random()) + 's linear forwards';
+      'animation:confettiFall ' + (1.6+Math.random()*1.6) + 's cubic-bezier(.3,.1,.6,1) forwards;' +
+      'animation-delay:' + (Math.random()*0.25) + 's';
     document.body.appendChild(el);
-    setTimeout(function(){ el.remove(); }, 3000);
-  }, 30);
+    setTimeout(function(){ el.remove(); }, 4000);
+  }, 12);
+  // onda expansiva central con el color de la paleta
+  var ring = document.createElement('div');
+  ring.style.cssText = 'position:fixed;top:50%;left:50%;width:20px;height:20px;border-radius:50%;' +
+    'border:3px solid var(--acc,#3b82f6);transform:translate(-50%,-50%);z-index:99998;pointer-events:none;' +
+    'animation:tourRing .9s ease-out forwards';
+  document.body.appendChild(ring);
+  setTimeout(function(){ ring.remove(); }, 1000);
 }
 // ─────────────────────────────────────────────────────────────────────
 function endTour() {
@@ -7797,29 +7841,30 @@ function endTour() {
   window._closeCongrats = function() { var c=document.getElementById('tour-congrats'); if(c) c.remove(); };
   window._startAR = function() { window._closeCongrats(); var t=document.getElementById('tab-ar'); if(t) switchTab('ar',t); };
 // ── Celebración final: tarjeta de bienvenida sobre el dashboard ──
+  _launchConfetti();
   setTimeout(function() {
     var card = document.createElement('div');
     card.id = 'tour-congrats';
     card.style.cssText = 'position:fixed;inset:0;z-index:10001;display:flex;align-items:center;' +
       'justify-content:center;background:rgba(0,0,0,.7);animation:tourBoxIn .4s ease';
     card.innerHTML =
-      '<div style="background:#0f172a;border:2px solid #3b82f6;border-radius:20px;padding:36px 40px;' +
+      '<div style="background:#0f172a;border:2px solid var(--acc,#3b82f6);border-radius:20px;padding:36px 40px;' +
         'text-align:center;max-width:420px;width:calc(100% - 40px);' +
-        'box-shadow:0 24px 80px rgba(0,0,0,.9),0 0 60px rgba(59,130,246,.15)">' +
-        '<div style="font-size:52px;margin-bottom:12px">🎉</div>' +
+        'box-shadow:0 24px 80px rgba(0,0,0,.9),0 0 60px rgba(var(--acc-r,59),var(--acc-g,130),var(--acc-b,246),.25)">' +
+        '<div style="font-size:52px;margin-bottom:12px;animation:tourBoxIn .6s cubic-bezier(.34,1.56,.64,1)">🎉</div>' +
         '<div style="font-size:22px;font-weight:800;color:#f1f5f9;margin-bottom:8px">¡Ya conoces Yve.01!</div>' +
         '<div style="font-size:14px;color:#94a3b8;line-height:1.7;margin-bottom:24px">' +
           'El sistema está listo para automatizar las finanzas de tu hotel.<br>' +
-          'El primer paso: procesa las facturas OTA del mes en <b style="color:#60a5fa">AR — OTAs</b>.' +
+          'El primer paso: procesa las facturas OTA del mes en <b style="color:var(--acc2,#60a5fa)">AR — OTAs</b>.' +
         '</div>' +
         '<div style="display:flex;gap:10px;justify-content:center">' +
           '<button onclick="_closeCongrats()" ' +
             'style="background:transparent;border:1px solid #334155;color:#64748b;' +
             'padding:10px 20px;border-radius:10px;font-size:13px;cursor:pointer">Cerrar</button>' +
-          '<button onclick="_closeCongrats()" ' +
           '<button onclick="_startAR()" ' +
-            'style="background:linear-gradient(135deg,#3b82f6,#7c3aed);border:none;color:#fff;' +
-            'padding:10px 22px;border-radius:10px;font-size:13px;font-weight:700;cursor:pointer">' +
+            'style="background:linear-gradient(135deg,var(--acc,#3b82f6),var(--acc-dark,#7c3aed));border:none;color:#fff;' +
+            'padding:10px 22px;border-radius:10px;font-size:13px;font-weight:700;cursor:pointer;' +
+            'box-shadow:0 4px 16px rgba(var(--acc-r,59),var(--acc-g,130),var(--acc-b,246),.4)">' +
             'Empezar con AR →</button>' +
         '</div>' +
       '</div>';
@@ -7827,6 +7872,7 @@ function endTour() {
     card.addEventListener('click', function(e) {
       if (e.target === card) card.remove();
     });
+    if (typeof _i18nAfterRender === 'function') _i18nAfterRender();
     // Auto-close after 12s
     setTimeout(function() { if (card.parentNode) card.remove(); }, 12000);
   }, 300);
