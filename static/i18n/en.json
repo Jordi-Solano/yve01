@@ -347,5 +347,7 @@
   "tour.title5": "AR Real — Groups",
   "tour.title6": "Calipolis Group",
   "tour.title7": "Multi-Hotel",
-  "nav.procesarDoc": "⚡ Process document"
+  "nav.procesarDoc": "⚡ Process document",
+  "bk.conciliacionOk": "Reconciliation completed",
+  "bk.sinFacturas": "no AP/AR invoices to match: process invoices first"
 }

@@ -347,5 +347,7 @@
   "tour.title5": "Real AR — Gruppen",
   "tour.title6": "Calipolis-Gruppe",
   "tour.title7": "Multi-Hotel",
-  "nav.procesarDoc": "⚡ Dokument verarbeiten"
+  "nav.procesarDoc": "⚡ Dokument verarbeiten",
+  "bk.conciliacionOk": "Abstimmung abgeschlossen",
+  "bk.sinFacturas": "keine AP/AR-Rechnungen zum Abgleich: zuerst Rechnungen verarbeiten"
 }

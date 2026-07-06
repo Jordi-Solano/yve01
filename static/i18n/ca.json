@@ -347,5 +347,7 @@
   "tour.title5": "AR Real — Grups",
   "tour.title6": "Grup Calipolis",
   "tour.title7": "Multi-Hotel",
-  "nav.procesarDoc": "⚡ Processar document"
+  "nav.procesarDoc": "⚡ Processar document",
+  "bk.conciliacionOk": "Conciliació completada",
+  "bk.sinFacturas": "sense factures AP/AR per creuar: processa factures primer"
 }

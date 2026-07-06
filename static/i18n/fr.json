@@ -347,5 +347,7 @@
   "tour.title5": "AR Réel — Groupes",
   "tour.title6": "Groupe Calipolis",
   "tour.title7": "Multi-Hôtel",
-  "nav.procesarDoc": "⚡ Traiter le document"
+  "nav.procesarDoc": "⚡ Traiter le document",
+  "bk.conciliacionOk": "Rapprochement terminé",
+  "bk.sinFacturas": "aucune facture AP/AR à rapprocher : traitez d'abord les factures"
 }

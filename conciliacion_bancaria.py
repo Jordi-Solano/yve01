@@ -35,16 +35,54 @@ def _ultimo_excel(patron, directorio):
     return hits[0]
 
 
+_EXT_COL_MAP = {
+    "fecha":      ["fecha", "date", "fecha_operacion", "f. operacion"],
+    "concepto":   ["concepto", "descripcion", "description", "detalle"],
+    "importe":    ["importe", "cantidad", "amount", "monto"],
+    "saldo":      ["saldo", "balance"],
+    "referencia": ["referencia", "ref", "reference"],
+    "tipo":       ["tipo", "type", "movimiento"],
+}
+
+
+def _normalizar_extracto(df):
+    """Renombra columnas alternativas y deriva tipo/importe_num."""
+    cols_lower = {str(c).strip().lower(): c for c in df.columns}
+    for canon, alts in _EXT_COL_MAP.items():
+        if canon in df.columns:
+            continue
+        for alt in alts:
+            if alt in cols_lower:
+                df = df.rename(columns={cols_lower[alt]: canon})
+                break
+    if "importe" not in df.columns:
+        return pd.DataFrame()
+    for c in ("concepto", "referencia"):
+        if c not in df.columns:
+            df[c] = ""
+    df["importe_num"] = df["importe"].apply(_sf)
+    # tipo: usar columna si trae CARGO/ABONO; si no, derivar del signo
+    if "tipo" in df.columns:
+        tipos = df["tipo"].astype(str).str.upper().str.strip()
+        validos = tipos.isin(["CARGO", "ABONO"])
+        df["tipo"] = tipos.where(validos, None)
+    else:
+        df["tipo"] = None
+    df["tipo"] = df.apply(
+        lambda r: r["tipo"] if r["tipo"] in ("CARGO", "ABONO")
+        else ("CARGO" if r["importe_num"] < 0 else "ABONO"), axis=1)
+    return df
+
+
 def cargar_extracto(ruta=None):
-    """Carga el extracto bancario."""
+    """Carga el extracto bancario y lo normaliza."""
     if ruta is None:
         ruta = str(REFERENCIA_DIR / "extracto_banco.xlsx")
     if not os.path.exists(ruta):
         print(f"  No se encontro extracto: {ruta}")
         return pd.DataFrame()
     df = pd.read_excel(ruta)
-    df["importe_num"] = df["importe"].apply(_sf)
-    return df
+    return _normalizar_extracto(df)
 
 
 def cargar_facturas():
@@ -101,65 +139,86 @@ def cargar_facturas():
 def conciliar(extracto, facturas, tolerancia_dias=3, tolerancia_importe=0.02):
     """
     Cruza cada movimiento del extracto con facturas.
-    Match por: mismo tipo (CARGO/ABONO), importe exacto o cercano, fecha +-tolerancia_dias.
-    Devuelve el extracto con columnas adicionales: estado, factura_ref, origen, diferencia.
+    Señales de match (de más a menos fuerte):
+      1. nº de factura presente en concepto/referencia + importe cuadra
+      2. nº de factura presente en concepto/referencia (importe difiere → DIFERENCIA)
+      3. nombre de proveedor en concepto + importe cuadra
+      4. solo importe cuadra (con fecha dentro de tolerancia si hay fecha)
+    Los importes se comparan en valor absoluto (los CARGOs vienen en negativo).
+    Devuelve el extracto con columnas: estado, factura_ref, origen, match_proveedor, diferencia.
     """
+    if extracto is None or len(extracto) == 0:
+        return extracto
+
+    def _nombre_match(concepto, proveedor):
+        c = str(concepto).upper()
+        palabras = [w for w in str(proveedor).upper().split()[:3] if len(w) > 3]
+        return any(w in c for w in palabras)
+
+    def _ref_match(mov_texto, numero):
+        n = str(numero).strip()
+        if len(n) < 4 or n.lower() in ("nan", "none", ""):
+            return False
+        return n.upper() in mov_texto
+
     usadas = set()
     resultados = []
 
     for _, mov in extracto.iterrows():
-        imp_mov = mov["importe_num"]
-        tipo_mov = mov["tipo"]
-        fecha_mov = pd.to_datetime(mov["fecha"]) if pd.notna(mov["fecha"]) else None
+        imp_mov   = abs(_sf(mov.get("importe_num", mov.get("importe", 0))))
+        tipo_mov  = mov.get("tipo")
+        texto_mov = (str(mov.get("concepto", "")) + " " + str(mov.get("referencia", ""))).upper()
+        fecha_mov = pd.to_datetime(mov.get("fecha"), errors="coerce")
 
-        mejor_match = None
-        mejor_diff = float("inf")
-
-        # Fuzzy proveedor name matching helper
-        def _nombre_match(concepto, proveedor):
-            c = str(concepto).upper()
-            p = str(proveedor).upper().split()[:2]
-            return any(word in c for word in p if len(word) > 3)
+        mejor = None  # (score, -diff, idx)
 
         for i, fac in enumerate(facturas):
             if i in usadas:
                 continue
-            if fac["tipo_mov"] != tipo_mov:
+            if fac.get("tipo_mov") and tipo_mov and fac["tipo_mov"] != tipo_mov:
                 continue
 
-            diff = abs(imp_mov - fac["importe"])
-            pct_diff = diff / max(imp_mov, 0.01)
+            imp_fac = abs(_sf(fac.get("importe", 0)))
+            if imp_fac <= 0:
+                continue
+            diff = abs(imp_mov - imp_fac)
+            importe_ok = (diff / max(imp_mov, 0.01)) <= tolerancia_importe
 
-            # Match exacto o con tolerancia de 2%
-            if pct_diff <= tolerancia_importe:
-                # Check fecha si disponible
-                if fecha_mov is not None and fac["fecha"] is not None:
-                    try:
-                        fecha_fac = pd.to_datetime(fac["fecha"])
-                        dias = abs((fecha_mov - fecha_fac).days)
-                        if dias > tolerancia_dias * 30:  # Más flexible para facturas
-                            continue
-                    except Exception:
-                        pass
+            ref_ok    = _ref_match(texto_mov, fac.get("numero", ""))
+            nombre_ok = _nombre_match(texto_mov, fac.get("proveedor", ""))
 
-                if diff < mejor_diff:
-                    mejor_diff = diff
-                    mejor_match = i
-
-        if mejor_match is not None:
-            fac = facturas[mejor_match]
-            usadas.add(mejor_match)
-            diff_real = imp_mov - fac["importe"]
-            if abs(diff_real) < 0.01:
-                estado = "CONCILIADO"
+            if ref_ok and importe_ok:
+                score = 4
+            elif ref_ok:
+                score = 3
+            elif nombre_ok and importe_ok:
+                score = 2
+            elif importe_ok:
+                # sin señal de texto: exigir fecha dentro de tolerancia amplia
+                if pd.notna(fecha_mov) and fac.get("fecha") is not None:
+                    fecha_fac = pd.to_datetime(fac.get("fecha"), errors="coerce")
+                    if pd.notna(fecha_fac) and abs((fecha_mov - fecha_fac).days) > tolerancia_dias * 30:
+                        continue
+                score = 1
             else:
-                estado = "DIFERENCIA"
+                continue
+
+            cand = (score, -diff, i)
+            if mejor is None or cand > mejor:
+                mejor = cand
+
+        if mejor is not None:
+            _, _, idx = mejor
+            fac = facturas[idx]
+            usadas.add(idx)
+            diff_real = round(imp_mov - abs(_sf(fac.get("importe", 0))), 2)
+            estado = "CONCILIADO" if abs(diff_real) < 0.01 else "DIFERENCIA"
             resultados.append({
                 "estado": estado,
-                "factura_ref": fac["numero"],
-                "origen": fac["origen"],
-                "match_proveedor": fac["proveedor"],
-                "diferencia": round(diff_real, 2),
+                "factura_ref": fac.get("numero", ""),
+                "origen": fac.get("origen", "AP"),
+                "match_proveedor": fac.get("proveedor", ""),
+                "diferencia": diff_real,
             })
         else:
             resultados.append({

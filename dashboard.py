@@ -2380,43 +2380,24 @@ def api_upload_drr():
 @app.route("/api/conciliar", methods=["POST"])
 @login_required
 def api_run_conciliacion():
-    """Ejecuta la conciliación bancaria automática."""
+    """Ejecuta la conciliación bancaria automática (extracto ↔ facturas AP/AR)."""
     try:
-        from conciliacion_bancaria import conciliar
-        import glob as _g
-        # Load extracto bancario
-        extracto_ruta = os.path.join(BASE_DIR, "datos-referencia", "extracto_banco.xlsx")
-        if not os.path.exists(extracto_ruta):
-            return jsonify({"ok": False, "error": "No se encontró extracto_banco.xlsx"}), 404
-        df_extracto = pd.read_excel(extracto_ruta)
-        extracto = df_extracto.to_dict('records')
-        # Load facturas AP para matching
-        facturas = []
-        hits = _g.glob(os.path.join(REPORTES_DIR, "matching_*.xlsx"))
-        for ruta in hits:
-            df_f = pd.read_excel(ruta)
-            if "numero_factura" in df_f.columns:
-                for _, row in df_f.iterrows():
-                    facturas.append({
-                        "numero": str(row.get("numero_factura","")),
-                        "importe": abs(float(row.get("importe_con_iva", 0) or 0)),
-                        "tipo_mov": "CARGO",
-                        "proveedor": str(row.get("proveedor",""))[:30],
-                    })
-        # Run reconciliation
-        result = conciliar(extracto, facturas)
-        # Save result
-        if result:
-            df_result = pd.DataFrame(result)
-            from datetime import date
-            out_ruta = os.path.join(REPORTES_DIR, f"conciliacion_{date.today().strftime('%Y%m%d')}.xlsx")
-            df_result.to_excel(out_ruta, index=False)
-            conciliados = sum(1 for r in result if r.get("estado") == "CONCILIADO")
-            pendientes  = sum(1 for r in result if r.get("estado") != "CONCILIADO")
-            _audit("CONCILIACION_RUN", f"{conciliados} conciliados, {pendientes} pendientes")
-            return jsonify({"ok": True, "total": len(result), "conciliados": conciliados,
-                           "pendientes": pendientes, "archivo": os.path.basename(out_ruta)})
-        return jsonify({"ok": False, "error": "Sin resultados de conciliación"})
+        from conciliacion_bancaria import cargar_extracto, cargar_facturas, conciliar, generar_reporte
+        extracto = cargar_extracto()
+        if extracto is None or extracto.empty:
+            return jsonify({"ok": False,
+                            "error": "No hay extracto bancario. Sube uno con ⚡ Procesar Archivos o 📸."}), 404
+        facturas = cargar_facturas()
+        resultado = conciliar(extracto, facturas)
+        ruta = generar_reporte(resultado)
+        conciliados = int((resultado["estado"] == "CONCILIADO").sum())
+        diferencias = int((resultado["estado"] == "DIFERENCIA").sum())
+        pendientes  = int((resultado["estado"] == "PENDIENTE").sum())
+        _audit("CONCILIACION_RUN", f"{conciliados} conciliados, {diferencias} diferencias, {pendientes} pendientes")
+        return jsonify({"ok": True, "total": int(len(resultado)), "conciliados": conciliados,
+                        "diferencias": diferencias, "pendientes": pendientes,
+                        "facturas_disponibles": len(facturas),
+                        "archivo": os.path.basename(ruta)})
     except Exception as e:
         return jsonify({"ok": False, "error": str(e)[:300]}), 500
 
@@ -9646,7 +9627,9 @@ async function runConciliacion() {
     const r = await _postJson('/api/conciliar', {});
     const d = await r.json();
     if (d.ok) {
-      showNotification(`✓ Conciliación completada: ${d.conciliados} conciliados, ${d.pendientes} pendientes`, 'success');
+      var _m = '✓ ' + (t('bk.conciliacionOk', 'Conciliación completada') ) + ': ' + d.conciliados + ' OK · ' + d.diferencias + ' dif. · ' + d.pendientes + ' pend.';
+      if (d.facturas_disponibles === 0) _m += ' — ' + t('bk.sinFacturas', 'sin facturas AP/AR para cruzar: procesa facturas primero');
+      showNotification(_m, d.facturas_disponibles === 0 ? 'info' : 'success');
       loadBanco();
     } else {
       showNotification('✗ Error conciliación: ' + (d.error||''), 'error');
