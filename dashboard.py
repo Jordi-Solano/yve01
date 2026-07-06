@@ -7410,11 +7410,6 @@ var _tourSteps = [
     text: 'Gestión completa de clientes corporativos: emite facturas, controla el aging (0-30 / 31-60 / +90 días), cobra con un clic y envía recordatorios automáticos por email.'
   },
   {
-    text: 'Dashboard consolidado de las 3 propiedades: Sitges, Mar y Boutique. GOP%, RevPAR, ocupación y tendencias de 6 meses gestionados desde una sola pantalla.',
-    action: function() {
-    }
-  },
-  {
     el: '#mh-kpis', tab: 'multi_hotel', pos: 'auto',
     title: '🌍 Multi-Hotel — Vista de Grupo',
     text: 'Para el Financial Controller del grupo: KPIs consolidados, ranking de performance por hotel, tendencia de 6 meses y alertas centralizadas. Una pantalla, todo el grupo.',
