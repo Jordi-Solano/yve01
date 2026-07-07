@@ -341,8 +341,8 @@ def api_debug():
     info = {
         "BASE_DIR":       BASE_DIR,
         "BASE_DIR_exists": os.path.isdir(BASE_DIR),
-        "_rdir()":   _rdir(),
-        "_pdir()": _pdir(),
+        "reportes_dir":   _rdir(),
+        "procesadas_dir": _pdir(),
         "archivos_reportes": [],
         "archivos_procesadas": [],
         "cwd": os.getcwd(),
