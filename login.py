@@ -26,13 +26,19 @@ def do_login():
     user = auth_login(username, password)
     if user:
         login_user(user, remember=True)
-        return jsonify({"ok": True, "nombre": user.nombre, "rol": user.rol})
+        from flask import session
+        session["tenant_id"] = getattr(user, "tenant", "default") or "default"
+        session.pop("hotel_activo", None)
+        return jsonify({"ok": True, "nombre": user.nombre, "rol": user.rol, "tenant": session["tenant_id"]})
     return jsonify({"ok": False, "error": "Usuario o contraseña incorrectos"}), 401
 
 
 @bp.route("/logout")
 def do_logout():
     logout_user()
+    from flask import session
+    session.pop("tenant_id", None)
+    session.pop("hotel_activo", None)
     return redirect("/login")
 
 

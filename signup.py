@@ -43,12 +43,17 @@ def api_signup():
         i += 1
 
     # Crear usuario como financial_controller
-    res = crear_usuario(username, password, nombre, email, 'financial_controller')
+    from tenant_dirs import slug as _slug, BASE_DIR as _TBASE, _crear_tenant
+    tenant = _slug(grupo or hotel)
+    res = crear_usuario(username, password, nombre, email, 'financial_controller', tenant=tenant)
     if res is not True:
         return jsonify({'ok': False, 'error': res}), 400
 
     # Registrar hotel en hoteles.json (best-effort)
     try:
+        _tbase = _TBASE / 'tenants' / tenant
+        _crear_tenant(_tbase)
+        HOTELES_PATH = _tbase / 'datos-referencia' / 'hoteles.json'
         hoteles = json.loads(HOTELES_PATH.read_text()) if HOTELES_PATH.exists() else []
         new_id = f"H{len(hoteles)+1:03d}"
         hoteles.append({

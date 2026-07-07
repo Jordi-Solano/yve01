@@ -47,6 +47,7 @@ def api_crear():
         d.get("nombre", ""),
         d.get("email", ""),
         d.get("rol", "financial_controller"),
+        tenant=d.get("tenant", "default").strip() or "default",
     )
     return jsonify({"ok": result is True, "error": result if result is not True else None})
 
@@ -81,7 +82,7 @@ def api_admin_stats():
         n_users = n_active = 0
 
     try:
-        hotels = json.loads((BASE_DIR / "datos-referencia" / "hoteles.json").read_text())
+        hotels = json.loads((__import__("pathlib").Path(__import__("tenant_dirs").datos_dir()) / "hoteles.json").read_text())
         n_hotels = len(hotels)
     except Exception:
         n_hotels = 0
@@ -125,7 +126,7 @@ def api_audit():
 @_admin_required
 def api_hoteles():
     try:
-        hotels = json.loads((BASE_DIR / "datos-referencia" / "hoteles.json").read_text())
+        hotels = json.loads((__import__("pathlib").Path(__import__("tenant_dirs").datos_dir()) / "hoteles.json").read_text())
         return jsonify({"ok": True, "hoteles": hotels})
     except Exception as e:
         return jsonify({"ok": False, "error": str(e)}), 500
@@ -139,7 +140,7 @@ def api_eliminar_hotel():
     if not hotel_id:
         return jsonify({"ok": False, "error": "ID requerido"}), 400
     try:
-        path = BASE_DIR / "datos-referencia" / "hoteles.json"
+        path = __import__("pathlib").Path(__import__("tenant_dirs").datos_dir()) / "hoteles.json"
         hotels = json.loads(path.read_text())
         hotels = [h for h in hotels if h.get("id") != hotel_id]
         path.write_text(json.dumps(hotels, indent=2, ensure_ascii=False))
@@ -397,7 +398,7 @@ def api_crear_hotel():
     if not nombre:
         return jsonify({"ok": False, "error": "El nombre es obligatorio"}), 400
 
-    ruta = BASE_DIR / "datos-referencia" / "hoteles.json"
+    ruta = __import__("pathlib").Path(__import__("tenant_dirs").datos_dir()) / "hoteles.json"
     hotels = json.loads(ruta.read_text()) if ruta.exists() else []
 
     import hashlib, time

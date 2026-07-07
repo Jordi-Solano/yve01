@@ -9,7 +9,13 @@ from pathlib import Path
 from datetime import datetime, timedelta
 
 BASE_DIR = Path(__file__).parent
-DATOS    = BASE_DIR / "datos-referencia"
+from tenant_dirs import datos_dir as _t_ddir
+
+class _TDatos:
+    def __truediv__(self, other): return Path(_t_ddir()) / other
+    def __str__(self): return _t_ddir()
+
+DATOS = _TDatos()
 
 # ── Load real Calipolis data ──────────────────────────────────────────────
 def _load_calipolis():

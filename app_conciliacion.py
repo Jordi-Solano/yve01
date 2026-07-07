@@ -11,8 +11,16 @@ import pandas as pd
 import subprocess
 
 BASE_DIR     = Path(__file__).parent
-REPORTES_DIR = BASE_DIR / "reportes"
-REFERENCIA_DIR = BASE_DIR / "datos-referencia"
+from tenant_dirs import reportes_dir as _t_rdir, datos_dir as _t_ddir, tenant_id as _t_tid
+from pathlib import Path as _P
+
+class _TDir:
+    def __init__(self, fn): self._fn = fn
+    def __truediv__(self, other): return _P(self._fn()) / other
+    def __str__(self): return self._fn()
+
+REPORTES_DIR = _TDir(_t_rdir)
+REFERENCIA_DIR = _TDir(_t_ddir)
 
 bp = Blueprint("concil", __name__, url_prefix="/conciliacion")
 
@@ -91,9 +99,11 @@ def api_stats():
 def api_conciliar():
     script = str(BASE_DIR / "conciliacion_bancaria.py")
     try:
+        _env = __import__('os').environ.copy()
+        _env['YVE_TENANT'] = _t_tid()
         res = subprocess.run(
             [sys.executable, script],
-            capture_output=True, text=True, timeout=60, cwd=str(BASE_DIR)
+            capture_output=True, text=True, timeout=60, cwd=str(BASE_DIR), env=_env
         )
         ok = res.returncode == 0
         return jsonify({"ok": ok, "output": res.stdout[-500:] if res.stdout else res.stderr[-500:]})

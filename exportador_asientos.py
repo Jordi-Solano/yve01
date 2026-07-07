@@ -13,7 +13,13 @@ from flask import Blueprint, request, send_file, jsonify
 
 asientos_bp = Blueprint('asientos', __name__)
 
-DATA = Path(__file__).parent / 'datos-referencia'
+from tenant_dirs import datos_dir as _t_ddir
+
+class _TData:
+    def __truediv__(self, other): return Path(_t_ddir()) / other
+    def __str__(self): return _t_ddir()
+
+DATA = _TData()
 
 # ── Mapa cuenta PGC por tipo de gasto/ingreso ────────────────────────────────
 CUENTAS = {

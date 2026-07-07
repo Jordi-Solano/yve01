@@ -7,9 +7,10 @@ from datetime import date
 import pandas as pd
 
 BASE_DIR      = os.path.dirname(os.path.abspath(__file__))
-PROCESADAS_DIR= os.path.join(BASE_DIR, "facturas-procesadas")
-REFERENCIA_DIR= os.path.join(BASE_DIR, "datos-referencia")
-REPORTES_DIR  = os.path.join(BASE_DIR, "reportes")
+from tenant_dirs import procesadas_dir as _t_pdir, datos_dir as _t_ddir, reportes_dir as _t_rdir
+PROCESADAS_DIR= _t_pdir()
+REFERENCIA_DIR= _t_ddir()
+REPORTES_DIR  = _t_rdir()
 os.makedirs(REPORTES_DIR, exist_ok=True)
 COMISIONES_FILE = os.path.join(REFERENCIA_DIR, "comisiones_pactadas.xlsx")
 FECHA_HOY = date.today().strftime("%Y%m%d")

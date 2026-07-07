@@ -9,8 +9,21 @@ import pandas as pd
 
 ar_real_bp = Blueprint('ar_real', __name__)
 BASE_DIR = _os.path.dirname(_os.path.abspath(__file__))
-DATOS   = _os.path.join(BASE_DIR, 'datos-referencia')
-REPORTES = _os.path.join(BASE_DIR, 'reportes')
+from tenant_dirs import datos_dir as _t_ddir, reportes_dir as _t_rdir
+
+class _TStr(str):
+    pass
+
+def _mk_dyn(fn):
+    class _D:
+        def __add__(self, o): return fn() + o
+        def __radd__(self, o): return o + fn()
+        def __str__(self): return fn()
+        def __fspath__(self): return fn()
+    return _D()
+
+DATOS = _mk_dyn(_t_ddir)
+REPORTES = _mk_dyn(_t_rdir)
 
 def _get_clientes():
     ruta = _os.path.join(DATOS, 'clientes_credito.xlsx')

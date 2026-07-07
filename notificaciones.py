@@ -16,12 +16,29 @@ from pathlib import Path
 import pandas as pd
 
 BASE_DIR       = Path(__file__).parent
-REPORTES_DIR   = BASE_DIR / "reportes"
-PROCESADAS_DIR = BASE_DIR / "facturas-procesadas"
-REFERENCIA_DIR = BASE_DIR / "datos-referencia"
-CONFIG_PATH       = REFERENCIA_DIR / "hotel_config.json"
-NOTIF_CONFIG_PATH = REFERENCIA_DIR / "notif_config.json"
-HISTORIAL_PATH = REFERENCIA_DIR / "notificaciones_historial.json"
+from tenant_dirs import reportes_dir as _t_rdir, procesadas_dir as _t_pdir, datos_dir as _t_ddir
+
+class _TDir:
+    def __init__(self, fn): self._fn = fn
+    def __truediv__(self, other): return Path(self._fn()) / other
+    def __str__(self): return self._fn()
+
+class _TFile:
+    def __init__(self, fn, name): self._fn, self._name = fn, name
+    def _p(self): return Path(self._fn()) / self._name
+    def exists(self): return self._p().exists()
+    def open(self, *a, **k): return self._p().open(*a, **k)
+    def read_text(self, *a, **k): return self._p().read_text(*a, **k)
+    def write_text(self, *a, **k): return self._p().write_text(*a, **k)
+    def __fspath__(self): return str(self._p())
+    def __str__(self): return str(self._p())
+
+REPORTES_DIR   = _TDir(_t_rdir)
+PROCESADAS_DIR = _TDir(_t_pdir)
+REFERENCIA_DIR = _TDir(_t_ddir)
+CONFIG_PATH       = _TFile(_t_ddir, "hotel_config.json")
+NOTIF_CONFIG_PATH = _TFile(_t_ddir, "notif_config.json")
+HISTORIAL_PATH = _TFile(_t_ddir, "notificaciones_historial.json")
 
 # ── Config helpers ────────────────────────────────────────────────────────
 

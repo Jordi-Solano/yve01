@@ -10,9 +10,18 @@ from pathlib import Path
 import pandas as pd
 
 BASE_DIR       = Path(__file__).parent
-REPORTES_DIR   = BASE_DIR / "reportes"
-PROCESADAS_DIR = BASE_DIR / "facturas-procesadas"
-REFERENCIA_DIR = BASE_DIR / "datos-referencia"
+from tenant_dirs import reportes_dir as _t_rdir, procesadas_dir as _t_pdir, datos_dir as _t_ddir
+
+class _TDir:
+    """Path por-tenant evaluado en cada uso (no al importar)."""
+    def __init__(self, fn): self._fn = fn
+    def __truediv__(self, other): return Path(self._fn()) / other
+    def __str__(self): return self._fn()
+    def mkdir(self, **kw): Path(self._fn()).mkdir(**kw)
+
+REPORTES_DIR   = _TDir(_t_rdir)
+PROCESADAS_DIR = _TDir(_t_pdir)
+REFERENCIA_DIR = _TDir(_t_ddir)
 HOY            = datetime.now().strftime("%Y%m%d")
 
 REPORTES_DIR.mkdir(exist_ok=True)

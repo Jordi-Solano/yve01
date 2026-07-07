@@ -18,6 +18,7 @@ ROLES_VALIDOS = {"admin", "financial_controller", "income_auditor", "fb_manager"
 
 class Usuario(UserMixin):
     def __init__(self, data: dict):
+        self.tenant = data.get('tenant', 'default')
         self.id       = data["username"]
         self.username  = data["username"]
         self.nombre    = data.get("nombre", "")
@@ -108,7 +109,7 @@ def listar_usuarios():
     ]
 
 
-def crear_usuario(username, password, nombre, email, rol):
+def crear_usuario(username, password, nombre, email, rol, tenant='default'):
     """Crea un nuevo usuario. Devuelve True/error string."""
     if not username or not password:
         return "Username y password requeridos"
@@ -123,6 +124,7 @@ def crear_usuario(username, password, nombre, email, rol):
         "nombre":        nombre,
         "email":         email,
         "rol":           rol,
+        "tenant":        tenant or "default",
         "activo":        True,
     })
     _save_all(users)

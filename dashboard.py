@@ -26,9 +26,19 @@ def _get_base_dir():
     return _d
 
 BASE_DIR         = _get_base_dir()
-REPORTES_DIR     = os.path.join(BASE_DIR, "reportes")
-PROCESADAS_DIR   = os.path.join(BASE_DIR, "facturas-procesadas")
-APROBACIONES_DIR = os.path.join(BASE_DIR, "aprobaciones")
+from tenant_dirs import (datos_dir as _ddir, reportes_dir as _rdir,
+                         entrada_dir as _edir, procesadas_dir as _pdir,
+                         aprobaciones_dir as _adir, tenant_id as _tenant_id)
+
+def _env_tenant():
+    """Entorno para subprocess con el tenant de la sesión (los scripts lo leen via YVE_TENANT)."""
+    e = os.environ.copy()
+    e["YVE_TENANT"] = _tenant_id()
+    return e
+
+REPORTES_DIR_LEGACY     = os.path.join(BASE_DIR, "reportes")
+PROCESADAS_DIR_LEGACY   = os.path.join(BASE_DIR, "facturas-procesadas")
+APROBACIONES_DIR_LEGACY = os.path.join(BASE_DIR, "aprobaciones")
 NF = "NO_ENCONTRADO"
 
 # ── Excel cache (TTL 5 min) ──────────────────────────────────────────────
@@ -193,7 +203,7 @@ def api_hotel_activo():
             session.pop("hotel_activo", None)
         return jsonify({"ok": True, "hotel": session.get("hotel_activo")})
     try:
-        hoteles = json.load(open(os.path.join(BASE_DIR, "datos-referencia", "hoteles.json"), encoding="utf-8"))
+        hoteles = json.load(open(os.path.join(_ddir(), "hoteles.json"), encoding="utf-8"))
         nombres = [x.get("nombre") for x in hoteles if x.get("nombre") and x.get("activo", True)]
     except Exception:
         nombres = []
@@ -214,9 +224,9 @@ def cargar_datos():
     import glob as _glob
     candidatos = []
     for patron, dir_ in [
-        ("doble_imposicion_*.xlsx", REPORTES_DIR),
-        ("verificacion_*.xlsx", REPORTES_DIR),
-        ("facturas_procesadas_*.xlsx", PROCESADAS_DIR),
+        ("doble_imposicion_*.xlsx", _rdir()),
+        ("verificacion_*.xlsx", _rdir()),
+        ("facturas_procesadas_*.xlsx", _pdir()),
     ]:
         for f in _glob.glob(os.path.join(dir_, patron)):
             candidatos.append((os.path.getmtime(f), f))
@@ -234,7 +244,7 @@ def cargar_datos():
     if df is None or df.empty:
         return pd.DataFrame(), {}
 
-    apro_path = os.path.join(APROBACIONES_DIR, "aprobaciones.xlsx")
+    apro_path = os.path.join(_adir(), "aprobaciones.xlsx")
     if os.path.exists(apro_path):
         try:
             df_apro = pd.read_excel(apro_path)
@@ -331,14 +341,14 @@ def api_debug():
     info = {
         "BASE_DIR":       BASE_DIR,
         "BASE_DIR_exists": os.path.isdir(BASE_DIR),
-        "REPORTES_DIR":   REPORTES_DIR,
-        "PROCESADAS_DIR": PROCESADAS_DIR,
+        "_rdir()":   _rdir(),
+        "_pdir()": _pdir(),
         "archivos_reportes": [],
         "archivos_procesadas": [],
         "cwd": os.getcwd(),
         "python_file": __file__,
     }
-    for d, key in [(REPORTES_DIR, "archivos_reportes"), (PROCESADAS_DIR, "archivos_procesadas")]:
+    for d, key in [(_rdir(), "archivos_reportes"), (_pdir(), "archivos_procesadas")]:
         if os.path.isdir(d):
             for f in sorted(os.listdir(d)):
                 if f.endswith(".xlsx"):
@@ -350,11 +360,11 @@ def api_debug():
                         "modificado": datetime.datetime.fromtimestamp(mtime).strftime("%Y-%m-%d %H:%M:%S"),
                     })
     # Try actually loading
-    df, ruta_cargada = cargar_ultimo_excel("doble_imposicion_*.xlsx", REPORTES_DIR)
+    df, ruta_cargada = cargar_ultimo_excel("doble_imposicion_*.xlsx", _rdir())
     if df is None:
-        df, ruta_cargada = cargar_ultimo_excel("verificacion_*.xlsx", REPORTES_DIR)
+        df, ruta_cargada = cargar_ultimo_excel("verificacion_*.xlsx", _rdir())
     if df is None:
-        df, ruta_cargada = cargar_ultimo_excel("facturas_procesadas_*.xlsx", PROCESADAS_DIR)
+        df, ruta_cargada = cargar_ultimo_excel("facturas_procesadas_*.xlsx", _pdir())
     info["archivo_cargado"] = os.path.basename(ruta_cargada) if ruta_cargada else None
     info["filas_cargadas"] = len(df) if df is not None else 0
     info["columnas"] = list(df.columns) if df is not None else []
@@ -577,7 +587,7 @@ def api_procesar_batch_stream():
             has_ar = False; has_ap = False
 
             for i, fname in enumerate(archivos):
-                fpath = os.path.join(ENTRADA_DIR, fname)
+                fpath = os.path.join(_edir(), fname)
                 if not os.path.exists(fpath):
                     yield f'data: ✗ {fname}: no encontrado\n\n'
                     continue
@@ -631,13 +641,13 @@ def api_procesar_batch_stream():
                                 _df_bank = _pdb.read_excel(fpath)
                             else:
                                 import shutil as _sh3b
-                                _sh3b.copy2(fpath, os.path.join(BASE_DIR, 'datos-referencia', 'extracto_banco_upload' + ext))
+                                _sh3b.copy2(fpath, os.path.join(_ddir(), 'extracto_banco_upload' + ext))
                                 yield f'data: ✓ Banco {fname}: archivo copiado (formato {ext})\n\n'
                                 _mark(fname, 'BANK_OK')
                                 continue
                             
                             # Integrar con extracto existente
-                            banco_path = os.path.join(BASE_DIR, 'datos-referencia', 'extracto_banco.xlsx')
+                            banco_path = os.path.join(_ddir(), 'extracto_banco.xlsx')
                             if os.path.exists(banco_path):
                                 _df_exist = _pdb.read_excel(banco_path)
                                 _df_bank = _pdb.concat([_df_exist, _df_bank], ignore_index=True)
@@ -646,7 +656,7 @@ def api_procesar_batch_stream():
                             yield f'data: ✓ Banco {fname}: {len(_df_bank)} movimientos integrados\n\n'
                         except Exception as _eb:
                             import shutil as _sh3c
-                            _sh3c.copy2(fpath, os.path.join(BASE_DIR, 'datos-referencia', 'extracto_banco_upload' + ext))
+                            _sh3c.copy2(fpath, os.path.join(_ddir(), 'extracto_banco_upload' + ext))
                             yield f'data: ✓ Banco {fname}: archivo cargado (revisar formato)\n\n'
                         _mark(fname, 'BANK_OK')
                         continue
@@ -660,13 +670,13 @@ def api_procesar_batch_stream():
                                 _df_fb = _pdf.read_excel(fpath)
                             else:
                                 import shutil as _sh4b
-                                _sh4b.copy2(fpath, os.path.join(BASE_DIR, 'datos-referencia', 'ventas_fb_upload' + ext))
+                                _sh4b.copy2(fpath, os.path.join(_ddir(), 'ventas_fb_upload' + ext))
                                 yield f'data: ✓ F&B {fname}: archivo copiado\n\n'
                                 _mark(fname, 'FB_OK')
                                 continue
                             
                             # Integrar con ventas existentes
-                            ventas_path = os.path.join(BASE_DIR, 'datos-referencia', 'ventas_fb_diarias.xlsx')
+                            ventas_path = os.path.join(_ddir(), 'ventas_fb_diarias.xlsx')
                             if os.path.exists(ventas_path):
                                 _df_exist_fb = _pdf.read_excel(ventas_path)
                                 if not _df_exist_fb.empty:
@@ -676,7 +686,7 @@ def api_procesar_batch_stream():
                             yield f'data: ✓ F&B {fname}: {len(_df_fb)} registros integrados\n\n'
                         except Exception as _efb:
                             import shutil as _sh4c
-                            _sh4c.copy2(fpath, os.path.join(BASE_DIR, 'datos-referencia', 'ventas_fb_upload' + ext))
+                            _sh4c.copy2(fpath, os.path.join(_ddir(), 'ventas_fb_upload' + ext))
                             yield f'data: ✓ F&B {fname}: archivo cargado (revisar columnas)\n\n'
                         _mark(fname, 'FB_OK')
                         continue
@@ -686,7 +696,7 @@ def api_procesar_batch_stream():
                             import pandas as _pdi
                             _df_i = _pdi.read_csv(fpath) if ext == '.csv' else _pdi.read_excel(fpath)
                             _df_i = _normalize_cols(_df_i, _INV_COL_MAP)
-                            inv_path = os.path.join(BASE_DIR, 'datos-referencia', 'inventario.xlsx')
+                            inv_path = os.path.join(_ddir(), 'inventario.xlsx')
                             if os.path.exists(inv_path):
                                 _df_ei = _pdi.read_excel(inv_path)
                                 if not _df_ei.empty:
@@ -697,7 +707,7 @@ def api_procesar_batch_stream():
                             yield f'data: ✓ Inventario {fname}: {len(_df_i)} items integrados\n\n'
                         except Exception:
                             import shutil as _sh5
-                            _sh5.copy2(fpath, os.path.join(BASE_DIR, 'datos-referencia', 'inventario_upload' + ext))
+                            _sh5.copy2(fpath, os.path.join(_ddir(), 'inventario_upload' + ext))
                             yield f'data: ✓ Inventario {fname}: archivo cargado (revisar columnas)\n\n'
                         _mark(fname, 'INV_OK')
                         continue
@@ -707,7 +717,7 @@ def api_procesar_batch_stream():
                             import pandas as _pdm
                             _df_m = _pdm.read_csv(fpath) if ext == '.csv' else _pdm.read_excel(fpath)
                             _df_m = _normalize_cols(_df_m, _MER_COL_MAP)
-                            mer_path = os.path.join(BASE_DIR, 'datos-referencia', 'mermas.xlsx')
+                            mer_path = os.path.join(_ddir(), 'mermas.xlsx')
                             if os.path.exists(mer_path):
                                 _df_em = _pdm.read_excel(mer_path)
                                 if not _df_em.empty:
@@ -717,7 +727,7 @@ def api_procesar_batch_stream():
                             yield f'data: ✓ Mermas {fname}: {len(_df_m)} registros integrados\n\n'
                         except Exception:
                             import shutil as _sh5m
-                            _sh5m.copy2(fpath, os.path.join(BASE_DIR, 'datos-referencia', 'mermas_upload' + ext))
+                            _sh5m.copy2(fpath, os.path.join(_ddir(), 'mermas_upload' + ext))
                             yield f'data: ✓ Mermas {fname}: archivo cargado (revisar columnas)\n\n'
                         _mark(fname, 'INV_OK')
                         continue
@@ -763,7 +773,7 @@ def api_procesar_batch_stream():
                                     try:
                                         _movs = reg['movimientos']
                                         _df_movs = _normalize_cols(pd.DataFrame(_movs), _BANK_COL_MAP)
-                                        banco_path = os.path.join(BASE_DIR, 'datos-referencia', 'extracto_banco.xlsx')
+                                        banco_path = os.path.join(_ddir(), 'extracto_banco.xlsx')
                                         if os.path.exists(banco_path):
                                             _df_exist = pd.read_excel(banco_path)
                                             _df_movs = pd.concat([_df_exist, _df_movs], ignore_index=True)
@@ -786,7 +796,7 @@ def api_procesar_batch_stream():
                                             fecha = reg.get('fecha', date.today().isoformat())
                                             if 'fecha' not in _df_ventas.columns:
                                                 _df_ventas['fecha'] = fecha
-                                            ventas_path = os.path.join(BASE_DIR, 'datos-referencia', 'ventas_fb_diarias.xlsx')
+                                            ventas_path = os.path.join(_ddir(), 'ventas_fb_diarias.xlsx')
                                             if os.path.exists(ventas_path):
                                                 _df_old_v = pd.read_excel(ventas_path)
                                                 _df_ventas = pd.concat([_df_old_v, _df_ventas], ignore_index=True)
@@ -809,7 +819,7 @@ def api_procesar_batch_stream():
                                         inv_items = reg.get('items', reg.get('productos', []))
                                         if inv_items:
                                             _df_inv = _normalize_cols(pd.DataFrame(inv_items), _INV_COL_MAP)
-                                            inv_path = os.path.join(BASE_DIR, 'datos-referencia', 'inventario.xlsx')
+                                            inv_path = os.path.join(_ddir(), 'inventario.xlsx')
                                             if os.path.exists(inv_path):
                                                 _df_old = pd.read_excel(inv_path)
                                                 _df_inv = pd.concat([_df_old, _df_inv], ignore_index=True)
@@ -829,7 +839,7 @@ def api_procesar_batch_stream():
                                         merma_items = reg.get('items', reg.get('mermas', []))
                                         if merma_items:
                                             _df_mer = _normalize_cols(pd.DataFrame(merma_items), _MER_COL_MAP)
-                                            mer_path = os.path.join(BASE_DIR, 'datos-referencia', 'mermas.xlsx')
+                                            mer_path = os.path.join(_ddir(), 'mermas.xlsx')
                                             if os.path.exists(mer_path):
                                                 _df_old_m = pd.read_excel(mer_path)
                                                 _df_mer = pd.concat([_df_old_m, _df_mer], ignore_index=True)
@@ -844,7 +854,7 @@ def api_procesar_batch_stream():
                                 elif _tipo_doc in ('BEO', 'TM', 'CONTRATO'):
                                     # Guardar como documento de referencia para matching
                                     try:
-                                        ref_path = os.path.join(BASE_DIR, 'datos-referencia', 'eventos_referencia.json')
+                                        ref_path = os.path.join(_ddir(), 'eventos_referencia.json')
                                         refs = json.load(open(ref_path)) if os.path.exists(ref_path) else []
                                         
                                         evento = reg.get('evento', reg.get('cliente', fname))
@@ -907,7 +917,7 @@ def api_procesar_batch_stream():
                                     if tarifa: info_parts.append(f'€{tarifa}/noche')
                                     # Guardar datos de rooming
                                     try:
-                                        rooming_path = os.path.join(BASE_DIR, 'datos-referencia', 'rooming_grupos.json')
+                                        rooming_path = os.path.join(_ddir(), 'rooming_grupos.json')
                                         rooming_data = json.load(open(rooming_path)) if os.path.exists(rooming_path) else []
                                         rooming_data.append({
                                             'archivo': fname, 'grupo': grupo,
@@ -929,7 +939,7 @@ def api_procesar_batch_stream():
                                     _mark(fname, 'SKIP')
                             elif reg and not reg.get('error'):
                                 # Guardar resultado
-                                _ap_excel = os.path.join(_AP_DIR, f'facturas_ap_{date.today().strftime("%Y%m%d")}.xlsx')
+                                _ap_excel = os.path.join(_pdir(), f'facturas_ap_{date.today().strftime("%Y%m%d")}.xlsx')
                                 if os.path.exists(_ap_excel):
                                     _df_e = pd.read_excel(_ap_excel)
                                     _df_n = pd.DataFrame([reg])
@@ -948,7 +958,7 @@ def api_procesar_batch_stream():
                                 
                                 # 3-WAY MATCHING: buscar BEO/contrato del mismo evento/cliente
                                 try:
-                                    ref_path = os.path.join(BASE_DIR, 'datos-referencia', 'eventos_referencia.json')
+                                    ref_path = os.path.join(_ddir(), 'eventos_referencia.json')
                                     if os.path.exists(ref_path):
                                         refs = json.load(open(ref_path))
                                         proveedor = (reg.get('nombre_proveedor') or '').lower()
@@ -1006,7 +1016,7 @@ def api_procesar_batch_stream():
                 yield 'data: >> Verificando comisiones OTA...\n\n'
                 try:
                     import subprocess as _sp2
-                    _sp2.run(['python3','verificador_comisiones.py'], cwd=BASE_DIR, timeout=30, capture_output=True)
+                    _sp2.run(['python3','verificador_comisiones.py'], cwd=BASE_DIR, timeout=30, capture_output=True, env=_env_tenant())
                     _sp2.run(['python3','detector_doble_imposicion.py'], cwd=BASE_DIR, timeout=30, capture_output=True)
                     yield 'data: ✓ Verificación completada\n\n'
                 except: pass
@@ -1157,12 +1167,12 @@ SOLO devuelve JSON, sin markdown ni explicaciones."""
                 'tipo_proveedor': tipo_prov, 'cuenta_contable': cuenta,
                 'moneda': datos.get('moneda','EUR'), 'error': ''
             }
-            ruta = os.path.join(SALIDA_DIR, f'facturas_ap_{date.today().strftime("%Y%m%d")}.xlsx')
+            ruta = os.path.join(_pdir(), f'facturas_ap_{date.today().strftime("%Y%m%d")}.xlsx')
             guardar_excel([reg], ruta)
             mensaje = f'{datos.get("nombre_proveedor","")} — €{reg["total_factura"]:,.2f}'
             
         elif tipo in ('BEO','TM','CONTRATO'):
-            ref_path = os.path.join(BASE_DIR, 'datos-referencia', 'eventos_referencia.json')
+            ref_path = os.path.join(_ddir(), 'eventos_referencia.json')
             refs = json.load(open(ref_path)) if os.path.exists(ref_path) else []
             evento = datos.get('evento', fname)
             evento_key = evento.lower().strip()[:50]
@@ -1187,7 +1197,7 @@ SOLO devuelve JSON, sin markdown ni explicaciones."""
             movimientos = datos.get('movimientos', [])
             if movimientos:
                 _df_movs = _normalize_cols(pd.DataFrame(movimientos), _BANK_COL_MAP)
-                banco_path = os.path.join(BASE_DIR, 'datos-referencia', 'extracto_banco.xlsx')
+                banco_path = os.path.join(_ddir(), 'extracto_banco.xlsx')
                 if os.path.exists(banco_path):
                     _df_old = pd.read_excel(banco_path)
                     _df_movs = pd.concat([_df_old, _df_movs], ignore_index=True)
@@ -1205,7 +1215,7 @@ SOLO devuelve JSON, sin markdown ni explicaciones."""
                 fecha = datos.get('fecha', date.today().isoformat())
                 if 'fecha' not in _df_v.columns:
                     _df_v['fecha'] = fecha
-                ventas_path = os.path.join(BASE_DIR, 'datos-referencia', 'ventas_fb_diarias.xlsx')
+                ventas_path = os.path.join(_ddir(), 'ventas_fb_diarias.xlsx')
                 if os.path.exists(ventas_path):
                     _df_old_v = pd.read_excel(ventas_path)
                     _df_v = pd.concat([_df_old_v, _df_v], ignore_index=True)
@@ -1219,7 +1229,7 @@ SOLO devuelve JSON, sin markdown ni explicaciones."""
             inv_items = datos.get('items', datos.get('productos', []))
             if inv_items:
                 _df_inv = _normalize_cols(pd.DataFrame(inv_items), _INV_COL_MAP)
-                inv_path = os.path.join(BASE_DIR, 'datos-referencia', 'inventario.xlsx')
+                inv_path = os.path.join(_ddir(), 'inventario.xlsx')
                 if os.path.exists(inv_path):
                     _df_old_i = pd.read_excel(inv_path)
                     _df_inv = pd.concat([_df_old_i, _df_inv], ignore_index=True)
@@ -1236,7 +1246,7 @@ SOLO devuelve JSON, sin markdown ni explicaciones."""
             merma_items = datos.get('items', datos.get('mermas', []))
             if merma_items:
                 _df_m = _normalize_cols(pd.DataFrame(merma_items), _MER_COL_MAP)
-                mer_path = os.path.join(BASE_DIR, 'datos-referencia', 'mermas.xlsx')
+                mer_path = os.path.join(_ddir(), 'mermas.xlsx')
                 if os.path.exists(mer_path):
                     _df_old_m = pd.read_excel(mer_path)
                     _df_m = pd.concat([_df_old_m, _df_m], ignore_index=True)
@@ -1252,7 +1262,7 @@ SOLO devuelve JSON, sin markdown ni explicaciones."""
             habs = datos.get('num_habitaciones', '?')
             checkin = datos.get('checkin', '')
             checkout = datos.get('checkout', '')
-            rooming_path = os.path.join(BASE_DIR, 'datos-referencia', 'rooming_grupos.json')
+            rooming_path = os.path.join(_ddir(), 'rooming_grupos.json')
             rooming_data = json.load(open(rooming_path)) if os.path.exists(rooming_path) else []
             rooming_data.append({'archivo': fname, 'grupo': grupo, 'habitaciones': habs,
                 'checkin': checkin, 'checkout': checkout, 'fecha_procesado': date.today().isoformat()})
@@ -1278,7 +1288,7 @@ SOLO devuelve JSON, sin markdown ni explicaciones."""
 @login_required
 def api_eventos_referencia():
     """Devuelve los eventos con sus documentos de referencia (BEO, TM, contrato)."""
-    ref_path = os.path.join(BASE_DIR, 'datos-referencia', 'eventos_referencia.json')
+    ref_path = os.path.join(_ddir(), 'eventos_referencia.json')
     if not os.path.exists(ref_path):
         return jsonify({'ok': True, 'eventos': []})
     try:
@@ -1313,7 +1323,7 @@ def health():
         "app":       "Yve.01",
         "version":   "1.0.0-beta",
         "timestamp": datetime.now().isoformat(),
-        "reports":   len(_glob.glob(os.path.join(REPORTES_DIR, "*.xlsx"))),
+        "reports":   len(_glob.glob(os.path.join(_rdir(), "*.xlsx"))),
         "uptime":    open("/proc/uptime").read().split()[0] + "s" if os.path.exists("/proc/uptime") else "n/a",
     })
 
@@ -1365,7 +1375,7 @@ def api_ap_aprobar_lote():
     try:
         # Update matching reports
         import glob as _g
-        hits = _g.glob(os.path.join(REPORTES_DIR, "matching_*.xlsx"))
+        hits = _g.glob(os.path.join(_rdir(), "matching_*.xlsx"))
         aprobadas = 0
         for ruta in hits:
             df = pd.read_excel(ruta)
@@ -1440,11 +1450,11 @@ def api_health():
         'components': {}
     }
     # Data files
-    has_drr = bool(_g.glob(os.path.join(REPORTES_DIR, 'drr_procesado_*.xlsx')))
-    has_ar  = bool(_g.glob(os.path.join(REPORTES_DIR, 'doble_imposicion_*.xlsx')) or
-                   _g.glob(os.path.join(REPORTES_DIR, 'verificacion_*.xlsx')))
-    has_ap  = bool(_g.glob(os.path.join(REPORTES_DIR, 'matching_*.xlsx')))
-    has_cfg = os.path.exists(os.path.join(BASE_DIR, 'datos-referencia', 'hotel_config.json'))
+    has_drr = bool(_g.glob(os.path.join(_rdir(), 'drr_procesado_*.xlsx')))
+    has_ar  = bool(_g.glob(os.path.join(_rdir(), 'doble_imposicion_*.xlsx')) or
+                   _g.glob(os.path.join(_rdir(), 'verificacion_*.xlsx')))
+    has_ap  = bool(_g.glob(os.path.join(_rdir(), 'matching_*.xlsx')))
+    has_cfg = os.path.exists(os.path.join(_ddir(), 'hotel_config.json'))
     
     # Oracle mode
     oracle_mode = 'real' if os.environ.get('ORACLE_BASE_URL') else 'simulation'
@@ -1499,7 +1509,7 @@ def api_stats():
     # Enrich with AP pending count
     try:
         import glob as _g
-        ap_hits = _g.glob(os.path.join(REPORTES_DIR, "matching_*.xlsx"))
+        ap_hits = _g.glob(os.path.join(_rdir(), "matching_*.xlsx"))
         ap_pend = 0
         for ruta in ap_hits:
             df_ap = pd.read_excel(ruta)
@@ -1516,11 +1526,11 @@ def api_facturas():
 
 # ── File Upload & Processing Batch ──────────────────────────────────────────
 
-ENTRADA_DIR   = os.path.join(BASE_DIR, 'facturas-entrada')
-PROCESADAS_DIR = os.path.join(BASE_DIR, 'facturas-procesadas')
-PROC_LOG_PATH  = os.path.join(BASE_DIR, 'datos-referencia', 'archivos_procesados.json')
-os.makedirs(ENTRADA_DIR,   exist_ok=True)
-os.makedirs(PROCESADAS_DIR, exist_ok=True)
+ENTRADA_DIR_LEGACY   = os.path.join(BASE_DIR, 'facturas-entrada')
+PROCESADAS_DIR_LEGACY2 = os.path.join(BASE_DIR, 'facturas-procesadas')
+PROC_LOG_PATH  = os.path.join(_ddir(), 'archivos_procesados.json')
+os.makedirs(_edir(),   exist_ok=True)
+os.makedirs(_pdir(), exist_ok=True)
 
 def _load_proc_log():
     """Load the processed-files log."""
@@ -1590,9 +1600,9 @@ def api_archivos_estado():
     """List files in facturas-entrada with processed status."""
     log = _load_proc_log()
     files = []
-    if os.path.exists(ENTRADA_DIR):
-        for fname in sorted(os.listdir(ENTRADA_DIR)):
-            fpath = os.path.join(ENTRADA_DIR, fname)
+    if os.path.exists(_edir()):
+        for fname in sorted(os.listdir(_edir())):
+            fpath = os.path.join(_edir(), fname)
             if os.path.isfile(fpath) and not fname.startswith('.'):
                 fsize = os.path.getsize(fpath)
                 proc_info = log.get(fname, None)
@@ -1623,7 +1633,7 @@ def api_upload_facturas():
         if not file.filename:
             continue
         fname = os.path.basename(file.filename)
-        fpath = os.path.join(ENTRADA_DIR, fname)
+        fpath = os.path.join(_edir(), fname)
         already_exists = os.path.exists(fpath)
         already_processed = fname in log
         
@@ -1675,7 +1685,7 @@ def api_procesar_batch():
             if archivos_seleccionados:
                 candidatos = archivos_seleccionados
             else:
-                candidatos = sorted(os.listdir(ENTRADA_DIR)) if os.path.exists(ENTRADA_DIR) else []
+                candidatos = sorted(os.listdir(_edir())) if os.path.exists(_edir()) else []
             
             a_procesar = []
             a_saltar = []
@@ -1702,7 +1712,7 @@ def api_procesar_batch():
             
             # Process each file
             for fname, tipo in a_procesar:
-                fpath = os.path.join(ENTRADA_DIR, fname)
+                fpath = os.path.join(_edir(), fname)
                 if not os.path.exists(fpath):
                     yield f'data: ✗ {fname}: archivo no encontrado\n\n'
                     continue
@@ -1724,7 +1734,7 @@ def api_procesar_batch():
                         if tipo == 'AR' or (tipo == 'AR_o_AP' and any(x in fname.lower() for x in ['booking','expedia','ota'])):
                             import subprocess
                             result = subprocess.run(['python3', 'lector_ota.py', '--file', fpath], 
-                                capture_output=True, text=True, cwd=BASE_DIR, timeout=120)
+                                capture_output=True, text=True, cwd=BASE_DIR, timeout=120, env=_env_tenant())
                             if result.returncode == 0:
                                 yield f'data: ✓ AR OTA {fname}: procesado\n\n'
                                 _mark_processed(fname, 'AR_OK')
@@ -1734,7 +1744,7 @@ def api_procesar_batch():
                                 _mark_processed(fname, f'ERROR: {result.stderr[:50]}')
                         else:
                             result = subprocess.run(['python3', 'lector_facturas_ap.py', '--file', fpath],
-                                capture_output=True, text=True, cwd=BASE_DIR, timeout=120)
+                                capture_output=True, text=True, cwd=BASE_DIR, timeout=120, env=_env_tenant())
                             if result.returncode == 0:
                                 yield f'data: ✓ AP {fname}: procesado\n\n'
                                 _mark_processed(fname, 'AP_OK')
@@ -1751,10 +1761,10 @@ def api_procesar_batch():
                 try:
                     import subprocess
                     result = subprocess.run(['python3', 'verificador_comisiones.py'],
-                        capture_output=True, text=True, cwd=BASE_DIR, timeout=60)
+                        capture_output=True, text=True, cwd=BASE_DIR, timeout=60, env=_env_tenant())
                     yield f'data: ✓ Verificación comisiones completada\n\n'
                     result2 = subprocess.run(['python3', 'detector_doble_imposicion.py'],
-                        capture_output=True, text=True, cwd=BASE_DIR, timeout=60)
+                        capture_output=True, text=True, cwd=BASE_DIR, timeout=60, env=_env_tenant())
                     yield f'data: ✓ Análisis doble imposición completado\n\n'
                 except Exception as e:
                     yield f'data: ✗ Verificación: {str(e)[:80]}\n\n'
@@ -1845,15 +1855,15 @@ _pipeline_ap_running = False
 _pipeline_ap_lock    = threading.Lock()
 _pipeline_oracle_running = False
 _pipeline_oracle_lock    = threading.Lock()
-FACTURAS_AP_DIR      = os.path.join(BASE_DIR, "facturas-procesadas")
-APROBACIONES_AP_DIR  = os.path.join(BASE_DIR, "aprobaciones")
+FACTURAS_AP_DIR_LEGACY      = os.path.join(BASE_DIR, "facturas-procesadas")
+APROBACIONES_AP_DIR_LEGACY  = os.path.join(BASE_DIR, "aprobaciones")
 
 def cargar_datos_ap():
     """Carga facturas AP — usa el archivo MÁS RECIENTE entre contabilizadas y procesadas."""
     import glob
     candidatos = []
     for patron in ["facturas_contabilizadas_*.xlsx", "facturas_ap_*.xlsx"]:
-        for f in glob.glob(os.path.join(FACTURAS_AP_DIR, patron)):
+        for f in glob.glob(os.path.join(_pdir(), patron)):
             candidatos.append((os.path.getmtime(f), f))
     if not candidatos:
         return pd.DataFrame()
@@ -1868,7 +1878,7 @@ def cargar_datos_ap():
         return pd.DataFrame()
 
     # Merge con aprobaciones AP
-    apro_path = os.path.join(APROBACIONES_AP_DIR, "aprobaciones_ap.xlsx")
+    apro_path = os.path.join(_adir(), "aprobaciones_ap.xlsx")
     if os.path.exists(apro_path):
         try:
             df_apro = pd.read_excel(apro_path)
@@ -2209,11 +2219,11 @@ _pipeline_oracle_lock    = threading.Lock()
 # ── DRR (Daily Revenue Report) ────────────────────────────────────────
 
 FACTURAS_ENTRADA_DIR = os.path.join(BASE_DIR, "facturas-entrada")
-DRR_UPLOAD_DIR       = os.path.join(BASE_DIR, "facturas-entrada")
+DRR_UPLOAD_DIR_LEGACY       = os.path.join(BASE_DIR, "facturas-entrada")
 
 def _cargar_drr_procesado():
     """Carga el último drr_procesado_*.xlsx de reportes/."""
-    hits = glob.glob(os.path.join(REPORTES_DIR, "drr_procesado_*.xlsx"))
+    hits = glob.glob(os.path.join(_rdir(), "drr_procesado_*.xlsx"))
     if not hits:
         return None
     hits.sort(key=lambda p: os.path.getmtime(p), reverse=True)
@@ -2411,8 +2421,8 @@ def api_upload_drr():
     if not f.filename.endswith(".xlsm"):
         return jsonify({"ok": False, "error": "Solo archivos .xlsm"}), 400
 
-    os.makedirs(DRR_UPLOAD_DIR, exist_ok=True)
-    save_path = os.path.join(DRR_UPLOAD_DIR, f.filename)
+    os.makedirs(_edir(), exist_ok=True)
+    save_path = os.path.join(_edir(), f.filename)
     f.save(save_path)
 
     # Ejecutar lector_drr.py
@@ -2469,14 +2479,14 @@ def api_stats_banco():
     """Resumen de conciliacion bancaria para el dashboard."""
     # Primero intentar conciliación existente
     ruta = None
-    hits = glob.glob(os.path.join(REPORTES_DIR, "conciliacion_*.xlsx"))
+    hits = glob.glob(os.path.join(_rdir(), "conciliacion_*.xlsx"))
     if hits:
         hits.sort(key=lambda p: os.path.getmtime(p), reverse=True)
         ruta = hits[0]
     
     # Si no hay conciliación, mostrar datos del extracto directamente
     if not ruta:
-        extracto_path = os.path.join(BASE_DIR, "datos-referencia", "extracto_banco.xlsx")
+        extracto_path = os.path.join(_ddir(), "extracto_banco.xlsx")
         if os.path.exists(extracto_path):
             try:
                 df_ext = pd.read_excel(extracto_path)
@@ -2592,7 +2602,7 @@ def api_test_notif():
 @app.route("/api/hotel_config")
 def api_hotel_config():
     """Devuelve configuración del hotel (nombre, email, etc.)."""
-    path = os.path.join(BASE_DIR, "datos-referencia", "hotel_config.json")
+    path = os.path.join(_ddir(), "hotel_config.json")
     try:
         data = json.load(open(path)) if os.path.exists(path) else {}
         return jsonify(data)
@@ -2602,7 +2612,7 @@ def api_hotel_config():
 @app.route("/api/notif_config", methods=["GET"])
 def api_notif_config_get():
     """Devuelve la configuración de notificaciones."""
-    path = os.path.join(BASE_DIR, "datos-referencia", "notif_config.json")
+    path = os.path.join(_ddir(), "notif_config.json")
     default = {
         "canales": {"email": True, "whatsapp": False, "slack": False, "push": True},
         "email": "", "whatsapp": "", "slack_webhook": "",
@@ -2625,7 +2635,7 @@ def api_notif_config_get():
 @app.route("/api/notif_config", methods=["POST"])
 def api_notif_config_save():
     """Guarda la configuración de notificaciones."""
-    path = os.path.join(BASE_DIR, "datos-referencia", "notif_config.json")
+    path = os.path.join(_ddir(), "notif_config.json")
     data = request.get_json(silent=True) or {}
     try:
         with open(path, "w") as f:
@@ -2683,7 +2693,7 @@ def api_upload_ventas_pos():
             df_new['precio_unitario'] = df_new['total_venta'] / df_new['unidades_vendidas'].replace(0, 1)
 
         # Load existing and append
-        path = os.path.join(BASE_DIR, "datos-referencia", "ventas_fb_diarias.xlsx")
+        path = os.path.join(_ddir(), "ventas_fb_diarias.xlsx")
         df_existing = pd.read_excel(path) if os.path.exists(path) else pd.DataFrame()
         df_combined = pd.concat([df_existing, df_new[['fecha','id_receta','nombre_plato',
                                                        'categoria','unidades_vendidas',
@@ -2730,7 +2740,7 @@ def api_cache_clear():
 @app.route("/api/notificaciones")
 def api_notificaciones():
     """Devuelve historial de notificaciones."""
-    hist_path = os.path.join(BASE_DIR, "datos-referencia", "notificaciones_historial.json")
+    hist_path = os.path.join(_ddir(), "notificaciones_historial.json")
     if os.path.exists(hist_path):
         try:
             with open(hist_path, "r", encoding="utf-8") as f:
@@ -2756,7 +2766,7 @@ def api_enviar_notificaciones():
 # ── Chat AI — Yve Copilot ──────────────────────────────────────────────
 
 def _hotel_name():
-    cfg_path = os.path.join(BASE_DIR, "datos-referencia", "hotel_config.json")
+    cfg_path = os.path.join(_ddir(), "hotel_config.json")
     if os.path.exists(cfg_path):
         try:
             with open(cfg_path, "r", encoding="utf-8") as f:
@@ -11546,7 +11556,7 @@ def chequear_notificaciones():
 def historial_notificaciones():
     """Retorna historial de notificaciones"""
     try:
-        with open('datos-referencia/notificaciones_historial.json', 'r') as f:
+        with open(os.path.join(_ddir(), 'notificaciones_historial.json'), 'r') as f:
             historial = json.load(f)
         return jsonify(historial[-50:])  # Últimas 50
     except:
@@ -11633,7 +11643,7 @@ def api_eliminar_archivo():
     fname = data.get('nombre', '').strip()
     if not fname or '/' in fname or '..' in fname:
         return jsonify({"error": "nombre inválido"}), 400
-    fpath = os.path.join(ENTRADA_DIR, fname)
+    fpath = os.path.join(_edir(), fname)
     if os.path.exists(fpath):
         os.remove(fpath)
         # Quitar del log de procesados también

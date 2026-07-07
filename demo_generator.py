@@ -9,9 +9,16 @@ from pathlib import Path
 import pandas as pd
 
 BASE_DIR   = Path(__file__).parent
-DATOS      = BASE_DIR / "datos-referencia"
-REPORTES   = BASE_DIR / "reportes"
-PROCESADAS = BASE_DIR / "facturas-procesadas"
+from tenant_dirs import datos_dir as _t_ddir, reportes_dir as _t_rdir, procesadas_dir as _t_pdir
+
+class _TDir:
+    def __init__(self, fn): self._fn = fn
+    def __truediv__(self, other): return Path(self._fn()) / other
+    def __str__(self): return self._fn()
+
+DATOS      = _TDir(_t_ddir)
+REPORTES   = _TDir(_t_rdir)
+PROCESADAS = _TDir(_t_pdir)
 
 CIUDADES   = ["Barcelona", "Madrid", "Sitges", "Valencia", "Sevilla", "Málaga", "Bilbao", "Palma", "Girona", "Tarragona"]
 OTAS       = ["Booking.com", "Expedia", "Hotelbeds", "Agoda"]

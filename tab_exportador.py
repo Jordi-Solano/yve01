@@ -29,7 +29,8 @@ def api_exportar(tipo):
         elif tipo == 'banco':
             import glob as _g, os as _os
             from datetime import datetime as _dt
-            REPORTES_DIR = _os.path.join(_os.path.dirname(__file__), 'reportes')
+            from tenant_dirs import reportes_dir as _t_rdir
+            REPORTES_DIR = _t_rdir()
             hits = _g.glob(_os.path.join(REPORTES_DIR, 'conciliacion_*.xlsx'))
             if not hits: return jsonify({'error': 'No hay datos bancarios'}), 404
             hits.sort(key=lambda p: _os.path.getmtime(p), reverse=True)
@@ -37,7 +38,7 @@ def api_exportar(tipo):
             result = (open(hits[0],'rb'), _os.path.basename(hits[0]))
         elif tipo == 'ar_real':
             import os as _os
-            ruta = _os.path.join(_os.path.dirname(__file__), 'datos-referencia', 'reservas_credito.xlsx')
+            ruta = __import__('tenant_dirs').datos_dir() + '/reservas_credito.xlsx'
             if not _os.path.exists(ruta): return jsonify({'error': 'Sin datos AR Real'}), 404
             from io import BytesIO as _BIO
             with open(ruta,'rb') as fh: data = fh.read()
@@ -45,7 +46,7 @@ def api_exportar(tipo):
             result = (_BIO(data), f'ar_real_facturas_{_dt.now().strftime("%Y%m%d")}.xlsx')
         elif tipo == 'fb':
             import os as _os
-            ruta = _os.path.join(_os.path.dirname(__file__), 'datos-referencia', 'ventas_fb_diarias.xlsx')
+            ruta = __import__('tenant_dirs').datos_dir() + '/ventas_fb_diarias.xlsx'
             if not _os.path.exists(ruta): return jsonify({'error': 'Sin datos F&B'}), 404
             from io import BytesIO
             with open(ruta,'rb') as fh: data = fh.read()

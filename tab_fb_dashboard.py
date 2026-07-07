@@ -9,7 +9,13 @@ from datetime import datetime
 
 fb_bp = Blueprint("fb", __name__, url_prefix="/fb")
 BASE_DIR = Path(__file__).parent
-DATOS    = BASE_DIR / "datos-referencia"
+from tenant_dirs import datos_dir as _t_ddir, tenant_id as _t_tid
+
+class _TDatos:
+    def __truediv__(self, other): return Path(_t_ddir()) / other
+    def __str__(self): return _t_ddir()
+
+DATOS = _TDatos()
 
 # ── Cache ────────────────────────────────────────────────────────────────────
 _FB_CACHE: dict = {}
@@ -17,7 +23,7 @@ _FB_TTL = 180  # 3 min
 
 def _xlsx(fname, **kw):
     path = DATOS / fname
-    key  = fname
+    key  = _t_tid() + "|" + fname
     now  = _t.time()
     if key in _FB_CACHE:
         df, ts = _FB_CACHE[key]
@@ -67,7 +73,7 @@ def api_resultados():
     try:
         # Early check: si no hay datos, devolver respuesta vacía
         import os as _os
-        ventas_path = _os.path.join(_os.path.dirname(_os.path.abspath(__file__)), "datos-referencia", "ventas_fb_diarias.xlsx")
+        ventas_path = _os.path.join(_t_ddir(), "ventas_fb_diarias.xlsx")
         _df_check = pd.read_excel(ventas_path)
         if _df_check.empty or len(_df_check) < 1:
             return jsonify({
@@ -181,7 +187,7 @@ def api_resultados():
 def api_inventario():
     try:
         import os as _os2
-        inv_path = _os2.path.join(_os2.path.dirname(_os2.path.abspath(__file__)), "datos-referencia", "inventario.xlsx")
+        inv_path = _os2.path.join(_t_ddir(), "inventario.xlsx")
         _df_inv_check = pd.read_excel(inv_path)
         if _df_inv_check.empty or len(_df_inv_check) < 1:
             return jsonify({'ok': True, 'items': [], 'valor_total': 0, 'alertas_count': 0, 'criticos_count': 0, 'top_alerts': []})
@@ -221,7 +227,7 @@ def api_inventario():
 def api_mermas():
     try:
         import os as _os3
-        mer_path = _os3.path.join(_os3.path.dirname(_os3.path.abspath(__file__)), "datos-referencia", "mermas.xlsx")
+        mer_path = _os3.path.join(_t_ddir(), "mermas.xlsx")
         _df_mer_check = pd.read_excel(mer_path)
         if _df_mer_check.empty or len(_df_mer_check) < 1:
             return jsonify({'ok': True, 'mermas': [], 'total_coste': 0, 'por_categoria': {}, 'total': 0, 'por_causa': {}})

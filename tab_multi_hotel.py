@@ -7,7 +7,13 @@ from flask import Blueprint, jsonify
 
 multi_hotel_bp = Blueprint('multi_hotel', __name__)
 BASE_DIR = _os.path.dirname(_os.path.abspath(__file__))
-DATOS    = _os.path.join(BASE_DIR, 'datos-referencia')
+from tenant_dirs import datos_dir as _t_ddir
+
+class _DynDatos:
+    def __fspath__(self): return _t_ddir()
+    def __str__(self): return _t_ddir()
+
+DATOS = _DynDatos()
 
 def _load_kpis():
     ruta = _os.path.join(DATOS, 'kpis_hoteles.xlsx')
