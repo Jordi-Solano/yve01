@@ -147,6 +147,40 @@ Push: `git push https://ghp_...@github.com/Jordi-Solano/yve01.git main`
   chips de filtro por cadena (renderMHGrupos/filtrarMHGrupo, ?grupo= en overview y
   rankings), cadena visible bajo el nombre del hotel.
 
+## MULTI-TENANT (cuentas por cliente con datos aislados) — HECHO
+
+- `tenant_dirs.py`: cada tenant tiene su árbol en `tenants/<slug>/` (datos-referencia,
+  reportes, facturas-entrada/procesadas, aprobaciones), autocreado con seeds vacíos la
+  primera vez. Tenant `default` = directorios raíz (compatibilidad total con admin).
+  Resolución del tenant: sesión Flask → env `YVE_TENANT` (para subprocess) → default.
+- Usuarios (usuarios.json GLOBAL en raíz) con campo `tenant`. Al hacer login,
+  `session['tenant_id']` = tenant del usuario. `crear_usuario(..., tenant=)` y el panel
+  admin (/admin/api/crear_usuario) aceptan tenant. El SIGNUP crea su propio tenant a
+  partir del nombre del hotel/grupo (slug) y registra el hotel en SU hoteles.json.
+- Módulos redirigidos a rutas por-tenant: dashboard (helpers `_ddir/_rdir/_edir/_pdir/
+  _adir` + `_env_tenant()` para los subprocess del pipeline), F&B (caché `_FB_CACHE`
+  con clave tenant|fname), AR Real, Multi-Hotel, conciliación (módulo y página),
+  notificaciones (config e historial), demo generator (¡el demo es POR TENANT!),
+  exportadores, verificador_comisiones (lee YVE_TENANT al correr por subprocess).
+  Patrón usado en módulos: clase wrapper `_TDir/_TFile` con `__truediv__/__fspath__/
+  read_text/write_text` que evalúa la ruta EN CADA USO (no al importar).
+- PROBADO en producción: admin genera demo (7 facturas "Hotel Admin Demo") → cliente1
+  (tenant hotel-prueba) entra y ve 0 → genera su demo y ve 7 propias ("Hotel Prueba")
+  → admin vuelve y sigue viendo solo las suyas. Aislamiento total en ambas direcciones.
+- OJO: los usuarios creados en runtime y los tenants viven en disco → se BORRAN en cada
+  deploy/reinicio del free tier. Con la persistencia de pago esto queda resuelto.
+- GOTCHA del sweep: el replace por tokens pilló una clave string "REPORTES_DIR" en el
+  dict de /api/debug — al barrer constantes, revisar strings/comentarios.
+
+## HOTEL ACTIVO (filtro por hotel dentro de un tenant) — HECHO
+
+- Clic en una tarjeta de hotel del Multi-Hotel → toda la app muestra solo ese hotel y
+  salta al tab AR. Selector 🏨 en la nav (visible con 2+ hoteles) para cambiar o volver
+  a "🌍 Todos los hoteles". `session['hotel_activo']` + `_filtrar_hotel_activo(df)`
+  aplicado en cargar_datos (AR), cargar_datos_ap (AP) y _get_reservas (AR Real) cuando
+  el df tiene columna hotel/nombre_hotel. Banco/F&B/DRR son de grupo (sus datos no
+  llevan hotel aún). Endpoints: GET/POST /api/hotel_activo.
+
 ## UI / Nav / Móvil
 
 - Nav: fecha (pill), usuario (pill), botón ⚡ Procesar (estilo sutil con borde --acc, SIN
@@ -180,13 +214,12 @@ Push: `git push https://ghp_...@github.com/Jordi-Solano/yve01.git main`
   Trial Balance). Extras: clasificador universal, escáner, conciliación, F&B, 7 idiomas,
   móvil, demo personalizado.
 - 🔜 Fase 4 primer cliente. Pendiente para VENDER (en orden): 1) persistencia (Render de
-  pago o BD — el usuario pagará cuando toque), 2) cuentas por hotel/multi-tenant (con el
-  primer cliente), 3) Oracle real (credenciales del piloto), 4) piloto con hotel real +
-  testimonio, 5) dominio propio + revisar pricing/legal (existen en el código, sin probar).
+  pago o BD — el usuario pagará cuando toque; SIN esto los tenants/usuarios nuevos se
+  borran en cada deploy), 2) ✅ multi-tenant HECHO Y PROBADO, 3) Oracle real (credenciales
+  del piloto), 4) piloto con hotel real + testimonio, 5) dominio propio + revisar
+  pricing/legal (existen en el código, sin probar).
 - Pendiente menor técnico: DRR .xlsm no cubierto por el test E2E (probado antes a mano).
-- Visión Multi-Hotel acordada: al entrar se vería el dashboard de grupo, clic en un hotel
-  filtra TODA la app a ese hotel con selector para volver (pendiente de implementar, va
-  ligado al multi-tenant).
+- Visión Multi-Hotel acordada: ✅ HECHA (ver sección HOTEL ACTIVO).
 
 ## Arquitectura (resumen de archivos clave)
 
