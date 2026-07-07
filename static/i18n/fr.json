@@ -375,5 +375,8 @@
   "demo.hotelesListos": "hôtel(s) avec données d'exemple prêts",
   "demo.generar": "Générer la démo",
   "demo.off": "Démo désactivée — données d'exemple supprimées",
-  "mh.todasCadenas": "Toutes les chaînes"
+  "mh.todasCadenas": "Toutes les chaînes",
+  "mh.todosHoteles": "Tous les hôtels",
+  "mh.vistaGrupo": "Vue groupe (tous les hôtels)",
+  "mh.verHotel": "Voir uniquement cet hôtel"
 }

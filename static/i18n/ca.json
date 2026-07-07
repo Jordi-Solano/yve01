@@ -375,5 +375,8 @@
   "demo.hotelesListos": "hotel(s) amb dades d'exemple a punt",
   "demo.generar": "Generar demo",
   "demo.off": "Demo desactivada — dades d'exemple eliminades",
-  "mh.todasCadenas": "Totes les cadenes"
+  "mh.todasCadenas": "Totes les cadenes",
+  "mh.todosHoteles": "Tots els hotels",
+  "mh.vistaGrupo": "Vista de grup (tots els hotels)",
+  "mh.verHotel": "Veure només aquest hotel"
 }

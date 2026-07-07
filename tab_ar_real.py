@@ -21,6 +21,13 @@ def _get_reservas():
     ruta = _os.path.join(DATOS, 'reservas_credito.xlsx')
     if not _os.path.exists(ruta): return pd.DataFrame()
     df = pd.read_excel(ruta)
+    # filtro por hotel activo de la sesión (si el df tiene columna hotel)
+    try:
+        _h = session.get('hotel_activo')
+        if _h and 'hotel' in df.columns:
+            df = df[df['hotel'].astype(str).str.contains(_h, case=False, na=False, regex=False)].copy()
+    except Exception:
+        pass
     for col in ['fecha_entrada','fecha_salida','fecha_emision']:
         if col in df.columns:
             df[col] = pd.to_datetime(df[col], errors='coerce')

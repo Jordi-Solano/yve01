@@ -7,7 +7,7 @@ Abre en: http://localhost:5001
 import os, glob, json, subprocess, sys, threading
 from datetime import date
 import pandas as pd
-from flask import Flask, Response, jsonify, request, stream_with_context, redirect, send_file
+from flask import Flask, Response, jsonify, request, stream_with_context, redirect, send_file, session
 from flask_login import login_required, current_user
 
 # Ruta base del proyecto — robusta ante ejecución desde cualquier directorio
@@ -164,6 +164,42 @@ def safe_float(val):
     except Exception:
         return 0.0
 
+def _filtrar_hotel_activo(df, cols=("hotel", "nombre_hotel")):
+    """Si hay un hotel activo en sesión y el df tiene columna de hotel, filtra por él.
+    Si el df no tiene columna de hotel, se devuelve tal cual (datos de grupo)."""
+    try:
+        h = session.get("hotel_activo")
+    except Exception:
+        return df
+    if not h or df is None or getattr(df, "empty", True):
+        return df
+    for c in cols:
+        if c in df.columns:
+            mask = df[c].astype(str).str.contains(h, case=False, na=False, regex=False)
+            return df[mask].copy()
+    return df
+
+
+@app.route("/api/hotel_activo", methods=["GET", "POST"])
+@login_required
+def api_hotel_activo():
+    """Hotel activo de la sesión: filtra AR/AP/AR Real. Vacío = vista de grupo."""
+    if request.method == "POST":
+        data = request.get_json(force=True) or {}
+        h = (data.get("hotel") or "").strip()
+        if h:
+            session["hotel_activo"] = h
+        else:
+            session.pop("hotel_activo", None)
+        return jsonify({"ok": True, "hotel": session.get("hotel_activo")})
+    try:
+        hoteles = json.load(open(os.path.join(BASE_DIR, "datos-referencia", "hoteles.json"), encoding="utf-8"))
+        nombres = [x.get("nombre") for x in hoteles if x.get("nombre") and x.get("activo", True)]
+    except Exception:
+        nombres = []
+    return jsonify({"ok": True, "hotel": session.get("hotel_activo"), "hoteles": nombres})
+
+
 def cargar_datos():
     """
     Carga los datos AR del archivo más reciente disponible.
@@ -212,6 +248,7 @@ def cargar_datos():
         if col not in df.columns:
             df[col] = None
 
+    df = _filtrar_hotel_activo(df)
     meta = {"ruta": os.path.basename(ruta) if ruta else ""}
     return df, meta
 
@@ -1840,7 +1877,7 @@ def cargar_datos_ap():
                 df = df.merge(ultimas[["numero_factura","accion","comentario"]], on="numero_factura", how="left")
         except Exception:
             pass
-    return df
+    return _filtrar_hotel_activo(df)
 
 
 def calcular_stats_ap(df):
@@ -3383,6 +3420,7 @@ button, a { touch-action: manipulation; }
     <span class="pill hide-mobile" id="date-pill">—</span>
     <button id="btn-install-pwa" onclick="if(_deferredInstall){_deferredInstall.prompt();}" style="display:none;background:rgba(34,197,94,.1);border:1px solid rgba(34,197,94,.2);color:#22c55e;padding:4px 10px;border-radius:8px;font-size:11px;cursor:pointer">📲 Instalar</button>
     
+    <select id="hotel-activo-sel" onchange="seleccionarHotelActivo(this.value)" style="display:none;background:rgba(255,255,255,.04);border:1px solid rgba(255,255,255,.1);color:var(--acc2);padding:4px 10px;border-radius:20px;font-size:11px;cursor:pointer;max-width:190px;outline:none" title="Hotel activo"></select>
     <span class="pill hide-mobile" style="color:var(--acc2)">👤 __USER_NAME__</span>
 
     <button class="btn-ref show-mobile" onclick="toggleChat()" style="background:linear-gradient(135deg,rgba(124,58,237,.15),rgba(59,130,246,.15));border-color:rgba(124,58,237,.35);color:#a78bfa;font-weight:700" title="Pregunta a Yve IA">💬 Yve</button>
@@ -8999,6 +9037,36 @@ _resetSessionTimer();
 // ═══════════════════════════════════════════════════════════════════
 var demoModeActive = false;
 
+// ── Hotel activo: filtra AR/AP/AR Real a un hotel concreto ────────────────
+async function _initHotelActivo() {
+  try {
+    var d = await fetch('/api/hotel_activo').then(function(r){ return r.json(); });
+    var sel = document.getElementById('hotel-activo-sel');
+    if (!sel) return;
+    if (!d.hoteles || d.hoteles.length < 2) { sel.style.display = 'none'; return; }
+    sel.style.display = '';
+    sel.innerHTML = '<option value="">🌍 ' + t('mh.todosHoteles', 'Todos los hoteles') + '</option>' +
+      d.hoteles.map(function(h) {
+        return '<option value="' + h.replace(/"/g, '&quot;') + '"' + (d.hotel === h ? ' selected' : '') + '>🏨 ' + h + '</option>';
+      }).join('');
+  } catch(e) {}
+}
+
+async function seleccionarHotelActivo(h, irATab) {
+  try {
+    await _postJson('/api/hotel_activo', {hotel: h || ''});
+    showNotification(h ? '🏨 ' + h : '🌍 ' + t('mh.vistaGrupo', 'Vista de grupo (todos los hoteles)'), 'info');
+    _initHotelActivo();
+    loadAll(); loadAP(); loadBanco();
+    if (typeof cargarARRealData === 'function') { try { cargarARRealData(); } catch(e) {} }
+    if (h && irATab) {
+      var tabEl = document.getElementById('tab-ar');
+      if (tabEl) switchTab('ar', tabEl);
+    }
+  } catch(e) { showNotification('✗ ' + e.message, 'error'); }
+}
+_initHotelActivo();
+
 function parseCadenasDemo(texto) {
   var cadenas = [];
   texto.split('\n').map(function(l){ return l.trim(); }).filter(Boolean).forEach(function(linea) {
@@ -9031,6 +9099,7 @@ async function generarDemo() {
     if (btnD) { btnD.style.color = '#f59e0b'; btnD.querySelector('span') && (btnD.querySelector('span').textContent = '🎭 Demo ON'); }
     showNotification('🎭 ' + d.hoteles + ' ' + t('demo.hotelesListos', 'hotel(es) con datos de ejemplo listos'), 'success');
     _mhClasicaLoaded = false;
+    _initHotelActivo();
     loadAll(); loadAP(); loadBanco();
     var tabDestino = d.hoteles > 1 ? 'multi_hotel' : 'ar';
     var tabEl = document.getElementById('tab-' + tabDestino) || document.getElementById('tab-' + tabDestino.replace(/_/g, '-'));
@@ -9077,6 +9146,8 @@ async function toggleDemoMode() {
       if (banner) { banner.style.display = 'none'; document.body.style.paddingTop = ''; }
       if (btn) { btn.style.color = ''; btn.querySelector('span') && (btn.querySelector('span').textContent = '🎭 Demo Mode'); }
       _mhClasicaLoaded = false; _mhGrupoActivo = '';
+      seleccionarHotelActivo('');
+      _initHotelActivo();
       showNotification(t('demo.off', 'Demo desactivado — datos de ejemplo eliminados'), 'info');
       loadAll(); loadAP(); loadBanco();
     }
@@ -10605,7 +10676,8 @@ function renderMHTableFull(hoteles) {
     var alertas = h.alertas || 0;
     var stColor = alertas === 0 ? '#22c55e' : alertas <= 2 ? '#f59e0b' : '#ef4444';
     var stIcon = alertas === 0 ? '●' : alertas <= 2 ? '▲' : '■';
-    return '<tr>' +
+    var _hn = (h.nombre || h.hotel_nombre || '').replace(/'/g, "\\'");
+    return '<tr style="cursor:pointer" title="' + t('mh.verHotel', 'Ver solo este hotel') + '" onclick="seleccionarHotelActivo(\'' + _hn + '\', true)">' +
       '<td style="font-weight:600">' + (h.nombre || h.hotel_nombre || '') +
         (h.grupo && !_mhGrupoActivo ? '<div style="font-size:10px;color:var(--dim);font-weight:400">' + h.grupo + '</div>' : '') + '</td>' +
       '<td style="color:var(--mut)">' + (h.stars ? '★'.repeat(h.stars) : '—') + '</td>' +
