@@ -79,12 +79,8 @@ body{background:var(--bg);color:var(--tx);font-family:'Inter',-apple-system,Blin
   .brand-name{font-size:22px}
   .chips{grid-template-columns:1fr}
 }
-/* ── Fondo premium: degradado profundo + un único halo suave ── */
-body{background:radial-gradient(1200px 800px at 50% -20%, #16233f 0%, #0d1526 45%, #090e1a 100%)}
-body::before{content:"";position:fixed;inset:0;z-index:0;pointer-events:none;
-  background:radial-gradient(640px 420px at 50% 8%, rgba(59,130,246,.10), transparent 70%);
-  animation:respira 14s ease-in-out infinite alternate}
-@keyframes respira{from{opacity:.65}to{opacity:1}}
+/* ── Fondo premium: degradado limpio, sin formas ── */
+body{background:linear-gradient(180deg, #101a2e 0%, #0c1424 55%, #090e1a 100%)}
 .wrap{position:relative;z-index:1;width:100%;max-width:410px}
 .login-card{position:relative;background:linear-gradient(170deg,rgba(23,32,50,.92),rgba(13,20,35,.96));
   border:1px solid rgba(148,163,184,.12);border-radius:20px;padding:38px 34px;
