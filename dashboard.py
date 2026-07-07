@@ -10805,7 +10805,10 @@ async function loadMultiHotel() {
         var gc = h.gop_pct>=22?'#22c55e':h.gop_pct>=16?'#f59e0b':'#ef4444';
         var d  = h.rev_delta_pct || 0;
         var spark = _calSparkline(h.gop_trend || [], '#22c55e');
-        return '<div class="card" style="padding:20px;position:relative">' +
+        var _hn = String(h.nombre || '').replace(/'/g, "\\'");
+        return '<div class="card" style="padding:20px;position:relative;cursor:pointer;transition:.15s" ' +
+          'onmouseover="this.style.borderColor=\'var(--acc,#3b82f6)\'" onmouseout="this.style.borderColor=\'\'" ' +
+          'title="' + t('mh.verHotel', 'Ver solo este hotel') + '" onclick="seleccionarHotelActivo(\'' + _hn + '\', true)">' +
           // Hotel header
           '<div style="display:flex;align-items:flex-start;justify-content:space-between;margin-bottom:16px">' +
             '<div>' +
