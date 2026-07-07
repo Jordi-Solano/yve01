@@ -79,27 +79,40 @@ body{background:var(--bg);color:var(--tx);font-family:'Inter',-apple-system,Blin
   .brand-name{font-size:22px}
   .chips{grid-template-columns:1fr}
 }
-body::before{content:"";position:fixed;inset:0;z-index:0;pointer-events:none;
-  background:
-    radial-gradient(1000px 500px at var(--bx1,82%) var(--by1,-12%), rgba(59,130,246,.18), transparent 60%),
-    radial-gradient(700px 400px at var(--bx2,-10%) var(--by2,112%), rgba(139,92,246,.12), transparent 55%);
-  animation:bgFloat 12s ease-in-out infinite alternate}
-@keyframes bgFloat{
-  0%{--bx1:82%;--by1:-12%;--bx2:-10%;--by2:112%}
-  50%{--bx1:88%;--by1:5%;--bx2:5%;--by2:105%}
-  100%{--bx1:75%;--by1:-8%;--bx2:-5%;--by2:118%}
-}
-/* CSS custom props not animatable in all browsers — use transform instead */
-body::after{content:"";position:fixed;width:600px;height:600px;
-  border-radius:50%;
-  background:radial-gradient(circle,rgba(59,130,246,.08),transparent 70%);
-  top:-100px;right:-100px;z-index:0;pointer-events:none;
-  animation:blobA 15s ease-in-out infinite alternate}
-@keyframes blobA{
-  0%{transform:translate(0,0) scale(1)}
-  50%{transform:translate(-40px,60px) scale(1.1)}
-  100%{transform:translate(30px,-30px) scale(0.95)}
-}
+/* ── Aurora de fondo: 3 orbes de color en movimiento + estrellas ── */
+body::before{content:"";position:fixed;width:780px;height:780px;border-radius:50%;
+  background:radial-gradient(circle,rgba(59,130,246,.28),transparent 65%);
+  top:-220px;right:-160px;z-index:0;pointer-events:none;filter:blur(50px);
+  animation:orbA 16s ease-in-out infinite alternate}
+body::after{content:"";position:fixed;width:640px;height:640px;border-radius:50%;
+  background:radial-gradient(circle,rgba(139,92,246,.24),transparent 65%);
+  bottom:-220px;left:-180px;z-index:0;pointer-events:none;filter:blur(50px);
+  animation:orbB 19s ease-in-out infinite alternate}
+.orb3{position:fixed;width:460px;height:460px;border-radius:50%;
+  background:radial-gradient(circle,rgba(34,197,94,.14),transparent 65%);
+  top:55%;left:62%;z-index:0;pointer-events:none;filter:blur(46px);
+  animation:orbC 22s ease-in-out infinite alternate}
+.stars{position:fixed;inset:0;z-index:0;pointer-events:none;opacity:.5;
+  background-image:
+    radial-gradient(1.6px 1.6px at 12% 22%, rgba(255,255,255,.55), transparent),
+    radial-gradient(1.2px 1.2px at 78% 14%, rgba(147,197,253,.6), transparent),
+    radial-gradient(1.4px 1.4px at 33% 68%, rgba(255,255,255,.4), transparent),
+    radial-gradient(1.8px 1.8px at 62% 82%, rgba(196,181,253,.55), transparent),
+    radial-gradient(1.2px 1.2px at 89% 55%, rgba(255,255,255,.45), transparent),
+    radial-gradient(1.4px 1.4px at 45% 38%, rgba(147,197,253,.4), transparent),
+    radial-gradient(1.2px 1.2px at 8% 78%, rgba(255,255,255,.5), transparent),
+    radial-gradient(1.6px 1.6px at 70% 34%, rgba(255,255,255,.35), transparent);
+  animation:twinkle 7s ease-in-out infinite alternate}
+@keyframes orbA{0%{transform:translate(0,0) scale(1)}50%{transform:translate(-90px,70px) scale(1.12)}100%{transform:translate(50px,-40px) scale(.94)}}
+@keyframes orbB{0%{transform:translate(0,0) scale(1)}50%{transform:translate(80px,-60px) scale(1.08)}100%{transform:translate(-40px,40px) scale(.96)}}
+@keyframes orbC{0%{transform:translate(0,0) scale(1)}100%{transform:translate(-120px,-90px) scale(1.18)}}
+@keyframes twinkle{0%{opacity:.28}50%{opacity:.6}100%{opacity:.38}}
+/* anillo de luz girando tras la tarjeta */
+.wrap::before{content:"";position:absolute;inset:-26px;border-radius:34px;z-index:-1;
+  background:conic-gradient(from 0deg, transparent 0%, rgba(59,130,246,.35) 12%, transparent 28%,
+    transparent 50%, rgba(139,92,246,.28) 64%, transparent 80%);
+  filter:blur(26px);animation:girar 9s linear infinite}
+@keyframes girar{to{transform:rotate(360deg)}}
 .wrap{position:relative;z-index:1;width:100%;max-width:410px}
 .login-card{background:linear-gradient(160deg,rgba(30,41,59,.94),rgba(15,23,42,.96));
   border:1px solid var(--s2);border-radius:20px;padding:38px 34px;
@@ -141,6 +154,8 @@ input:focus{border-color:var(--acc);box-shadow:0 0 0 3px rgba(59,130,246,.18)}
 </style>
 </head>
 <body>
+<div class="stars"></div>
+<div class="orb3"></div>
 <div class="wrap">
   <div class="login-card">
     <div class="brand"><span class="brand-dot"></span><span class="brand-name">Yve<span>.01</span></span></div>
@@ -172,8 +187,6 @@ input:focus{border-color:var(--acc);box-shadow:0 0 0 3px rgba(59,130,246,.18)}
         <button onclick="setLoginLang('pt')" style="background:none;border:none;cursor:pointer;font-size:20px;opacity:.6;transition:.15s" title="Português" onmouseover="this.style.opacity=1" onmouseout="this.style.opacity=.6">🇵🇹</button>
       </div>
     </div>
-    <div style="text-align:center;margin-top:8px;font-size:13px;color:var(--dim)">¿No tienes cuenta? <a href="/signup" style="color:var(--acc2);text-decoration:none" data-i18n="login.crearCuenta">Crear cuenta gratis</a></div>
-    <div style="margin-top:18px;padding-top:14px;border-top:1px solid rgba(51,65,85,.4);text-align:center;font-size:11px;color:#475569">Usado en hoteles de Costa Dorada · Barcelona · Sitges<br><span style="color:#64748b">🔒 TLS · Sin anuncios · Sin rastreo</span></div>
     <div class="demo">
       <div class="demo-h">🏨 Clientes de ejemplo — cada cuenta solo ve SUS datos (1 clic para entrar)</div>
       <div class="chips">

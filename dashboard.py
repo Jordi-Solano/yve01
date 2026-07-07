@@ -84,6 +84,7 @@ def _csrf_check():
     from flask import request as _req, session, jsonify as _jfy
     if _req.method not in ('POST','PUT','PATCH','DELETE'): return
     if not _req.path.startswith('/api/'): return
+    if _req.path == '/api/login': return  # entrar con otra cuenta teniendo sesión abierta
     if 'user_id' not in session and '_user_id' not in session: return
     if _req.content_type and 'multipart' in _req.content_type: return
     tok = (_req.headers.get('X-CSRF-Token') or
