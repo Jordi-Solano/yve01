@@ -30,5 +30,23 @@
     "email": "fb@hotel.com",
     "rol": "fb_manager",
     "activo": true
+  },
+  {
+    "username": "solmar",
+    "password_hash": "scrypt:32768:8:1$SobjzFotS9g3Ah5U$241e66696d6b01b536c3aedeaebca1f03cc1ea866ab1be8dfbd9c936e299bb314dd98306994c260522827c38483c017bd3ba0bd8483903e9ad8d85f64032d033",
+    "nombre": "Cadena Sol — Dirección Financiera",
+    "email": "finanzas@cadenasol.demo",
+    "rol": "financial_controller",
+    "tenant": "cadena-sol",
+    "activo": true
+  },
+  {
+    "username": "gestoria",
+    "password_hash": "scrypt:32768:8:1$dO70BrpOhb9Q9pjU$4134a4ba22ce8c1d8e09d3324aa91abfbe7aadee272fadd9962ec07e5b98c6835540bd12816dd61ed4ed461b68a1053a5fdb1bc37944a3d147983df90310df32",
+    "nombre": "Gestoría Nord",
+    "email": "clientes@gestorianord.demo",
+    "rol": "financial_controller",
+    "tenant": "gestoria-nord",
+    "activo": true
   }
 ]

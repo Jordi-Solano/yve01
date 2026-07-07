@@ -29,6 +29,21 @@ def do_login():
         from flask import session
         session["tenant_id"] = getattr(user, "tenant", "default") or "default"
         session.pop("hotel_activo", None)
+        # Cuentas de ejemplo: si su tenant está vacío, generar datos demo con sus nombres
+        _DEMOS = {
+            "solmar":   [{"nombre": "Cadena Sol", "hoteles": ["Hotel Sol Mar", "Hotel Sol Playa"]}],
+            "gestoria": [{"nombre": "Gestoría Nord", "hoteles": ["Hotel Pirineus", "Hotel Vall d'Aran"]}],
+        }
+        if username in _DEMOS:
+            try:
+                import os as _os, pandas as _pd
+                from tenant_dirs import datos_dir as _t_ddir
+                _kpis = _os.path.join(_t_ddir(), "kpis_hoteles.xlsx")
+                if not _os.path.exists(_kpis) or _pd.read_excel(_kpis).empty:
+                    from demo_generator import generar_demo
+                    generar_demo(_DEMOS[username])
+            except Exception as _e:
+                print(f"[login] demo seed warning: {_e}")
         return jsonify({"ok": True, "nombre": user.nombre, "rol": user.rol, "tenant": session["tenant_id"]})
     return jsonify({"ok": False, "error": "Usuario o contraseña incorrectos"}), 401
 
@@ -131,16 +146,7 @@ input:focus{border-color:var(--acc);box-shadow:0 0 0 3px rgba(59,130,246,.18)}
     <div class="brand"><span class="brand-dot"></span><span class="brand-name">Yve<span>.01</span></span></div>
     <div class="brand-sub">Automatización financiera para hoteles</div>
 
-    <div style="display:flex;gap:6px;margin-bottom:20px;flex-wrap:wrap;padding:8px;background:rgba(59,130,246,.05);border-radius:8px;border:1px solid var(--s2)">
-      <span style="font-size:11px;color:var(--mut);text-transform:uppercase;letter-spacing:.6px;display:flex;align-items:center">Lang:</span>
-      <button class="lang-btn" data-lang="es" onclick="cambiarIdioma('es')" style="padding:4px 8px;font-size:11px;border-radius:5px;border:1px solid transparent;background:rgba(59,130,246,.15);color:var(--acc2);font-weight:700;cursor:pointer;transition:.15s">ES</button>
-      <button class="lang-btn" data-lang="en" onclick="cambiarIdioma('en')" style="padding:4px 8px;font-size:11px;border-radius:5px;border:1px solid transparent;background:transparent;color:var(--mut);cursor:pointer;transition:.15s">EN</button>
-      <button class="lang-btn" data-lang="ca" onclick="cambiarIdioma('ca')" style="padding:4px 8px;font-size:11px;border-radius:5px;border:1px solid transparent;background:transparent;color:var(--mut);cursor:pointer;transition:.15s">CA</button>
-      <button class="lang-btn" data-lang="fr" onclick="cambiarIdioma('fr')" style="padding:4px 8px;font-size:11px;border-radius:5px;border:1px solid transparent;background:transparent;color:var(--mut);cursor:pointer;transition:.15s">FR</button>
-      <button class="lang-btn" data-lang="de" onclick="cambiarIdioma('de')" style="padding:4px 8px;font-size:11px;border-radius:5px;border:1px solid transparent;background:transparent;color:var(--mut);cursor:pointer;transition:.15s">DE</button>
-      <button class="lang-btn" data-lang="it" onclick="cambiarIdioma('it')" style="padding:4px 8px;font-size:11px;border-radius:5px;border:1px solid transparent;background:transparent;color:var(--mut);cursor:pointer;transition:.15s">IT</button>
-      <button class="lang-btn" data-lang="pt" onclick="cambiarIdioma('pt')" style="padding:4px 8px;font-size:11px;border-radius:5px;border:1px solid transparent;background:transparent;color:var(--mut);cursor:pointer;transition:.15s">PT</button>
-    </div>
+    
 
     <div class="heading" data-i18n="login.titulo">Inicia sesión</div>
 
@@ -152,15 +158,7 @@ input:focus{border-color:var(--acc);box-shadow:0 0 0 3px rgba(59,130,246,.18)}
 
     <button class="btn-login" id="btn-login" onclick="doLogin()" data-i18n="login.boton">Entrar al panel</button>
 
-    <div style="display:flex;align-items:center;gap:10px;margin-top:14px">
-      <div style="flex:1;height:1px;background:rgba(51,65,85,.5)"></div>
-      <span style="font-size:11px;color:#475569">o</span>
-      <div style="flex:1;height:1px;background:rgba(51,65,85,.5)"></div>
-    </div>
-    <button onclick="loginDemo()" style="width:100%;margin-top:10px;padding:12px;background:rgba(59,130,246,.08);border:1px solid rgba(59,130,246,.2);color:#60a5fa;border-radius:11px;font-size:13px;font-weight:600;cursor:pointer;transition:.15s"
-      onmouseover="this.style.background='rgba(59,130,246,.15)'" onmouseout="this.style.background='rgba(59,130,246,.08)'">
-      🎭 Ver demo — Grupo Calipolis Hotels
-    </button>
+    
     <div class="error" id="error"></div>
 
     <div style="text-align:center;margin-top:12px;font-size:11px;color:#475569">
@@ -173,17 +171,21 @@ input:focus{border-color:var(--acc);box-shadow:0 0 0 3px rgba(59,130,246,.18)}
         <button onclick="setLoginLang('it')" style="background:none;border:none;cursor:pointer;font-size:20px;opacity:.6;transition:.15s" title="Italiano" onmouseover="this.style.opacity=1" onmouseout="this.style.opacity=.6">🇮🇹</button>
         <button onclick="setLoginLang('pt')" style="background:none;border:none;cursor:pointer;font-size:20px;opacity:.6;transition:.15s" title="Português" onmouseover="this.style.opacity=1" onmouseout="this.style.opacity=.6">🇵🇹</button>
       </div>
-      <span>¿Problemas? Credenciales demo: <strong>admin</strong> / <strong>admin123</strong></span>
     </div>
     <div style="text-align:center;margin-top:8px;font-size:13px;color:var(--dim)">¿No tienes cuenta? <a href="/signup" style="color:var(--acc2);text-decoration:none" data-i18n="login.crearCuenta">Crear cuenta gratis</a></div>
     <div style="margin-top:18px;padding-top:14px;border-top:1px solid rgba(51,65,85,.4);text-align:center;font-size:11px;color:#475569">Usado en hoteles de Costa Dorada · Barcelona · Sitges<br><span style="color:#64748b">🔒 TLS · Sin anuncios · Sin rastreo</span></div>
     <div class="demo">
-      <div class="demo-h" data-i18n="login.demo">Accesos de demostración — pulsa para rellenar</div>
+      <div class="demo-h">🏨 Clientes de ejemplo — cada cuenta solo ve SUS datos (1 clic para entrar)</div>
       <div class="chips">
-        <button class="chip" onclick="fill('fc_user','hotel2024')"><span class="chip-role">Financial Controller</span><span class="chip-user">fc_user</span></button>
-        <button class="chip" onclick="fill('auditor','hotel2024')"><span class="chip-role">Income Auditor</span><span class="chip-user">auditor</span></button>
-        <button class="chip" onclick="fill('fbmanager','hotel2024')"><span class="chip-role">F&B Manager</span><span class="chip-user">fbmanager</span></button>
-        <button class="chip" onclick="fill('admin','admin123')"><span class="chip-role">Administrador</span><span class="chip-user">admin</span></button>
+        <button class="chip" style="border-color:rgba(245,158,11,.35)" onclick="quick('solmar','demo123')"><span class="chip-role" style="color:#fbbf24">☀️ Cadena Sol</span><span class="chip-user">2 hoteles · solmar</span></button>
+        <button class="chip" style="border-color:rgba(168,85,247,.35)" onclick="quick('gestoria','demo123')"><span class="chip-role" style="color:#c084fc">🧾 Gestoría Nord</span><span class="chip-user">2 hoteles · gestoria</span></button>
+      </div>
+      <div class="demo-h" style="margin-top:16px">👥 Equipo del hotel — roles (tenant principal)</div>
+      <div class="chips">
+        <button class="chip" onclick="quick('admin','admin123')"><span class="chip-role">🔑 Administrador</span><span class="chip-user">admin</span></button>
+        <button class="chip" onclick="quick('fc_user','hotel2024')"><span class="chip-role">💰 Financial Controller</span><span class="chip-user">fc_user</span></button>
+        <button class="chip" onclick="quick('auditor','hotel2024')"><span class="chip-role">🔍 Income Auditor</span><span class="chip-user">auditor</span></button>
+        <button class="chip" onclick="quick('fbmanager','hotel2024')"><span class="chip-role">🍽️ F&B Manager</span><span class="chip-user">fbmanager</span></button>
       </div>
     </div>
   </div>
@@ -229,13 +231,12 @@ function fill(u,p){
   setTimeout(function(){ un.style.borderColor=''; pw.style.borderColor=''; }, 800);
   btn.focus();
 }
-async function loginDemo() {
-  document.getElementById('username').value = 'admin';
-  document.getElementById('password').value = 'admin123';
-  // Set demo flag and login
-  sessionStorage.setItem('demo_mode_pending', '1');
+function quick(u, p) {
+  fill(u, p);
   doLogin();
 }
+
+
 
 async function doLogin() {
   const btn = document.getElementById('btn-login');
