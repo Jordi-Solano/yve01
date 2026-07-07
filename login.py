@@ -83,7 +83,7 @@ body{background:var(--bg);color:var(--tx);font-family:'Inter',-apple-system,Blin
 body{background:linear-gradient(180deg, #101a2e 0%, #0c1424 55%, #090e1a 100%)}
 .wrap{position:relative;z-index:1;width:100%;max-width:410px}
 .login-card{position:relative;background:linear-gradient(170deg,rgba(23,32,50,.92),rgba(13,20,35,.96));
-  border:1px solid rgba(148,163,184,.12);border-radius:20px;padding:38px 34px;
+  border:1px solid rgba(148,163,184,.28);border-radius:20px;padding:38px 34px;
   backdrop-filter:blur(14px);animation:rise .45s cubic-bezier(.2,.8,.2,1)}
 @keyframes rise{from{opacity:0;transform:translateY(14px)}to{opacity:1;transform:none}}
 .brand{display:flex;align-items:center;gap:10px;margin-bottom:6px}
