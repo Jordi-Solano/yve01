@@ -79,45 +79,19 @@ body{background:var(--bg);color:var(--tx);font-family:'Inter',-apple-system,Blin
   .brand-name{font-size:22px}
   .chips{grid-template-columns:1fr}
 }
-/* ── Aurora de fondo: 3 orbes de color en movimiento + estrellas ── */
-body::before{content:"";position:fixed;width:780px;height:780px;border-radius:50%;
-  background:radial-gradient(circle,rgba(59,130,246,.28),transparent 65%);
-  top:-220px;right:-160px;z-index:0;pointer-events:none;filter:blur(50px);
-  animation:orbA 16s ease-in-out infinite alternate}
-body::after{content:"";position:fixed;width:640px;height:640px;border-radius:50%;
-  background:radial-gradient(circle,rgba(139,92,246,.24),transparent 65%);
-  bottom:-220px;left:-180px;z-index:0;pointer-events:none;filter:blur(50px);
-  animation:orbB 19s ease-in-out infinite alternate}
-.orb3{position:fixed;width:460px;height:460px;border-radius:50%;
-  background:radial-gradient(circle,rgba(34,197,94,.14),transparent 65%);
-  top:55%;left:62%;z-index:0;pointer-events:none;filter:blur(46px);
-  animation:orbC 22s ease-in-out infinite alternate}
-.stars{position:fixed;inset:0;z-index:0;pointer-events:none;opacity:.5;
-  background-image:
-    radial-gradient(1.6px 1.6px at 12% 22%, rgba(255,255,255,.55), transparent),
-    radial-gradient(1.2px 1.2px at 78% 14%, rgba(147,197,253,.6), transparent),
-    radial-gradient(1.4px 1.4px at 33% 68%, rgba(255,255,255,.4), transparent),
-    radial-gradient(1.8px 1.8px at 62% 82%, rgba(196,181,253,.55), transparent),
-    radial-gradient(1.2px 1.2px at 89% 55%, rgba(255,255,255,.45), transparent),
-    radial-gradient(1.4px 1.4px at 45% 38%, rgba(147,197,253,.4), transparent),
-    radial-gradient(1.2px 1.2px at 8% 78%, rgba(255,255,255,.5), transparent),
-    radial-gradient(1.6px 1.6px at 70% 34%, rgba(255,255,255,.35), transparent);
-  animation:twinkle 7s ease-in-out infinite alternate}
-@keyframes orbA{0%{transform:translate(0,0) scale(1)}50%{transform:translate(-90px,70px) scale(1.12)}100%{transform:translate(50px,-40px) scale(.94)}}
-@keyframes orbB{0%{transform:translate(0,0) scale(1)}50%{transform:translate(80px,-60px) scale(1.08)}100%{transform:translate(-40px,40px) scale(.96)}}
-@keyframes orbC{0%{transform:translate(0,0) scale(1)}100%{transform:translate(-120px,-90px) scale(1.18)}}
-@keyframes twinkle{0%{opacity:.28}50%{opacity:.6}100%{opacity:.38}}
-/* anillo de luz girando tras la tarjeta */
-.wrap::before{content:"";position:absolute;inset:-26px;border-radius:34px;z-index:-1;
-  background:conic-gradient(from 0deg, transparent 0%, rgba(59,130,246,.35) 12%, transparent 28%,
-    transparent 50%, rgba(139,92,246,.28) 64%, transparent 80%);
-  filter:blur(26px);animation:girar 9s linear infinite}
-@keyframes girar{to{transform:rotate(360deg)}}
+/* ── Fondo premium: degradado profundo + un único halo suave ── */
+body{background:radial-gradient(1200px 800px at 50% -20%, #16233f 0%, #0d1526 45%, #090e1a 100%)}
+body::before{content:"";position:fixed;inset:0;z-index:0;pointer-events:none;
+  background:radial-gradient(640px 420px at 50% 8%, rgba(59,130,246,.10), transparent 70%);
+  animation:respira 14s ease-in-out infinite alternate}
+@keyframes respira{from{opacity:.65}to{opacity:1}}
 .wrap{position:relative;z-index:1;width:100%;max-width:410px}
-.login-card{background:linear-gradient(160deg,rgba(30,41,59,.94),rgba(15,23,42,.96));
-  border:1px solid var(--s2);border-radius:20px;padding:38px 34px;
-  box-shadow:0 24px 70px rgba(0,0,0,.55),0 0 0 1px rgba(59,130,246,.07) inset;
-  backdrop-filter:blur(12px);animation:rise .4s cubic-bezier(.2,.8,.2,1)}
+.login-card{position:relative;background:linear-gradient(170deg,rgba(23,32,50,.92),rgba(13,20,35,.96));
+  border:1px solid rgba(148,163,184,.12);border-radius:20px;padding:38px 34px;
+  box-shadow:0 30px 80px rgba(0,0,0,.6);
+  backdrop-filter:blur(14px);animation:rise .45s cubic-bezier(.2,.8,.2,1)}
+.login-card::before{content:"";position:absolute;top:0;left:10%;right:10%;height:1px;
+  background:linear-gradient(90deg,transparent,rgba(96,165,250,.55),transparent)}
 @keyframes rise{from{opacity:0;transform:translateY(14px)}to{opacity:1;transform:none}}
 .brand{display:flex;align-items:center;gap:10px;margin-bottom:6px}
 .brand-dot{width:11px;height:11px;border-radius:50%;background:var(--acc);box-shadow:0 0 14px var(--acc)}
@@ -154,8 +128,6 @@ input:focus{border-color:var(--acc);box-shadow:0 0 0 3px rgba(59,130,246,.18)}
 </style>
 </head>
 <body>
-<div class="stars"></div>
-<div class="orb3"></div>
 <div class="wrap">
   <div class="login-card">
     <div class="brand"><span class="brand-dot"></span><span class="brand-name">Yve<span>.01</span></span></div>
