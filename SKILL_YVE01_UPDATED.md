@@ -181,6 +181,25 @@ Push: `git push https://ghp_...@github.com/Jordi-Solano/yve01.git main`
   el df tiene columna hotel/nombre_hotel. Banco/F&B/DRR son de grupo (sus datos no
   llevan hotel aún). Endpoints: GET/POST /api/hotel_activo.
 
+## LOGIN Y CUENTAS DE EJEMPLO — HECHO
+
+- Login rediseñado estilo premium minimalista: degradado radial profundo + un único halo
+  azul que "respira" (14s) + línea de luz fina en el borde superior de la tarjeta. SIN
+  estrellas/orbes/anillos (el usuario los rechazó: "más sencillo, premium"). Sin enlace
+  de signup ni footer promocional en el login.
+- Accesos de 1 clic (función quick(u,p) = rellenar + entrar), en dos grupos:
+  · Clientes de ejemplo (multi-tenant): solmar/demo123 (tenant cadena-sol → Hotel Sol
+    Mar + Hotel Sol Playa) y gestoria/demo123 (tenant gestoria-nord → Hotel Pirineus +
+    Hotel Vall d'Aran). Están EN GIT (usuarios.json) → sobreviven deploys. Al hacer
+    login, si su tenant está vacío (p. ej. tras un reinicio del free tier), login.py
+    regenera automáticamente su demo con sus nombres (_DEMOS en do_login).
+  · Equipo del hotel (roles, tenant default): admin/admin123, fc_user/hotel2024,
+    auditor/hotel2024, fbmanager/hotel2024.
+- CSRF: /api/login está EXENTO del check (antes, con una sesión ya abierta, volver al
+  login y entrar con otra cuenta daba "CSRF inválido" porque la página no envía token).
+- OJO al verificar /login con fetch: si la sesión del navegador está autenticada,
+  /login REDIRIGE a '/' y mides el dashboard sin querer. Hacer /logout antes.
+
 ## UI / Nav / Móvil
 
 - Nav: fecha (pill), usuario (pill), botón ⚡ Procesar (estilo sutil con borde --acc, SIN
