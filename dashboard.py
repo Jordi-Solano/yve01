@@ -2689,7 +2689,7 @@ def api_notif_config_get():
     """Devuelve la configuración de notificaciones."""
     path = os.path.join(_ddir(), "notif_config.json")
     default = {
-        "canales": {"email": True, "whatsapp": False, "slack": False, "push": True},
+        "canales": {"email": False, "whatsapp": False, "slack": False, "push": False},
         "email": "", "whatsapp": "", "slack_webhook": "",
         "alertas": {
             "ar_discrepancia": True, "ar_falta_di": True,
@@ -3054,7 +3054,8 @@ body::before{
   /* Demo banner */
   #demo-banner{font-size:10px;padding:4px 8px}
   /* Back to top */
-  #back-top{bottom:70px;right:12px;width:32px;height:32px}
+  #back-top{display:none!important}
+  #notif-canales{grid-template-columns:repeat(2,1fr)!important;gap:10px!important}
 }
 @media(max-width:600px){
   .stats{grid-template-columns:repeat(2,1fr)}
@@ -10547,7 +10548,7 @@ function renderNotifConfig() {
   // Channels
   const cont = document.getElementById('notif-canales');
   if (cont) {
-    cont.innerHTML = NOTIF_CHANNELS.map(ch => {
+    cont.innerHTML = NOTIF_CHANNELS.filter(ch => ch.key !== 'push' || yvePushSupported()).map(ch => {
       const on = c.canales && c.canales[ch.key];
       return '<div onclick="toggleNotifCanal(\'' + ch.key + '\')" style="cursor:pointer;background:' +
         (on ? 'rgba(59,130,246,.1)' : 'var(--s2)') + ';border:1px solid ' +
@@ -10570,7 +10571,7 @@ function renderNotifConfig() {
 
     if (c.canales && c.canales.slack)
       html += notifField('slack_webhook', 'Slack Webhook URL', 'https://hooks.slack.com/services/...', c.slack_webhook || '');
-    if (c.canales && c.canales.push) {
+    if (c.canales && c.canales.push && yvePushSupported()) {
       var permTxt = ('Notification' in window)
         ? (Notification.permission === 'granted' ? '● Permiso concedido en este dispositivo'
            : (Notification.permission === 'denied' ? '⚠ Permiso bloqueado — actívalo en los ajustes del navegador'

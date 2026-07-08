@@ -67,7 +67,7 @@ def _load_config():
 def _load_notif_config():
     """Carga notif_config.json (canales, email destino, alertas)."""
     defaults = {
-        "canales": {"email": True, "whatsapp": False, "slack": False, "push": True},
+        "canales": {"email": False, "whatsapp": False, "slack": False, "push": False},
         "email": "", "whatsapp": "", "slack_webhook": "",
         "alertas": {"ar_discrepancia": True, "ar_falta_di": True,
                     "ap_discrepancia": True, "drr_oob": True,
@@ -581,7 +581,7 @@ def enviar_pendientes(solo_check=False):
     destinatario = ncfg.get("email") or _get_destinatario(config)
     activas = _alertas_activas(config_m)
     canales = ncfg.get("canales", {})
-    push_on = bool(canales.get("push", True))
+    push_on = bool(canales.get("push", False))
     alertas = escanear_alertas()
 
     # Filtrar por tipo activo
@@ -612,7 +612,7 @@ def enviar_pendientes(solo_check=False):
     for tipo, msgs in grupos.items():
         titulo, color = TITULOS.get(tipo, (tipo, "#3b82f6"))
         url = TAB_URL.get(tipo, "/app")
-        if destinatario and canales.get("email", True):
+        if destinatario and canales.get("email", False):
             asunto = f"[Yve.01] {hotel} — {titulo}"
             html = _email_html(titulo, msgs, color)
             enviar_email(destinatario, asunto, html, tipo)
