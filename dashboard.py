@@ -7656,7 +7656,7 @@ async function yvePushSubscribe() {
     if (!sub) {
       sub = await reg.pushManager.subscribe({ userVisibleOnly: true, applicationServerKey: yveUrlB64ToUint8(j.publicKey) });
     }
-    await fetch('/api/push/subscribe', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ subscription: sub }) });
+    await _postJson('/api/push/subscribe', { subscription: sub });
     showNotification('✓ Notificaciones push activadas en este dispositivo', 'success');
     return true;
   } catch (e) { showNotification('No se pudo activar push: ' + (e && e.message ? e.message : e), 'error'); return false; }
@@ -7666,7 +7666,7 @@ async function yvePushUnsubscribe() {
     var reg = _swReg || await navigator.serviceWorker.ready;
     var sub = await reg.pushManager.getSubscription();
     if (sub) {
-      await fetch('/api/push/unsubscribe', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ endpoint: sub.endpoint }) });
+      await _postJson('/api/push/unsubscribe', { endpoint: sub.endpoint });
       await sub.unsubscribe();
     }
     return true;
@@ -7674,7 +7674,7 @@ async function yvePushUnsubscribe() {
 }
 async function yvePushTest() {
   try {
-    var r = await fetch('/api/push/test', { method: 'POST' });
+    var r = await _postJson('/api/push/test', {});
     var d = await r.json();
     showNotification((d.ok ? '✓ ' : '⚠ ') + (d.message || d.error || 'Push'), d.ok ? 'success' : 'warning');
   } catch (e) { showNotification('✗ Error probando push', 'error'); }
