@@ -528,13 +528,20 @@ def api_push_public_key():
         return jsonify({"publicKey": "", "enabled": False, "error": str(e)[:120]}), 500
 
 @app.route("/api/push/subscribe", methods=["POST"])
+@login_required
 def api_push_subscribe():
-    """Registra la suscripción push del navegador."""
+    """Registra la suscripción push del navegador (con rol + tenant del usuario)."""
     try:
         import push_service
+        from flask import session as _sess
         data = request.get_json(silent=True) or {}
         sub = data.get("subscription") or data
-        ok = push_service.add_subscription(sub)
+        ok = push_service.add_subscription(
+            sub,
+            rol=getattr(current_user, "rol", None),
+            tenant=_sess.get("tenant_id", "default"),
+            username=getattr(current_user, "username", None),
+        )
         return jsonify({"ok": ok, "total": push_service.count_subscriptions()})
     except Exception as e:
         return jsonify({"ok": False, "error": str(e)[:160]}), 500
@@ -560,10 +567,12 @@ def api_push_test():
         if not push_service.push_enabled():
             return jsonify({"ok": False, "error": "Push no configurado en el servidor "
                             "(falta la variable VAPID_PRIVATE_KEY en Render)."}), 200
+        from flask import session as _sess
         res = push_service.send_push(
             title="🔔 Yve.01 — Prueba de push",
             body="Las notificaciones push funcionan correctamente.",
             url="/app?tab=notif", tag="yve-test",
+            tenant=_sess.get("tenant_id", "default"),
         )
         res["ok"] = True if res.get("sent", 0) > 0 else res.get("ok", False)
         if res.get("sent", 0) == 0 and res.get("total", 0) == 0:
@@ -3491,6 +3500,43 @@ button, a { touch-action: manipulation; }
 </style>
 </head>
 <body>
+<!-- ── Pantalla de inicio (splash) al abrir la app ── -->
+<style>
+#yve-splash{position:fixed;inset:0;z-index:99999;display:flex;flex-direction:column;align-items:center;justify-content:center;
+  background:linear-gradient(180deg,#101a2e 0%,#0c1424 55%,#090e1a 100%);padding:24px;
+  transition:opacity .55s ease,visibility .55s ease}
+#yve-splash.hide{opacity:0;visibility:hidden;pointer-events:none}
+#yve-splash .sp-logo{width:110px;height:110px;border-radius:27px;box-shadow:0 22px 60px rgba(0,0,0,.55);animation:spPop .6s cubic-bezier(.2,.8,.2,1)}
+#yve-splash .sp-brand{margin-top:24px;font-size:31px;font-weight:800;letter-spacing:-.8px;color:#fff;animation:spFade .6s ease .12s both}
+#yve-splash .sp-brand span{color:#60a5fa}
+#yve-splash .sp-sub{margin-top:9px;font-size:13px;color:#94a3b8;animation:spFade .6s ease .22s both}
+#yve-splash .sp-loader{margin-top:30px;width:32px;height:32px;border-radius:50%;border:3px solid rgba(148,163,184,.22);border-top-color:#3b82f6;animation:spSpin .8s linear infinite}
+#yve-splash .sp-skip{position:absolute;bottom:calc(26px + env(safe-area-inset-bottom));left:50%;transform:translateX(-50%);background:none;border:none;color:#64748b;font-size:12.5px;cursor:pointer;font-family:inherit;padding:10px 14px;text-decoration:underline}
+@keyframes spPop{from{opacity:0;transform:scale(.82)}to{opacity:1;transform:scale(1)}}
+@keyframes spFade{from{opacity:0;transform:translateY(8px)}to{opacity:1;transform:none}}
+@keyframes spSpin{to{transform:rotate(360deg)}}
+</style>
+<div id="yve-splash" role="status" aria-label="Cargando Yve.01">
+  <img class="sp-logo" src="/static/icons/yve-logo-192.png" alt="Yve.01">
+  <div class="sp-brand">Yve<span>.01</span></div>
+  <div class="sp-sub">Automatización financiera para hoteles</div>
+  <div class="sp-loader"></div>
+  <button class="sp-skip" onclick="yveSkipSplash()">No volver a mostrar</button>
+</div>
+<script>
+(function(){
+  var sp=document.getElementById('yve-splash'); if(!sp) return;
+  var skip=false, shown=false;
+  try{ skip=localStorage.getItem('yve_skip_splash')==='1'; }catch(e){}
+  try{ shown=sessionStorage.getItem('yve_splash_shown')==='1'; }catch(e){}
+  function quitar(){ if(sp&&sp.parentNode) sp.parentNode.removeChild(sp); }
+  function ocultar(){ sp.classList.add('hide'); setTimeout(quitar,600); }
+  window.yveSkipSplash=function(){ try{localStorage.setItem('yve_skip_splash','1');}catch(e){} clearTimeout(_t); ocultar(); };
+  if(skip||shown){ quitar(); return; }
+  try{ sessionStorage.setItem('yve_splash_shown','1'); }catch(e){}
+  var _t=setTimeout(ocultar,2200);
+})();
+</script>
 
 <nav class="nav" id="app-header">
   <div class="logo">

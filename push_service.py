@@ -1,6 +1,6 @@
 """
 push_service.py — Yve.01
-Notificaciones push web reales (Web Push API + VAPID).
+Notificaciones push web reales (Web Push API + VAPID), segmentadas por rol y tenant.
 
 - La clave PÚBLICA VAPID no es secreta (el navegador la recibe). Va en el código
   y puede sobreescribirse con la variable de entorno VAPID_PUBLIC_KEY.
@@ -8,8 +8,11 @@ Notificaciones push web reales (Web Push API + VAPID).
   VAPID_PRIVATE_KEY (nunca se guarda en git). Sin ella, el push se desactiva
   de forma elegante (el resto de la app sigue funcionando igual).
 
-Suscripciones almacenadas en datos-referencia/push_subscriptions.json
-(coherente con el almacenamiento en archivos del resto del proyecto).
+Cada suscripción guarda: endpoint, keys, rol, tenant, username. El envío puede
+filtrarse por tenant (nunca cruza datos entre hoteles/cadenas) y por rol
+(cada alerta va solo a quien le corresponde). El rol 'admin' recibe todo.
+
+Suscripciones en datos-referencia/push_subscriptions.json.
 """
 import os, json, time
 from pathlib import Path
@@ -51,15 +54,19 @@ def _save_subs(subs: list) -> None:
     SUBS_PATH.write_text(json.dumps(subs, ensure_ascii=False, indent=2), encoding="utf-8")
 
 
-def add_subscription(sub: dict) -> bool:
-    """Guarda (o refresca) una suscripción push. Deduplica por endpoint."""
+def add_subscription(sub: dict, rol=None, tenant=None, username=None) -> bool:
+    """Guarda (o refresca) una suscripción push con su rol y tenant. Dedup por endpoint."""
     if not sub or not sub.get("endpoint"):
         return False
     subs = _load_subs()
     ep = sub["endpoint"]
     subs = [s for s in subs if s.get("endpoint") != ep]
-    sub = dict(sub)
-    sub["_ts"] = int(time.time())
+    sub = {"endpoint": sub.get("endpoint"), "keys": sub.get("keys", {}),
+           "expirationTime": sub.get("expirationTime")}
+    sub["rol"]      = rol or "income_auditor"
+    sub["tenant"]   = tenant or "default"
+    sub["username"] = username or ""
+    sub["_ts"]      = int(time.time())
     subs.append(sub)
     _save_subs(subs)
     return True
@@ -81,11 +88,13 @@ def count_subscriptions() -> int:
 # ── Envío ───────────────────────────────────────────────────────────────────
 
 def send_push(title, body, url="/app", tag="yve-alert", icon=None,
-              require_interaction=True, renotify=False) -> dict:
+              require_interaction=True, renotify=False,
+              roles=None, tenant=None) -> dict:
     """
-    Envía una notificación push a todas las suscripciones registradas.
-    Limpia automáticamente las suscripciones caducadas (404/410).
-    Nunca lanza excepción: siempre devuelve un resumen.
+    Envía una notificación push a las suscripciones que coincidan con:
+      · tenant (si se indica): solo dispositivos de ese hotel/cadena.
+      · roles (si se indica): solo esos roles (el rol 'admin' siempre recibe).
+    Limpia suscripciones caducadas (404/410). Nunca lanza excepción.
     """
     if not push_enabled():
         return {"ok": False, "reason": "no_vapid_private_key", "sent": 0, "total": 0}
@@ -96,31 +105,32 @@ def send_push(title, body, url="/app", tag="yve-alert", icon=None,
                 "sent": 0, "total": 0}
 
     subs = _load_subs()
-    if not subs:
-        return {"ok": True, "sent": 0, "total": 0, "reason": "sin_suscripciones"}
+    allowed = (set(roles) | {"admin"}) if roles else None
+    objetivo = []
+    for s in subs:
+        if tenant is not None and (s.get("tenant") or "default") != tenant:
+            continue
+        if allowed is not None and (s.get("rol") or "") not in allowed:
+            continue
+        objetivo.append(s)
+
+    if not objetivo:
+        return {"ok": True, "sent": 0, "total": 0, "reason": "sin_destinatarios"}
 
     payload = json.dumps({
-        "title": title,
-        "body": body,
-        "url": url,
-        "tag": tag,
+        "title": title, "body": body, "url": url, "tag": tag,
         "icon": icon or "/static/icons/yve-logo-192.png",
-        "requireInteraction": bool(require_interaction),
-        "renotify": bool(renotify),
+        "requireInteraction": bool(require_interaction), "renotify": bool(renotify),
     })
     priv = _private_key()
     sub_claim = "mailto:" + _contact()
 
     sent, stale = 0, []
-    for s in subs:
+    for s in objetivo:
         try:
-            webpush(
-                subscription_info=s,
-                data=payload,
-                vapid_private_key=priv,
-                vapid_claims={"sub": sub_claim},   # dict nuevo por envío (aud se calcula por endpoint)
-                ttl=86400,
-            )
+            webpush(subscription_info={"endpoint": s["endpoint"], "keys": s.get("keys", {})},
+                    data=payload, vapid_private_key=priv,
+                    vapid_claims={"sub": sub_claim}, ttl=86400)
             sent += 1
         except WebPushException as e:
             code = getattr(getattr(e, "response", None), "status_code", None)
@@ -133,7 +143,7 @@ def send_push(title, body, url="/app", tag="yve-alert", icon=None,
         restantes = [s for s in subs if s.get("endpoint") not in stale]
         _save_subs(restantes)
 
-    return {"ok": True, "sent": sent, "total": len(subs), "removed": len(stale)}
+    return {"ok": True, "sent": sent, "total": len(objetivo), "removed": len(stale)}
 
 
 if __name__ == "__main__":

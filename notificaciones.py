@@ -349,8 +349,19 @@ TAB_URL = {
     "banco_sin_conciliar":     "/app?tab=banco",
 }
 
-def enviar_push(titulo, mensaje, url="/app", tipo="general"):
-    """Envía una notificación push web (VAPID) a los dispositivos suscritos."""
+# Qué ROLES reciben cada alerta por push (el rol 'admin' siempre recibe todo)
+ROLES_FOR = {
+    "ar_discrepancia":         ["financial_controller", "income_auditor"],
+    "ar_falta_di":             ["financial_controller", "income_auditor"],
+    "drr_oob":                 ["financial_controller", "income_auditor"],
+    "ap_discrepancia":         ["financial_controller"],
+    "factura_pendiente_firma": ["financial_controller"],
+    "banco_sin_conciliar":     ["financial_controller"],
+    "stock_bajo":              ["fb_manager", "financial_controller"],
+}
+
+def enviar_push(titulo, mensaje, url="/app", tipo="general", roles=None, tenant=None):
+    """Envía push (VAPID) SOLO a los roles indicados y al tenant actual (nunca cruza hoteles)."""
     try:
         import push_service
     except Exception:
@@ -358,8 +369,15 @@ def enviar_push(titulo, mensaje, url="/app", tipo="general"):
     if not push_service.push_enabled():
         _registrar(tipo, titulo, "push", "warning", "VAPID_PRIVATE_KEY no configurada en el servidor")
         return False
+    if tenant is None:
+        try:
+            from tenant_dirs import tenant_id as _tid
+            tenant = _tid()
+        except Exception:
+            tenant = None
     body = mensaje if isinstance(mensaje, str) else "\n".join(mensaje)
-    res = push_service.send_push(title=titulo, body=body[:180], url=url, tag="yve-" + tipo)
+    res = push_service.send_push(title=titulo, body=body[:180], url=url, tag="yve-" + tipo,
+                                 roles=roles, tenant=tenant)
     ok = bool(res.get("sent", 0) > 0)
     _registrar(tipo, titulo, "push", "enviado" if ok else "warning",
                f"{res.get('sent', 0)}/{res.get('total', 0)} dispositivo(s)")
@@ -618,7 +636,7 @@ def enviar_pendientes(solo_check=False):
             enviar_email(destinatario, asunto, html, tipo)
         if push_on:
             resumen = msgs[0] + (f"  (+{len(msgs) - 1} más)" if len(msgs) > 1 else "")
-            enviar_push(titulo, resumen, url, tipo)
+            enviar_push(titulo, resumen, url, tipo, roles=ROLES_FOR.get(tipo))
 
     return filtradas
 

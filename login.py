@@ -161,6 +161,7 @@ input:focus{border-color:var(--acc);box-shadow:0 0 0 3px rgba(59,130,246,.18)}
   function ocultar(){ sp.classList.add('hide'); setTimeout(quitar, 600); }
   window.yveSkipSplash = function(){ try { localStorage.setItem('yve_skip_splash','1'); } catch(e){} clearTimeout(_spT); ocultar(); };
   if (skip) { quitar(); return; }
+  try { sessionStorage.setItem('yve_splash_shown','1'); } catch(e){}
   var _spT = setTimeout(ocultar, 2600);
 })();
 </script>
