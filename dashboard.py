@@ -501,6 +501,80 @@ def api_oracle_status():
     mode='real' if os.environ.get('ORACLE_BASE_URL') else 'simulation'
     return jsonify({'mode':mode,'ok':True})
 
+# ── PWA: service worker servido desde la raíz para controlar todo el origen ──
+@app.route("/sw.js")
+def pwa_service_worker():
+    """Sirve el SW desde / (scope '/') en lugar de /static/ (scope '/static/')."""
+    resp = app.send_static_file("sw.js")
+    resp.headers["Service-Worker-Allowed"] = "/"
+    resp.headers["Content-Type"] = "application/javascript; charset=utf-8"
+    resp.headers["Cache-Control"] = "no-cache, no-store, must-revalidate"
+    return resp
+
+@app.route("/offline")
+def pwa_offline():
+    """Página offline propia (fallback del SW en navegaciones sin red)."""
+    return app.send_static_file("offline.html")
+
+# ── Web Push (VAPID) ────────────────────────────────────────────────────────
+@app.route("/api/push/public_key")
+def api_push_public_key():
+    """Clave pública VAPID para que el navegador se suscriba (no es secreta)."""
+    try:
+        import push_service
+        return jsonify({"publicKey": push_service.VAPID_PUBLIC_KEY,
+                        "enabled": push_service.push_enabled()})
+    except Exception as e:
+        return jsonify({"publicKey": "", "enabled": False, "error": str(e)[:120]}), 500
+
+@app.route("/api/push/subscribe", methods=["POST"])
+def api_push_subscribe():
+    """Registra la suscripción push del navegador."""
+    try:
+        import push_service
+        data = request.get_json(silent=True) or {}
+        sub = data.get("subscription") or data
+        ok = push_service.add_subscription(sub)
+        return jsonify({"ok": ok, "total": push_service.count_subscriptions()})
+    except Exception as e:
+        return jsonify({"ok": False, "error": str(e)[:160]}), 500
+
+@app.route("/api/push/unsubscribe", methods=["POST"])
+def api_push_unsubscribe():
+    """Elimina una suscripción push."""
+    try:
+        import push_service
+        data = request.get_json(silent=True) or {}
+        endpoint = data.get("endpoint") or (data.get("subscription") or {}).get("endpoint")
+        ok = push_service.remove_subscription(endpoint)
+        return jsonify({"ok": ok, "total": push_service.count_subscriptions()})
+    except Exception as e:
+        return jsonify({"ok": False, "error": str(e)[:160]}), 500
+
+@app.route("/api/push/test", methods=["POST"])
+@login_required
+def api_push_test():
+    """Envía una notificación push de prueba a todos los dispositivos suscritos."""
+    try:
+        import push_service
+        if not push_service.push_enabled():
+            return jsonify({"ok": False, "error": "Push no configurado en el servidor "
+                            "(falta la variable VAPID_PRIVATE_KEY en Render)."}), 200
+        res = push_service.send_push(
+            title="🔔 Yve.01 — Prueba de push",
+            body="Las notificaciones push funcionan correctamente.",
+            url="/app?tab=notif", tag="yve-test",
+        )
+        res["ok"] = True if res.get("sent", 0) > 0 else res.get("ok", False)
+        if res.get("sent", 0) == 0 and res.get("total", 0) == 0:
+            res["message"] = "No hay dispositivos suscritos todavía. Activa el canal Push en este dispositivo."
+        else:
+            res["message"] = f"Enviado a {res.get('sent',0)} de {res.get('total',0)} dispositivo(s)."
+        return jsonify(res)
+    except Exception as e:
+        return jsonify({"ok": False, "error": str(e)[:200]}), 500
+
+
 
 # ── Normalización de columnas para datos extraídos por IA ────────────
 def _normalize_cols(df, expected_map):
@@ -2809,13 +2883,16 @@ HTML = r"""<!DOCTYPE html>
 <meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=5,viewport-fit=cover">
 <meta id="csrf-token-meta" name="csrf-token" content="">
 <link rel="manifest" href="/static/manifest.json">
-<meta name="theme-color" content="#3b82f6">
+<meta name="theme-color" content="#0f172a">
+<meta name="mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
 <meta name="apple-mobile-web-app-title" content="Yve.01">
-<link rel="icon" type="image/svg+xml" href="/static/favicon.svg">
-<link rel="icon" type="image/png" sizes="32x32" href="/static/yve-logo-32.png">
-<link rel="apple-touch-icon" sizes="512x512" href="/static/yve-logo-512.png">
+<link rel="apple-touch-icon" href="/static/icons/apple-touch-icon.png">
+<link rel="icon" type="image/png" sizes="32x32" href="/static/icons/favicon-32.png">
+<link rel="icon" type="image/png" sizes="16x16" href="/static/icons/favicon-16.png">
+<link rel="mask-icon" href="/static/icons/favicon.svg" color="#3b82f6">
+<link rel="icon" type="image/svg+xml" href="/static/icons/favicon.svg">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&display=swap" rel="stylesheet">
@@ -7446,21 +7523,162 @@ window.addEventListener('unhandledrejection', function(e) {
   console.error('[Yve.01 Unhandled Promise]', e.reason);
 });
 
-// ── PWA Service Worker ───────────────────────────────────────────────────
+// ── PWA: Service Worker, actualización, instalación y push ────────────────
+var _deferredInstall = null;
+var _swReg = null;
+
+(function(){
+  if (document.getElementById('yve-pwa-style')) return;
+  var s = document.createElement('style'); s.id = 'yve-pwa-style';
+  s.textContent = '@keyframes yveSlideUp{from{opacity:0;transform:translateX(-50%) translateY(20px)}to{opacity:1;transform:translateX(-50%) translateY(0)}}';
+  (document.head || document.documentElement).appendChild(s);
+})();
+
 if ('serviceWorker' in navigator) {
-  navigator.serviceWorker.register('/static/sw.js').catch(() => {});
+  window.addEventListener('load', function() {
+    navigator.serviceWorker.register('/sw.js', { scope: '/' }).then(function(reg) {
+      _swReg = reg;
+      if (reg.waiting && navigator.serviceWorker.controller) yveShowUpdateBanner(reg);
+      reg.addEventListener('updatefound', function() {
+        var nw = reg.installing; if (!nw) return;
+        nw.addEventListener('statechange', function() {
+          if (nw.state === 'installed' && navigator.serviceWorker.controller) yveShowUpdateBanner(reg);
+        });
+      });
+    }).catch(function(){});
+    var _refreshing = false;
+    navigator.serviceWorker.addEventListener('controllerchange', function() {
+      if (_refreshing) return; _refreshing = true; window.location.reload();
+    });
+  });
 }
-// Install prompt
-var _deferredInstall;
-window.addEventListener('beforeinstallprompt', e => {
+
+// Prompt de instalación nativo (Android / escritorio Chrome / Edge)
+window.addEventListener('beforeinstallprompt', function(e) {
   e.preventDefault(); _deferredInstall = e;
-  const btn = document.getElementById('btn-install-pwa');
+  var btn = document.getElementById('btn-install-pwa');
   if (btn) btn.style.display = 'inline-block';
+  yvePwaMaybeShowInstall();
 });
-window.addEventListener('appinstalled', () => {
-  const btn = document.getElementById('btn-install-pwa');
+window.addEventListener('appinstalled', function() {
+  _deferredInstall = null;
+  try { localStorage.setItem('yve_pwa_installed', '1'); } catch(e){}
+  var btn = document.getElementById('btn-install-pwa');
   if (btn) btn.style.display = 'none';
+  yveRemoveBanner('yve-install-banner');
+  if (typeof showNotification === 'function') showNotification('✓ Yve.01 instalada. Búscala en tu pantalla de inicio.', 'success');
 });
+
+function yveIsStandalone() {
+  return (window.matchMedia && window.matchMedia('(display-mode: standalone)').matches) || window.navigator.standalone === true;
+}
+function yveIsIOS() {
+  return /iphone|ipad|ipod/i.test(navigator.userAgent) && !window.MSStream;
+}
+
+function yvePwaMaybeShowInstall() {
+  try {
+    if (yveIsStandalone()) return;
+    if (localStorage.getItem('yve_pwa_install_dismissed') === '1') return;
+    if (localStorage.getItem('yve_pwa_installed') === '1') return;
+  } catch(e){}
+  if (document.getElementById('yve-install-banner')) return;
+  var ios = yveIsIOS();
+  if (!_deferredInstall && !ios) return;
+  var msg = ios
+    ? '📲 Instala Yve: toca <b>Compartir</b> y luego <b>Añadir a pantalla de inicio</b>'
+    : '📲 Instala Yve para acceso rápido';
+  var btnHtml = ios ? '' :
+    '<button onclick="yvePwaInstall()" style="background:#fff;color:#2563eb;border:none;padding:8px 16px;border-radius:9px;font-weight:700;font-size:13px;cursor:pointer;font-family:inherit;white-space:nowrap">Instalar</button>';
+  yveShowBanner('yve-install-banner', msg, btnHtml, 'yveDismissInstall', '#3b82f6');
+}
+function yvePwaInstall() {
+  if (!_deferredInstall) { yveRemoveBanner('yve-install-banner'); return; }
+  _deferredInstall.prompt();
+  _deferredInstall.userChoice.then(function(){ _deferredInstall = null; yveRemoveBanner('yve-install-banner'); });
+}
+function yveDismissInstall() {
+  try { localStorage.setItem('yve_pwa_install_dismissed', '1'); } catch(e){}
+  yveRemoveBanner('yve-install-banner');
+}
+
+function yveShowUpdateBanner(reg) {
+  window._yveWaitingReg = reg;
+  yveShowBanner('yve-update-banner', '🔄 Actualización disponible',
+    '<button onclick="yveApplyUpdate()" style="background:#fff;color:#166534;border:none;padding:8px 16px;border-radius:9px;font-weight:700;font-size:13px;cursor:pointer;font-family:inherit;white-space:nowrap">Actualizar</button>',
+    null, '#22c55e');
+}
+function yveApplyUpdate() {
+  var reg = window._yveWaitingReg;
+  yveRemoveBanner('yve-update-banner');
+  if (reg && reg.waiting) reg.waiting.postMessage('SKIP_WAITING');
+  else window.location.reload();
+}
+
+function yveShowBanner(id, htmlMsg, btnHtml, dismissFn, accent) {
+  if (document.getElementById(id)) return;
+  accent = accent || '#3b82f6';
+  var bar = document.createElement('div');
+  bar.id = id;
+  bar.style.cssText = 'position:fixed;left:50%;transform:translateX(-50%);bottom:calc(16px + env(safe-area-inset-bottom));z-index:10000;display:flex;align-items:center;gap:14px;max-width:min(560px,calc(100% - 24px));width:max-content;background:linear-gradient(135deg,' + accent + ',#2563eb);color:#fff;padding:12px 14px 12px 18px;border-radius:14px;box-shadow:0 10px 40px rgba(0,0,0,.35);font-size:13px;font-weight:500;animation:yveSlideUp .3s ease';
+  var txt = document.createElement('div'); txt.style.cssText = 'flex:1;line-height:1.4'; txt.innerHTML = htmlMsg;
+  bar.appendChild(txt);
+  if (btnHtml) { var wrap = document.createElement('div'); wrap.innerHTML = btnHtml; if (wrap.firstChild) bar.appendChild(wrap.firstChild); }
+  var x = document.createElement('button');
+  x.textContent = '✕'; x.setAttribute('aria-label', 'Cerrar');
+  x.style.cssText = 'background:transparent;border:none;color:rgba(255,255,255,.85);font-size:15px;cursor:pointer;padding:4px 6px;font-family:inherit;line-height:1';
+  x.onclick = function(){ if (dismissFn && window[dismissFn]) window[dismissFn](); else yveRemoveBanner(id); };
+  bar.appendChild(x);
+  document.body.appendChild(bar);
+}
+function yveRemoveBanner(id) { var b = document.getElementById(id); if (b) b.remove(); }
+
+// ── Push (Web Push API) ───────────────────────────────────────────────────
+function yveUrlB64ToUint8(base64) {
+  var padding = '='.repeat((4 - base64.length % 4) % 4);
+  var b64 = (base64 + padding).replace(/-/g, '+').replace(/_/g, '/');
+  var raw = atob(b64); var arr = new Uint8Array(raw.length);
+  for (var i = 0; i < raw.length; i++) arr[i] = raw.charCodeAt(i);
+  return arr;
+}
+function yvePushSupported() {
+  return ('serviceWorker' in navigator) && ('PushManager' in window) && ('Notification' in window);
+}
+async function yvePushSubscribe() {
+  if (!yvePushSupported()) { showNotification('Tu navegador no soporta notificaciones push', 'error'); return false; }
+  try {
+    var perm = await Notification.requestPermission();
+    if (perm !== 'granted') { showNotification('Permiso de notificaciones denegado', 'warning'); return false; }
+    var reg = _swReg || await navigator.serviceWorker.ready;
+    var r = await fetch('/api/push/public_key'); var j = await r.json();
+    if (!j.publicKey) { showNotification('Push aún no está configurado en el servidor', 'warning'); return false; }
+    var sub = await reg.pushManager.getSubscription();
+    if (!sub) {
+      sub = await reg.pushManager.subscribe({ userVisibleOnly: true, applicationServerKey: yveUrlB64ToUint8(j.publicKey) });
+    }
+    await fetch('/api/push/subscribe', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ subscription: sub }) });
+    showNotification('✓ Notificaciones push activadas en este dispositivo', 'success');
+    return true;
+  } catch (e) { showNotification('No se pudo activar push: ' + (e && e.message ? e.message : e), 'error'); return false; }
+}
+async function yvePushUnsubscribe() {
+  try {
+    var reg = _swReg || await navigator.serviceWorker.ready;
+    var sub = await reg.pushManager.getSubscription();
+    if (sub) {
+      await fetch('/api/push/unsubscribe', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ endpoint: sub.endpoint }) });
+      await sub.unsubscribe();
+    }
+    return true;
+  } catch (e) { return false; }
+}
+async function yvePushTest() {
+  try {
+    var r = await fetch('/api/push/test', { method: 'POST' });
+    var d = await r.json();
+    showNotification((d.ok ? '✓ ' : '⚠ ') + (d.message || d.error || 'Push'), d.ok ? 'success' : 'warning');
+  } catch (e) { showNotification('✗ Error probando push', 'error'); }
+}
 
 // ── Toast notifications ──────────────────────────────────────────────────
 var _toastTimeout;
@@ -9225,6 +9443,16 @@ document.addEventListener('DOMContentLoaded', () => {
   if (btn) {
     btn.addEventListener('click', toggleRolMenu);
   }
+  // Atajo de tab por URL (?tab=ap|ar|drr|notif|fb|banco) — usado por los shortcuts de la PWA
+  try {
+    var _tab = new URLSearchParams(window.location.search).get('tab');
+    if (_tab) {
+      var _tb = document.querySelector('.tab[onclick*="switchTab(\'' + _tab + '\'"]');
+      if (_tb) setTimeout(function(){ switchTab(_tab, _tb); }, 60);
+    }
+  } catch(e){}
+  // Banner de instalación (iOS al instante; Android tras beforeinstallprompt)
+  setTimeout(function(){ if (typeof yvePwaMaybeShowInstall === 'function') yvePwaMaybeShowInstall(); }, 1200);
 });
 
 
@@ -10263,6 +10491,7 @@ const NOTIF_ALERTAS = [
   {key:'drr_oob',                 labelKey:'notif.evDrr',   label:'DRR: días Out of Balance'},
   {key:'banco_sin_conciliar',     labelKey:'notif.evBanco', label:'Movimientos bancarios sin conciliar'},
   {key:'factura_pendiente_firma', labelKey:'notif.evFirma', label:'Facturas pendientes de firma'},
+  {key:'stock_bajo',              labelKey:'notif.evStock', label:'Stock bajo en inventario F&B'},
 ];
 var _notifConfig = null;
 
@@ -10341,6 +10570,17 @@ function renderNotifConfig() {
 
     if (c.canales && c.canales.slack)
       html += notifField('slack_webhook', 'Slack Webhook URL', 'https://hooks.slack.com/services/...', c.slack_webhook || '');
+    if (c.canales && c.canales.push) {
+      var permTxt = ('Notification' in window)
+        ? (Notification.permission === 'granted' ? '● Permiso concedido en este dispositivo'
+           : (Notification.permission === 'denied' ? '⚠ Permiso bloqueado — actívalo en los ajustes del navegador'
+           : 'Se pedirá permiso al activar el canal'))
+        : 'Este navegador no soporta notificaciones push';
+      html += '<div style="background:var(--bg);border:1px solid var(--s2);border-radius:9px;padding:12px 14px">' +
+              '<div style="font-size:11px;color:var(--mut);text-transform:uppercase;letter-spacing:.4px;margin-bottom:6px">Notificaciones push</div>' +
+              '<div style="font-size:12px;color:var(--dim);margin-bottom:10px">' + permTxt + '</div>' +
+              '<button onclick="yvePushTest()" class="btn-ref" style="font-size:12px">🔔 Enviar push de prueba</button></div>';
+    }
     fields.innerHTML = html;
   }
   // Alertas
@@ -10363,28 +10603,23 @@ function notifField(key, label, ph, val) {
 
 function toggleNotifCanal(key) {
   if (!_notifConfig.canales) _notifConfig.canales = {};
-  _notifConfig.canales[key] = !_notifConfig.canales[key];
-  // Push: pedir permiso real de notificaciones al navegador (PC y móvil)
-  if (key === 'push' && _notifConfig.canales[key] && 'Notification' in window) {
-    Notification.requestPermission().then(function(p) {
-      if (p === 'granted') {
-        var titulo = 'Yve.01', cuerpo = t('notif.pushOk', 'Notificaciones activadas ✓ Te avisaré de discrepancias y alertas.');
-        try {
-          if (navigator.serviceWorker && navigator.serviceWorker.ready) {
-            navigator.serviceWorker.ready.then(function(reg) {
-              reg.showNotification(titulo, { body: cuerpo, icon: '/static/yve-logo-128.png', badge: '/static/yve-logo-64.png' });
-            }).catch(function() { new Notification(titulo, { body: cuerpo, icon: '/static/yve-logo-128.png' }); });
-          } else {
-            new Notification(titulo, { body: cuerpo, icon: '/static/yve-logo-128.png' });
-          }
-        } catch(e) {}
-      } else {
-        _notifConfig.canales[key] = false;
-        showNotification(t('notif.pushDenegado', 'Permiso de notificaciones denegado por el navegador'), 'error');
-      }
+  if (key === 'push') {
+    var turningOn = !_notifConfig.canales.push;
+    if (turningOn) {
+      yvePushSubscribe().then(function(ok){
+        _notifConfig.canales.push = !!ok;
+        renderNotifConfig();
+        if (ok) guardarNotifConfig();
+      });
+    } else {
+      yvePushUnsubscribe();
+      _notifConfig.canales.push = false;
       renderNotifConfig();
-    });
+      guardarNotifConfig();
+    }
+    return;
   }
+  _notifConfig.canales[key] = !_notifConfig.canales[key];
   renderNotifConfig();
 }
 

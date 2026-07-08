@@ -216,3 +216,8 @@ __marimo__/
 
 # Streamlit
 .streamlit/secrets.toml
+
+# PWA push (no secretos en git)
+datos-referencia/push_subscriptions.json
+vapid_keys.json
+*.vapid

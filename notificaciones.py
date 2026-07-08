@@ -21,6 +21,7 @@ from tenant_dirs import reportes_dir as _t_rdir, procesadas_dir as _t_pdir, dato
 class _TDir:
     def __init__(self, fn): self._fn = fn
     def __truediv__(self, other): return Path(self._fn()) / other
+    def mkdir(self, *a, **k): return Path(self._fn()).mkdir(*a, **k)
     def __str__(self): return self._fn()
 
 class _TFile:
@@ -94,10 +95,13 @@ def _alertas_activas(config):
     """Devuelve dict con qué alertas están activas."""
     alertas = config.get("alertas", {})
     return {
-        "ar_discrepancia":  alertas.get("ar_discrepancia", True),
-        "ar_falta_di":      alertas.get("ar_falta_di", True),
-        "drr_oob":          alertas.get("drr_oob", True),
-        "ap_discrepancia":  alertas.get("ap_discrepancia", True),
+        "ar_discrepancia":         alertas.get("ar_discrepancia", True),
+        "ar_falta_di":             alertas.get("ar_falta_di", True),
+        "drr_oob":                 alertas.get("drr_oob", True),
+        "ap_discrepancia":         alertas.get("ap_discrepancia", True),
+        "factura_pendiente_firma": alertas.get("factura_pendiente_firma", False),
+        "stock_bajo":              alertas.get("stock_bajo", True),
+        "banco_sin_conciliar":     alertas.get("banco_sin_conciliar", True),
     }
 
 # ── Historial ─────────────────────────────────────────────────────────────
@@ -334,7 +338,34 @@ def enviar_telegram(mensaje: str) -> bool:
         print(f"[Telegram] Error: {e}")
         return False
 
-def enviar_por_canales(asunto, html, texto, tipo="general"):
+# URL del tab que abre cada tipo de alerta al tocar la notificación push
+TAB_URL = {
+    "ar_discrepancia":         "/app?tab=ar",
+    "ar_falta_di":             "/app?tab=ar",
+    "drr_oob":                 "/app?tab=drr",
+    "ap_discrepancia":         "/app?tab=ap",
+    "factura_pendiente_firma": "/app?tab=ap",
+    "stock_bajo":              "/app?tab=fb",
+    "banco_sin_conciliar":     "/app?tab=banco",
+}
+
+def enviar_push(titulo, mensaje, url="/app", tipo="general"):
+    """Envía una notificación push web (VAPID) a los dispositivos suscritos."""
+    try:
+        import push_service
+    except Exception:
+        return False
+    if not push_service.push_enabled():
+        _registrar(tipo, titulo, "push", "warning", "VAPID_PRIVATE_KEY no configurada en el servidor")
+        return False
+    body = mensaje if isinstance(mensaje, str) else "\n".join(mensaje)
+    res = push_service.send_push(title=titulo, body=body[:180], url=url, tag="yve-" + tipo)
+    ok = bool(res.get("sent", 0) > 0)
+    _registrar(tipo, titulo, "push", "enviado" if ok else "warning",
+               f"{res.get('sent', 0)}/{res.get('total', 0)} dispositivo(s)")
+    return ok
+
+def enviar_por_canales(asunto, html, texto, tipo="general", url="/app"):
     """Envia por todos los canales activos segun notif_config.json."""
     cfg = _load_notif_config()
     ch  = cfg.get("canales", {})
@@ -345,6 +376,8 @@ def enviar_por_canales(asunto, html, texto, tipo="general"):
         res["slack"] = enviar_slack(cfg["slack_webhook"], texto, asunto, tipo)
     if ch.get("whatsapp") and cfg.get("whatsapp"):
         res["whatsapp"] = enviar_whatsapp(cfg["whatsapp"], texto, asunto, tipo)
+    if ch.get("push"):
+        res["push"] = enviar_push(asunto, texto, url, tipo)
     return res
 
 def _email_html(titulo, items, color="#3b82f6", footer_note=None):
@@ -486,14 +519,69 @@ def escanear_alertas():
         except Exception:
             pass
 
+    # ── AP: facturas con match OK pendientes de aprobar ──
+    try:
+        ruta = (_ultimo_excel("facturas_contabilizadas_*.xlsx", PROCESADAS_DIR)
+                or _ultimo_excel("facturas_ap_*.xlsx", PROCESADAS_DIR))
+        if ruta:
+            df = pd.read_excel(ruta)
+            est_col = next((c for c in ["estado_matching", "estado"] if c in df.columns), None)
+            num_col = next((c for c in ["numero_factura", "numero", "factura"] if c in df.columns), None)
+            aprobadas = set()
+            apr_path = BASE_DIR / "aprobaciones" / "aprobaciones_ap.xlsx"
+            if apr_path.exists():
+                da = pd.read_excel(apr_path)
+                dn = next((c for c in ["numero_factura", "numero", "factura"] if c in da.columns), None)
+                dc = next((c for c in ["accion", "estado", "decision"] if c in da.columns), None)
+                if dn and dc:
+                    aprobadas = set(da.loc[da[dc].astype(str).str.upper().str.contains("APROB"), dn].astype(str))
+            ok_states = {"MATCH_CORRECTO", "MATCH_3WAY_OK", "MATCH_OK"}
+            if est_col:
+                pend = 0
+                for _, r in df.iterrows():
+                    est = str(r.get(est_col, "")).upper()
+                    num = str(r.get(num_col, "")) if num_col else ""
+                    if est in ok_states and num not in aprobadas:
+                        pend += 1
+                if pend > 0:
+                    alertas.append({
+                        "tipo": "factura_pendiente_firma",
+                        "msg": f"{pend} factura(s) con match OK pendiente(s) de aprobar",
+                    })
+    except Exception:
+        pass
+
+    # ── F&B: stock bajo (stock actual < 20% del inicial) ──
+    try:
+        inv = REFERENCIA_DIR / "inventario.xlsx"
+        if inv.exists():
+            df = pd.read_excel(inv)
+            if "stock_actual_kg_l" in df.columns and "stock_inicial_kg_l" in df.columns:
+                for _, r in df.iterrows():
+                    ini = _safe_float(r.get("stock_inicial_kg_l", 0))
+                    act = _safe_float(r.get("stock_actual_kg_l", 0))
+                    if ini > 0 and (act / ini) < 0.20:
+                        alertas.append({
+                            "tipo": "stock_bajo",
+                            "msg": f"Stock bajo: {r.get('ingrediente', '?')} — "
+                                   f"{act:g}/{ini:g} {r.get('unidad', '')} ({act / ini * 100:.0f}%)",
+                        })
+    except Exception:
+        pass
+
     return alertas
 
 
 def enviar_pendientes(solo_check=False):
-    """Escanea alertas y envía por email las que estén activas."""
+    """Escanea alertas y las envía por los canales activos (email + push)."""
     config = _load_config()
-    destinatario = _get_destinatario(config)
-    activas = _alertas_activas(config)
+    ncfg = _load_notif_config()
+    merged_alertas = {**config.get("alertas", {}), **ncfg.get("alertas", {})}
+    config_m = {**config, "alertas": merged_alertas}
+    destinatario = ncfg.get("email") or _get_destinatario(config)
+    activas = _alertas_activas(config_m)
+    canales = ncfg.get("canales", {})
+    push_on = bool(canales.get("push", True))
     alertas = escanear_alertas()
 
     # Filtrar por tipo activo
@@ -505,31 +593,32 @@ def enviar_pendientes(solo_check=False):
     if not filtradas:
         return []
 
-    if not destinatario:
-        for a in filtradas:
-            _registrar(a["tipo"], a["msg"][:60], "sin destinatario", "error", "No hay email configurado")
-        return filtradas
-
     # Agrupar por tipo
     grupos = {}
     for a in filtradas:
         grupos.setdefault(a["tipo"], []).append(a["msg"])
 
     TITULOS = {
-        "ar_discrepancia": ("Discrepancias AR Detectadas", "#ef4444"),
-        "ar_falta_di": ("Certificados DI Pendientes", "#f97316"),
-        "drr_oob": ("DRR — Días Out of Balance", "#ef4444"),
-        "ap_discrepancia": ("Discrepancias AP (Proveedores)", "#f97316"),
+        "ar_discrepancia":         ("Discrepancias AR Detectadas", "#ef4444"),
+        "ar_falta_di":             ("Certificados DI Pendientes", "#f97316"),
+        "drr_oob":                 ("DRR — Días Out of Balance", "#ef4444"),
+        "ap_discrepancia":         ("Discrepancias AP (Proveedores)", "#f97316"),
+        "factura_pendiente_firma": ("Facturas Pendientes de Aprobar", "#f59e0b"),
+        "stock_bajo":              ("Stock Bajo — F&B", "#f97316"),
+        "banco_sin_conciliar":     ("Movimientos Sin Conciliar", "#f59e0b"),
     }
 
-    enviados = 0
+    hotel = (config.get("hotel") or {}).get("nombre", "Hotel") if isinstance(config.get("hotel"), dict) else "Hotel"
     for tipo, msgs in grupos.items():
         titulo, color = TITULOS.get(tipo, (tipo, "#3b82f6"))
-        hotel = config.get("hotel", {}).get("nombre", "Hotel")
-        asunto = f"[Yve.01] {hotel} — {titulo}"
-        html = _email_html(titulo, msgs, color)
-        if enviar_email(destinatario, asunto, html, tipo):
-            enviados += 1
+        url = TAB_URL.get(tipo, "/app")
+        if destinatario and canales.get("email", True):
+            asunto = f"[Yve.01] {hotel} — {titulo}"
+            html = _email_html(titulo, msgs, color)
+            enviar_email(destinatario, asunto, html, tipo)
+        if push_on:
+            resumen = msgs[0] + (f"  (+{len(msgs) - 1} más)" if len(msgs) > 1 else "")
+            enviar_push(titulo, resumen, url, tipo)
 
     return filtradas
 
