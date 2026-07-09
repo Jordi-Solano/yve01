@@ -9,7 +9,7 @@ services:
       - key: ANTHROPIC_API_KEY
         sync: false
       - key: SECRET_KEY
-        value: yve01-prod-sk-20260605-stable-key
+        sync: false
       - key: STRIPE_SECRET_KEY
         sync: false
       - key: STRIPE_PRICE_STARTER

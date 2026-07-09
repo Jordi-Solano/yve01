@@ -68,7 +68,7 @@ def _invalidate_cache(path_fragment=None):
 
 app = Flask(__name__)
 DEMO_MODE = False
-app.secret_key = os.environ.get("SECRET_KEY") or "yve01-dev-secret-CHANGE-IN-PROD"
+app.secret_key = os.environ.get("SECRET_KEY") or os.urandom(32).hex()
 
 # ── CSRF ────────────────────────────────────────────────────────────────────
 import hmac as _hmac, secrets as _sec_mod
@@ -3500,7 +3500,7 @@ button, a { touch-action: manipulation; }
 </style>
 </head>
 <body>
-<!-- ── Pantalla de inicio (splash) al abrir la app ── -->
+<!-- ── Pantalla de inicio (splash) al abrir la app — no saltable, precarga recursos ── -->
 <style>
 #yve-splash{position:fixed;inset:0;z-index:99999;display:flex;flex-direction:column;align-items:center;justify-content:center;
   background:linear-gradient(180deg,#101a2e 0%,#0c1424 55%,#090e1a 100%);padding:24px;
@@ -3511,30 +3511,39 @@ button, a { touch-action: manipulation; }
 #yve-splash .sp-brand span{color:#60a5fa}
 #yve-splash .sp-sub{margin-top:9px;font-size:13px;color:#94a3b8;animation:spFade .6s ease .22s both}
 #yve-splash .sp-loader{margin-top:30px;width:32px;height:32px;border-radius:50%;border:3px solid rgba(148,163,184,.22);border-top-color:#3b82f6;animation:spSpin .8s linear infinite}
-#yve-splash .sp-skip{position:absolute;bottom:calc(26px + env(safe-area-inset-bottom));left:50%;transform:translateX(-50%);background:none;border:none;color:#64748b;font-size:12.5px;cursor:pointer;font-family:inherit;padding:10px 14px;text-decoration:underline}
 @keyframes spPop{from{opacity:0;transform:scale(.82)}to{opacity:1;transform:scale(1)}}
 @keyframes spFade{from{opacity:0;transform:translateY(8px)}to{opacity:1;transform:none}}
 @keyframes spSpin{to{transform:rotate(360deg)}}
+/* ── Arreglos responsive móvil ── */
+@media(max-width:480px){
+  .stats,#stats-ap-grid,#ar-real-stats{grid-template-columns:repeat(2,1fr)!important;gap:8px!important}
+}
+@media(max-width:768px){
+  .panel > div[style*="display:flex"]{flex-wrap:wrap!important}
+  .panel > div[style*="flex-end"]{justify-content:flex-start!important}
+  #ar-real-grid{grid-template-columns:1fr!important}
+}
 </style>
 <div id="yve-splash" role="status" aria-label="Cargando Yve.01">
   <img class="sp-logo" src="/static/icons/yve-logo-192.png" alt="Yve.01">
   <div class="sp-brand">Yve<span>.01</span></div>
   <div class="sp-sub">Automatización financiera para hoteles</div>
   <div class="sp-loader"></div>
-  <button class="sp-skip" onclick="yveSkipSplash()">No volver a mostrar</button>
 </div>
 <script>
 (function(){
   var sp=document.getElementById('yve-splash'); if(!sp) return;
-  var skip=false, shown=false;
-  try{ skip=localStorage.getItem('yve_skip_splash')==='1'; }catch(e){}
+  var shown=false;
   try{ shown=sessionStorage.getItem('yve_splash_shown')==='1'; }catch(e){}
-  function quitar(){ if(sp&&sp.parentNode) sp.parentNode.removeChild(sp); }
-  function ocultar(){ sp.classList.add('hide'); setTimeout(quitar,600); }
-  window.yveSkipSplash=function(){ try{localStorage.setItem('yve_skip_splash','1');}catch(e){} clearTimeout(_t); ocultar(); };
-  if(skip||shown){ quitar(); return; }
+  if(shown){ if(sp.parentNode) sp.parentNode.removeChild(sp); return; }
   try{ sessionStorage.setItem('yve_splash_shown','1'); }catch(e){}
-  var _t=setTimeout(ocultar,2200);
+  // Precargar la traducción del idioma guardado mientras se ve el splash
+  try{ var lang=localStorage.getItem('yve_lang'); if(lang && lang!=='es'){ fetch('/static/i18n/'+lang+'.json').catch(function(){}); } }catch(e){}
+  var start=Date.now(), MIN=1500, MAX=6000, done=false;
+  function ocultar(){ if(done) return; done=true; sp.classList.add('hide'); setTimeout(function(){ if(sp.parentNode) sp.parentNode.removeChild(sp); }, 600); }
+  function tryHide(){ var el=Date.now()-start; if(el>=MIN) ocultar(); else setTimeout(ocultar, MIN-el); }
+  if(document.readyState==='complete') tryHide(); else window.addEventListener('load', tryHide);
+  setTimeout(ocultar, MAX);
 })();
 </script>
 
@@ -3687,7 +3696,7 @@ button, a { touch-action: manipulation; }
     <button class="tab" id="tab-notif" onclick="switchTab('notif',this)" data-i18n="tab.notif">🔔 Notificaciones</button>
     <button class="tab" onclick="switchTab('fb',this)" id="tab-fb" data-i18n="tab.fb">🍽️ F&amp;B Cost</button>
     <button class="tab" onclick="switchTab('ar_real',this)" id="tab-ar-real" data-i18n="tab.arreal">🏢 AR Real</button>
-    <button class="tab hide-mobile" onclick="switchTab('multi_hotel',this)" id="tab-multi-hotel" data-i18n="tab.multihotel">🏨 Multi-Hotel</button>
+    <button class="tab" onclick="switchTab('multi_hotel',this)" id="tab-multi-hotel" data-i18n="tab.multihotel">🏨 Multi-Hotel</button>
   </div>
 
   <div id="panel-ar" class="panel active">
@@ -10741,9 +10750,13 @@ async function loadNotif() {
       count.textContent = '';
       return;
     }
-    count.textContent = data.length + ' ' + (t('lbl.registros', 'registros'));
-    // Mostrar en orden inverso (más reciente primero)
-    const rows = data.slice().reverse();
+    // Deduplicar: una misma alerta enviada por varios canales cuenta como una sola
+    const _seen = new Set();
+    const rows = data.slice().reverse().filter(function(n){
+      const k = (n.tipo||'') + '|' + (n.asunto||'') + '|' + ((n.fecha||'').slice(0,16));
+      if (_seen.has(k)) return false; _seen.add(k); return true;
+    });
+    count.textContent = rows.length + ' ' + (t('lbl.registros', 'registros'));
     tbody.innerHTML = rows.map(function(n) {
       const TIPOS = {ar_discrepancia:'AR Disc.',ar_falta_di:'AR DI',drr_oob:'DRR OOB',ap_discrepancia:'AP Disc.',general:'General'};
       const tipo = TIPOS[n.tipo] || n.tipo || '—';
@@ -11355,7 +11368,7 @@ async function cargarARRealData() {
       _setText('arp-pendiente', fmt(s.pendiente));
       _setText('arp-vencido',   fmt(s.vencido));
       _setText('arp-cobrado',   fmt(s.cobrado_mes));
-      _setText('arp-nclientes', dc.ok ? dc.clientes.length + ' ' + t('ar.activos', 'activos') : '—');
+      _setText('arp-nclientes', dc.ok ? dc.clientes.length + ' ' + (typeof t === 'function' ? t('ar.activos', 'activos') : 'activos') : '—');
       _skelOff(['arp-pendiente','arp-vencido','arp-cobrado','arp-nclientes']);
 
       // Aging bar
