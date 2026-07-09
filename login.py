@@ -29,6 +29,20 @@ def do_login():
         from flask import session
         session["tenant_id"] = getattr(user, "tenant", "default") or "default"
         session.pop("hotel_activo", None)
+        try:
+            import json as _aj, os as _ao
+            from datetime import datetime as _adt
+            _apath = _ao.path.join(_ao.path.dirname(__file__), "datos-referencia", "audit_log.json")
+            _ae = []
+            if _ao.path.exists(_apath):
+                try: _ae = _aj.load(open(_apath))
+                except Exception: _ae = []
+            _ae.append({"ts": _adt.now().isoformat(timespec="seconds"), "accion": "LOGIN",
+                        "detalle": "rol=" + str(user.rol) + " tenant=" + str(session["tenant_id"]),
+                        "usuario": user.username})
+            _aj.dump(_ae[-500:], open(_apath, "w"), ensure_ascii=False)
+        except Exception:
+            pass
         # Cuentas de ejemplo: si su tenant está vacío, generar datos demo con sus nombres
         _DEMOS = {
             "solmar":   [{"nombre": "Cadena Sol", "hoteles": ["Hotel Sol Mar", "Hotel Sol Playa"]}],

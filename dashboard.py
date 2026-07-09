@@ -93,6 +93,22 @@ def _csrf_check():
     if not tok or not _hmac.compare_digest(tok, sess_tok):
         return _jfy({'error': 'CSRF inválido', 'csrf_error': True}), 403
 
+@app.before_request
+def _require_auth_api():
+    """Exige sesión iniciada para los endpoints /api de datos (evita lectura anónima)."""
+    from flask import request as _rq
+    p = _rq.path
+    if not p.startswith('/api/'):
+        return
+    _OPEN = ('/api/login', '/api/csrf_token', '/api/health', '/api/oracle/status',
+             '/api/push/public_key', '/api/set_lang', '/api/demo')
+    if any(p.startswith(o) for o in _OPEN):
+        return
+    from flask_login import current_user as _cu
+    if not _cu.is_authenticated:
+        from flask import jsonify as _j2
+        return _j2({'error': 'No autorizado', 'auth_required': True}), 401
+
 @app.route('/api/csrf_token')
 def api_csrf_token():
     from flask_login import current_user
@@ -2949,7 +2965,7 @@ body::before{
   background:rgba(var(--bg-r,15),var(--bg-g,23),var(--bg-b,42),.92);
   backdrop-filter:blur(12px);-webkit-backdrop-filter:blur(12px);
   border-bottom:1px solid var(--s2);
-  padding:0 24px;height:60px;
+  padding:env(safe-area-inset-top) 24px 0 24px;height:calc(60px + env(safe-area-inset-top));box-sizing:border-box;
   display:flex;align-items:center;gap:16px;
   position:sticky;top:0;z-index:200
 }
@@ -3522,6 +3538,9 @@ button, a { touch-action: manipulation; }
   .panel > div[style*="display:flex"]{flex-wrap:wrap!important}
   .panel > div[style*="flex-end"]{justify-content:flex-start!important}
   #ar-real-grid{grid-template-columns:1fr!important}
+  #panel-ar_real{overflow-x:hidden}
+  #fb-subtabs{display:grid!important;grid-template-columns:repeat(4,1fr);overflow:visible!important;gap:4px;width:100%}
+  #fb-subtabs .fb-sub{font-size:12.5px!important;padding:10px 4px!important;text-align:center;white-space:normal!important;line-height:1.15}
 }
 </style>
 <div id="yve-splash" role="status" aria-label="Cargando Yve.01">
@@ -3936,7 +3955,7 @@ button, a { touch-action: manipulation; }
   <div id="panel-fb" class="panel">
     <!-- F&B Sub-tabs -->
     <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:20px;flex-wrap:wrap;gap:10px">
-      <div style="display:flex;gap:4px;background:var(--s1);border-radius:10px;padding:4px;border:1px solid var(--s2);overflow-x:auto;-webkit-overflow-scrolling:touch;scrollbar-width:none">
+      <div id="fb-subtabs" style="display:flex;gap:4px;background:var(--s1);border-radius:10px;padding:4px;border:1px solid var(--s2);overflow-x:auto;-webkit-overflow-scrolling:touch;scrollbar-width:none">
         <button class="fb-sub active" onclick="fbSub('resumen',this)" data-i18n="fb.resumen">📊 Resumen</button>
         <button class="fb-sub" onclick="fbSub('inventario',this)" data-i18n="fb.inventario">📦 Inventario</button>
         <button class="fb-sub" onclick="fbSub('mermas',this)" data-i18n="fb.mermas">⚠️ Mermas</button>

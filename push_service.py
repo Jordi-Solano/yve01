@@ -130,7 +130,8 @@ def send_push(title, body, url="/app", tag="yve-alert", icon=None,
         try:
             webpush(subscription_info={"endpoint": s["endpoint"], "keys": s.get("keys", {})},
                     data=payload, vapid_private_key=priv,
-                    vapid_claims={"sub": sub_claim}, ttl=86400)
+                    vapid_claims={"sub": sub_claim}, ttl=86400,
+                    headers={"Urgency": "high"})
             sent += 1
         except WebPushException as e:
             code = getattr(getattr(e, "response", None), "status_code", None)
