@@ -154,13 +154,14 @@ def api_eliminar_hotel():
 HTML = r"""<!DOCTYPE html>
 <html lang="es">
 <head>
-<meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<meta name="apple-mobile-web-app-capable" content="yes"><meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
 <title>Admin - Yve.01</title>
 <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
 <style>
 :root{--bg:#0f172a;--s1:#1e293b;--s2:#334155;--acc:#3b82f6;--acc2:#60a5fa;--tx:#f1f5f9;--mut:#94a3b8;--dim:#64748b;--grn:#22c55e;--red:#ef4444}
 *{box-sizing:border-box;margin:0;padding:0}
-body{background:var(--bg);color:var(--tx);font-family:'Inter',sans-serif;padding:28px;-webkit-font-smoothing:antialiased}
+body{background:var(--bg);color:var(--tx);font-family:'Inter',sans-serif;padding:calc(28px + env(safe-area-inset-top)) 28px 28px;-webkit-font-smoothing:antialiased}
 h1{font-size:20px;font-weight:800;margin-bottom:6px}
 .sub{font-size:13px;color:var(--mut);margin-bottom:24px}
 .sg{display:grid;grid-template-columns:repeat(auto-fit,minmax(130px,1fr));gap:12px;margin-bottom:24px}
@@ -170,7 +171,10 @@ h1{font-size:20px;font-weight:800;margin-bottom:6px}
 .card{background:var(--s1);border:1px solid var(--s2);border-radius:14px;padding:22px;margin-bottom:18px}
 .ct{font-size:14px;font-weight:700;margin-bottom:16px}
 .g2{display:grid;grid-template-columns:1fr 1fr;gap:18px}
-@media(max-width:768px){.g2{grid-template-columns:1fr}}
+@media(max-width:768px){.g2{grid-template-columns:1fr}body{padding:calc(16px + env(safe-area-inset-top)) 14px 16px}.card{padding:16px;overflow-x:auto}.sg{grid-template-columns:repeat(2,1fr)}[style*="grid-template-columns:1fr 1fr"]{grid-template-columns:1fr!important}.ut{font-size:12px}h1{font-size:18px}}
+.admin-top{display:flex;align-items:center;gap:12px;margin-bottom:16px;flex-wrap:wrap}
+.admin-back{display:inline-flex;align-items:center;gap:6px;background:var(--s1);border:1px solid var(--s2);color:var(--tx);padding:9px 15px;border-radius:10px;font-size:13px;font-weight:600;text-decoration:none;-webkit-tap-highlight-color:rgba(59,130,246,.2)}
+.admin-back:active,.admin-back:hover{border-color:var(--acc);color:var(--acc2)}
 label{display:block;font-size:11px;color:var(--mut);text-transform:uppercase;letter-spacing:.4px;margin-bottom:5px;margin-top:12px;font-weight:600}
 label:first-child{margin-top:0}
 input,select{width:100%;background:var(--bg);border:1px solid var(--s2);color:var(--tx);border-radius:9px;padding:10px 13px;font-size:14px;font-family:inherit;outline:none}
@@ -187,8 +191,11 @@ input,select{width:100%;background:var(--bg);border:1px solid var(--s2);color:va
 </style>
 </head>
 <body>
-<h1>Admin - Yve.01</h1>
-<div class="sub">Panel de administracion - Solo accesible para administradores</div>
+<div class="admin-top">
+  <a class="admin-back" href="/app">← Volver a Yve</a>
+  <h1 style="margin:0">Admin · Yve.01</h1>
+</div>
+<div class="sub">Panel de administración — solo administradores</div>
 <div class="sg">
   <div class="kc"><div class="kl">Usuarios</div><div class="kv" id="su">-</div></div>
   <div class="kc"><div class="kl">Activos</div><div class="kv" id="sa">-</div></div>
