@@ -2911,7 +2911,7 @@ HTML = r"""<!DOCTYPE html>
 <meta name="theme-color" content="#0f172a">
 <meta name="mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-capable" content="yes">
-<meta name="apple-mobile-web-app-status-bar-style" content="black">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
 <meta name="apple-mobile-web-app-title" content="Yve.01">
 <link rel="apple-touch-icon" href="/static/icons/apple-touch-icon.png">
 <link rel="icon" type="image/png" sizes="32x32" href="/static/icons/favicon-32.png">
@@ -2985,7 +2985,7 @@ body::before{
 .btn-run:disabled{opacity:.5;cursor:not-allowed;transform:none;box-shadow:none}
 @media(max-width:640px){
   .logo-tag,.pill{display:none}
-  .nav{padding:0 10px;gap:6px;height:50px}
+  .nav{padding:env(safe-area-inset-top) 10px 0 10px;gap:6px;height:calc(50px + env(safe-area-inset-top));box-sizing:border-box}
   .logo-name{font-size:16px}
   .btn-run{padding:8px 12px;font-size:12px}
   .btn-ref{padding:4px 8px;font-size:11px}
@@ -3041,7 +3041,7 @@ body::before{
 }
 @media(max-width:768px){
   /* Nav */
-  .nav{padding:0 10px;gap:4px;height:52px}
+  .nav{padding:env(safe-area-inset-top) 10px 0 10px;gap:4px;height:calc(52px + env(safe-area-inset-top));box-sizing:border-box}
   .logo-name{font-size:15px}
   .logo-tag{display:none}
   .nav-right{gap:4px}
@@ -3408,7 +3408,7 @@ tr:hover td{background:rgba(255,255,255,.025)}
 /* ── Mobile / Responsive ──────────────────────────────────── */
 @media(max-width:480px){
   /* Nav */
-  .nav{height:54px;padding:0 12px;gap:8px}
+  .nav{height:calc(54px + env(safe-area-inset-top));padding:env(safe-area-inset-top) 12px 0 12px;gap:8px;box-sizing:border-box}
   .logo-tag{display:none}
   .pill{display:none}
   .btn-run{padding:7px 12px;font-size:11px;gap:5px}
