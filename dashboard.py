@@ -2911,7 +2911,7 @@ HTML = r"""<!DOCTYPE html>
 <meta name="theme-color" content="#0f172a">
 <meta name="mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-capable" content="yes">
-<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-status-bar-style" content="black">
 <meta name="apple-mobile-web-app-title" content="Yve.01">
 <link rel="apple-touch-icon" href="/static/icons/apple-touch-icon.png">
 <link rel="icon" type="image/png" sizes="32x32" href="/static/icons/favicon-32.png">
@@ -4025,7 +4025,7 @@ button, a { touch-action: manipulation; }
         <div id="ar-aging-bar" style="display:none;margin-bottom:12px"></div>
         <!-- Invoice table -->
         <div style="overflow-x:auto">
-          <table style="width:100%;border-collapse:collapse;font-size:12px">
+          <table style="width:100%;min-width:520px;border-collapse:collapse;font-size:12px">
             <thead><tr style="border-bottom:2px solid var(--s2)">
               <th style="text-align:left;padding:8px;color:var(--mut);font-weight:600;font-size:11px;text-transform:uppercase;letter-spacing:.4px">Nº / Cliente</th>
               <th style="text-align:right;padding:8px;color:var(--mut);font-weight:600;font-size:11px;text-transform:uppercase;letter-spacing:.4px">Importe</th>
@@ -6599,6 +6599,16 @@ function t(key, fb) {
   if (v && v !== key) return v;
   if (fb !== undefined && fb !== null) return fb;
   return key;
+}
+
+// Referencia estable a la función de traducción + wrapper a prueba de "clobbering"
+// (si algo global pisa 't', tt() sigue traduciendo con la función real capturada).
+var _T_FN = t;
+function tt(key, fb) {
+  try {
+    var fn = (typeof t === 'function') ? t : _T_FN;
+    return (typeof fn === 'function') ? fn(key, fb) : (fb !== undefined && fb !== null ? fb : key);
+  } catch (e) { return (fb !== undefined && fb !== null) ? fb : key; }
 }
 
 
@@ -9562,6 +9572,7 @@ function eliminarArchivoServidor(nombre, rowEl) {
 }
 
 function switchTab(tab, el) {
+  if (typeof t !== 'function' && typeof _T_FN === 'function') { try { t = _T_FN; } catch(e){} }
   if (typeof _onTabSwitch === 'function') _onTabSwitch(tab);
   document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
   document.querySelectorAll('.panel').forEach(p => p.classList.remove('active'));
@@ -11301,7 +11312,7 @@ function calcularFactura() {
 }
 async function emitirFactura() {
   const cliente = document.getElementById('ef-cliente').value;
-  if (!cliente) { showNotification(t('ar.selCliente', 'Selecciona un cliente'), 'info'); return; }
+  if (!cliente) { showNotification(tt('ar.selCliente', 'Selecciona un cliente'), 'info'); return; }
   const entrada = document.getElementById('ef-entrada').value;
   const salida  = document.getElementById('ef-salida').value;
   const hab     = parseFloat(document.getElementById('ef-hab').value) || 1;
@@ -11387,7 +11398,7 @@ async function cargarARRealData() {
       _setText('arp-pendiente', fmt(s.pendiente));
       _setText('arp-vencido',   fmt(s.vencido));
       _setText('arp-cobrado',   fmt(s.cobrado_mes));
-      _setText('arp-nclientes', dc.ok ? dc.clientes.length + ' ' + (typeof t === 'function' ? t('ar.activos', 'activos') : 'activos') : '—');
+      _setText('arp-nclientes', dc.ok ? dc.clientes.length + ' ' + tt('ar.activos', 'activos') : '—');
       _skelOff(['arp-pendiente','arp-vencido','arp-cobrado','arp-nclientes']);
 
       // Aging bar
@@ -11461,7 +11472,7 @@ function _renderFacturasAR(facturas, stats) {
   const display = estado_filter ? facturas.filter(f => f.estado === estado_filter) : facturas;
 
   if (!display.length) {
-    tbody.innerHTML = '<tr><td colspan="4">' + _emptyState('📋', t('ar.vacioTitulo', 'Sin facturas todavía'), t('ar.vacioSub', 'Crea una factura con “Nueva factura” o procesa documentos de grupos y aparecerán aquí.'), false) + '</td></tr>';
+    tbody.innerHTML = '<tr><td colspan="4">' + _emptyState('📋', tt('ar.vacioTitulo', 'Sin facturas todavía'), tt('ar.vacioSub', 'Crea una factura con “Nueva factura” o procesa documentos de grupos y aparecerán aquí.'), false) + '</td></tr>';
     return;
   }
 
