@@ -3539,8 +3539,8 @@ button, a { touch-action: manipulation; }
   .panel > div[style*="flex-end"]{justify-content:flex-start!important}
   #ar-real-grid{grid-template-columns:1fr!important}
   #panel-ar_real{overflow-x:hidden}
-  #fb-subtabs{display:grid!important;grid-template-columns:repeat(4,1fr);overflow:visible!important;gap:4px;width:100%}
-  #fb-subtabs .fb-sub{font-size:12.5px!important;padding:10px 4px!important;text-align:center;white-space:normal!important;line-height:1.15}
+  div:has(> .fb-sub){overflow:visible!important;flex-wrap:nowrap!important}
+  .fb-sub{flex:1 1 0!important;min-width:0;font-size:12.5px!important;padding:10px 4px!important;text-align:center;white-space:normal!important;line-height:1.15}
 }
 </style>
 <div id="yve-splash" role="status" aria-label="Cargando Yve.01">
