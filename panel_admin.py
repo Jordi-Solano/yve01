@@ -161,25 +161,32 @@ HTML = r"""<!DOCTYPE html>
 <style>
 :root{--bg:#0f172a;--s1:#1e293b;--s2:#334155;--acc:#3b82f6;--acc2:#60a5fa;--tx:#f1f5f9;--mut:#94a3b8;--dim:#64748b;--grn:#22c55e;--red:#ef4444}
 *{box-sizing:border-box;margin:0;padding:0}
-body{background:var(--bg);color:var(--tx);font-family:'Inter',sans-serif;padding:calc(28px + env(safe-area-inset-top)) 28px 28px;-webkit-font-smoothing:antialiased}
+body{background:var(--bg);color:var(--tx);font-family:'Inter',-apple-system,BlinkMacSystemFont,sans-serif;padding:calc(28px + env(safe-area-inset-top)) 28px 40px;-webkit-font-smoothing:antialiased;position:relative;min-height:100vh}
+body::before{content:'';position:fixed;inset:0;z-index:0;pointer-events:none;background:radial-gradient(900px 500px at 90% -5%,rgba(59,130,246,.10),transparent 60%),radial-gradient(700px 400px at -5% 105%,rgba(139,92,246,.08),transparent 55%)}
+body>*{position:relative;z-index:1}
 h1{font-size:20px;font-weight:800;margin-bottom:6px}
 .sub{font-size:13px;color:var(--mut);margin-bottom:24px}
 .sg{display:grid;grid-template-columns:repeat(auto-fit,minmax(130px,1fr));gap:12px;margin-bottom:24px}
-.kc{background:var(--s1);border:1px solid var(--s2);border-radius:13px;padding:18px}
+.kc{background:linear-gradient(160deg,rgba(30,41,59,.92),rgba(15,23,42,.55));border:1px solid var(--s2);border-radius:14px;padding:18px 18px 20px 22px;position:relative;overflow:hidden;transition:.15s}
+.kc:hover{border-color:rgba(59,130,246,.4);transform:translateY(-1px)}
+.kc::after{content:'';position:absolute;left:0;top:0;bottom:0;width:3px;background:linear-gradient(var(--acc),var(--acc2))}
 .kl{font-size:10px;color:var(--mut);text-transform:uppercase;letter-spacing:.5px;margin-bottom:8px;font-weight:600}
 .kv{font-size:26px;font-weight:800;color:var(--acc2);letter-spacing:-1px;line-height:1}
-.card{background:var(--s1);border:1px solid var(--s2);border-radius:14px;padding:22px;margin-bottom:18px}
-.ct{font-size:14px;font-weight:700;margin-bottom:16px}
+.card{background:linear-gradient(170deg,rgba(30,41,59,.92),rgba(20,28,45,.82));border:1px solid var(--s2);border-radius:16px;padding:22px;margin-bottom:18px;box-shadow:0 4px 20px rgba(0,0,0,.18)}
+.ct{font-size:15px;font-weight:700;margin-bottom:16px;display:flex;align-items:center;gap:8px}
 .g2{display:grid;grid-template-columns:1fr 1fr;gap:18px}
-@media(max-width:768px){.g2{grid-template-columns:1fr}body{padding:calc(16px + env(safe-area-inset-top)) 14px 16px}.card{padding:16px;overflow-x:auto}.sg{grid-template-columns:repeat(2,1fr)}[style*="grid-template-columns:1fr 1fr"]{grid-template-columns:1fr!important}.ut{font-size:12px}h1{font-size:18px}}
+@media(max-width:768px){.g2{grid-template-columns:1fr}body{padding:calc(16px + env(safe-area-inset-top)) 14px 32px}.card{padding:16px;overflow-x:auto}.sg{grid-template-columns:repeat(2,1fr)}[style*="grid-template-columns:1fr 1fr"]{grid-template-columns:1fr!important}.ut{font-size:12px}h1{font-size:18px}input,select,textarea{font-size:16px!important}}
 .admin-top{display:flex;align-items:center;gap:12px;margin-bottom:16px;flex-wrap:wrap}
 .admin-back{display:inline-flex;align-items:center;gap:6px;background:var(--s1);border:1px solid var(--s2);color:var(--tx);padding:9px 15px;border-radius:10px;font-size:13px;font-weight:600;text-decoration:none;-webkit-tap-highlight-color:rgba(59,130,246,.2)}
 .admin-back:active,.admin-back:hover{border-color:var(--acc);color:var(--acc2)}
+.brand-dot{width:11px;height:11px;border-radius:50%;background:var(--acc);box-shadow:0 0 14px var(--acc);flex-shrink:0}
 label{display:block;font-size:11px;color:var(--mut);text-transform:uppercase;letter-spacing:.4px;margin-bottom:5px;margin-top:12px;font-weight:600}
 label:first-child{margin-top:0}
-input,select{width:100%;background:var(--bg);border:1px solid var(--s2);color:var(--tx);border-radius:9px;padding:10px 13px;font-size:14px;font-family:inherit;outline:none}
+input,select,textarea{width:100%;background:var(--bg);border:1px solid var(--s2);color:var(--tx);border-radius:10px;padding:11px 14px;font-size:16px;font-family:inherit;outline:none;transition:.15s}
+input:focus,select:focus,textarea:focus{border-color:var(--acc);box-shadow:0 0 0 3px rgba(59,130,246,.15)}
 .btn{padding:9px 18px;border:none;border-radius:9px;font-size:13px;font-weight:700;cursor:pointer;font-family:inherit}
-.bp{background:linear-gradient(135deg,#3b82f6,#2563eb);color:#fff}
+.bp{background:linear-gradient(135deg,#3b82f6,#2563eb);color:#fff;box-shadow:0 4px 14px rgba(59,130,246,.3)}
+.bp:hover{transform:translateY(-1px);box-shadow:0 6px 20px rgba(59,130,246,.45)}
 .bd{background:rgba(239,68,68,.1);border:1px solid rgba(239,68,68,.3);color:#ef4444}
 .bsm{padding:5px 12px;font-size:11px;border-radius:7px}
 .ut{width:100%;border-collapse:collapse;font-size:13px}
@@ -193,7 +200,8 @@ input,select{width:100%;background:var(--bg);border:1px solid var(--s2);color:va
 <body>
 <div class="admin-top">
   <a class="admin-back" href="/app">← Volver a Yve</a>
-  <h1 style="margin:0">Admin · Yve.01</h1>
+  <span class="brand-dot"></span>
+  <h1 style="margin:0">Admin · <span style="color:var(--acc2)">Yve.01</span></h1>
 </div>
 <div class="sub">Panel de administración — solo administradores</div>
 <div class="sg">
