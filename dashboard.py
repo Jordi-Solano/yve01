@@ -686,11 +686,27 @@ def api_procesar_batch_stream():
             yield f'data: >> Procesando {total} archivo(s)...\n\n'
             has_ar = False; has_ap = False; has_ar_real = False
 
-            # Las FOTOS se agrupan y se procesan como UN contrato de grupo -> AR Real.
-            # El resto (PDF/hojas) se procesa archivo a archivo como hasta ahora.
+            # Las fotos valen como cualquier documento digital: primero se clasifican.
+            # Si son un contrato de grupo (multipágina) -> AR Real. Si no, cada foto se
+            # procesa como un documento suelto (factura, albarán...) igual que un PDF.
             _IMG_EXT = ('.jpg', '.jpeg', '.png', '.webp', '.heic')
             imgs = [a for a in archivos if os.path.splitext(a)[1].lower() in _IMG_EXT]
             docs = [a for a in archivos if a not in imgs]
+            _contrato_res = None
+            if imgs:
+                yield f'data: >> Analizando {len(imgs)} foto(s)...\n\n'
+                yield ': ping\n\n'
+                try:
+                    from lector_contratos_grupo import procesar_contrato_grupo as _pcg
+                    _cpaths = [os.path.join(_edir(), a) for a in imgs if os.path.exists(os.path.join(_edir(), a))]
+                    _contrato_res = _pcg(_cpaths)
+                    if not _contrato_res.get('ok') and 'no parecen un contrato' in str(_contrato_res.get('error', '')):
+                        yield 'data: >> No es un contrato — proceso las fotos como documentos individuales\n\n'
+                        docs = docs + imgs
+                        _contrato_res = None
+                except Exception as _ecc:
+                    yield f'data: ⚠ No se pudieron clasificar las fotos: {str(_ecc)[:60]}\n\n'
+                    _contrato_res = None
 
             for i, fname in enumerate(docs):
                 fpath = os.path.join(_edir(), fname)
@@ -718,12 +734,14 @@ def api_procesar_batch_stream():
                     fl = fname.lower()
                     _ext_lower = os.path.splitext(fname)[1].lower()
                     _is_spreadsheet = _ext_lower in ('.xlsx', '.xls', '.csv')
-                    
-                    # Clasificación inteligente — keywords SOLO para hojas de cálculo
-                    # Los PDFs siempre van a Claude (él extrae mejor que copiar el archivo)
-                    is_ar = tipo == 'AR' or (tipo == 'AR_o_AP' and any(
+                    _is_image = _ext_lower in ('.jpg', '.jpeg', '.png', '.webp', '.heic')
+
+                    # Clasificación inteligente — keywords SOLO para hojas de cálculo.
+                    # Las FOTOS van siempre al lector universal (Claude las clasifica:
+                    # factura, extracto, ventas, comisiones OTA, inventario, mermas...).
+                    is_ar = (not _is_image) and (tipo == 'AR' or (tipo == 'AR_o_AP' and any(
                         x in fl for x in ['booking','expedia','hotels','despegar','ota','comision','commission']
-                    ))
+                    )))
                     is_bank = _is_spreadsheet and any(x in fl for x in ['extracto','bank','statement','movimientos','bancario'])
                     is_rooming = any(x in fl for x in ['rooming','room list','guest list','room block'])
                     is_drr_file = fl.endswith('.xlsm') and any(x in fl for x in ['drr','revenue report','daily report','daily_report'])
@@ -1118,29 +1136,20 @@ def api_procesar_batch_stream():
                     yield f'data: ✗ {fname}: {str(e2)[:80]}\n\n'
                     _mark(fname, f'CRASH:{str(e2)[:30]}')
 
-            # ── Contrato de grupo (todas las fotos juntas) -> AR Real ──
-            if imgs:
-                yield f'data: >> Contrato de grupo: analizando {len(imgs)} página(s)...\n\n'
-                yield ': ping\n\n'
-                try:
-                    from lector_contratos_grupo import procesar_contrato_grupo
-                    _cpaths = [os.path.join(_edir(), a) for a in imgs if os.path.exists(os.path.join(_edir(), a))]
-                    _res = procesar_contrato_grupo(_cpaths)
-                    if _res.get('ok'):
-                        _eur = f"{_res.get('total_receivable', 0):,.2f}"
-                        _com = f"{_res.get('comision_total', 0):,.2f}"
-                        _di = ' · certificado DI pendiente' if _res.get('requiere_certificado_di') else ''
-                        yield f"data: ✓ Contrato {_res.get('contrato','')} · {_res.get('cliente','')} · {_eur}\u20ac (comisión {_com}\u20ac){_di}\n\n"
-                        for _a in imgs: _mark(_a, 'CONTRATO_OK')
-                        has_ar_real = True
-                    elif _res.get('needs_review'):
-                        yield f"data: \u26a0 Contrato de grupo: no se pudo leer automáticamente — {str(_res.get('error',''))[:80]}. Revisa que las fotos sean nítidas y del mismo contrato.\n\n"
-                        for _a in imgs: _mark(_a, 'SKIP')
-                    else:
-                        yield f"data: \u2717 Contrato de grupo: {str(_res.get('error','error'))[:80]}\n\n"
-                        for _a in imgs: _mark(_a, 'ERR:CONTRATO')
-                except Exception as _ec:
-                    yield f'data: \u2717 Contrato de grupo: {str(_ec)[:80]}\n\n'
+            # ── Resultado del contrato de grupo (si las fotos lo eran) -> AR Real ──
+            if _contrato_res is not None:
+                if _contrato_res.get('ok'):
+                    _eur = f"{_contrato_res.get('total_receivable', 0):,.2f}"
+                    _com = f"{_contrato_res.get('comision_total', 0):,.2f}"
+                    _di = ' · certificado DI pendiente' if _contrato_res.get('requiere_certificado_di') else ''
+                    yield f"data: ✓ Contrato {_contrato_res.get('contrato','')} · {_contrato_res.get('cliente','')} · {_eur}€ (comisión {_com}€){_di}\n\n"
+                    for _a in imgs: _mark(_a, 'CONTRATO_OK')
+                    has_ar_real = True
+                elif _contrato_res.get('needs_review'):
+                    yield f"data: ⚠ Contrato de grupo: no se pudo leer — {str(_contrato_res.get('error',''))[:80]}\n\n"
+                    for _a in imgs: _mark(_a, 'SKIP')
+                else:
+                    yield f"data: ✗ Contrato de grupo: {str(_contrato_res.get('error','error'))[:80]}\n\n"
                     for _a in imgs: _mark(_a, 'ERR:CONTRATO')
 
             if has_ar:
@@ -3155,6 +3164,9 @@ body.acentuar-todo .card-title,
 body.acentuar-todo .fb-kpi-lbl{color:var(--acc2)!important;opacity:.8}
 /* Modo OFF: neutralizar el .hl del primer card para que sea igual al resto */
 body:not(.acentuar-todo) .sc.hl{border-color:var(--s2)!important;background:var(--s1)!important}
+.sc.upd-green,.card.upd-green,.fb-kpi-card.upd-green{border-color:rgba(34,197,94,.6)!important;background:rgba(34,197,94,.08)!important}
+.sc.upd-green .sc-val,.fb-kpi-card.upd-green .fb-kpi-val{color:#22c55e!important}
+body.acentuar-todo .sc.upd-green,body.acentuar-todo .card.upd-green,body.acentuar-todo .fb-kpi-card.upd-green{border-color:rgba(34,197,94,.75)!important;background:rgba(34,197,94,.1)!important}
 
 /* ── MID ROW ── */
 .mid{display:grid;grid-template-columns:1fr 300px;gap:16px;margin-bottom:24px}
@@ -7272,6 +7284,7 @@ function _applyCustomColors() {
   // ── Modo acentuar-todo: body class controla el CSS de los contenedores ──
   if (_customColors.hlAll) document.body.classList.add('acentuar-todo');
   else document.body.classList.remove('acentuar-todo');
+  if (typeof _marcarStatsActualizadas === 'function') _marcarStatsActualizadas();
 }
 
 function _cpSwatch(id, c, cur) {
@@ -9031,6 +9044,8 @@ function _showTabBadges(logText) {
     '✓ Mermas': 'fb',
     '✓ Rooming': 'fb',
     '✓ DRR': 'drr',
+    '✓ Contrato': 'ar_real',
+    'AR Real': 'ar_real',
   };
   
   for (var key in tabMap) {
@@ -9040,6 +9055,32 @@ function _showTabBadges(logText) {
   }
   _renderBadges();
   _highlightActiveStats();
+  _marcarStatsActualizadas();
+}
+
+// Solo si el CONTORNO (acentuar-todo) está activo: pone en VERDE únicamente
+// las stats de los apartados que se acaban de actualizar. El resto se queda
+// con el color de contorno personalizado.
+var _PANEL_DE_TAB = { ap:'panel-ap', ar:'panel-ar', banco:'panel-banco', fb:'panel-fb', drr:'panel-drr', ar_real:'panel-ar_real' };
+function _statCardsDe(panelId) {
+  var panel = document.getElementById(panelId);
+  if (!panel) return [];
+  return panel.querySelectorAll('.sc, .fb-kpi-card, .card');
+}
+function _marcarStatsActualizadas() {
+  // 1) siempre limpiar el verde anterior
+  document.querySelectorAll('.upd-green').forEach(function(c){ c.classList.remove('upd-green'); });
+  // 2) solo aplicar si el usuario tiene el contorno activo en Personalizar
+  if (!document.body.classList.contains('acentuar-todo')) return;
+  for (var k in _updatedTabs) {
+    if (!_updatedTabs[k]) continue;
+    var pid = _PANEL_DE_TAB[k]; if (!pid) continue;
+    _statCardsDe(pid).forEach(function(c){ c.classList.add('upd-green'); });
+  }
+}
+function _limpiarStatsPanel(tabKey) {
+  var pid = _PANEL_DE_TAB[tabKey]; if (!pid) return;
+  _statCardsDe(pid).forEach(function(c){ c.classList.remove('upd-green'); });
 }
 
 function _renderBadges() {
@@ -9053,6 +9094,7 @@ function _renderBadges() {
     'banco': ['banco'],
     'fb': ['f&b', 'fb'],
     'drr': ['drr'],
+    'ar_real': ['ar real', 'real'],
   };
   
   var tabButtons = document.querySelectorAll('[id^="tab-"]');
@@ -9061,6 +9103,7 @@ function _renderBadges() {
     if (!_updatedTabs[tabKey]) continue;
     
     var tabEl = document.getElementById('tab-' + tabKey);
+    if (!tabEl && tabKey === 'ar_real') tabEl = document.getElementById('tab-ar-real');
     if (!tabEl && nameMap[tabKey]) {
       tabButtons.forEach(function(btn) {
         var txt = btn.textContent.toLowerCase();
@@ -9127,6 +9170,7 @@ function _onTabSwitch(newTab) {
   // Si el tab anterior tenía actualización, marcarla como vista
   if (_prevVisitedTab && _updatedTabs[_prevVisitedTab]) {
     _updatedTabs[_prevVisitedTab] = false;
+    _limpiarStatsPanel(_prevVisitedTab);
     _renderBadges();
   }
   // Determinar qué tab key es el nuevo

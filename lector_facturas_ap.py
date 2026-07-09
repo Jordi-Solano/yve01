@@ -37,8 +37,36 @@ def cargar_proveedores():
 
 # ── Extracción de texto ───────────────────────────────────────────────────
 
+def _get_ap_client():
+    key = os.getenv("ANTHROPIC_API_KEY")
+    if not key:
+        return None
+    try:
+        import anthropic
+        return anthropic.Anthropic(api_key=key)
+    except Exception:
+        return None
+
 def extraer_texto(pdf_path):
-    """Extrae texto de PDF. Si el PDF es escaneado (sin texto), intenta OCR."""
+    """Extrae texto de un PDF o de una FOTO (imagen). Las imágenes se leen con Claude Vision."""
+    _ext = os.path.splitext(pdf_path)[1].lower()
+    if _ext in ('.jpg', '.jpeg', '.png', '.webp', '.heic'):
+        cli = _get_ap_client()
+        if cli is None:
+            return ""
+        try:
+            import base64 as _b64, mimetypes as _mt
+            media = _mt.guess_type(pdf_path)[0] or 'image/jpeg'
+            with open(pdf_path, 'rb') as _f:
+                _data = _b64.b64encode(_f.read()).decode()
+            resp = cli.messages.create(model="claude-sonnet-4-6", max_tokens=2000,
+                messages=[{"role": "user", "content": [
+                    {"type": "image", "source": {"type": "base64", "media_type": media, "data": _data}},
+                    {"type": "text", "text": "Extrae TODO el texto visible de este documento (factura, albaran, etc.). Solo el texto, sin explicaciones."}]}])
+            return resp.content[0].text.strip()
+        except Exception as _e:
+            print(f"    [OCR imagen] {_e}")
+            return ""
     textos = []
     with pdfplumber.open(pdf_path) as pdf:
         for pag in pdf.pages:
