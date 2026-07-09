@@ -224,6 +224,36 @@ def api_recordatorio():
         return jsonify({'ok': False, 'error': str(e)}), 500
 
 
+@ar_real_bp.route('/api/ar_real/procesar_contrato', methods=['POST'])
+def api_procesar_contrato():
+    """Sube las fotos de un contrato de grupo y lo procesa (visión) -> AR Real + comisión + DI."""
+    import tempfile as _tmp, shutil as _sh
+    files = request.files.getlist('files') or request.files.getlist('fotos')
+    if not files:
+        return jsonify({'ok': False, 'error': 'No se recibieron fotos'}), 400
+    carpeta = _tmp.mkdtemp(prefix='contrato_')
+    guardadas = []
+    try:
+        for f in files:
+            if not f or not f.filename:
+                continue
+            ext = _os.path.splitext(f.filename)[1].lower()
+            if ext not in ('.jpg', '.jpeg', '.png', '.webp', '.heic'):
+                continue
+            ruta = _os.path.join(carpeta, _os.path.basename(f.filename))
+            f.save(ruta)
+            guardadas.append(ruta)
+        if not guardadas:
+            return jsonify({'ok': False, 'error': 'No hay imágenes válidas (jpg/png)'}), 400
+        from lector_contratos_grupo import procesar_contrato_grupo
+        res = procesar_contrato_grupo(guardadas)
+        return jsonify(res)
+    except Exception as e:
+        return jsonify({'ok': False, 'error': str(e)[:200]}), 500
+    finally:
+        _sh.rmtree(carpeta, ignore_errors=True)
+
+
 @ar_real_bp.route('/api/ar_real/emitir_factura', methods=['POST'])
 def api_emitir_factura():
     """Emite una nueva factura corporativa y la registra."""

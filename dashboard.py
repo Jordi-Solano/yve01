@@ -3987,6 +3987,8 @@ button, a { touch-action: manipulation; }
       </div>
       <div style="display:flex;gap:8px;flex-wrap:wrap">
         <button class="btn-ref" onclick="abrirEmitirFactura()" style="font-size:12px">📄 Nueva factura</button>
+        <label for="contrato-grupo-input" class="btn-ref" style="cursor:pointer;font-size:12px" title="Sube las fotos del contrato de grupo y Yve lo procesa">📸 Procesar contrato</label>
+        <input type="file" id="contrato-grupo-input" accept="image/*" multiple style="display:none" onchange="procesarContratoGrupo(this)">
         <button class="btn-ref" onclick="loadARRealData()" style="font-size:12px">🔄 Actualizar</button>
         <a href="/api/exportar/ar_real" class="btn-ref" style="text-decoration:none;font-size:12px">⬇️ Excel</a>
         <a href="/aprobaciones-ar/" class="btn-run" style="text-decoration:none;font-size:12px;padding:8px 14px" data-i18n="btn.aprobarAR">📲 Aprobar AR</a>
@@ -11271,6 +11273,27 @@ loadBanco();
 // ═════════════════════════════════════════════════════════════════════
 // AR REAL — Procesar grupos corporativos
 // ═════════════════════════════════════════════════════════════════════
+async function procesarContratoGrupo(input){
+  const files = input.files; if(!files || !files.length){ return; }
+  showNotification('⏳ Procesando contrato de grupo ('+files.length+' páginas)…','info');
+  const fd = new FormData();
+  for(let i=0;i<files.length;i++) fd.append('files', files[i]);
+  try{
+    const r = await fetch('/api/ar_real/procesar_contrato', {method:'POST', body: fd});
+    const d = await r.json();
+    if(d && d.ok){
+      const eur = (d.total_receivable||0).toLocaleString('es-ES',{minimumFractionDigits:2});
+      showNotification('✓ Contrato '+(d.contrato||'')+' · '+(d.cliente||'')+' · '+eur+'€'+(d.requiere_certificado_di?' · ⚠ certificado DI pendiente':''),'success');
+      cargarARRealData();
+    } else if(d && d.needs_review){
+      showNotification('⚠ No se pudo leer automáticamente ('+(d.error||'')+'). Revisa las fotos (nítidas y completas) e inténtalo de nuevo.','warning');
+    } else {
+      showNotification('✗ '+((d&&d.error)||'Error procesando el contrato'),'error');
+    }
+  }catch(e){ showNotification('✗ Error de conexión al procesar el contrato','error'); }
+  input.value='';
+}
+
 function abrirEmitirFactura() {
   const modal = document.getElementById('modal-emitir');
   modal.style.display = 'flex';

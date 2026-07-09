@@ -587,6 +587,24 @@ def escanear_alertas():
     except Exception:
         pass
 
+    # ── AR Real: contratos de grupo con certificado de doble imposición pendiente ──
+    try:
+        rc = REFERENCIA_DIR / "reservas_credito.xlsx"
+        if rc.exists():
+            df = pd.read_excel(rc)
+            if "requiere_certificado_di" in df.columns:
+                for _, r in df.iterrows():
+                    val = str(r.get("requiere_certificado_di", "")).strip().lower()
+                    est = str(r.get("estado", "")).upper()
+                    if val in ("true", "1", "sí", "si", "verdadero") and est != "COBRADO":
+                        alertas.append({
+                            "tipo": "ar_falta_di",
+                            "msg": f"Certificado DI pendiente: grupo {r.get('cliente', '?')} — "
+                                   f"contrato {r.get('contrato', r.get('numero_reserva', ''))}",
+                        })
+    except Exception:
+        pass
+
     return alertas
 
 
