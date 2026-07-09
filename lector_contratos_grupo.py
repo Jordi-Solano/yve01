@@ -21,6 +21,7 @@ _PROMPT = """Eres un experto en contratación hotelera. Te paso las fotos de TOD
 de un contrato de grupo/eventos de hotel (contrato + BEO + anexos). Devuelve SOLO un JSON válido
 (sin texto alrededor) con esta estructura exacta (usa null si un dato no aparece):
 {
+ "es_contrato_grupo": true,
  "evento": {"id": "", "nombre": ""},
  "contrato_numero": "",
  "fecha_contrato": "YYYY-MM-DD",
@@ -39,7 +40,8 @@ de un contrato de grupo/eventos de hotel (contrato + BEO + anexos). Devuelve SOL
  "beos": []
 }
 Importante: los importes son numéricos (sin símbolo €, punto decimal). Las fechas en formato ISO.
-"doble_imposicion" = true si el cliente es extranjero o el contrato menciona doble imposición / withholding / certificado de residencia fiscal."""
+"doble_imposicion" = true si el cliente es extranjero o el contrato menciona doble imposición / withholding / certificado de residencia fiscal.
+"es_contrato_grupo" = true SOLO si es un contrato de grupo/eventos de hotel o un BEO (orden de servicio); false si son facturas sueltas, extractos u otro documento."""
 
 
 def _api_key():
@@ -211,6 +213,9 @@ def procesar_contrato_grupo(image_paths, datos_dir=None, guardar_datos=True):
     if datos.get("_needs_review"):
         return {"ok": False, "needs_review": True, "error": datos.get("_error", ""),
                 "message": "No se pudo extraer automáticamente; guardado para revisión manual."}
+    if datos.get("es_contrato_grupo") is False:
+        return {"ok": False, "needs_review": True, "error": "las fotos no parecen un contrato de grupo",
+                "message": "Las imágenes no parecen un contrato de grupo/BEO."}
     t = transformar(datos)
     if guardar_datos:
         t["_paths"] = guardar(t, datos_dir)

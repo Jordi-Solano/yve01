@@ -684,9 +684,15 @@ def api_procesar_batch_stream():
 
             total = len(archivos)
             yield f'data: >> Procesando {total} archivo(s)...\n\n'
-            has_ar = False; has_ap = False
+            has_ar = False; has_ap = False; has_ar_real = False
 
-            for i, fname in enumerate(archivos):
+            # Las FOTOS se agrupan y se procesan como UN contrato de grupo -> AR Real.
+            # El resto (PDF/hojas) se procesa archivo a archivo como hasta ahora.
+            _IMG_EXT = ('.jpg', '.jpeg', '.png', '.webp', '.heic')
+            imgs = [a for a in archivos if os.path.splitext(a)[1].lower() in _IMG_EXT]
+            docs = [a for a in archivos if a not in imgs]
+
+            for i, fname in enumerate(docs):
                 fpath = os.path.join(_edir(), fname)
                 if not os.path.exists(fpath):
                     yield f'data: ✗ {fname}: no encontrado\n\n'
@@ -702,7 +708,7 @@ def api_procesar_batch_stream():
                 except: pass
 
                 tipo = _detect_file_type(fname)
-                yield f'data: >> [{i+1}/{total}] {fname}...\n\n'
+                yield f'data: >> [{i+1}/{len(docs)}] {fname}...\n\n'
                 # SSE keep-alive para evitar timeout de Render en procesados largos
                 yield ': ping\n\n'
 
@@ -1112,6 +1118,31 @@ def api_procesar_batch_stream():
                     yield f'data: ✗ {fname}: {str(e2)[:80]}\n\n'
                     _mark(fname, f'CRASH:{str(e2)[:30]}')
 
+            # ── Contrato de grupo (todas las fotos juntas) -> AR Real ──
+            if imgs:
+                yield f'data: >> Contrato de grupo: analizando {len(imgs)} página(s)...\n\n'
+                yield ': ping\n\n'
+                try:
+                    from lector_contratos_grupo import procesar_contrato_grupo
+                    _cpaths = [os.path.join(_edir(), a) for a in imgs if os.path.exists(os.path.join(_edir(), a))]
+                    _res = procesar_contrato_grupo(_cpaths)
+                    if _res.get('ok'):
+                        _eur = f"{_res.get('total_receivable', 0):,.2f}"
+                        _com = f"{_res.get('comision_total', 0):,.2f}"
+                        _di = ' · certificado DI pendiente' if _res.get('requiere_certificado_di') else ''
+                        yield f"data: ✓ Contrato {_res.get('contrato','')} · {_res.get('cliente','')} · {_eur}\u20ac (comisión {_com}\u20ac){_di}\n\n"
+                        for _a in imgs: _mark(_a, 'CONTRATO_OK')
+                        has_ar_real = True
+                    elif _res.get('needs_review'):
+                        yield f"data: \u26a0 Contrato de grupo: no se pudo leer automáticamente — {str(_res.get('error',''))[:80]}. Revisa que las fotos sean nítidas y del mismo contrato.\n\n"
+                        for _a in imgs: _mark(_a, 'SKIP')
+                    else:
+                        yield f"data: \u2717 Contrato de grupo: {str(_res.get('error','error'))[:80]}\n\n"
+                        for _a in imgs: _mark(_a, 'ERR:CONTRATO')
+                except Exception as _ec:
+                    yield f'data: \u2717 Contrato de grupo: {str(_ec)[:80]}\n\n'
+                    for _a in imgs: _mark(_a, 'ERR:CONTRATO')
+
             if has_ar:
                 yield 'data: >> Verificando comisiones OTA...\n\n'
                 try:
@@ -1154,6 +1185,7 @@ def api_procesar_batch_stream():
             if bank_n: tabs_updated.append('Banco')
             if fb_n or inv_n: tabs_updated.append('F&B Cost')
             if rooming_n: tabs_updated.append('Rooming')
+            if has_ar_real: tabs_updated.append('AR Real')
             if tabs_updated:
                 yield f'data: 📍 Consulta: {", ".join(tabs_updated)}\n\n'
             yield 'data: PIPELINE_COMPLETO\n\n'
@@ -3987,8 +4019,6 @@ button, a { touch-action: manipulation; }
       </div>
       <div style="display:flex;gap:8px;flex-wrap:wrap">
         <button class="btn-ref" onclick="abrirEmitirFactura()" style="font-size:12px">📄 Nueva factura</button>
-        <label for="contrato-grupo-input" class="btn-ref" style="cursor:pointer;font-size:12px" title="Sube las fotos del contrato de grupo y Yve lo procesa">📸 Procesar contrato</label>
-        <input type="file" id="contrato-grupo-input" accept="image/*" multiple style="display:none" onchange="procesarContratoGrupo(this)">
         <button class="btn-ref" onclick="loadARRealData()" style="font-size:12px">🔄 Actualizar</button>
         <a href="/api/exportar/ar_real" class="btn-ref" style="text-decoration:none;font-size:12px">⬇️ Excel</a>
         <a href="/aprobaciones-ar/" class="btn-run" style="text-decoration:none;font-size:12px;padding:8px 14px" data-i18n="btn.aprobarAR">📲 Aprobar AR</a>
@@ -8862,7 +8892,7 @@ function _runBatchPipeline(fileNames, keepLog) {
     if (btnCl) { btnCl.disabled = false; btnCl.textContent = 'Cerrar'; }
     var retryBtn = document.getElementById('btn-retry');
     if (retryBtn) retryBtn.style.display = 'none';
-    setTimeout(loadAll, 800);
+    setTimeout(function(){ loadAll(); if (typeof cargarARRealData === 'function') { try { cargarARRealData(); } catch(e){} } }, 800);
   }
 
   // Dividir en lotes de 4 para evitar timeout de Render (30s por conexión SSE)
@@ -11273,27 +11303,6 @@ loadBanco();
 // ═════════════════════════════════════════════════════════════════════
 // AR REAL — Procesar grupos corporativos
 // ═════════════════════════════════════════════════════════════════════
-async function procesarContratoGrupo(input){
-  const files = input.files; if(!files || !files.length){ return; }
-  showNotification('⏳ Procesando contrato de grupo ('+files.length+' páginas)…','info');
-  const fd = new FormData();
-  for(let i=0;i<files.length;i++) fd.append('files', files[i]);
-  try{
-    const r = await fetch('/api/ar_real/procesar_contrato', {method:'POST', body: fd});
-    const d = await r.json();
-    if(d && d.ok){
-      const eur = (d.total_receivable||0).toLocaleString('es-ES',{minimumFractionDigits:2});
-      showNotification('✓ Contrato '+(d.contrato||'')+' · '+(d.cliente||'')+' · '+eur+'€'+(d.requiere_certificado_di?' · ⚠ certificado DI pendiente':''),'success');
-      cargarARRealData();
-    } else if(d && d.needs_review){
-      showNotification('⚠ No se pudo leer automáticamente ('+(d.error||'')+'). Revisa las fotos (nítidas y completas) e inténtalo de nuevo.','warning');
-    } else {
-      showNotification('✗ '+((d&&d.error)||'Error procesando el contrato'),'error');
-    }
-  }catch(e){ showNotification('✗ Error de conexión al procesar el contrato','error'); }
-  input.value='';
-}
-
 function abrirEmitirFactura() {
   const modal = document.getElementById('modal-emitir');
   modal.style.display = 'flex';
