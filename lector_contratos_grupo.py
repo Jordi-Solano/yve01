@@ -169,6 +169,100 @@ def transformar(datos):
     }
 
 
+def generar_beo(datos, transformado=None):
+    """Genera un BEO (orden de servicio con partidas e importes) a partir de los
+    datos del contrato. Determinista y testeable sin API. El total coincide con el
+    receivable del contrato, para poder cotejar la factura contra el BEO."""
+    ev = datos.get("evento", {}) or {}
+    cli = datos.get("cliente", {}) or {}
+    aloj = datos.get("alojamiento", {}) or {}
+    fb = datos.get("fb", {}) or {}
+    salas = datos.get("salas", {}) or {}
+    tasa = datos.get("tasa_turistica", {}) or {}
+    contrato = str(datos.get("contrato_numero") or "").strip()
+
+    lineas = []
+    imp_hab = _f(aloj.get("total_habitaciones"))
+    if imp_hab:
+        habs = int(_f(aloj.get("habitaciones"))); noches = int(_f(aloj.get("noches")))
+        det = (f"{habs} hab × {noches} noches" if habs and noches else "Alojamiento del grupo")
+        lineas.append({"concepto": "Alojamiento", "detalle": det,
+                       "iva_pct": _f(aloj.get("iva_pct"), 10), "importe": round(imp_hab, 2)})
+    imp_fb = _f(fb.get("total"))
+    if imp_fb:
+        pax = int(_f(fb.get("pax"))); dias = int(_f(fb.get("dias"))); ppd = _f(fb.get("por_persona_dia"))
+        det = fb.get("detalle") or (f"{pax} pax × {dias} días × €{ppd:.2f}" if pax and dias else "Comidas y bebidas")
+        lineas.append({"concepto": "F&B (comidas y bebidas)", "detalle": det,
+                       "iva_pct": _f(fb.get("iva_pct"), 10), "importe": round(imp_fb, 2)})
+    imp_salas = _f(salas.get("total"))
+    if imp_salas:
+        lineas.append({"concepto": "Salas / Meeting", "detalle": "Alquiler de salas y montaje",
+                       "iva_pct": 21, "importe": round(imp_salas, 2)})
+    tpn = _f(tasa.get("por_persona_noche"))
+    if tpn:
+        lineas.append({"concepto": "Tasa turística", "detalle": f"€{tpn:.2f}/persona/noche (según ocupación real)",
+                       "iva_pct": 0, "importe": 0.0})
+
+    total = round(sum(_f(l.get("importe")) for l in lineas), 2)
+    evento_nombre = (str(ev.get("id") or "") + " " + str(ev.get("nombre") or "")).strip() or "Evento de grupo"
+    numero = (transformado or {}).get("reserva", {}).get("numero_reserva", "")
+    return {
+        "tipo_documento": "BEO",
+        "generado_desde_contrato": True,
+        "evento": evento_nombre,
+        "cliente": (cli.get("nombre") or "Cliente grupo").strip(),
+        "contrato": contrato,
+        "numero_reserva": numero,
+        "fecha_entrada": aloj.get("fecha_entrada") or "",
+        "fecha_salida": aloj.get("fecha_salida") or "",
+        "pax": int(_f(fb.get("pax"))) or None,
+        "fecha_generado": datetime.now().strftime("%Y-%m-%d"),
+        "lineas": lineas,
+        "items": [{"concepto": l["concepto"], "total": l["importe"]} for l in lineas],
+        "total": total,
+        "total_estimado": total,
+    }
+
+
+def guardar_beo(beo, datos_dir=None):
+    """Guarda el BEO generado: (1) como referencia del evento para el 3-way matching
+    (eventos_referencia.json) y (2) en beos_generados.json para verlo en AR Real."""
+    dd = datos_dir or _datos_dir()
+    os.makedirs(dd, exist_ok=True)
+    evento = beo.get("evento", "") or ""
+    evento_key = evento.lower().strip()[:50]
+    doc = {"archivo": "BEO (generado del contrato)", "total": beo.get("total", 0),
+           "items": beo.get("items", []), "fecha": beo.get("fecha_generado", ""),
+           "generado": True, "lineas": beo.get("lineas", [])}
+    # (1) referencia para matching
+    ref_path = os.path.join(dd, "eventos_referencia.json")
+    try:
+        refs = json.load(open(ref_path, encoding="utf-8")) if os.path.exists(ref_path) else []
+    except Exception:
+        refs = []
+    found = False
+    for ref in refs:
+        if ref.get("evento_key") == evento_key:
+            ref.setdefault("documentos", {})["BEO"] = doc
+            found = True
+            break
+    if not found:
+        refs.append({"evento": evento, "evento_key": evento_key,
+                     "cliente": beo.get("cliente", ""), "documentos": {"BEO": doc}})
+    json.dump(refs, open(ref_path, "w", encoding="utf-8"), indent=2, ensure_ascii=False)
+    # (2) store para la vista
+    beos_path = os.path.join(dd, "beos_generados.json")
+    try:
+        beos = json.load(open(beos_path, encoding="utf-8")) if os.path.exists(beos_path) else []
+    except Exception:
+        beos = []
+    beos = [b for b in beos if not (b.get("evento", "").lower().strip()[:50] == evento_key
+                                    and str(b.get("contrato")) == str(beo.get("contrato")))]
+    beos.append(beo)
+    json.dump(beos, open(beos_path, "w", encoding="utf-8"), indent=2, ensure_ascii=False)
+    return {"referencia": ref_path, "beos": beos_path}
+
+
 def _datos_dir():
     try:
         from tenant_dirs import datos_dir
@@ -217,9 +311,17 @@ def procesar_contrato_grupo(image_paths, datos_dir=None, guardar_datos=True):
         return {"ok": False, "needs_review": True, "error": "las fotos no parecen un contrato de grupo",
                 "message": "Las imágenes no parecen un contrato de grupo/BEO."}
     t = transformar(datos)
+    beo = generar_beo(datos, t)
     if guardar_datos:
         t["_paths"] = guardar(t, datos_dir)
+        try:
+            guardar_beo(beo, datos_dir)
+        except Exception:
+            pass
     r = t["resumen"]; r["ok"] = True
+    r["beo"] = beo
+    r["beo_lineas"] = len(beo.get("lineas", []))
+    r["beo_total"] = beo.get("total", 0)
     return r
 
 

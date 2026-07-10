@@ -50,6 +50,32 @@ def _save_reservas(df):
     ruta = _os.path.join(DATOS, 'reservas_credito.xlsx')
     df.to_excel(ruta, index=False)
 
+def _cotejar_beo(beo, df_r):
+    """Compara el total del BEO con el importe de la factura/reserva del mismo evento."""
+    try:
+        if df_r is None or not len(df_r):
+            return {"estado": "sin_factura"}
+        num = str(beo.get('numero_reserva') or '')
+        total_beo = float(beo.get('total') or 0)
+        fila = None
+        for col in ('numero_reserva', 'numero'):
+            if col in df_r.columns and num:
+                m = df_r[df_r[col].astype(str) == num]
+                if len(m):
+                    fila = m.iloc[0]; break
+        if fila is None:
+            return {"estado": "sin_factura", "total_beo": round(total_beo, 2)}
+        total_fac = float(fila.get('total') or fila.get('importe') or 0)
+        if total_beo <= 0:
+            return {"estado": "sin_importe"}
+        diff = abs(total_fac - total_beo)
+        pct = diff / total_beo * 100 if total_beo else 0
+        return {"estado": "cuadra" if pct <= 5 else "discrepancia",
+                "total_beo": round(total_beo, 2), "total_factura": round(total_fac, 2),
+                "diff": round(diff, 2), "diff_pct": round(pct, 1)}
+    except Exception:
+        return {"estado": "error"}
+
 def _aging_bucket(fecha_emision):
     """Returns aging bucket: 0-30, 31-60, 61-90, >90 days"""
     if pd.isna(fecha_emision): return 'Sin fecha'
@@ -292,6 +318,21 @@ def api_emitir_factura():
         return jsonify({'ok': True, 'numero': numero, 'total': total})
     except Exception as e:
         return jsonify({'ok': False, 'error': str(e)}), 500
+
+@ar_real_bp.route('/api/ar_real/beos')
+def api_ar_real_beos():
+    """BEOs generados automáticamente desde los contratos (con estado de cotejo vs factura)."""
+    try:
+        ruta = _os.path.join(DATOS, 'beos_generados.json')
+        beos = _json.load(open(ruta, encoding='utf-8')) if _os.path.exists(ruta) else []
+        df_r = _get_reservas()
+        for b in beos:
+            b['cotejo'] = _cotejar_beo(b, df_r)
+        beos.sort(key=lambda b: b.get('fecha_generado', ''), reverse=True)
+        return jsonify({"ok": True, "beos": beos})
+    except Exception as e:
+        return jsonify({"ok": False, "error": str(e), "beos": []})
+
 
 @ar_real_bp.route('/api/ar_real/stats')
 @ar_real_bp.route('/api/ar_real/data')

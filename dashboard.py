@@ -4142,6 +4142,19 @@ button, a { touch-action: manipulation; }
       </div>
     </div>
 
+    <!-- BEOs generados automáticamente desde contratos -->
+    <div id="ar-beos-section" style="margin-top:22px">
+      <div style="display:flex;align-items:center;gap:8px;margin-bottom:10px">
+        <div style="font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.5px;color:var(--mut)">BEOs desde contratos <span id="ar-beos-count" style="color:var(--dim)"></span></div>
+        <span data-tip="Yve crea el BEO (partidas e importes) desde el contrato de grupo y coteja la factura contra él." style="cursor:help;color:var(--dim);font-size:12px">&#9432;</span>
+      </div>
+      <div id="ar-beos-list" style="display:flex;flex-direction:column;gap:10px">
+        <div class="empty" style="padding:20px;text-align:center;color:var(--dim);font-size:12px;border:1px dashed var(--s2);border-radius:12px">
+          Procesa un contrato de grupo en <b>Procesar Archivos</b> y aquí ver&aacute;s su BEO con el cotejo de la factura.
+        </div>
+      </div>
+    </div>
+
     <div id="ar-real-status" style="display:none"></div>
   </div><!-- /panel-ar_real -->
 
@@ -11455,9 +11468,45 @@ async function cargarStatusARReal() { await cargarARRealData(); }
 async function loadARRealData() {
   cargarARRealData();
 }
+async function cargarBeosAR() {
+  var wrap = document.getElementById('ar-beos-list');
+  var cnt = document.getElementById('ar-beos-count');
+  if (!wrap) return;
+  try {
+    var r = await fetch('/api/ar_real/beos');
+    var d = await r.json();
+    var beos = (d && d.beos) || [];
+    if (cnt) cnt.textContent = beos.length ? '(' + beos.length + ')' : '';
+    if (!beos.length) return;
+    var eur = function(v){ return '€' + (Number(v)||0).toLocaleString('es-ES',{minimumFractionDigits:2}); };
+    wrap.innerHTML = beos.map(function(b){
+      var c = b.cotejo || {};
+      var badge, bg, col;
+      if (c.estado === 'cuadra') { badge = '✓ Factura cuadra'; bg='rgba(34,197,94,.12)'; col='#22c55e'; }
+      else if (c.estado === 'discrepancia') { badge = '⚠ ' + (c.diff_pct||0) + '% (' + eur(c.total_factura) + ' vs ' + eur(c.total_beo) + ')'; bg='rgba(239,68,68,.12)'; col='#f87171'; }
+      else { badge = 'Sin factura aún'; bg='rgba(148,163,184,.12)'; col='var(--mut)'; }
+      var lineas = (b.lineas||[]).map(function(l){
+        return '<div style="display:flex;justify-content:space-between;gap:10px;font-size:12px;padding:5px 0;border-bottom:1px solid var(--s2)">' +
+          '<span style="color:var(--tx)">' + (l.concepto||'') + ' <span style="color:var(--dim);font-size:11px">' + (l.detalle||'') + '</span></span>' +
+          '<span style="color:var(--tx);font-weight:600;white-space:nowrap">' + eur(l.importe) + '</span></div>';
+      }).join('');
+      return '<div style="border:1px solid var(--s2);border-radius:12px;padding:14px;background:var(--s1)">' +
+        '<div style="display:flex;align-items:center;justify-content:space-between;gap:8px;margin-bottom:8px;flex-wrap:wrap">' +
+          '<div style="min-width:0"><div style="font-weight:700;font-size:13px">' + (b.evento||'Evento') + '</div>' +
+          '<div style="font-size:11px;color:var(--dim)">' + (b.cliente||'') + (b.contrato ? ' · contrato ' + b.contrato : '') + (b.pax ? ' · ' + b.pax + ' pax' : '') + '</div></div>' +
+          '<span style="font-size:11px;font-weight:700;padding:4px 10px;border-radius:20px;background:' + bg + ';color:' + col + '">' + badge + '</span>' +
+        '</div>' + lineas +
+        '<div style="display:flex;justify-content:space-between;font-size:13px;font-weight:800;padding-top:8px"><span>TOTAL BEO</span><span style="color:var(--acc2)">' + eur(b.total) + '</span></div>' +
+        '<div style="font-size:10px;color:var(--dim);margin-top:6px">BEO generado automáticamente del contrato · ' + (b.fecha_generado||'') + '</div>' +
+      '</div>';
+    }).join('');
+  } catch(e) {}
+}
+
 async function cargarARRealData() {
   // Show skeleton on KPIs while loading
   _skelOn(['arp-pendiente','arp-vencido','arp-cobrado','arp-nclientes']);
+  try { cargarBeosAR(); } catch(e){}
   try {
     // Load clients and invoices in parallel
     const [rClientes, rFacturas] = await Promise.all([
