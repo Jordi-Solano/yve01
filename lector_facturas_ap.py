@@ -125,9 +125,9 @@ def es_ota(texto):
 
 
 # Documentos que NO son facturas — pre-filtro por nombre de archivo
-NO_FACTURA_KEYWORDS = {'menu ', 'checklist', ' tm.', 'minuta', 'diploma', 'schedule', 'quotation', 'acuerdo', 'meeting notes', 'certificado', 'signage', 'setup', 'powerpoint', 'technical manual', 'programa', 'proposal', 'plano', 'itinerario', 'certificate', 'agenda', 'ppt', 'logo', 'floor plan', 'master onsite', 'room list', 'acta ', 'timeline', 'event order', 'guest list', 'rooming', 'carta de', 'presentation', 'floorplan', 'running order', 'quote', '_tm_', 'room block', 'wine list', 'planning', 'banner', 'resume', 'itinerary', 'banquet order', 'presupuesto', 'banquet event'}
+NO_FACTURA_KEYWORDS = {'menu ', 'checklist', 'minuta', 'diploma', 'schedule', 'quotation', 'meeting notes', 'certificado', 'signage', 'setup', 'powerpoint', 'programa', 'proposal', 'plano', 'itinerario', 'certificate', 'agenda', 'ppt', 'logo', 'floor plan', 'master onsite', 'acta ', 'timeline', 'carta de', 'presentation', 'floorplan', 'running order', 'quote', 'wine list', 'planning', 'banner', 'resume', 'itinerary', 'presupuesto'}
 
-NO_FACTURA_EXTENSIONS = {'.doc', '.docx', '.ppt', '.pptx', '.png', '.jpg', '.jpeg', '.gif', '.svg', '.mp4', '.zip', '.rar'}
+NO_FACTURA_EXTENSIONS = {'.doc', '.docx', '.ppt', '.pptx', '.gif', '.svg', '.mp4', '.zip', '.rar'}  # imágenes NO: se leen por OCR
 
 
 def es_no_factura_por_nombre(nombre_archivo):
