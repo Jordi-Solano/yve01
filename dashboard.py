@@ -8859,7 +8859,39 @@ async function uploadAndProcess() {
       log.appendChild(p);
       log.scrollTop = log.scrollHeight;
     };
-    var errs = await _procesarImagenes(imgs, addLine);
+    var errs = 0;
+    if (imgs.length >= 2) {
+      // Varias fotos = páginas de UN documento (contrato/BEO). Se procesan TODAS
+      // juntas en UNA sola llamada para poder detectar el contrato de grupo -> AR Real.
+      addLine('📄 Analizando ' + imgs.length + ' fotos como contrato de grupo (puede tardar ~1 min)...', 'l-info');
+      var fdc = new FormData();
+      for (var _k = 0; _k < imgs.length; _k++) {
+        var _cf = await _comprimirImagen(imgs[_k]);
+        fdc.append('files', _cf, _cf.name);
+      }
+      try {
+        var _rc = await fetch('/api/ar_real/procesar_contrato', { method: 'POST', body: fdc, headers: { 'X-CSRF-Token': _csrfToken } });
+        var _dc = await _rc.json();
+        if (_dc && _dc.ok) {
+          var _eur = (_dc.total_receivable || 0).toLocaleString('es-ES', {minimumFractionDigits:2});
+          addLine('✓ Contrato ' + (_dc.contrato || '') + ' · ' + (_dc.cliente || '') + ' · €' + _eur + (_dc.beo_lineas ? ' · BEO con ' + _dc.beo_lineas + ' partidas' : ''), 'l-ok');
+          if (_dc.comision_total) addLine('✓ Comisión agencia: €' + (_dc.comision_total).toLocaleString('es-ES', {minimumFractionDigits:2}), 'l-ok');
+          if (_dc.requiere_certificado_di) addLine('⚠ Certificado de doble imposición pendiente', 'l-warn');
+        } else if (_dc && /no parecen un contrato/i.test(_dc.error || '')) {
+          addLine('Las fotos no son un contrato — proceso cada una como documento suelto', 'l-info');
+          errs += await _procesarImagenes(imgs, addLine);
+        } else {
+          addLine('⚠ No se pudo leer el contrato: ' + ((_dc && _dc.error) || 'error') + '. Revisa que las fotos sean nítidas.', 'l-warn');
+          errs++;
+        }
+      } catch(e) {
+        addLine('✗ ' + (e.message || 'error de red procesando el contrato'), 'l-err');
+        errs++;
+      }
+    } else {
+      // 1 foto: documento suelto (factura, extracto, ticket...)
+      errs = await _procesarImagenes(imgs, addLine);
+    }
     if (docs.length) {
       _runBatchPipeline(docs.map(function(f){ return f.name; }), true);
     } else {
@@ -8868,7 +8900,8 @@ async function uploadAndProcess() {
       if (spin) spin.style.display = 'none';
       if (btnCl) btnCl.disabled = false;
       if (runBtn) runBtn.disabled = false;
-      setTimeout(function(){ loadAll(); }, 500);
+      if (log) _showTabBadges(log.textContent || '');
+      setTimeout(function(){ loadAll(); if (typeof cargarARRealData === 'function') { try { cargarARRealData(); } catch(e){} } }, 700);
     }
     return;
   }
@@ -9207,11 +9240,12 @@ async function _comprimirImagen(file) {
     var bmp = await createImageBitmap(file);
     var maxSide = 1800;
     var scale = Math.min(1, maxSide / Math.max(bmp.width, bmp.height));
-    if (scale >= 1 && file.size < 1200000) return file; // ya es pequeña
+    if (scale >= 1 && file.size < 1200000) { try { bmp.close(); } catch(e){} return file; } // ya es pequeña
     var c = document.createElement('canvas');
     c.width = Math.max(1, Math.round(bmp.width * scale));
     c.height = Math.max(1, Math.round(bmp.height * scale));
     c.getContext('2d').drawImage(bmp, 0, 0, c.width, c.height);
+    try { bmp.close(); } catch(e){}
     var blob = await new Promise(function(res) { c.toBlob(res, 'image/jpeg', 0.85); });
     if (blob && blob.size < file.size) {
       return new File([blob], (file.name || 'foto').replace(/\.\w+$/, '') + '.jpg', { type: 'image/jpeg' });
