@@ -295,6 +295,86 @@ def guardar(transformado, datos_dir=None):
     return {"clientes": pc, "reservas": pr}
 
 
+def _append_xlsx(path, row, dedup_col=None):
+    """Añade una fila a un xlsx (creándolo si no existe). Si dedup_col, reemplaza
+    la fila con el mismo valor en esa columna (idempotente al reprocesar)."""
+    import pandas as pd
+    df = pd.read_excel(path) if os.path.exists(path) else pd.DataFrame()
+    if dedup_col and len(df) and dedup_col in df.columns and row.get(dedup_col) is not None:
+        df = df[df[dedup_col].astype(str) != str(row.get(dedup_col))]
+    df = pd.concat([df, pd.DataFrame([row])], ignore_index=True)
+    df.to_excel(path, index=False)
+
+
+def distribuir_contrato(datos, transformado, datos_dir=None):
+    """Reparte los importes REALES del contrato a los módulos donde tienen sentido:
+      · AP    -> comisión que el hotel paga a la agencia (pago pendiente)
+      · Banco -> depósito/anticipo que el cliente adelanta (cobro previsto)
+      · F&B   -> catering/banquete del evento (ingreso del evento)
+    Devuelve {'ap':importe|None,'banco':importe|None,'fb':importe|None} para el log/badges."""
+    dd = datos_dir or _datos_dir()
+    os.makedirs(dd, exist_ok=True)
+    res = {"ap": None, "banco": None, "fb": None}
+    ev = datos.get("evento", {}) or {}
+    evento_nombre = (str(ev.get("id") or "") + " " + str(ev.get("nombre") or "")).strip() or "Evento de grupo"
+    contrato = str(datos.get("contrato_numero") or "").strip()
+    hoy = datetime.now().strftime("%Y-%m-%d")
+
+    # ── AP: comisión a la agencia ──
+    comis = (transformado or {}).get("comisiones", {}) or {}
+    com_total = _f(comis.get("total"))
+    if com_total > 0:
+        try:
+            from tenant_dirs import procesadas_dir
+            pdir = procesadas_dir()
+        except Exception:
+            pdir = dd
+        os.makedirs(pdir, exist_ok=True)
+        ap_file = os.path.join(pdir, "facturas_ap_" + datetime.now().strftime("%Y%m%d") + ".xlsx")
+        ag = datos.get("agencia", {}) or {}
+        agencia = ag.get("nombre") or (datos.get("cliente", {}) or {}).get("nombre") or "Agencia"
+        base = round(com_total / 1.21, 2)
+        num = ("COM-" + contrato) if contrato else ("COM-" + datetime.now().strftime("%Y%m%d%H%M"))
+        _append_xlsx(ap_file, {
+            "archivo": "comision_" + (contrato or evento_nombre),
+            "numero_factura": num, "fecha": hoy, "nombre_proveedor": agencia,
+            "NIF_proveedor": ag.get("cif", "") or "",
+            "descripcion_concepto": "Comisión agencia · " + evento_nombre,
+            "base_imponible": base, "porcentaje_iva": 21,
+            "cuota_iva": round(com_total - base, 2), "total_factura": round(com_total, 2),
+            "moneda": "EUR", "tipo": "COMISION_AGENCIA", "estado_matching": "SIN_PO",
+        }, dedup_col="numero_factura")
+        res["ap"] = round(com_total, 2)
+
+    # ── Banco: depósito previsto ──
+    dep = datos.get("deposito", {}) or {}
+    total_recv = _f((transformado or {}).get("resumen", {}).get("total_receivable"))
+    dep_pct = _f(dep.get("pct"))
+    dep_imp = round(total_recv * dep_pct / 100, 2) if dep_pct else 0.0
+    if dep_imp > 0:
+        concepto = "Depósito previsto " + str(int(dep_pct)) + "% · " + evento_nombre + (" (contrato " + contrato + ")" if contrato else "")
+        _append_xlsx(os.path.join(dd, "extracto_banco.xlsx"),
+                     {"fecha": hoy, "concepto": concepto, "importe": dep_imp, "saldo": ""},
+                     dedup_col="concepto")
+        res["banco"] = dep_imp
+
+    # ── F&B: catering del evento ──
+    fb = datos.get("fb", {}) or {}
+    fb_total = _f(fb.get("total"))
+    if fb_total > 0:
+        pax = int(_f(fb.get("pax"))) or 1
+        plato = "Banquete evento · " + evento_nombre
+        _append_xlsx(os.path.join(dd, "ventas_fb_diarias.xlsx"), {
+            "fecha": (datos.get("alojamiento", {}) or {}).get("fecha_entrada") or hoy,
+            "nombre_plato": plato, "categoria": "Eventos",
+            "unidades_vendidas": pax, "precio_unitario": round(fb_total / pax, 2),
+            "total_venta": round(fb_total, 2),
+        }, dedup_col="nombre_plato")
+        res["fb"] = round(fb_total, 2)
+
+    return res
+
+
 def procesar_contrato_grupo(image_paths, datos_dir=None, guardar_datos=True):
     """Pipeline completo: extraer -> transformar -> guardar. Devuelve resumen."""
     if isinstance(image_paths, str):
@@ -312,16 +392,22 @@ def procesar_contrato_grupo(image_paths, datos_dir=None, guardar_datos=True):
                 "message": "Las imágenes no parecen un contrato de grupo/BEO."}
     t = transformar(datos)
     beo = generar_beo(datos, t)
+    r_dist = {}
     if guardar_datos:
         t["_paths"] = guardar(t, datos_dir)
         try:
             guardar_beo(beo, datos_dir)
         except Exception:
             pass
+        try:
+            r_dist = distribuir_contrato(datos, t, datos_dir)
+        except Exception:
+            r_dist = {}
     r = t["resumen"]; r["ok"] = True
     r["beo"] = beo
     r["beo_lineas"] = len(beo.get("lineas", []))
     r["beo_total"] = beo.get("total", 0)
+    r["distribucion"] = r_dist
     return r
 
 

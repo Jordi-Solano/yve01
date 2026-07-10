@@ -8873,9 +8873,12 @@ async function uploadAndProcess() {
         var _rc = await fetch('/api/ar_real/procesar_contrato', { method: 'POST', body: fdc, headers: { 'X-CSRF-Token': _csrfToken } });
         var _dc = await _rc.json();
         if (_dc && _dc.ok) {
-          var _eur = (_dc.total_receivable || 0).toLocaleString('es-ES', {minimumFractionDigits:2});
-          addLine('✓ Contrato ' + (_dc.contrato || '') + ' · ' + (_dc.cliente || '') + ' · €' + _eur + (_dc.beo_lineas ? ' · BEO con ' + _dc.beo_lineas + ' partidas' : ''), 'l-ok');
-          if (_dc.comision_total) addLine('✓ Comisión agencia: €' + (_dc.comision_total).toLocaleString('es-ES', {minimumFractionDigits:2}), 'l-ok');
+          var _money = function(v){ return '€' + (Number(v)||0).toLocaleString('es-ES', {minimumFractionDigits:2}); };
+          addLine('✓ Contrato ' + (_dc.contrato || '') + ' · ' + (_dc.cliente || '') + ' · ' + _money(_dc.total_receivable) + ' → AR Real' + (_dc.beo_lineas ? ' · BEO con ' + _dc.beo_lineas + ' partidas' : ''), 'l-ok');
+          var _di2 = _dc.distribucion || {};
+          if (_di2.ap)    addLine('✓ AP comisión agencia: ' + _money(_di2.ap) + ' (pago pendiente)', 'l-ok');
+          if (_di2.banco) addLine('✓ Banco depósito previsto: ' + _money(_di2.banco), 'l-ok');
+          if (_di2.fb)    addLine('✓ F&B evento (banquete): ' + _money(_di2.fb), 'l-ok');
           if (_dc.requiere_certificado_di) addLine('⚠ Certificado de doble imposición pendiente', 'l-warn');
         } else if (_dc && /no parecen un contrato/i.test(_dc.error || '')) {
           addLine('Las fotos no son un contrato — proceso cada una como documento suelto', 'l-info');
