@@ -167,6 +167,37 @@ footer{background:var(--s1);border-top:1px solid var(--s2);padding:48px 5% 32px;
 .footer-col a:hover{color:var(--tx)}
 .footer-bottom{border-top:1px solid var(--s2);padding-top:24px;display:flex;justify-content:space-between;align-items:center;font-size:13px;color:var(--dim)}
 </style>
+<style id="yve-premium">/*yve-premium-v1*/
+:root{--s1:rgba(255,255,255,.028);--gb:rgba(255,255,255,.09)}
+body{background:#0a101d}
+body::before{content:'';position:fixed;inset:-22%;z-index:-1;pointer-events:none;
+ background:radial-gradient(52% 42% at 18% 8%,rgba(59,130,246,.16),transparent 62%),
+ radial-gradient(46% 38% at 84% 16%,rgba(139,92,246,.12),transparent 60%),
+ radial-gradient(50% 44% at 50% 104%,rgba(34,211,238,.07),transparent 60%),
+ linear-gradient(180deg,#0c1526,#0a101d 55%,#080c16);
+ animation:yveAurora 26s ease-in-out infinite alternate}
+@keyframes yveAurora{from{transform:translate3d(-2.5%,-1.5%,0) scale(1.02)}to{transform:translate3d(2.5%,2%,0) scale(1.08)}}
+.nav{background:rgba(10,15,26,.66);backdrop-filter:blur(18px) saturate(1.5);-webkit-backdrop-filter:blur(18px) saturate(1.5);border-bottom:1px solid rgba(255,255,255,.07)}
+.section-alt{background:rgba(255,255,255,.022)}
+.stats-bar{background:rgba(255,255,255,.03);border-color:rgba(255,255,255,.07)}
+.prob-card,.feat-card,.price-card,.roi-wrap{background:linear-gradient(165deg,rgba(255,255,255,.055),rgba(255,255,255,.018));border-color:var(--gb);box-shadow:inset 0 1px 0 rgba(255,255,255,.07),0 8px 26px rgba(2,6,18,.35)}
+.prob-card,.feat-card,.price-card{transition:transform .25s ease,border-color .25s ease,box-shadow .25s ease}
+.prob-card:hover,.feat-card:hover,.price-card:hover{transform:translateY(-4px);border-color:rgba(96,165,250,.45);box-shadow:inset 0 1px 0 rgba(255,255,255,.1),0 18px 44px rgba(2,6,18,.5),0 0 0 1px rgba(59,130,246,.12)}
+.price-card.featured{background:linear-gradient(165deg,rgba(59,130,246,.14),rgba(139,92,246,.06) 55%,rgba(255,255,255,.02));border-color:rgba(96,165,250,.55);box-shadow:inset 0 1px 0 rgba(255,255,255,.12),0 16px 44px rgba(59,130,246,.18)}
+.roi-result{background:linear-gradient(150deg,rgba(59,130,246,.16),rgba(139,92,246,.09));border-color:rgba(96,165,250,.3);box-shadow:inset 0 1px 0 rgba(255,255,255,.1)}
+.cta-banner{background:linear-gradient(140deg,rgba(59,130,246,.18),rgba(139,92,246,.12));border:1px solid rgba(96,165,250,.28);box-shadow:inset 0 1px 0 rgba(255,255,255,.12),0 24px 64px rgba(2,6,18,.5);position:relative;overflow:hidden}
+.cta-banner::before{content:'';position:absolute;top:0;left:12%;right:12%;height:1px;background:linear-gradient(90deg,transparent,rgba(147,197,253,.85),transparent);animation:yveLine 4.5s ease-in-out infinite}
+@keyframes yveLine{0%,100%{opacity:.25}50%{opacity:1}}
+.hero h1{background:linear-gradient(180deg,#ffffff 30%,#b9c6dd);-webkit-background-clip:text;background-clip:text;-webkit-text-fill-color:transparent}
+.hero h1 .accent{background:linear-gradient(120deg,#60a5fa,#a78bfa 70%,#67e8f9);-webkit-background-clip:text;background-clip:text;-webkit-text-fill-color:transparent}
+.btn-primary,.btn-hero-primary,.price-btn.primary{position:relative;overflow:hidden}
+.btn-primary::after,.btn-hero-primary::after,.price-btn.primary::after{content:'';position:absolute;top:0;bottom:0;left:-70%;width:45%;background:linear-gradient(105deg,transparent,rgba(255,255,255,.35),transparent);transform:skewX(-18deg);transition:left .55s ease;pointer-events:none}
+.btn-primary:hover::after,.btn-hero-primary:hover::after,.price-btn.primary:hover::after{left:135%}
+.hero-badge{background:rgba(59,130,246,.09);box-shadow:inset 0 1px 0 rgba(255,255,255,.08)}
+.comp-table th{background:rgba(255,255,255,.04)}
+footer{background:rgba(255,255,255,.02);border-top:1px solid rgba(255,255,255,.07)}
+@media (prefers-reduced-motion:reduce){body::before,.cta-banner::before{animation:none}}
+</style>
 </head>
 <body>
 

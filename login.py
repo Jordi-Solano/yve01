@@ -133,6 +133,26 @@ input:focus{border-color:var(--acc);box-shadow:0 0 0 3px rgba(59,130,246,.18)}
 .foot{display:flex;align-items:center;justify-content:center;gap:7px;margin-top:22px;font-size:11.5px;color:var(--dim)}
 .foot svg{width:13px;height:13px;opacity:.8}
 </style>
+<style id="yve-premium">/*yve-premium-v1*/
+body::after{content:'';position:fixed;inset:-25%;z-index:0;pointer-events:none;
+ background:radial-gradient(42% 34% at 24% 18%,rgba(59,130,246,.14),transparent 62%),
+ radial-gradient(38% 32% at 78% 78%,rgba(139,92,246,.10),transparent 60%);
+ animation:yveAurora 22s ease-in-out infinite alternate}
+@keyframes yveAurora{from{transform:translate3d(-2%,-1.5%,0)}to{transform:translate3d(2%,2%,0)}}
+.wrap{z-index:1}
+.login-card{background:linear-gradient(168deg,rgba(255,255,255,.065),rgba(255,255,255,.02) 45%,rgba(10,16,28,.55));border:1px solid rgba(255,255,255,.12);backdrop-filter:blur(22px) saturate(1.4);-webkit-backdrop-filter:blur(22px) saturate(1.4);box-shadow:inset 0 1px 0 rgba(255,255,255,.12),0 26px 70px rgba(2,6,18,.6)}
+.login-card::before{content:'';position:absolute;top:0;left:14%;right:14%;height:1px;background:linear-gradient(90deg,transparent,rgba(147,197,253,.9),transparent);animation:yveLine 5s ease-in-out infinite}
+@keyframes yveLine{0%,100%{opacity:.3}50%{opacity:1}}
+input{background:rgba(10,16,28,.55);border-color:rgba(255,255,255,.12);transition:border-color .2s,box-shadow .2s,background .2s}
+input:focus{background:rgba(10,16,28,.75);border-color:rgba(96,165,250,.8);box-shadow:0 0 0 3px rgba(59,130,246,.16),0 0 18px rgba(59,130,246,.12)}
+.btn-login{position:relative;overflow:hidden;transition:transform .2s,box-shadow .25s}
+.btn-login::after{content:'';position:absolute;top:0;bottom:0;left:-70%;width:45%;background:linear-gradient(105deg,transparent,rgba(255,255,255,.35),transparent);transform:skewX(-18deg);transition:left .55s ease;pointer-events:none}
+.btn-login:hover::after{left:135%}
+.chip{background:rgba(255,255,255,.04);border-color:rgba(255,255,255,.1);transition:transform .18s,border-color .18s,box-shadow .18s,background .18s}
+.chip:hover{transform:translateY(-2px);background:rgba(59,130,246,.12);box-shadow:0 8px 22px rgba(2,6,18,.45),0 0 14px rgba(59,130,246,.18)}
+.demo{border-top-color:rgba(255,255,255,.09)}
+@media (prefers-reduced-motion:reduce){body::after,.login-card::before{animation:none}}
+</style>
 </head>
 <body>
 <!-- ── Pantalla de inicio (splash) — no saltable, precarga recursos ── -->
