@@ -134,7 +134,7 @@ input:focus{border-color:var(--acc);box-shadow:0 0 0 3px rgba(59,130,246,.18)}
 .foot svg{width:13px;height:13px;opacity:.8}
 </style>
 <style id="yve-premium">/*yve-premium-v2*/
-@import url('https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,500;9..144,600;9..144,700&display=swap');
+@import url('https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@500;700&display=swap');
 
 body{background:#06090f;background:linear-gradient(180deg,#0a1322 0%,#06090f 55%,#04060b 100%)}
 body::after{content:'';position:fixed;inset:-25%;z-index:0;pointer-events:none;
@@ -147,8 +147,7 @@ body::after{content:'';position:fixed;inset:-25%;z-index:0;pointer-events:none;
 .login-card{background:linear-gradient(168deg,rgba(255,255,255,.09),rgba(255,255,255,.03) 45%,rgba(6,10,18,.6));border:1px solid rgba(255,255,255,.16);border-radius:24px;backdrop-filter:blur(26px) saturate(1.5);-webkit-backdrop-filter:blur(26px) saturate(1.5);box-shadow:inset 0 1px 0 rgba(255,255,255,.16),0 30px 80px rgba(0,0,0,.65)}
 .login-card::before{content:'';position:absolute;top:0;left:12%;right:12%;height:1px;background:linear-gradient(90deg,transparent,rgba(190,215,255,.95),transparent);animation:yveLine 5s ease-in-out infinite}
 @keyframes yveLine{0%,100%{opacity:.35}50%{opacity:1}}
-.brand-name{font-family:'Fraunces',Georgia,serif;font-weight:600;letter-spacing:0;font-size:27px}
-.heading{font-family:'Fraunces',Georgia,serif;font-weight:600;font-size:18px}
+.brand-name{font-family:'Space Grotesk','Inter',sans-serif;font-weight:700;letter-spacing:-.3px;font-size:26px}
 input{background:rgba(6,10,18,.55);border-color:rgba(255,255,255,.14);border-radius:12px;transition:border-color .2s,box-shadow .2s,background .2s}
 input:focus{background:rgba(6,10,18,.8);border-color:rgba(125,180,255,.85);box-shadow:0 0 0 3px rgba(59,130,246,.18),0 0 22px rgba(59,130,246,.15)}
 .btn-login{position:relative;overflow:hidden;border-radius:999px;transition:transform .2s,box-shadow .25s}
@@ -168,7 +167,7 @@ input:focus{background:rgba(6,10,18,.8);border-color:rgba(125,180,255,.85);box-s
   transition:opacity .55s ease,visibility .55s ease}
 #yve-splash.hide{opacity:0;visibility:hidden;pointer-events:none}
 #yve-splash .sp-logo{width:110px;height:110px;border-radius:27px;box-shadow:0 22px 60px rgba(0,0,0,.55);animation:spPop .6s cubic-bezier(.2,.8,.2,1)}
-#yve-splash .sp-brand{margin-top:24px;font-size:31px;font-weight:800;letter-spacing:-.8px;color:#fff;animation:spFade .6s ease .12s both}
+#yve-splash .sp-brand{font-family:'Space Grotesk','Inter',sans-serif;margin-top:24px;font-size:31px;font-weight:700;letter-spacing:-.8px;color:#fff;animation:spFade .6s ease .12s both}
 #yve-splash .sp-brand span{color:#60a5fa}
 #yve-splash .sp-sub{margin-top:9px;font-size:13px;color:#94a3b8;animation:spFade .6s ease .22s both}
 #yve-splash .sp-loader{margin-top:30px;width:32px;height:32px;border-radius:50%;border:3px solid rgba(148,163,184,.22);border-top-color:#3b82f6;animation:spSpin .8s linear infinite}

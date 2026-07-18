@@ -3011,7 +3011,7 @@ body::before{
   position:sticky;top:0;z-index:200
 }
 .logo{display:flex;align-items:baseline;gap:10px;flex-shrink:0}
-.logo-name{font-size:20px;font-weight:800;color:#fff;letter-spacing:-0.5px}
+.logo-name{font-family:'Space Grotesk','Inter',sans-serif;font-size:20px;font-weight:700;color:#fff;letter-spacing:-0.3px}
 .logo-tag{font-size:11px;color:var(--mut);font-weight:400;white-space:nowrap}
 .logo-dot{width:10px;height:10px;border-radius:50%;background:var(--acc,#3b82f6);flex-shrink:0;box-shadow:0 0 6px rgba(var(--acc-r,59),var(--acc-g,130),var(--acc-b,246),.6),0 0 14px rgba(var(--acc-r,59),var(--acc-g,130),var(--acc-b,246),.35),0 0 28px rgba(var(--acc-r,59),var(--acc-g,130),var(--acc-b,246),.15)}
 .logo-dot-one{color:var(--acc2)}
@@ -3558,6 +3558,10 @@ tr:hover td{background:rgba(255,255,255,.025)}
 button, a { touch-action: manipulation; }
 
 </style>
+<link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@500;700&display=swap" rel="stylesheet">
+<style id="yve-icon-css">/*yve-icons-v1*/
+svg.yvi{width:1em;height:1em;vertical-align:-0.125em;flex-shrink:0;display:inline-block}
+</style>
 </head>
 <body>
 <!-- ── Pantalla de inicio (splash) al abrir la app — no saltable, precarga recursos ── -->
@@ -3567,7 +3571,7 @@ button, a { touch-action: manipulation; }
   transition:opacity .55s ease,visibility .55s ease}
 #yve-splash.hide{opacity:0;visibility:hidden;pointer-events:none}
 #yve-splash .sp-logo{width:110px;height:110px;border-radius:27px;box-shadow:0 22px 60px rgba(0,0,0,.55);animation:spPop .6s cubic-bezier(.2,.8,.2,1)}
-#yve-splash .sp-brand{margin-top:24px;font-size:31px;font-weight:800;letter-spacing:-.8px;color:#fff;animation:spFade .6s ease .12s both}
+#yve-splash .sp-brand{font-family:'Space Grotesk','Inter',sans-serif;margin-top:24px;font-size:31px;font-weight:700;letter-spacing:-.4px;color:#fff;animation:spFade .6s ease .12s both}
 #yve-splash .sp-brand span{color:#60a5fa}
 #yve-splash .sp-sub{margin-top:9px;font-size:13px;color:#94a3b8;animation:spFade .6s ease .22s both}
 #yve-splash .sp-loader{margin-top:30px;width:32px;height:32px;border-radius:50%;border:3px solid rgba(148,163,184,.22);border-top-color:#3b82f6;animation:spSpin .8s linear infinite}
@@ -11935,6 +11939,98 @@ window.addEventListener('scroll', () => {
 </script>
 
 <!-- Modal Escanear Documento -->
+
+<script id="yve-icons">/*yve-icons-v1*/
+(function(){
+var P={
+ zap:'<polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"/>',
+ camera:'<path d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2z"/><circle cx="12" cy="13" r="4"/>',
+ dots:'<circle cx="5" cy="12" r="1.6" fill="currentColor" stroke="none"/><circle cx="12" cy="12" r="1.6" fill="currentColor" stroke="none"/><circle cx="19" cy="12" r="1.6" fill="currentColor" stroke="none"/>',
+ inbox:'<polyline points="22 12 16 12 14 15 10 15 8 12 2 12"/><path d="M5.45 5.11 2 12v6a2 2 0 0 0 2 2h16a2 2 0 0 0 2-2v-6l-3.45-6.89A2 2 0 0 0 16.76 4H7.24a2 2 0 0 0-1.79 1.11z"/>',
+ pack:'<path d="M21 16V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16z"/><polyline points="3.27 6.96 12 12.01 20.73 6.96"/><line x1="12" y1="22.08" x2="12" y2="12"/>',
+ chart:'<line x1="18" y1="20" x2="18" y2="10"/><line x1="12" y1="20" x2="12" y2="4"/><line x1="6" y1="20" x2="6" y2="14"/>',
+ bank:'<line x1="3" y1="22" x2="21" y2="22"/><line x1="6" y1="18" x2="6" y2="11"/><line x1="10" y1="18" x2="10" y2="11"/><line x1="14" y1="18" x2="14" y2="11"/><line x1="18" y1="18" x2="18" y2="11"/><polygon points="12 2 20 7 4 7"/>',
+ bell:'<path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9"/><path d="M13.73 21a2 2 0 0 1-3.46 0"/>',
+ food:'<path d="M3 2v7c0 1.1.9 2 2 2h4a2 2 0 0 0 2-2V2"/><path d="M7 2v20"/><path d="M21 15V2a5 5 0 0 0-5 5v6c0 1.1.9 2 2 2h3zm0 0v7"/>',
+ build:'<path d="M6 22V4a2 2 0 0 1 2-2h8a2 2 0 0 1 2 2v18Z"/><path d="M6 12H4a2 2 0 0 0-2 2v6a2 2 0 0 0 2 2h2"/><path d="M18 9h2a2 2 0 0 1 2 2v9a2 2 0 0 1-2 2h-2"/><path d="M10 6h4"/><path d="M10 10h4"/><path d="M10 14h4"/><path d="M10 18h4"/>',
+ hotel:'<path d="M2 4v16"/><path d="M2 8h18a2 2 0 0 1 2 2v10"/><path d="M2 17h20"/><path d="M6 8v9"/>',
+ globe:'<circle cx="12" cy="12" r="10"/><line x1="2" y1="12" x2="22" y2="12"/><path d="M12 2a15.3 15.3 0 0 1 4 10 15.3 15.3 0 0 1-4 10 15.3 15.3 0 0 1-4-10 15.3 15.3 0 0 1 4-10z"/>',
+ file:'<path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/>',
+ trend:'<polyline points="23 6 13.5 15.5 8.5 10.5 1 18"/><polyline points="17 6 23 6 23 12"/>',
+ target:'<circle cx="12" cy="12" r="10"/><circle cx="12" cy="12" r="6"/><circle cx="12" cy="12" r="2"/>',
+ clip:'<path d="M16 4h2a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2h2"/><rect x="8" y="2" width="8" height="4" rx="1"/>',
+ user:'<path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/>',
+ users:'<path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/>',
+ key:'<path d="M21 2l-2 2m-7.61 7.61a5.5 5.5 0 1 1-7.778 7.778 5.5 5.5 0 0 1 7.777-7.777zm0 0L15.5 7.5m0 0l3 3L22 7l-3-3m-3.5 3.5L19 4"/>',
+ money:'<rect x="2" y="6" width="20" height="12" rx="2"/><circle cx="12" cy="12" r="2.5"/><path d="M6 12h.01"/><path d="M18 12h.01"/>',
+ wrench:'<path d="M14.7 6.3a1 1 0 0 0 0 1.4l1.6 1.6a1 1 0 0 0 1.4 0l3.77-3.77a6 6 0 0 1-7.94 7.94l-6.91 6.91a2.12 2.12 0 0 1-3-3l6.91-6.91a6 6 0 0 1 7.94-7.94l-3.76 3.76z"/>',
+ refresh:'<polyline points="23 4 23 10 17 10"/><polyline points="1 20 1 14 7 14"/><path d="M3.51 9a9 9 0 0 1 14.85-3.36L23 10"/><path d="M1 14l4.64 4.36A9 9 0 0 0 20.49 15"/>',
+ out:'<path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/><polyline points="16 17 21 12 16 7"/><line x1="21" y1="12" x2="9" y2="12"/>',
+ palette:'<path d="M12 22a10 10 0 1 1 10-10c0 1.66-1.34 3-3 3h-2a2 2 0 0 0-2 2c0 .5.2 1 .54 1.36.34.36.46.9.4 1.4A2 2 0 0 1 14 22z"/><circle cx="13.5" cy="6.5" r=".9" fill="currentColor" stroke="none"/><circle cx="17.5" cy="10.5" r=".9" fill="currentColor" stroke="none"/><circle cx="8.5" cy="7.5" r=".9" fill="currentColor" stroke="none"/><circle cx="6.5" cy="12" r=".9" fill="currentColor" stroke="none"/>',
+ phone:'<rect x="5" y="2" width="14" height="20" rx="2"/><line x1="12" y1="18" x2="12.01" y2="18"/>',
+ search:'<circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/>',
+ save:'<path d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2z"/><polyline points="17 21 17 13 7 13 7 21"/><polyline points="7 3 7 8 15 8"/>',
+ folder:'<path d="M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2z"/>',
+ up:'<path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/>',
+ down:'<path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/>',
+ img:'<rect x="3" y="3" width="18" height="18" rx="2"/><circle cx="8.5" cy="8.5" r="1.5"/><polyline points="21 15 16 10 5 21"/>',
+ sunrise:'<path d="M12 2v6"/><path d="m4.93 10.93 1.41 1.41"/><path d="M2 18h2"/><path d="M20 18h2"/><path d="m19.07 10.93-1.41 1.41"/><path d="M22 22H2"/><path d="m8 6 4-4 4 4"/><path d="M16 18a4 4 0 0 0-8 0"/>',
+ trophy:'<path d="M6 9H4.5a2.5 2.5 0 0 1 0-5H6"/><path d="M18 9h1.5a2.5 2.5 0 0 0 0-5H18"/><path d="M4 22h16"/><path d="M10 14.66V17c0 .55-.47.98-.97 1.21C7.85 18.75 7 20.24 7 22"/><path d="M14 14.66V17c0 .55.47.98.97 1.21C16.15 18.75 17 20.24 17 22"/><path d="M18 2H6v7a6 6 0 0 0 12 0V2z"/>',
+ moon:'<path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"/>',
+ sun:'<circle cx="12" cy="12" r="5"/><path d="M12 1v2M12 21v2M4.22 4.22l1.42 1.42M18.36 18.36l1.42 1.42M1 12h2M21 12h2M4.22 19.78l1.42-1.42M18.36 5.64l1.42-1.42"/>',
+ pin:'<path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z"/><circle cx="12" cy="10" r="3"/>',
+ mail:'<rect x="2" y="4" width="20" height="16" rx="2"/><polyline points="22 6 12 13 2 6"/>',
+ card:'<rect x="1" y="4" width="22" height="16" rx="2"/><line x1="1" y1="10" x2="23" y2="10"/>',
+ spark:'<path d="M12 3l1.9 5.7a2 2 0 0 0 1.3 1.3L21 12l-5.8 1.9a2 2 0 0 0-1.3 1.3L12 21l-1.9-5.8a2 2 0 0 0-1.3-1.3L3 12l5.8-1.9a2 2 0 0 0 1.3-1.3z"/>',
+ chat:'<path d="M21 11.5a8.5 8.5 0 0 1-8.5 8.5 8.4 8.4 0 0 1-3.8-.9L3 21l1.9-5.7a8.4 8.4 0 0 1-.9-3.8 8.5 8.5 0 0 1 8.5-8.5 8.5 8.5 0 0 1 8.5 8.5z"/>',
+ mask:'<path d="M4 7c2.5-1.3 5.2-2 8-2s5.5.7 8 2v4a8 8 0 0 1-16 0Z"/><circle cx="9" cy="10" r="1" fill="currentColor" stroke="none"/><circle cx="15" cy="10" r="1" fill="currentColor" stroke="none"/><path d="M9 14c1 .8 2 1.2 3 1.2s2-.4 3-1.2"/>',
+ x:'<line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/>'
+};
+window.icon=function(n,cls){var p=P[n];if(!p)return '';
+ return '<svg class="yvi'+(cls?' '+cls:'')+'" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">'+p+'</svg>';};
+var MAP={'\u26A1':'zap','\uD83D\uDCF8':'camera','\u22EF':'dots','\uD83D\uDCE5':'inbox','\uD83D\uDCE6':'pack',
+ '\uD83D\uDCCA':'chart','\uD83C\uDFE6':'bank','\uD83D\uDD14':'bell','\uD83C\uDF7D':'food','\uD83C\uDFE2':'build',
+ '\uD83C\uDFE8':'hotel','\uD83C\uDF0D':'globe','\uD83D\uDCC4':'file','\uD83D\uDCC8':'trend','\uD83C\uDFAF':'target',
+ '\uD83D\uDCCB':'clip','\uD83D\uDC64':'user','\uD83D\uDC65':'users','\uD83D\uDD11':'key','\uD83D\uDCB0':'money',
+ '\uD83D\uDEE0':'wrench','\u21BB':'refresh','\uD83D\uDD04':'refresh','\u21A9':'out','\uD83C\uDFA8':'palette',
+ '\uD83D\uDCF2':'phone','\uD83D\uDCF1':'phone','\uD83D\uDD0D':'search','\uD83D\uDCBE':'save','\uD83D\uDCC2':'folder',
+ '\uD83D\uDCE4':'up','\u2B07':'down','\uD83D\uDDBC':'img','\uD83C\uDF05':'sunrise','\uD83C\uDFC6':'trophy',
+ '\uD83C\uDF19':'moon','\u2600':'sun','\uD83D\uDCCD':'pin','\uD83D\uDCE7':'mail','\uD83D\uDCB3':'card',
+ '\uD83D\uDD2E':'spark','\uD83D\uDCAC':'chat','\uD83C\uDFAD':'mask','\u2715':'x','\u274C':'x'};
+var RX=new RegExp('('+Object.keys(MAP).map(function(c){return c.replace(/[.*+?^${}()|[\]\\]/g,'\\$&');}).join('|')+')\uFE0F?','g');
+var SKIP={SCRIPT:1,STYLE:1,TEXTAREA:1,INPUT:1,SELECT:1,OPTION:1,TITLE:1};
+function iconizeIn(root){
+ try{
+  var w=document.createTreeWalker(root,NodeFilter.SHOW_TEXT,{acceptNode:function(n){
+    var p=n.parentNode; if(!p||SKIP[p.nodeName]||(p.closest&&p.closest('svg'))) return NodeFilter.FILTER_REJECT;
+    RX.lastIndex=0; return RX.test(n.nodeValue)?NodeFilter.FILTER_ACCEPT:NodeFilter.FILTER_SKIP;
+  }},false);
+  var nodes=[]; while(w.nextNode()) nodes.push(w.currentNode);
+  nodes.forEach(function(n){
+    var txt=n.nodeValue, frag=document.createDocumentFragment(), last=0, m; RX.lastIndex=0;
+    while((m=RX.exec(txt))!==null){
+      if(m.index>last) frag.appendChild(document.createTextNode(txt.slice(last,m.index)));
+      var sp=document.createElement('span'); sp.innerHTML=window.icon(MAP[m[1]]);
+      frag.appendChild(sp.firstChild); last=RX.lastIndex;
+    }
+    if(last<txt.length) frag.appendChild(document.createTextNode(txt.slice(last)));
+    n.parentNode.replaceChild(frag,n);
+  });
+ }catch(e){}
+}
+window._iconizeAll=function(){ if(typeof _saveOriginals==='function'){try{_saveOriginals();}catch(e){}} iconizeIn(document.body); };
+var _icoT=null;
+function boot(){
+  window._iconizeAll();
+  try{
+    new MutationObserver(function(){ clearTimeout(_icoT); _icoT=setTimeout(function(){ iconizeIn(document.body); },120); })
+      .observe(document.body,{childList:true,subtree:true,characterData:true});
+  }catch(e){}
+}
+if(document.readyState==='loading') document.addEventListener('DOMContentLoaded',function(){ setTimeout(boot,150); });
+else setTimeout(boot,150);
+})();
+</script>
 </body>
 </html>"""
 
