@@ -133,24 +133,30 @@ input:focus{border-color:var(--acc);box-shadow:0 0 0 3px rgba(59,130,246,.18)}
 .foot{display:flex;align-items:center;justify-content:center;gap:7px;margin-top:22px;font-size:11.5px;color:var(--dim)}
 .foot svg{width:13px;height:13px;opacity:.8}
 </style>
-<style id="yve-premium">/*yve-premium-v1*/
+<style id="yve-premium">/*yve-premium-v2*/
+@import url('https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,500;9..144,600;9..144,700&display=swap');
+
+body{background:#06090f;background:linear-gradient(180deg,#0a1322 0%,#06090f 55%,#04060b 100%)}
 body::after{content:'';position:fixed;inset:-25%;z-index:0;pointer-events:none;
- background:radial-gradient(42% 34% at 24% 18%,rgba(59,130,246,.14),transparent 62%),
- radial-gradient(38% 32% at 78% 78%,rgba(139,92,246,.10),transparent 60%);
- animation:yveAurora 22s ease-in-out infinite alternate}
-@keyframes yveAurora{from{transform:translate3d(-2%,-1.5%,0)}to{transform:translate3d(2%,2%,0)}}
+ background:radial-gradient(40% 34% at 22% 16%,rgba(59,130,246,.24),transparent 62%),
+ radial-gradient(36% 30% at 80% 80%,rgba(139,92,246,.18),transparent 60%),
+ radial-gradient(30% 26% at 60% 30%,rgba(34,211,238,.08),transparent 60%);
+ animation:yveAurora 20s ease-in-out infinite alternate}
+@keyframes yveAurora{from{transform:translate3d(-2.5%,-2%,0)}to{transform:translate3d(2.5%,2.5%,0)}}
 .wrap{z-index:1}
-.login-card{background:linear-gradient(168deg,rgba(255,255,255,.065),rgba(255,255,255,.02) 45%,rgba(10,16,28,.55));border:1px solid rgba(255,255,255,.12);backdrop-filter:blur(22px) saturate(1.4);-webkit-backdrop-filter:blur(22px) saturate(1.4);box-shadow:inset 0 1px 0 rgba(255,255,255,.12),0 26px 70px rgba(2,6,18,.6)}
-.login-card::before{content:'';position:absolute;top:0;left:14%;right:14%;height:1px;background:linear-gradient(90deg,transparent,rgba(147,197,253,.9),transparent);animation:yveLine 5s ease-in-out infinite}
-@keyframes yveLine{0%,100%{opacity:.3}50%{opacity:1}}
-input{background:rgba(10,16,28,.55);border-color:rgba(255,255,255,.12);transition:border-color .2s,box-shadow .2s,background .2s}
-input:focus{background:rgba(10,16,28,.75);border-color:rgba(96,165,250,.8);box-shadow:0 0 0 3px rgba(59,130,246,.16),0 0 18px rgba(59,130,246,.12)}
-.btn-login{position:relative;overflow:hidden;transition:transform .2s,box-shadow .25s}
-.btn-login::after{content:'';position:absolute;top:0;bottom:0;left:-70%;width:45%;background:linear-gradient(105deg,transparent,rgba(255,255,255,.35),transparent);transform:skewX(-18deg);transition:left .55s ease;pointer-events:none}
+.login-card{background:linear-gradient(168deg,rgba(255,255,255,.09),rgba(255,255,255,.03) 45%,rgba(6,10,18,.6));border:1px solid rgba(255,255,255,.16);border-radius:24px;backdrop-filter:blur(26px) saturate(1.5);-webkit-backdrop-filter:blur(26px) saturate(1.5);box-shadow:inset 0 1px 0 rgba(255,255,255,.16),0 30px 80px rgba(0,0,0,.65)}
+.login-card::before{content:'';position:absolute;top:0;left:12%;right:12%;height:1px;background:linear-gradient(90deg,transparent,rgba(190,215,255,.95),transparent);animation:yveLine 5s ease-in-out infinite}
+@keyframes yveLine{0%,100%{opacity:.35}50%{opacity:1}}
+.brand-name{font-family:'Fraunces',Georgia,serif;font-weight:600;letter-spacing:0;font-size:27px}
+.heading{font-family:'Fraunces',Georgia,serif;font-weight:600;font-size:18px}
+input{background:rgba(6,10,18,.55);border-color:rgba(255,255,255,.14);border-radius:12px;transition:border-color .2s,box-shadow .2s,background .2s}
+input:focus{background:rgba(6,10,18,.8);border-color:rgba(125,180,255,.85);box-shadow:0 0 0 3px rgba(59,130,246,.18),0 0 22px rgba(59,130,246,.15)}
+.btn-login{position:relative;overflow:hidden;border-radius:999px;transition:transform .2s,box-shadow .25s}
+.btn-login::after{content:'';position:absolute;top:0;bottom:0;left:-70%;width:45%;background:linear-gradient(105deg,transparent,rgba(255,255,255,.4),transparent);transform:skewX(-18deg);transition:left .55s ease;pointer-events:none}
 .btn-login:hover::after{left:135%}
-.chip{background:rgba(255,255,255,.04);border-color:rgba(255,255,255,.1);transition:transform .18s,border-color .18s,box-shadow .18s,background .18s}
-.chip:hover{transform:translateY(-2px);background:rgba(59,130,246,.12);box-shadow:0 8px 22px rgba(2,6,18,.45),0 0 14px rgba(59,130,246,.18)}
-.demo{border-top-color:rgba(255,255,255,.09)}
+.chip{background:rgba(255,255,255,.05);border-color:rgba(255,255,255,.12);border-radius:12px;transition:transform .18s,border-color .18s,box-shadow .18s,background .18s}
+.chip:hover{transform:translateY(-2px);background:rgba(59,130,246,.14);border-color:rgba(125,180,255,.6);box-shadow:0 10px 26px rgba(0,0,0,.5),0 0 18px rgba(59,130,246,.2)}
+.demo{border-top-color:rgba(255,255,255,.1)}
 @media (prefers-reduced-motion:reduce){body::after,.login-card::before{animation:none}}
 </style>
 </head>
