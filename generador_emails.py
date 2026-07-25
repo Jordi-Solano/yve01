@@ -185,6 +185,61 @@ def generar_email_claude(prompt: str) -> str:
     return mensaje.content[0].text.strip()
 
 
+def generar_reclamacion_ota(fila, idioma="es"):
+    """Redacta el email de reclamación de comisión OTA. Devuelve {'asunto':.., 'cuerpo':..}.
+    Tono firme y profesional, HUMANO (lo lee una persona de la OTA), con cifras exactas y
+    petición clara de devolución. No suena a plantilla ni agresivo."""
+    import json as _json
+    g = lambda k, d="": fila.get(k, d)
+    ota = g("nombre_ota") or "la OTA"
+    num = g("numero_factura")
+    reserva = g("numero_reserva")
+    hotel = g("nombre_hotel")
+    periodo = (str(g("periodo_inicio")) + " - " + str(g("periodo_fin"))).strip(" -")
+    bruto = g("importe_bruto"); pct_pactado = g("porcentaje_pactado")
+    pct_cobrado = g("porcentaje_factura"); dif_pp = g("diferencia_pp")
+    a_devolver = g("discrepancia_euros")
+    idiomas = {"es":"espanol","en":"ingles","ca":"catalan","fr":"frances","de":"aleman","it":"italiano","pt":"portugues"}
+    idioma_nombre = idiomas.get(str(idioma).lower(), "espanol")
+    _res = (" - Reserva: " + str(reserva)) if (reserva and reserva != NF) else ""
+    prompt = f"""Eres el/la controller financiero de un hotel y escribes a {ota} para reclamar una comision mal aplicada.
+
+DATOS EXACTOS (usalos tal cual, no inventes ni redondees):
+- Factura de la OTA: {num}{_res}
+- Hotel: {hotel}
+- Periodo: {periodo}
+- Importe bruto de las reservas: {bruto} EUR
+- Comision pactada en contrato: {pct_pactado} %
+- Comision aplicada por {ota}: {pct_cobrado} %
+- Diferencia: {dif_pp} puntos porcentuales
+- Importe cobrado de mas, a devolver: {a_devolver} EUR
+
+TONO Y ESTILO (IMPORTANTE, lo lee una PERSONA del equipo de {ota}):
+- Humano y profesional. Firme pero cordial. Nada agresivo, sin amenazas, sin sonar a plantilla ni a robot.
+- Ve al grano: expon la discrepancia con los numeros exactos y pide de forma clara la regularizacion/abono de {a_devolver} EUR.
+- Cierra ofreciendote a aclarar dudas y a facilitar la copia del contrato con la comision pactada.
+- Escribe TODO en {idioma_nombre}.
+- Para la firma usa marcadores [Nombre] y [Hotel] (no inventes datos personales).
+
+Devuelve el email EXACTAMENTE en este formato, sin nada mas antes ni despues:
+ASUNTO: <asunto en una sola linea>
+
+<cuerpo del email, puede ocupar varias lineas>"""
+    txt = generar_email_claude(prompt).strip()
+    asunto = ""; cuerpo = ""
+    _lines = txt.split("\n")
+    for _idx, _ln in enumerate(_lines):
+        if _ln.strip().lower().startswith("asunto:"):
+            asunto = _ln.split(":", 1)[1].strip()
+            cuerpo = "\n".join(_lines[_idx + 1:]).strip()
+            break
+    if not asunto:
+        cuerpo = txt
+        asunto = f"Discrepancia en comision - factura {num} ({ota})"
+    cuerpo = re.sub(r"^\s*(cuerpo|body)\s*:\s*", "", cuerpo, flags=re.I).strip()
+    return {"asunto": asunto, "cuerpo": cuerpo}
+
+
 def construir_archivo_email(fila: pd.Series, cuerpo: str, tipos: list[str], contacto_ota: str) -> str:
     """Construye el contenido completo del archivo .txt con cabecera y cuerpo."""
     ota         = fila.get("nombre_ota", NF)

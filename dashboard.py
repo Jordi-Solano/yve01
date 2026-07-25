@@ -132,6 +132,7 @@ from app_aprobacion_ap import bp as aprob_ap_bp
 from app_conciliacion import bp as concil_bp
 from tab_fb_dashboard import fb_bp
 from tab_ar_real import ar_real_bp
+from reclamaciones_ota import recl_ota_bp
 from oracle_export_dryrun import oracle_export_bp
 from pricing import pricing_bp
 from tab_multi_hotel import multi_hotel_bp
@@ -151,7 +152,7 @@ from legal import legal_bp
 from signup import signup_bp
 from about import about_bp
 from exportador_pdf import pdf_bp
-for _bp in (auth_bp, config_bp, admin_bp, aprob_ar_bp, aprob_ap_bp, concil_bp, fb_bp, ar_real_bp, multi_hotel_bp, self_service_bp, exportador_bp, demo_bp, demo_sim_bp, reportes_pdf_bp, blog_bp, billing_bp, asientos_bp, signup_bp, about_bp, pdf_bp, legal_bp):
+for _bp in (auth_bp, config_bp, admin_bp, aprob_ar_bp, aprob_ap_bp, concil_bp, fb_bp, ar_real_bp, recl_ota_bp, multi_hotel_bp, self_service_bp, exportador_bp, demo_bp, demo_sim_bp, reportes_pdf_bp, blog_bp, billing_bp, asientos_bp, signup_bp, about_bp, pdf_bp, legal_bp):
     app.register_blueprint(_bp)
 
 _pipeline_running = False
@@ -3848,6 +3849,22 @@ svg.yvi{width:1em;height:1em;vertical-align:-0.125em;flex-shrink:0;display:inlin
     </div>
   </div>
 
+    <!-- ── Reclamaciones OTA (loop de reclamación automática) ── -->
+    <div id="ar-recl-section" style="margin-top:24px">
+      <div style="display:flex;align-items:center;justify-content:space-between;gap:8px;margin-bottom:12px;flex-wrap:wrap">
+        <div style="display:flex;align-items:center;gap:8px">
+          <div style="font-size:13px;font-weight:700;letter-spacing:.2px">&#128257; Reclamaciones OTA pendientes de aprobar</div>
+          <span data-tip="Yve detecta comisiones cobradas por encima del contrato, redacta el email con IA y lo deja listo para que lo apruebes y env&iacute;es. Nada se env&iacute;a sin tu OK." style="cursor:help;color:var(--dim);font-size:12px">&#9432;</span>
+        </div>
+        <div id="ar-recl-resumen" style="font-size:12px;color:var(--mut)"></div>
+      </div>
+      <div id="ar-recl-list" style="display:flex;flex-direction:column;gap:12px">
+        <div class="empty" style="padding:20px;text-align:center;color:var(--dim);font-size:12px;border:1px dashed var(--s2);border-radius:12px">
+          Cuando Yve detecte comisiones cobradas por encima del contrato, aparecer&aacute;n aqu&iacute; para reclamar.
+        </div>
+      </div>
+    </div>
+
   </div><!-- /panel-ar -->
 
   <!-- PANEL AP -->
@@ -4586,6 +4603,7 @@ async function loadAll() {
     // AP — siempre recargar
     if (typeof cargarStatsAP === 'function') cargarStatsAP();
     if (typeof cargarFacturasAP === 'function') cargarFacturasAP();
+    if (typeof cargarReclamacionesOTA === 'function') cargarReclamacionesOTA();
     // Tab activo extra
     var activePanel = document.querySelector('.panel.active');
     if (activePanel) {
@@ -7509,6 +7527,88 @@ function _postJson(url, body) {
     headers: {'Content-Type': 'application/json', 'X-CSRF-Token': _csrfToken},
     body: JSON.stringify(body || {})
   });
+}
+
+// ── Reclamaciones OTA (loop dato -> IA -> gate humano -> envío -> registro) ──
+var _reclItems = [];
+function _reclMoney(v){ return '€' + (Number(v)||0).toLocaleString('es-ES',{minimumFractionDigits:2}); }
+function _reclEsc(s){ return String(s==null?'':s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;'); }
+async function cargarReclamacionesOTA(){
+  var wrap = document.getElementById('ar-recl-list');
+  var resumen = document.getElementById('ar-recl-resumen');
+  if (!wrap) return;
+  try {
+    var r = await fetch('/api/reclamaciones_ota/list');
+    var d = await r.json();
+    _reclItems = (d && d.items) || [];
+    if (resumen) resumen.textContent = (d && d.n_pendientes) ? (d.n_pendientes + ' pendiente(s) · ' + _reclMoney(d.total_reclamable) + ' reclamable') : '';
+    if (!_reclItems.length) return; // deja el mensaje por defecto
+    wrap.innerHTML = _reclItems.map(function(it,i){ return _reclCard(it,i); }).join('');
+  } catch(e) {}
+}
+function _reclCard(it, i){
+  var badge, bg, col;
+  if (it.estado==='ENVIADA'){ badge='✓ Enviada'; bg='rgba(34,197,94,.12)'; col='#22c55e'; }
+  else if (it.estado==='DESCARTADA'){ badge='Descartada'; bg='rgba(148,163,184,.12)'; col='var(--mut)'; }
+  else { badge='Pendiente'; bg='rgba(245,158,11,.12)'; col='#f59e0b'; }
+  var head = '<div style="display:flex;align-items:center;justify-content:space-between;gap:8px;flex-wrap:wrap;margin-bottom:8px">' +
+    '<div style="min-width:0"><div style="font-weight:700;font-size:13px">' + _reclEsc(it.ota||'OTA') + ' · factura ' + _reclEsc(it.numero_factura||'') + '</div>' +
+    '<div style="font-size:11px;color:var(--dim)">Cobrado ' + (it.comision_cobrada!=null?it.comision_cobrada+'%':'—') + ' vs contrato ' + (it.comision_contrato!=null?it.comision_contrato+'%':'—') +
+      ' · a devolver <b style="color:#f87171">' + _reclMoney(it.importe_reclamable) + '</b></div></div>' +
+    '<span style="font-size:11px;font-weight:700;padding:3px 10px;border-radius:20px;background:'+bg+';color:'+col+'">'+badge+'</span></div>';
+  if (it.estado==='ENVIADA'){
+    return '<div style="border:1px solid var(--s2);border-radius:12px;padding:12px;background:var(--s1);opacity:.85">' + head +
+      '<div style="font-size:12px;color:var(--mut)">Enviada a ' + _reclEsc(it.destinatario) + ' · ' + _reclEsc(it.fecha_enviada) + '</div></div>';
+  }
+  if (it.estado==='DESCARTADA'){
+    return '<div style="border:1px solid var(--s2);border-radius:12px;padding:12px;background:var(--s1);opacity:.55">' + head + '</div>';
+  }
+  var body;
+  if (!it.tiene_borrador){
+    body = '<button onclick="_reclGenerar('+i+',this)" class="btn-run" style="font-size:12px">✍️ Redactar con IA</button>';
+  } else {
+    body = '<div style="display:flex;flex-direction:column;gap:8px">' +
+      '<label style="font-size:10px;color:var(--mut);text-transform:uppercase;letter-spacing:.4px">Enviar a</label>' +
+      '<input id="recl-dest-'+i+'" value="'+_reclEsc(it.destinatario)+'" placeholder="email de la OTA" style="background:var(--bg);border:1px solid var(--s2);color:var(--tx);padding:8px;border-radius:8px;font-size:12px">' +
+      '<input id="recl-asunto-'+i+'" value="'+_reclEsc(it.asunto)+'" style="background:var(--bg);border:1px solid var(--s2);color:var(--tx);padding:8px;border-radius:8px;font-size:12px;font-weight:600">' +
+      '<textarea id="recl-cuerpo-'+i+'" rows="8" style="background:var(--bg);border:1px solid var(--s2);color:var(--tx);padding:8px;border-radius:8px;font-size:12px;font-family:inherit;line-height:1.5;resize:vertical">'+_reclEsc(it.cuerpo)+'</textarea>' +
+      '<div style="display:flex;gap:8px;flex-wrap:wrap">' +
+        '<button onclick="_reclEnviar('+i+',this)" class="btn-run" style="font-size:12px">✅ Aprobar y enviar</button>' +
+        '<button onclick="_reclGenerar('+i+',this)" class="btn-ref" style="font-size:12px">🔄 Regenerar</button>' +
+        '<button onclick="_reclDescartar('+i+')" class="btn-ref" style="font-size:12px">🗑 Descartar</button>' +
+      '</div></div>';
+  }
+  return '<div style="border:1px solid var(--s2);border-radius:12px;padding:12px;background:var(--s1)">' + head + body + '</div>';
+}
+async function _reclGenerar(i, btn){
+  var it=_reclItems[i]; if(!it) return;
+  if(btn){ btn.disabled=true; btn.textContent='✍️ Redactando…'; }
+  try {
+    var r = await _postJson('/api/reclamaciones_ota/generar', {id: it.id, idioma:'es'});
+    var d = await r.json();
+    if (d && d.ok){ it.asunto=d.asunto; it.cuerpo=d.cuerpo; it.tiene_borrador=true; cargarReclamacionesOTA(); }
+    else { showNotification('✗ ' + ((d&&d.error)||'No se pudo redactar'), 'error'); if(btn){btn.disabled=false;btn.textContent='✍️ Redactar con IA';} }
+  } catch(e){ showNotification('✗ '+e.message,'error'); if(btn){btn.disabled=false;btn.textContent='✍️ Redactar con IA';} }
+}
+async function _reclEnviar(i, btn){
+  var it=_reclItems[i]; if(!it) return;
+  var dest=(document.getElementById('recl-dest-'+i)||{}).value||'';
+  var asunto=(document.getElementById('recl-asunto-'+i)||{}).value||'';
+  var cuerpo=(document.getElementById('recl-cuerpo-'+i)||{}).value||'';
+  if(!dest || dest.indexOf('@')<0){ showNotification('Introduce un email de destino válido','error'); return; }
+  if(!confirm('¿Enviar la reclamación a '+dest+'?')) return;
+  if(btn){ btn.disabled=true; btn.textContent='Enviando…'; }
+  try {
+    var r = await _postJson('/api/reclamaciones_ota/aprobar_enviar', {id: it.id, destinatario: dest, asunto: asunto, cuerpo: cuerpo});
+    var d = await r.json();
+    if (d && d.ok){ showNotification('✓ Reclamación enviada a '+dest,'success'); cargarReclamacionesOTA(); }
+    else { showNotification('✗ '+((d&&d.error)||'No se pudo enviar'),'error'); if(btn){btn.disabled=false;btn.textContent='✅ Aprobar y enviar';} }
+  } catch(e){ showNotification('✗ '+e.message,'error'); if(btn){btn.disabled=false;btn.textContent='✅ Aprobar y enviar';} }
+}
+async function _reclDescartar(i){
+  var it=_reclItems[i]; if(!it) return;
+  if(!confirm('¿Descartar esta reclamación? No se enviará ningún email.')) return;
+  try { await _postJson('/api/reclamaciones_ota/descartar', {id: it.id}); cargarReclamacionesOTA(); } catch(e){}
 }
 // ─────────────────────────────────────────────────────────────────────────────
 
