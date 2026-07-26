@@ -652,6 +652,31 @@ _BANK_COL_MAP = {
     'saldo': ['balance', 'saldo_final'],
 }
 
+# Facturas de comision OTA -> esquema que lee verificador_comisiones.py
+# (el mismo que produce lector_ota.py en facturas_procesadas_*.xlsx)
+_OTA_COL_MAP = {
+    'numero_factura': ['num_factura', 'invoice', 'invoice_number', 'numero', 'factura', 'n_factura', 'nº_factura'],
+    'nombre_ota': ['ota', 'plataforma', 'canal', 'portal', 'agencia'],
+    'nombre_hotel': ['hotel', 'establecimiento', 'propiedad', 'property'],
+    'fecha': ['fecha_factura', 'date', 'invoice_date'],
+    'periodo_inicio': ['inicio', 'desde', 'fecha_inicio', 'periodo_desde', 'from'],
+    'periodo_fin': ['fin', 'hasta', 'fecha_fin', 'periodo_hasta', 'to'],
+    'importe_bruto': ['bruto', 'importe', 'base', 'reservas', 'gross', 'importe_reservas'],
+    'porcentaje_comision': ['porcentaje_factura', 'porcentaje', 'comision_pct', 'pct_comision',
+                            'rate', 'commission_rate', 'porcentaje_aplicado', 'comision_porcentaje'],
+    'importe_comision': ['comision', 'commission', 'comision_eur', 'importe_comision_factura'],
+    'importe_neto': ['neto', 'a_pagar', 'net', 'importe_a_pagar', 'net_payout'],
+}
+
+# Tarifas pactadas -> esquema de datos-referencia/comisiones_pactadas.xlsx
+# OJO: las columnas van en Mayuscula porque asi las lee verificador_comisiones.
+_PACT_COL_MAP = {
+    'OTA': ['ota', 'nombre_ota', 'plataforma', 'canal', 'portal', 'agencia'],
+    'Porcentaje_Comision': ['porcentaje_pactado', 'porcentaje', 'comision_pactada',
+                            'pct_pactado', 'porcentaje_comision', 'rate', 'comision'],
+    'Mercado': ['mercado', 'market', 'zona', 'ambito', 'region'],
+}
+
 def _hoja_a_texto(fpath, max_filas=200, max_chars=8000):
     """Vuelca una hoja de calculo a texto plano para que la IA pueda clasificarla.
 
@@ -738,11 +763,101 @@ def _enrutar_tipo_doc(reg, fname):
             _msg = f'✓ F&B {fname}: ventas — €{total} (detalle no integrable: {str(_efb2)[:40]})'
         _marca = 'FB_OK'
     elif _tipo_doc == 'COMISIONES_OTA':
+        # Antes esta rama SOLO imprimia un mensaje: el dato se perdia y el
+        # verificador de comisiones no tenia nada que cruzar. Ahora escribe en
+        # facturas_procesadas_*.xlsx, que es de donde lee verificador_comisiones.
         ota = reg.get('ota', '?')
         comision = reg.get('comision', 0)
-        _msg = f'✓ AR {fname}: comisiones {ota} detectadas por IA — €{comision}'
-        _marca = 'AR_OK'
-        _flags['has_ar'] = True
+        try:
+            _NFO = 'NO_ENCONTRADO'
+            _facts = reg.get('facturas') or []
+            if _facts:
+                _df_ota = _normalize_cols(pd.DataFrame(_facts), _OTA_COL_MAP)
+            else:
+                # La IA solo dio el agregado: una fila con lo que haya
+                _df_ota = pd.DataFrame([{
+                    'numero_factura': reg.get('numero_factura'),
+                    'periodo_inicio': reg.get('periodo'),
+                    'importe_bruto': reg.get('importe_bruto'),
+                    'porcentaje_comision': reg.get('porcentaje'),
+                    'importe_comision': comision,
+                }])
+            _df_ota['archivo'] = fname
+            if 'nombre_ota' not in _df_ota.columns:
+                _df_ota['nombre_ota'] = ota
+            _df_ota['nombre_ota'] = _df_ota['nombre_ota'].astype(object).fillna(ota)
+            # El verificador espera estas columnas; las que falten, NO_ENCONTRADO
+            for _c in ('numero_factura', 'fecha', 'nombre_hotel', 'periodo_inicio',
+                       'periodo_fin', 'importe_bruto', 'porcentaje_comision',
+                       'importe_comision', 'importe_neto'):
+                if _c not in _df_ota.columns:
+                    _df_ota[_c] = _NFO
+            _df_ota = _df_ota.astype(object).fillna(_NFO)
+            _ota_xlsx = os.path.join(_pdir(), f'facturas_procesadas_{date.today().strftime("%Y%m%d")}.xlsx')
+            if os.path.exists(_ota_xlsx):
+                _df_prev = pd.read_excel(_ota_xlsx)
+                _df_ota = pd.concat([_df_prev, _df_ota], ignore_index=True)
+                if 'numero_factura' in _df_ota.columns:
+                    _df_ota.drop_duplicates(subset=['archivo', 'numero_factura'],
+                                            keep='last', inplace=True)
+            os.makedirs(_pdir(), exist_ok=True)
+            _df_ota.to_excel(_ota_xlsx, index=False)
+            _n_f = len(_facts) if _facts else 1
+            _com_txt = f'{float(comision):,.2f}' if isinstance(comision, (int, float)) else str(comision or '—')
+            _msg = f'✓ AR {fname}: {_n_f} factura(s) de {ota} — €{_com_txt} en comisiones, guardadas para verificar'
+            _marca = 'AR_OK'
+            _flags['has_ar'] = True
+        except Exception as _eota:
+            _msg = f'⚠ {fname}: comisiones {ota} detectadas pero no se pudieron guardar — {str(_eota)[:60]}'
+            _marca = 'SKIP'
+    elif _tipo_doc == 'CONTRATO_OTA':
+        # Tarifas PACTADAS con la OTA -> comisiones_pactadas.xlsx. Es el otro
+        # lado del cruce: sin esto el verificador no sabe que porcentaje deberia
+        # haberse aplicado. NO va a facturas: aqui no hay nada devengado.
+        ota = reg.get('ota', '?')
+        try:
+            _tarifas = reg.get('tarifas') or []
+            if _tarifas:
+                _df_p = _normalize_cols(pd.DataFrame(_tarifas), _PACT_COL_MAP)
+            else:
+                _df_p = pd.DataFrame([{'Porcentaje_Comision': reg.get('porcentaje_pactado',
+                                                                      reg.get('porcentaje'))}])
+            if 'OTA' not in _df_p.columns:
+                _df_p['OTA'] = ota
+            _df_p['OTA'] = _df_p['OTA'].astype(object).fillna(ota)
+            if 'Mercado' not in _df_p.columns:
+                _df_p['Mercado'] = None
+            _df_p = _df_p[['OTA', 'Porcentaje_Comision', 'Mercado']]
+            _df_p = _df_p[_df_p['Porcentaje_Comision'].notna()]
+            _n_t = len(_df_p)
+            _pact_path = os.path.join(_ddir(), 'comisiones_pactadas.xlsx')
+            if os.path.exists(_pact_path):
+                _df_old_p = pd.read_excel(_pact_path)
+                # Si la nueva fila no trae Mercado, conservar el que ya habia
+                # para esa OTA en vez de dejarlo en blanco.
+                _merc = {str(r['OTA']).strip().lower(): r.get('Mercado')
+                         for _, r in _df_old_p.iterrows() if str(r.get('OTA', '')).strip()}
+                _df_p['Mercado'] = [
+                    m if (m is not None and str(m).strip() and str(m) != 'nan')
+                    else _merc.get(str(o).strip().lower(), 'NO_ENCONTRADO')
+                    for o, m in zip(_df_p['OTA'], _df_p['Mercado'])]
+                _df_p = pd.concat([_df_old_p, _df_p], ignore_index=True)
+            else:
+                _df_p['Mercado'] = _df_p['Mercado'].astype(object).fillna('NO_ENCONTRADO')
+            # El verificador casa por OTA y coge la PRIMERA fila -> una por OTA
+            _df_p['_k'] = _df_p['OTA'].astype(str).str.strip().str.lower()
+            _df_p.drop_duplicates(subset=['_k'], keep='last', inplace=True)
+            _df_p = _df_p.drop(columns=['_k'])
+            _df_p.to_excel(_pact_path, index=False)
+            _pcts = ', '.join(f'{r["OTA"]} {r["Porcentaje_Comision"]}%' for _, r in _df_p.iterrows()
+                              if str(r['OTA']).strip().lower() == str(ota).strip().lower())
+            _msg = f'✓ Contrato OTA {fname}: {_n_t} tarifa(s) pactada(s) de {ota} ({_pcts or "—"}) guardadas'
+            _marca = 'CONTRATO_OTA_OK'
+            # Cambiar lo pactado obliga a re-verificar las facturas ya cargadas
+            _flags['has_ar'] = True
+        except Exception as _epact:
+            _msg = f'⚠ {fname}: contrato de {ota} detectado pero no se pudo guardar — {str(_epact)[:60]}'
+            _marca = 'SKIP'
     elif _tipo_doc == 'INVENTARIO':
         # Integrar datos de inventario en F&B
         try:
@@ -1259,6 +1374,8 @@ def api_procesar_batch_stream():
             parts = []
             if ap_n: parts.append(f'{ap_n} facturas AP')
             if ar_n: parts.append(f'{ar_n} informes OTA')
+            pact_n = sum(1 for v in lote.values() if v.get('resultado') == 'CONTRATO_OTA_OK')
+            if pact_n: parts.append(f'{pact_n} contratos OTA')
             if drr_n: parts.append(f'{drr_n} DRR')
             if bank_n: parts.append(f'{bank_n} banco')
             if fb_n: parts.append(f'{fb_n} F&B')
@@ -1798,6 +1915,7 @@ def api_historial_procesado():
         tab = '—'
         if resultado in ('AP_OK',): tab = 'AP — Proveedores'
         elif resultado in ('AR_OK',): tab = 'AR — OTAs'
+        elif resultado in ('CONTRATO_OTA_OK',): tab = 'AR — OTAs (tarifas pactadas)'
         elif resultado in ('DRR_OK',): tab = 'DRR'
         elif resultado in ('BANK_OK',): tab = 'Banco'
         elif resultado in ('FB_OK',): tab = 'F&B Cost'

@@ -171,7 +171,11 @@ CLASIFICACIÓN — Lee TODO el contenido antes de decidir:
 • Pérdidas/mermas/desperdicios con costes → MERMAS
 • Ventas de restaurante/platos vendidos/tickets TPV → VENTAS_POS
 • Movimientos bancarios con fechas, importes y saldos → EXTRACTO_BANCO
-• Comisiones de Booking/Expedia/OTA con % → COMISIONES_OTA
+• Comisiones que una OTA (Booking/Expedia...) TE FACTURA, con nº de factura,
+  periodo facturado e importes ya devengados → COMISIONES_OTA
+• Tarifas de comisión PACTADAS con una OTA (contrato, acuerdo, anexo de
+  condiciones): porcentajes y vigencia, SIN nº de factura ni importes
+  facturados → CONTRATO_OTA. Ojo: esto NO es una factura, es lo acordado.
 • Lista de habitaciones/huéspedes de un grupo → ROOMING
 • Número de factura + proveedor + IVA/VAT + total → FACTURA
 • Depósito/anticipo/proforma con importe → FACTURA
@@ -197,8 +201,11 @@ VENTAS_POS:
 EXTRACTO_BANCO:
 {"tipo_documento":"EXTRACTO_BANCO","movimientos":[{"fecha":"DD/MM/YYYY","concepto":"descripción","importe":0.0,"saldo":0.0}]}
 
-COMISIONES_OTA:
-{"tipo_documento":"COMISIONES_OTA","ota":"nombre","periodo":"mes/año","importe_bruto":0.0,"comision":0.0,"porcentaje":0.0}
+COMISIONES_OTA (una entrada en "facturas" por CADA factura/hotel que veas):
+{"tipo_documento":"COMISIONES_OTA","ota":"nombre","periodo":"mes/año","importe_bruto":0.0,"comision":0.0,"porcentaje":0.0,"facturas":[{"numero_factura":"X","nombre_hotel":"X","fecha":"DD/MM/YYYY","periodo_inicio":"DD/MM/YYYY","periodo_fin":"DD/MM/YYYY","importe_bruto":0.0,"porcentaje_comision":0.0,"importe_comision":0.0,"importe_neto":0.0}]}
+
+CONTRATO_OTA (una entrada en "tarifas" por CADA hotel/mercado pactado):
+{"tipo_documento":"CONTRATO_OTA","ota":"nombre","tarifas":[{"nombre_hotel":"X","porcentaje_pactado":0.0,"mercado":"Nacional|Internacional|...","vigencia_inicio":"DD/MM/YYYY","vigencia_fin":"DD/MM/YYYY"}]}
 
 ROOMING:
 {"tipo_documento":"ROOMING","grupo":"nombre","num_habitaciones":0,"checkin":"DD/MM/YYYY","checkout":"DD/MM/YYYY","tarifa_media":0.0}
@@ -221,6 +228,8 @@ REGLAS:
 - IVA 0% intracomunitaria: base=total, iva=0, cuota=0
 - Extrae TODOS los items/movimientos/platos que veas, no solo los primeros
 - Si no encuentras un campo → null. NUNCA inventes datos
+- Un % de comisión NO convierte un documento en factura: sin nº de factura
+  ni importes facturados, es CONTRATO_OTA, no COMISIONES_OTA
 - Responde SOLO con JSON, sin markdown, sin explicaciones, sin ```
 
 """ + f"ARCHIVO: {nombre_archivo}\nTEXTO:\n{texto[:max_chars]}"
