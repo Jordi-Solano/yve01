@@ -652,6 +652,39 @@ _BANK_COL_MAP = {
     'saldo': ['balance', 'saldo_final'],
 }
 
+def _hoja_a_texto(fpath, max_filas=200, max_chars=8000):
+    """Vuelca una hoja de calculo a texto plano para que la IA pueda clasificarla.
+
+    Lee TODAS las hojas de un xlsx/xlsm (no solo la primera) y las concatena en
+    CSV, que es lo mas compacto y legible para el modelo. Recorta a max_filas por
+    hoja y max_chars en total. Devuelve '' si no se puede leer: quien llama debe
+    tratar la cadena vacia como "no clasificable".
+    """
+    try:
+        ext = os.path.splitext(fpath)[1].lower()
+        partes = []
+        if ext == '.csv':
+            try:
+                # sep=None deja que pandas olfatee el separador (los CSV
+                # espanoles suelen venir con ';' en vez de ',')
+                _df = pd.read_csv(fpath, nrows=max_filas, dtype=str,
+                                  keep_default_na=False, sep=None, engine='python')
+            except Exception:
+                _df = pd.read_csv(fpath, nrows=max_filas, dtype=str, keep_default_na=False)
+            partes.append(_df.to_csv(index=False))
+        else:
+            _xl = pd.ExcelFile(fpath)
+            for _hoja in _xl.sheet_names[:10]:
+                _df = _xl.parse(_hoja, nrows=max_filas, dtype=str)
+                if _df.empty:
+                    continue
+                partes.append(f'--- hoja: {_hoja} ---\n' + _df.to_csv(index=False))
+        return '\n'.join(partes).strip()[:max_chars]
+    except Exception as _ehoja:
+        print(f'[_hoja_a_texto] {os.path.basename(fpath)}: {_ehoja}')
+        return ''
+
+
 def _enrutar_tipo_doc(reg, fname):
     """Enruta un documento YA clasificado (reg['tipo_documento']) al modulo que toca.
 
@@ -1050,12 +1083,34 @@ def api_procesar_batch_stream():
                         _mark(fname, 'ROOMING')
                         continue
 
-                    # Guarda: archivos no-PDF que no encajaron en banco/fb/drr/inventario
-                    # NO deben ir a pdfplumber (crashea con 'No /Root object')
+                    # Hojas de calculo que no encajaron por nombre en banco/fb/drr/
+                    # inventario. NO pueden ir a pdfplumber (crashea con 'No /Root
+                    # object'), pero antes de rendirse se las lee y las clasifica la
+                    # IA: es la misma oportunidad que tiene cualquier PDF. Sin esto,
+                    # TODA hoja sin keyword reconocible acababa omitida sin abrirse.
                     _ext_check = os.path.splitext(fname)[1].lower()
                     if _ext_check in ('.xlsx', '.xls', '.xlsm', '.csv'):
-                        yield f'data: ⚠ {fname}: hoja de cálculo sin clasificar — revisar manualmente\n\n'
-                        _mark(fname, 'SKIP')
+                        _txt_hoja = _hoja_a_texto(fpath)
+                        _reg_hoja = None
+                        if _txt_hoja:
+                            yield f'data: >> {fname}: sin keyword reconocible — lo lee la IA...\n\n'
+                            yield ': ping\n\n'
+                            try:
+                                from lector_facturas_ap import extraer_con_claude as _eclaude
+                                _reg_hoja = _eclaude(_txt_hoja, fname)
+                            except Exception as _eia:
+                                yield f'data: ⚠ {fname}: la IA no pudo leerlo — {str(_eia)[:60]}\n\n'
+                                _reg_hoja = None
+                        if (isinstance(_reg_hoja, dict) and _reg_hoja.get('tipo_documento')
+                                and not _reg_hoja.get('_skip')):
+                            _msg, _marca, _flags = _enrutar_tipo_doc(_reg_hoja, fname)
+                            yield f'data: {_msg}\n\n'
+                            _mark(fname, _marca)
+                            if _flags.get('has_ar'):
+                                has_ar = True
+                        else:
+                            yield f'data: ⚠ {fname}: hoja de cálculo sin clasificar — revisar manualmente\n\n'
+                            _mark(fname, 'SKIP')
                         continue
 
                     if is_ar:
