@@ -185,7 +185,7 @@ def generar_email_claude(prompt: str) -> str:
     return mensaje.content[0].text.strip()
 
 
-def generar_reclamacion_ota(fila, idioma="es"):
+def generar_reclamacion_ota(fila, idioma="es", firma_nombre="", firma_entidad=""):
     """Redacta el email de reclamación de comisión OTA. Devuelve {'asunto':.., 'cuerpo':..}.
     Tono firme y profesional, HUMANO (lo lee una persona de la OTA), con cifras exactas y
     petición clara de devolución. No suena a plantilla ni agresivo."""
@@ -220,6 +220,25 @@ def generar_reclamacion_ota(fila, idioma="es"):
     bruto = g("importe_bruto"); pct_pactado = g("porcentaje_pactado")
     pct_cobrado = g("porcentaje_factura"); dif_pp = g("diferencia_pp")
     a_devolver = g("discrepancia_euros")
+    # ── Firma ──────────────────────────────────────────────────────────────
+    # Se rellena con el usuario LOGUEADO y con su hotel/grupo (los resuelve
+    # reclamaciones_ota._firmante). Lo que no se sepa se queda como marcador
+    # visible en el borrador para que el controller lo complete: mejor un hueco
+    # que un dato inventado o el usuario de login.
+    _fn = str(firma_nombre or "").strip()
+    _fe = str(firma_entidad or "").strip()
+    if _fn and _fe:
+        _firma = ("- Cierra con esta firma EXACTA, en dos lineas y sin anadir cargos ni\n"
+                  "  datos de contacto:\n    " + _fn + "\n    " + _fe)
+    elif _fn:
+        _firma = ("- Cierra firmando unicamente con este nombre, tal cual, sin anadir\n"
+                  "  hotel ni cargo:\n    " + _fn)
+    elif _fe:
+        _firma = ("- Cierra con la firma en dos lineas: deja [Nombre] literal en la primera\n"
+                  "  (lo rellena una persona) y debajo:\n    " + _fe)
+    else:
+        _firma = "- Para la firma usa los marcadores [Nombre] y [Hotel] (no inventes datos personales)."
+
     idiomas = {"es":"espanol","en":"ingles","ca":"catalan","fr":"frances","de":"aleman","it":"italiano","pt":"portugues"}
     idioma_nombre = idiomas.get(str(idioma).lower(), "espanol")
     _res = (" - Reserva: " + str(reserva)) if (reserva and reserva != NF) else ""
@@ -240,7 +259,7 @@ TONO Y ESTILO (IMPORTANTE, lo lee una PERSONA del equipo de {ota}):
 - Ve al grano: expon la discrepancia con los numeros exactos y pide de forma clara la regularizacion/abono de {a_devolver} EUR.
 - Cierra ofreciendote a aclarar dudas y a facilitar la copia del contrato con la comision pactada.
 - Escribe TODO en {idioma_nombre}.
-- Para la firma usa marcadores [Nombre] y [Hotel] (no inventes datos personales).
+{_firma}
 
 Devuelve el email EXACTAMENTE en este formato, sin nada mas antes ni despues:
 ASUNTO: <asunto en una sola linea>

@@ -109,6 +109,68 @@ def _ultimo_reporte():
     return files[0] if files else None
 
 
+def _norm_txt(x):
+    """Texto normalizado para comparar (sin acentos, minusculas)."""
+    import unicodedata as _u
+    x = _u.normalize("NFKD", str(x or "").lower())
+    return " ".join("".join(c for c in x if c.isalnum() or c.isspace()).split())
+
+
+def _firmante():
+    """(nombre, entidad) con los que firmar el email. SOLO afecta a la FIRMA:
+    no toca el calculo de la reclamacion ni el pipeline de datos.
+
+    nombre  = el del usuario LOGUEADO en este momento (el que redacta y aprueba).
+              Si no tiene Nombre guardado se devuelve vacio a proposito: se deja
+              el marcador [Nombre] para que lo rellene, porque firmar un correo
+              a una OTA con el usuario de login ("auditor") queda peor que un hueco.
+    entidad = el GRUPO si el tenant tiene 2+ hoteles; el HOTEL si tiene 1.
+              La firma dice QUIEN escribe, no de que va el email -- el cuerpo ya
+              nombra el hotel de la factura. En un grupo, quien reclama es la
+              central (el contrato de comision es suyo), asi que firmar como una
+              sola propiedad seria incorrecto.
+    """
+    try:
+        from flask_login import current_user
+        nombre = (getattr(current_user, "nombre", "") or "").strip()
+    except Exception:
+        nombre = ""
+
+    hoteles = []
+    try:
+        with open(os.path.join(_ddir(), "hoteles.json"), encoding="utf-8") as f:
+            hoteles = json.load(f)
+    except Exception:
+        hoteles = []
+    activos = [h for h in hoteles
+               if isinstance(h, dict) and str(h.get("nombre") or "").strip()
+               and h.get("activo", True)]
+
+    entidad = ""
+    if len(activos) >= 2:
+        grupos = {str(h.get("grupo") or "").strip() for h in activos
+                  if str(h.get("grupo") or "").strip()}
+        # Un solo grupo -> se firma con el. Varios grupos en un mismo tenant
+        # (una gestoria con varias cadenas) -> no se elige uno al azar.
+        entidad = list(grupos)[0] if len(grupos) == 1 else ""
+    elif len(activos) == 1:
+        entidad = str(activos[0].get("nombre") or "").strip()
+
+    if not entidad:
+        try:
+            with open(os.path.join(_ddir(), "hotel_config.json"), encoding="utf-8") as f:
+                entidad = str((json.load(f) or {}).get("hotel_nombre") or "").strip()
+        except Exception:
+            pass
+
+    # Si el nombre ya contiene la entidad ("Gestoria Nord" / "Gestoria Nord"),
+    # no repetirla: en cuentas reales el campo Nombre a veces trae la
+    # organizacion en vez de a una persona.
+    if nombre and entidad and _norm_txt(entidad) and _norm_txt(entidad) in _norm_txt(nombre):
+        entidad = ""
+    return nombre, entidad
+
+
 def _numeros_en(texto):
     """Todos los numeros que aparecen en un texto, normalizados a float.
 
@@ -244,7 +306,12 @@ def generar():
         return jsonify({"ok": False, "error": "discrepancia no encontrada"}), 404
     try:
         from generador_emails import generar_reclamacion_ota
-        em = generar_reclamacion_ota(disc[rid], idioma)
+        # La firma se sella AL REDACTAR, no al enviar: lo que el usuario revisa
+        # tiene que ser exactamente lo que sale. Si aprueba otra persona, vera
+        # una firma que no es la suya y puede darle a Regenerar.
+        _f_nombre, _f_entidad = _firmante()
+        em = generar_reclamacion_ota(disc[rid], idioma,
+                                     firma_nombre=_f_nombre, firma_entidad=_f_entidad)
     except Exception as e:
         return jsonify({"ok": False, "error": "No se pudo redactar: " + str(e)[:140]}), 500
     st = _estado()
