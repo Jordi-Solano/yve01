@@ -677,6 +677,18 @@ _PACT_COL_MAP = {
     'Mercado': ['mercado', 'market', 'zona', 'ambito', 'region'],
 }
 
+def _ap_tiene_datos(reg):
+    """True si de una factura AP se ha extraido algo aprovechable.
+
+    Basta con UNO de proveedor / numero de factura / total. Si no hay ninguno,
+    la fila es una hilera de NO_ENCONTRADO: no aporta nada y hace que el
+    resumen cuente una factura que en realidad no existe.
+    """
+    _NF = 'NO_ENCONTRADO'
+    return any(reg.get(k) not in (_NF, None, '', 0)
+               for k in ('nombre_proveedor', 'numero_factura', 'total_factura'))
+
+
 def _hoja_a_texto(fpath, max_filas=200, max_chars=8000):
     """Vuelca una hoja de calculo a texto plano para que la IA pueda clasificarla.
 
@@ -1232,10 +1244,26 @@ def api_procesar_batch_stream():
                         # AR: usar subprocess (lector_ota.py tiene su propia lógica)
                         cmd = ['python3', 'lector_ota.py', '--file', fpath]
                         r = _sp.run(cmd, capture_output=True, text=True, cwd=BASE_DIR, timeout=60)
+                        # lector_ota distingue: 0=OK, 2=guardado incompleto,
+                        # 3=leido pero sin datos OTA (no guarda nada). Antes
+                        # cualquier returncode 0 se cantaba como "✓ OK" aunque
+                        # la fila fuera entera NO_ENCONTRADO.
+                        _faltan = ''
+                        for _ln in (r.stdout or '').splitlines():
+                            if _ln.startswith('FALTAN:'):
+                                _faltan = _ln.split(':', 1)[1].strip()
                         if r.returncode == 0:
                             yield f'data: ✓ AR {fname}: OK\n\n'
                             _mark(fname, 'AR_OK')
                             has_ar = True
+                        elif r.returncode == 2:
+                            _det = f' (faltan: {_faltan})' if _faltan else ''
+                            yield f'data: ⚠ AR {fname}: guardado con campos incompletos{_det} — revisar manualmente\n\n'
+                            _mark(fname, 'AR_PARCIAL')
+                            has_ar = True
+                        elif r.returncode == 3:
+                            yield f'data: ⚠ {fname}: no se pudo extraer ningún dato de factura OTA — revisar manualmente\n\n'
+                            _mark(fname, 'SKIP')
                         else:
                             msg = r.stderr[:80] or r.stdout[:80] or 'error'
                             yield f'data: ✗ AR {fname}: {msg}\n\n'
@@ -1258,6 +1286,12 @@ def api_procesar_batch_stream():
                                 _mark(fname, _marca)
                                 if _flags.get('has_ar'):
                                     has_ar = True
+                            elif reg and not reg.get('error') and not _ap_tiene_datos(reg):
+                                # La extraccion no saco NI proveedor NI numero NI
+                                # importe: guardar la fila solo ensucia el Excel y
+                                # cantar "✓ AP" es mentir sobre lo que ha pasado.
+                                yield f'data: ⚠ {fname}: no se pudo extraer ningún dato de la factura — revisar manualmente\n\n'
+                                _mark(fname, 'SKIP')
                             elif reg and not reg.get('error'):
                                 # Guardar resultado
                                 _ap_excel = os.path.join(_pdir(), f'facturas_ap_{date.today().strftime("%Y%m%d")}.xlsx')
@@ -1374,6 +1408,8 @@ def api_procesar_batch_stream():
             parts = []
             if ap_n: parts.append(f'{ap_n} facturas AP')
             if ar_n: parts.append(f'{ar_n} informes OTA')
+            parc_n = sum(1 for v in lote.values() if v.get('resultado') == 'AR_PARCIAL')
+            if parc_n: parts.append(f'{parc_n} OTA incompletos')
             pact_n = sum(1 for v in lote.values() if v.get('resultado') == 'CONTRATO_OTA_OK')
             if pact_n: parts.append(f'{pact_n} contratos OTA')
             if drr_n: parts.append(f'{drr_n} DRR')
@@ -1915,6 +1951,7 @@ def api_historial_procesado():
         tab = '—'
         if resultado in ('AP_OK',): tab = 'AP — Proveedores'
         elif resultado in ('AR_OK',): tab = 'AR — OTAs'
+        elif resultado in ('AR_PARCIAL',): tab = 'AR — OTAs (incompleto)'
         elif resultado in ('CONTRATO_OTA_OK',): tab = 'AR — OTAs (tarifas pactadas)'
         elif resultado in ('DRR_OK',): tab = 'DRR'
         elif resultado in ('BANK_OK',): tab = 'Banco'
@@ -1927,7 +1964,8 @@ def api_historial_procesado():
         elif 'SKIP' in resultado: tab = 'Omitido'
         elif 'ERR' in resultado or 'CRASH' in resultado: tab = 'Error'
         
-        icono = '✓' if 'OK' in resultado else ('⚠' if 'SKIP' in resultado else ('ℹ' if resultado == 'ROOMING' else '✗'))
+        icono = '⚠' if resultado == 'AR_PARCIAL' else (
+                '✓' if 'OK' in resultado else ('⚠' if 'SKIP' in resultado else ('ℹ' if resultado == 'ROOMING' else '✗')))
         items.append({
             'archivo': fname,
             'fecha': info.get('fecha', '—'),

@@ -124,6 +124,41 @@ PATRONES = {
 }
 
 
+# ── Calidad de la extraccion ───────────────────────────────────────────────
+# Aguas abajo, verificador_comisiones.py necesita saber DE QUE OTA es la factura
+# y con que porcentaje/importe se facturo. Sin eso la fila no sirve: solo llena
+# facturas_procesadas_*.xlsx de NO_ENCONTRADO y ensucia el informe de
+# reclamaciones. Por eso distinguimos tres resultados y no solo exito/error.
+CAMPOS_IMPRESCINDIBLES = ("nombre_ota",)
+CAMPOS_CIFRA = ("importe_bruto", "porcentaje_comision", "importe_comision", "importe_neto")
+
+
+def campos_faltantes(registro):
+    """Devuelve los campos clave que NO se han podido extraer."""
+    clave = ("nombre_ota", "numero_factura", "importe_bruto",
+             "porcentaje_comision", "importe_comision")
+    return [c for c in clave if registro.get(c, NF) == NF]
+
+
+def calidad_extraccion(registro):
+    """'OK' | 'PARCIAL' | 'VACIO'.
+
+    VACIO  = no se identifico la OTA o no se saco ni una sola cifra. La fila no
+             se guarda: seria basura para el verificador.
+    PARCIAL= sirve, pero falta algo clave. Se guarda y se avisa.
+    OK     = estan la OTA, el bruto y el porcentaje o el importe de comision.
+    """
+    if any(registro.get(c, NF) == NF for c in CAMPOS_IMPRESCINDIBLES):
+        return "VACIO"
+    if not any(registro.get(c, NF) != NF for c in CAMPOS_CIFRA):
+        return "VACIO"
+    tiene_comision = (registro.get("porcentaje_comision", NF) != NF
+                      or registro.get("importe_comision", NF) != NF)
+    if registro.get("importe_bruto", NF) != NF and tiene_comision:
+        return "OK"
+    return "PARCIAL"
+
+
 def extraer_texto_pdf(pdf_path: str) -> str:
     """Extrae todo el texto de un PDF usando pdfplumber."""
     texto_completo = []
@@ -224,13 +259,21 @@ def main():
     print(f"\nFacturas encontradas: {len(pdfs)}\n")
 
     registros = []
+    descartados = []
     for pdf_path in sorted(pdfs):
         registro = procesar_factura(pdf_path)
-        registros.append(registro)
+        if calidad_extraccion(registro) == "VACIO":
+            descartados.append(os.path.basename(pdf_path))
+            print(f"    [VACIO] sin datos OTA extraibles -> NO se guarda")
+        else:
+            registros.append(registro)
         print()
 
-    guardar_excel(registros, SALIDA_EXCEL)
+    if registros:
+        guardar_excel(registros, SALIDA_EXCEL)
     print(f"\nTotal procesadas: {len(registros)} facturas")
+    if descartados:
+        print(f"Sin datos extraibles (revisar a mano): {len(descartados)} -> {', '.join(descartados)}")
     print("=" * 60)
 
 
@@ -244,26 +287,39 @@ if __name__ == "__main__":
                 print(f"ERROR: archivo no encontrado: {file_path}")
                 sys.exit(1)
             registro = procesar_factura(file_path)
-            if registro and not registro.get("error"):
-                # Añadir al Excel existente o crear nuevo
-                from datetime import date as _date
-                fecha_hoy = _date.today().strftime("%Y%m%d")
-                ruta_excel = os.path.join(SALIDA_DIR if "SALIDA_DIR" in dir() else os.path.dirname(SALIDA_EXCEL), f"facturas_procesadas_{fecha_hoy}.xlsx")
-                if os.path.exists(ruta_excel):
-                    df_existing = pd.read_excel(ruta_excel)
-                    df_new = pd.DataFrame([registro])
-                    df_combined = pd.concat([df_existing, df_new], ignore_index=True)
-                    # Dedupe por archivo, no numero_factura
-                    if "archivo" in df_combined.columns:
-                        df_combined.drop_duplicates(subset=["archivo"], keep="last", inplace=True)
-                    df_combined.to_excel(ruta_excel, index=False)
-                else:
-                    guardar_excel([registro], ruta_excel)
-                print(f"OK: {os.path.basename(file_path)} procesado correctamente")
-                sys.exit(0)
-            else:
+            if not registro or registro.get("error"):
                 err = registro.get("error", "error desconocido") if registro else "sin resultado"
                 print(f"ERROR: {err}")
                 sys.exit(1)
+
+            calidad = calidad_extraccion(registro)
+            faltan = campos_faltantes(registro)
+            if calidad == "VACIO":
+                # Se leyo el PDF pero no es (o no parece) una factura OTA.
+                # NO se guarda: una fila de NO_ENCONTRADO acabaria en el
+                # verificador de comisiones como OTA_DESCONOCIDA.
+                print(f"FALTAN: {', '.join(faltan)}")
+                print(f"VACIO: {os.path.basename(file_path)} sin datos OTA extraibles")
+                sys.exit(3)
+
+            from datetime import date as _date
+            fecha_hoy = _date.today().strftime("%Y%m%d")
+            ruta_excel = os.path.join(SALIDA_DIR, f"facturas_procesadas_{fecha_hoy}.xlsx")
+            if os.path.exists(ruta_excel):
+                df_existing = pd.read_excel(ruta_excel)
+                df_new = pd.DataFrame([registro])
+                df_combined = pd.concat([df_existing, df_new], ignore_index=True)
+                if "archivo" in df_combined.columns:
+                    df_combined.drop_duplicates(subset=["archivo"], keep="last", inplace=True)
+                df_combined.to_excel(ruta_excel, index=False)
+            else:
+                guardar_excel([registro], ruta_excel)
+
+            if calidad == "PARCIAL":
+                print(f"FALTAN: {', '.join(faltan)}")
+                print(f"PARCIAL: {os.path.basename(file_path)} guardado con campos incompletos")
+                sys.exit(2)
+            print(f"OK: {os.path.basename(file_path)} procesado correctamente")
+            sys.exit(0)
     else:
         main()
