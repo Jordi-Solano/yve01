@@ -242,6 +242,23 @@ def aprobar_enviar():
         return jsonify({"ok": False, "error": "Introduce un email de destino válido"}), 400
     if not asunto or not cuerpo:
         return jsonify({"ok": False, "error": "Falta asunto o cuerpo del email"}), 400
+    # Guarda de idempotencia: si ya se envio, NO se reenvia. El boton del
+    # navegador se deshabilita, pero eso solo protege dentro de una carga de
+    # pagina: recargar, abrir otra pestana o reintentar tras un falso error
+    # bastaba para mandar el mismo correo dos veces.
+    _st_prev = _estado()
+    _ya = _st_prev.get(rid, {})
+    if _ya.get("estado") == "ENVIADA":
+        _cuando = _ya.get("fecha_enviada", "")
+        _aquien = _ya.get("destinatario", "")
+        return jsonify({
+            "ok": False, "ya_enviada": True,
+            "error": ("Esta reclamación ya se envió"
+                      + (" el " + _cuando if _cuando else "")
+                      + (" a " + _aquien if _aquien else "")
+                      + ". No se reenvía."),
+        }), 409
+
     disc = {d["id"]: d for d in _discrepancias()}
     ota = disc.get(rid, {}).get("ota", "")
     num = disc.get(rid, {}).get("numero_factura", "")
@@ -253,7 +270,7 @@ def aprobar_enviar():
         return jsonify({"ok": False, "error": "Error enviando: " + str(e)[:140]}), 500
     if not ok:
         return jsonify({"ok": False, "error": "El proveedor de email no pudo enviar (revisa la configuración de Brevo)."}), 500
-    st = _estado()
+    st = _st_prev
     s = st.get(rid, {})
     s.update({
         "estado": "ENVIADA", "asunto": asunto, "cuerpo": cuerpo, "destinatario": destinatario,

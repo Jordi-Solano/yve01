@@ -139,10 +139,17 @@ def _enviar_via_brevo(destinatario, asunto, cuerpo_html):
     api_key = os.environ.get("BREVO_API_KEY", "")
     if not api_key:
         return False, "BREVO_API_KEY no configurado"
-    # El sender debe ser un email verificado en Brevo (el de registro se auto-verifica)
-    brevo_sender = os.environ.get("BREVO_SENDER_EMAIL", "")
-    smtp_user = os.environ.get("SMTP_USER", "")
-    sender_email = brevo_sender or smtp_user or "vvertex001@gmail.com"
+    # El sender DEBE ser un email verificado en Brevo. Antes habia aqui una
+    # direccion literal de respaldo: si faltaba la variable de entorno, Yve
+    # enviaba en silencio desde una cuenta sin verificar, Brevo respondia 201
+    # (aceptado) y el correo moria despues, en la entrega. Nadie se enteraba.
+    # Ahora, sin remitente configurado NO se envia y se explica por que.
+    sender_email = (os.environ.get("BREVO_SENDER_EMAIL", "").strip()
+                    or os.environ.get("SMTP_USER", "").strip())
+    if not sender_email:
+        return False, ("BREVO_SENDER_EMAIL no configurado — define en Render el "
+                       "remitente verificado en Brevo (Senders & IP). Sin el, el "
+                       "correo se acepta pero no se entrega.")
     payload = _json.dumps({
         "sender": {"name": "Yve.01", "email": sender_email},
         "to": [{"email": destinatario}],
@@ -156,14 +163,19 @@ def _enviar_via_brevo(destinatario, asunto, cuerpo_html):
         method="POST"
     )
     try:
-        with urllib.request.urlopen(req, timeout=10) as resp:
-            return True, f"Brevo OK ({resp.status})"
+        # 30s, no 10: Brevo a veces tarda mas y con 10s Yve cantaba "fallo"
+        # aunque el correo ya estuviera aceptado -> el usuario reintentaba y
+        # salian dos correos.
+        with urllib.request.urlopen(req, timeout=30) as resp:
+            # El remitente va en el detalle A PROPOSITO: es el unico sitio donde
+            # queda constancia de DESDE QUE direccion salio cada correo.
+            return True, f"Brevo OK ({resp.status}) · from={sender_email}"
     except urllib.error.HTTPError as e:
         body = e.read().decode()
-        print(f"[BREVO ERROR] {e.code}: {body}")
-        return False, f"Brevo {e.code}: {body[:150]}"
+        print(f"[BREVO ERROR] {e.code} (from={sender_email}): {body}")
+        return False, f"Brevo {e.code} (from={sender_email}): {body[:130]}"
     except Exception as e:
-        return False, str(e)[:120]
+        return False, f"{str(e)[:100]} (from={sender_email})"
 
 
 def _enviar_via_resend(destinatario, asunto, cuerpo_html):
