@@ -651,6 +651,191 @@ _BANK_COL_MAP = {
     'saldo': ['balance', 'saldo_final'],
 }
 
+def _enrutar_tipo_doc(reg, fname):
+    """Enruta un documento YA clasificado (reg['tipo_documento']) al modulo que toca.
+
+    Extraido tal cual del bucle de /api/procesar_batch_stream para poder
+    reutilizarlo desde otros puntos de entrada (p.ej. hojas de calculo).
+    NO cambia comportamiento: cada rama produce exactamente un mensaje y una marca.
+
+    Devuelve (mensaje_sin_prefijo_sse, marca_para_el_log, flags).
+    """
+    _msg = ''
+    _marca = 'SKIP'
+    _flags = {}
+    # Claude clasificó el documento como otro tipo — enrutar
+    _tipo_doc = reg['tipo_documento']
+    if _tipo_doc == 'EXTRACTO_BANCO' and reg.get('movimientos'):
+        try:
+            _movs = reg['movimientos']
+            _df_movs = _normalize_cols(pd.DataFrame(_movs), _BANK_COL_MAP)
+            banco_path = os.path.join(_ddir(), 'extracto_banco.xlsx')
+            if os.path.exists(banco_path):
+                _df_exist = pd.read_excel(banco_path)
+                _df_movs = pd.concat([_df_exist, _df_movs], ignore_index=True)
+            _df_movs.to_excel(banco_path, index=False)
+            n_movs = len(reg['movimientos'])
+            total_cargo = sum(float(m.get('importe',0) or 0) for m in reg['movimientos'] if float(m.get('importe',0) or 0) < 0)
+            total_abono = sum(float(m.get('importe',0) or 0) for m in reg['movimientos'] if float(m.get('importe',0) or 0) > 0)
+            _msg = f'✓ Banco {fname}: {n_movs} movimientos (cargos €{abs(total_cargo):,.0f} / abonos €{total_abono:,.0f}) integrados'
+            _marca = 'BANK_OK'
+        except Exception as _eb2:
+            _msg = f'⚠ {fname}: extracto detectado pero error al guardar — {str(_eb2)[:60]}'
+            _marca = 'SKIP'
+    elif _tipo_doc == 'VENTAS_POS':
+        total = reg.get('total_ventas', 0)
+        platos = reg.get('platos', [])
+        # Integrar ventas detalladas en ventas_fb_diarias
+        try:
+            if platos:
+                _df_ventas = _normalize_cols(pd.DataFrame(platos), _VEN_COL_MAP)
+                fecha = reg.get('fecha', date.today().isoformat())
+                if 'fecha' not in _df_ventas.columns:
+                    _df_ventas['fecha'] = fecha
+                ventas_path = os.path.join(_ddir(), 'ventas_fb_diarias.xlsx')
+                if os.path.exists(ventas_path):
+                    _df_old_v = pd.read_excel(ventas_path)
+                    _df_ventas = pd.concat([_df_old_v, _df_ventas], ignore_index=True)
+                _df_ventas.to_excel(ventas_path, index=False)
+                _msg = f'✓ F&B {fname}: {len(platos)} platos, €{total} integrados por IA'
+            else:
+                _msg = f'✓ F&B {fname}: ventas detectadas — €{total}'
+        except Exception as _efb2:
+            _msg = f'✓ F&B {fname}: ventas — €{total} (detalle no integrable: {str(_efb2)[:40]})'
+        _marca = 'FB_OK'
+    elif _tipo_doc == 'COMISIONES_OTA':
+        ota = reg.get('ota', '?')
+        comision = reg.get('comision', 0)
+        _msg = f'✓ AR {fname}: comisiones {ota} detectadas por IA — €{comision}'
+        _marca = 'AR_OK'
+        _flags['has_ar'] = True
+    elif _tipo_doc == 'INVENTARIO':
+        # Integrar datos de inventario en F&B
+        try:
+            inv_items = reg.get('items', reg.get('productos', []))
+            if inv_items:
+                _df_inv = _normalize_cols(pd.DataFrame(inv_items), _INV_COL_MAP)
+                inv_path = os.path.join(_ddir(), 'inventario.xlsx')
+                if os.path.exists(inv_path):
+                    _df_old = pd.read_excel(inv_path)
+                    _df_inv = pd.concat([_df_old, _df_inv], ignore_index=True)
+                    if 'ingrediente' in _df_inv.columns:
+                        _df_inv.drop_duplicates(subset=['ingrediente'], keep='last', inplace=True)
+                _df_inv.to_excel(inv_path, index=False)
+                nombres = [str(i.get('ingrediente', i.get('producto', '?')))[:20] for i in inv_items[:5]]
+                _msg = f'✓ Inventario {fname}: {len(inv_items)} productos ({", ".join(nombres)}{"..." if len(inv_items)>5 else ""}) integrados'
+            else:
+                _msg = f'ℹ {fname}: inventario detectado (sin items extraíbles)'
+        except Exception as _einv:
+            _msg = f'ℹ {fname}: inventario detectado — {str(_einv)[:60]}'
+        _marca = 'INV_OK'
+    elif _tipo_doc == 'MERMAS':
+        # Integrar datos de mermas en F&B
+        try:
+            merma_items = reg.get('items', reg.get('mermas', []))
+            if merma_items:
+                _df_mer = _normalize_cols(pd.DataFrame(merma_items), _MER_COL_MAP)
+                mer_path = os.path.join(_ddir(), 'mermas.xlsx')
+                if os.path.exists(mer_path):
+                    _df_old_m = pd.read_excel(mer_path)
+                    _df_mer = pd.concat([_df_old_m, _df_mer], ignore_index=True)
+                _df_mer.to_excel(mer_path, index=False)
+                total_merma = sum(float(m.get('coste_merma', m.get('coste', 0)) or 0) for m in merma_items)
+                _msg = f'✓ Mermas {fname}: {len(merma_items)} registros — €{total_merma:.2f} extraídos por IA'
+            else:
+                _msg = f'ℹ {fname}: mermas detectadas (sin items extraíbles)'
+        except Exception as _emer:
+            _msg = f'ℹ {fname}: mermas detectadas — {str(_emer)[:60]}'
+        _marca = 'INV_OK'
+    elif _tipo_doc in ('BEO', 'TM', 'CONTRATO'):
+        # Guardar como documento de referencia para matching
+        try:
+            ref_path = os.path.join(_ddir(), 'eventos_referencia.json')
+            refs = json.load(open(ref_path)) if os.path.exists(ref_path) else []
+
+            evento = reg.get('evento', reg.get('cliente', fname))
+            cliente = reg.get('cliente', '—')
+            total = reg.get('total_estimado', reg.get('importe_total', 0))
+            items = reg.get('items', reg.get('requisitos', []))
+
+            # Buscar si ya existe un evento con el mismo nombre
+            evento_key = evento.lower().strip()[:50]
+            found = False
+            for ref in refs:
+                if ref.get('evento_key') == evento_key:
+                    ref['documentos'][_tipo_doc] = {
+                        'archivo': fname,
+                        'total': total,
+                        'items': items,
+                        'fecha': date.today().isoformat(),
+                        'raw': {k:v for k,v in reg.items() if k != 'items' and k != 'requisitos'}
+                    }
+                    found = True
+                    break
+
+            if not found:
+                refs.append({
+                    'evento': evento,
+                    'evento_key': evento_key,
+                    'cliente': cliente,
+                    'documentos': {
+                        _tipo_doc: {
+                            'archivo': fname,
+                            'total': total,
+                            'items': items,
+                            'fecha': date.today().isoformat(),
+                            'raw': {k:v for k,v in reg.items() if k != 'items' and k != 'requisitos'}
+                        }
+                    }
+                })
+
+            json.dump(refs, open(ref_path, 'w'), indent=2, ensure_ascii=False)
+
+            n_items = len(items)
+            docs_evento = [ref for ref in refs if ref.get('evento_key') == evento_key]
+            n_docs = len(docs_evento[0]['documentos']) if docs_evento else 1
+            tipos_docs = ', '.join(docs_evento[0]['documentos'].keys()) if docs_evento else _tipo_doc
+
+            total_str = f' — €{total:,.2f}' if total else ''
+            _msg = f'✓ {_tipo_doc} {fname}: {evento} ({cliente}){total_str} · {n_items} items · Evento tiene {n_docs} docs ({tipos_docs})'
+            _marca = f'{_tipo_doc}_OK'
+        except Exception as _eref:
+            _msg = f'⚠ {fname}: {_tipo_doc} detectado pero error: {str(_eref)[:60]}'
+            _marca = 'SKIP'
+    elif _tipo_doc == 'ROOMING':
+        grupo = reg.get('grupo', '—')
+        habs = reg.get('num_habitaciones', '?')
+        checkin = reg.get('checkin', '')
+        checkout = reg.get('checkout', '')
+        tarifa = reg.get('tarifa_media', '')
+        info_parts = [f'{habs} hab.']
+        if checkin: info_parts.append(f'{checkin}→{checkout}')
+        if tarifa: info_parts.append(f'€{tarifa}/noche')
+        # Guardar datos de rooming
+        try:
+            rooming_path = os.path.join(_ddir(), 'rooming_grupos.json')
+            rooming_data = json.load(open(rooming_path)) if os.path.exists(rooming_path) else []
+            rooming_data.append({
+                'archivo': fname, 'grupo': grupo,
+                'habitaciones': habs, 'checkin': checkin,
+                'checkout': checkout, 'tarifa': tarifa,
+                'fecha_procesado': date.today().isoformat()
+            })
+            json.dump(rooming_data, open(rooming_path, 'w'), indent=2, ensure_ascii=False)
+        except Exception:
+            pass
+        _msg = f'✓ Rooming {fname}: {grupo} — {", ".join(info_parts)} (IA)'
+        _marca = 'ROOMING'
+    elif _tipo_doc == 'OTRO':
+        desc = reg.get('descripcion', 'no clasificable')
+        _msg = f'⚠ {fname}: {desc}'
+        _marca = 'SKIP'
+    else:
+        _msg = f'ℹ {fname}: tipo {_tipo_doc} detectado por IA'
+        _marca = 'SKIP'
+    return _msg, _marca, _flags
+
+
 @app.route('/api/procesar_batch_stream')
 @login_required
 def api_procesar_batch_stream():
@@ -893,175 +1078,12 @@ def api_procesar_batch_stream():
                                 _mark(fname, 'SKIP')
                             elif isinstance(reg, dict) and reg.get('tipo_documento'):
                                 # Claude clasificó el documento como otro tipo — enrutar
-                                _tipo_doc = reg['tipo_documento']
-                                if _tipo_doc == 'EXTRACTO_BANCO' and reg.get('movimientos'):
-                                    try:
-                                        _movs = reg['movimientos']
-                                        _df_movs = _normalize_cols(pd.DataFrame(_movs), _BANK_COL_MAP)
-                                        banco_path = os.path.join(_ddir(), 'extracto_banco.xlsx')
-                                        if os.path.exists(banco_path):
-                                            _df_exist = pd.read_excel(banco_path)
-                                            _df_movs = pd.concat([_df_exist, _df_movs], ignore_index=True)
-                                        _df_movs.to_excel(banco_path, index=False)
-                                        n_movs = len(reg['movimientos'])
-                                        total_cargo = sum(float(m.get('importe',0) or 0) for m in reg['movimientos'] if float(m.get('importe',0) or 0) < 0)
-                                        total_abono = sum(float(m.get('importe',0) or 0) for m in reg['movimientos'] if float(m.get('importe',0) or 0) > 0)
-                                        yield f'data: ✓ Banco {fname}: {n_movs} movimientos (cargos €{abs(total_cargo):,.0f} / abonos €{total_abono:,.0f}) integrados\n\n'
-                                        _mark(fname, 'BANK_OK')
-                                    except Exception as _eb2:
-                                        yield f'data: ⚠ {fname}: extracto detectado pero error al guardar — {str(_eb2)[:60]}\n\n'
-                                        _mark(fname, 'SKIP')
-                                elif _tipo_doc == 'VENTAS_POS':
-                                    total = reg.get('total_ventas', 0)
-                                    platos = reg.get('platos', [])
-                                    # Integrar ventas detalladas en ventas_fb_diarias
-                                    try:
-                                        if platos:
-                                            _df_ventas = _normalize_cols(pd.DataFrame(platos), _VEN_COL_MAP)
-                                            fecha = reg.get('fecha', date.today().isoformat())
-                                            if 'fecha' not in _df_ventas.columns:
-                                                _df_ventas['fecha'] = fecha
-                                            ventas_path = os.path.join(_ddir(), 'ventas_fb_diarias.xlsx')
-                                            if os.path.exists(ventas_path):
-                                                _df_old_v = pd.read_excel(ventas_path)
-                                                _df_ventas = pd.concat([_df_old_v, _df_ventas], ignore_index=True)
-                                            _df_ventas.to_excel(ventas_path, index=False)
-                                            yield f'data: ✓ F&B {fname}: {len(platos)} platos, €{total} integrados por IA\n\n'
-                                        else:
-                                            yield f'data: ✓ F&B {fname}: ventas detectadas — €{total}\n\n'
-                                    except Exception as _efb2:
-                                        yield f'data: ✓ F&B {fname}: ventas — €{total} (detalle no integrable: {str(_efb2)[:40]})\n\n'
-                                    _mark(fname, 'FB_OK')
-                                elif _tipo_doc == 'COMISIONES_OTA':
-                                    ota = reg.get('ota', '?')
-                                    comision = reg.get('comision', 0)
-                                    yield f'data: ✓ AR {fname}: comisiones {ota} detectadas por IA — €{comision}\n\n'
-                                    _mark(fname, 'AR_OK')
+                                # (árbol de enrutado extraído a _enrutar_tipo_doc)
+                                _msg, _marca, _flags = _enrutar_tipo_doc(reg, fname)
+                                yield f'data: {_msg}\n\n'
+                                _mark(fname, _marca)
+                                if _flags.get('has_ar'):
                                     has_ar = True
-                                elif _tipo_doc == 'INVENTARIO':
-                                    # Integrar datos de inventario en F&B
-                                    try:
-                                        inv_items = reg.get('items', reg.get('productos', []))
-                                        if inv_items:
-                                            _df_inv = _normalize_cols(pd.DataFrame(inv_items), _INV_COL_MAP)
-                                            inv_path = os.path.join(_ddir(), 'inventario.xlsx')
-                                            if os.path.exists(inv_path):
-                                                _df_old = pd.read_excel(inv_path)
-                                                _df_inv = pd.concat([_df_old, _df_inv], ignore_index=True)
-                                                if 'ingrediente' in _df_inv.columns:
-                                                    _df_inv.drop_duplicates(subset=['ingrediente'], keep='last', inplace=True)
-                                            _df_inv.to_excel(inv_path, index=False)
-                                            nombres = [str(i.get('ingrediente', i.get('producto', '?')))[:20] for i in inv_items[:5]]
-                                            yield f'data: ✓ Inventario {fname}: {len(inv_items)} productos ({", ".join(nombres)}{"..." if len(inv_items)>5 else ""}) integrados\n\n'
-                                        else:
-                                            yield f'data: ℹ {fname}: inventario detectado (sin items extraíbles)\n\n'
-                                    except Exception as _einv:
-                                        yield f'data: ℹ {fname}: inventario detectado — {str(_einv)[:60]}\n\n'
-                                    _mark(fname, 'INV_OK')
-                                elif _tipo_doc == 'MERMAS':
-                                    # Integrar datos de mermas en F&B
-                                    try:
-                                        merma_items = reg.get('items', reg.get('mermas', []))
-                                        if merma_items:
-                                            _df_mer = _normalize_cols(pd.DataFrame(merma_items), _MER_COL_MAP)
-                                            mer_path = os.path.join(_ddir(), 'mermas.xlsx')
-                                            if os.path.exists(mer_path):
-                                                _df_old_m = pd.read_excel(mer_path)
-                                                _df_mer = pd.concat([_df_old_m, _df_mer], ignore_index=True)
-                                            _df_mer.to_excel(mer_path, index=False)
-                                            total_merma = sum(float(m.get('coste_merma', m.get('coste', 0)) or 0) for m in merma_items)
-                                            yield f'data: ✓ Mermas {fname}: {len(merma_items)} registros — €{total_merma:.2f} extraídos por IA\n\n'
-                                        else:
-                                            yield f'data: ℹ {fname}: mermas detectadas (sin items extraíbles)\n\n'
-                                    except Exception as _emer:
-                                        yield f'data: ℹ {fname}: mermas detectadas — {str(_emer)[:60]}\n\n'
-                                    _mark(fname, 'INV_OK')
-                                elif _tipo_doc in ('BEO', 'TM', 'CONTRATO'):
-                                    # Guardar como documento de referencia para matching
-                                    try:
-                                        ref_path = os.path.join(_ddir(), 'eventos_referencia.json')
-                                        refs = json.load(open(ref_path)) if os.path.exists(ref_path) else []
-                                        
-                                        evento = reg.get('evento', reg.get('cliente', fname))
-                                        cliente = reg.get('cliente', '—')
-                                        total = reg.get('total_estimado', reg.get('importe_total', 0))
-                                        items = reg.get('items', reg.get('requisitos', []))
-                                        
-                                        # Buscar si ya existe un evento con el mismo nombre
-                                        evento_key = evento.lower().strip()[:50]
-                                        found = False
-                                        for ref in refs:
-                                            if ref.get('evento_key') == evento_key:
-                                                ref['documentos'][_tipo_doc] = {
-                                                    'archivo': fname,
-                                                    'total': total,
-                                                    'items': items,
-                                                    'fecha': date.today().isoformat(),
-                                                    'raw': {k:v for k,v in reg.items() if k != 'items' and k != 'requisitos'}
-                                                }
-                                                found = True
-                                                break
-                                        
-                                        if not found:
-                                            refs.append({
-                                                'evento': evento,
-                                                'evento_key': evento_key,
-                                                'cliente': cliente,
-                                                'documentos': {
-                                                    _tipo_doc: {
-                                                        'archivo': fname,
-                                                        'total': total,
-                                                        'items': items,
-                                                        'fecha': date.today().isoformat(),
-                                                        'raw': {k:v for k,v in reg.items() if k != 'items' and k != 'requisitos'}
-                                                    }
-                                                }
-                                            })
-                                        
-                                        json.dump(refs, open(ref_path, 'w'), indent=2, ensure_ascii=False)
-                                        
-                                        n_items = len(items)
-                                        docs_evento = [ref for ref in refs if ref.get('evento_key') == evento_key]
-                                        n_docs = len(docs_evento[0]['documentos']) if docs_evento else 1
-                                        tipos_docs = ', '.join(docs_evento[0]['documentos'].keys()) if docs_evento else _tipo_doc
-                                        
-                                        total_str = f' — €{total:,.2f}' if total else ''
-                                        yield f'data: ✓ {_tipo_doc} {fname}: {evento} ({cliente}){total_str} · {n_items} items · Evento tiene {n_docs} docs ({tipos_docs})\n\n'
-                                        _mark(fname, f'{_tipo_doc}_OK')
-                                    except Exception as _eref:
-                                        yield f'data: ⚠ {fname}: {_tipo_doc} detectado pero error: {str(_eref)[:60]}\n\n'
-                                        _mark(fname, 'SKIP')
-                                elif _tipo_doc == 'ROOMING':
-                                    grupo = reg.get('grupo', '—')
-                                    habs = reg.get('num_habitaciones', '?')
-                                    checkin = reg.get('checkin', '')
-                                    checkout = reg.get('checkout', '')
-                                    tarifa = reg.get('tarifa_media', '')
-                                    info_parts = [f'{habs} hab.']
-                                    if checkin: info_parts.append(f'{checkin}→{checkout}')
-                                    if tarifa: info_parts.append(f'€{tarifa}/noche')
-                                    # Guardar datos de rooming
-                                    try:
-                                        rooming_path = os.path.join(_ddir(), 'rooming_grupos.json')
-                                        rooming_data = json.load(open(rooming_path)) if os.path.exists(rooming_path) else []
-                                        rooming_data.append({
-                                            'archivo': fname, 'grupo': grupo,
-                                            'habitaciones': habs, 'checkin': checkin,
-                                            'checkout': checkout, 'tarifa': tarifa,
-                                            'fecha_procesado': date.today().isoformat()
-                                        })
-                                        json.dump(rooming_data, open(rooming_path, 'w'), indent=2, ensure_ascii=False)
-                                    except Exception:
-                                        pass
-                                    yield f'data: ✓ Rooming {fname}: {grupo} — {", ".join(info_parts)} (IA)\n\n'
-                                    _mark(fname, 'ROOMING')
-                                elif _tipo_doc == 'OTRO':
-                                    desc = reg.get('descripcion', 'no clasificable')
-                                    yield f'data: ⚠ {fname}: {desc}\n\n'
-                                    _mark(fname, 'SKIP')
-                                else:
-                                    yield f'data: ℹ {fname}: tipo {_tipo_doc} detectado por IA\n\n'
-                                    _mark(fname, 'SKIP')
                             elif reg and not reg.get('error'):
                                 # Guardar resultado
                                 _ap_excel = os.path.join(_pdir(), f'facturas_ap_{date.today().strftime("%Y%m%d")}.xlsx')
