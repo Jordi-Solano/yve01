@@ -109,6 +109,51 @@ def _ultimo_reporte():
     return files[0] if files else None
 
 
+def _numeros_en(texto):
+    """Todos los numeros que aparecen en un texto, normalizados a float.
+
+    Tolera los dos formatos ("1.234,56" y "1,234.56") porque el controller
+    puede editar el borrador a mano antes de aprobarlo.
+    """
+    import re as _re
+    out = []
+    for m in _re.finditer(r"\d{1,3}(?:[.,]\d{3})+(?:[.,]\d+)?|\d+(?:[.,]\d+)?", texto):
+        s = m.group(0)
+        if "," in s and "." in s:
+            s = (s.replace(".", "").replace(",", ".") if s.rfind(",") > s.rfind(".")
+                 else s.replace(",", ""))
+        elif "," in s:
+            s = s.replace(",", "") if len(s.split(",")[-1]) == 3 else s.replace(",", ".")
+        elif s.count(".") == 1 and len(s.split(".")[-1]) == 3:
+            s = s.replace(".", "")
+        try:
+            out.append(float(s))
+        except ValueError:
+            pass
+    return out
+
+
+def _cifras_que_faltan(cuerpo, d):
+    """Cifras de la reclamacion que NO aparecen en el cuerpo del email.
+
+    Red de seguridad final: un email que no menciona ni el importe ni los
+    porcentajes no esta reclamando nada -- es lo que pasaba cuando la IA
+    respondia PIDIENDO los datos y ese texto se enviaba tal cual. Se comprueba
+    sobre el cuerpo REAL que se va a enviar, ya editado por el usuario, asi que
+    protege venga el fallo de donde venga.
+    """
+    nums = _numeros_en(cuerpo or "")
+    hay = lambda v: v is not None and any(abs(n - float(v)) < 0.01 for n in nums)
+    faltan = []
+    if not hay(d.get("importe_reclamable")):
+        faltan.append("el importe a devolver")
+    if not hay(d.get("comision_contrato")):
+        faltan.append("la comision pactada")
+    if not hay(d.get("comision_cobrada")):
+        faltan.append("la comision aplicada")
+    return faltan
+
+
 def _discrepancias():
     """Lista de discrepancias (estado DISCREPANCIA) del último reporte de verificación."""
     rep = _ultimo_reporte()
@@ -130,19 +175,39 @@ def _discrepancias():
         ota = str(r.get("nombre_ota", "") or "")
         per = str(r.get("periodo_inicio", "") or "")
         rid = num + "|" + ota + "|" + per
+        _hotel = str(r.get("nombre_hotel", "") or "")
+        _fin = str(r.get("periodo_fin", "") or "")
+        _bruto = _num(r.get("importe_bruto"))
+        _pactado = _num(r.get("porcentaje_pactado"))
+        _cobrado = _num(r.get("porcentaje_factura"))
+        _dif = _num(r.get("diferencia_pp"))
+        _reclamable = _num(r.get("discrepancia_euros"))
         out.append({
             "id": rid,
             "numero_factura": num,
             "numero_reserva": str(r.get("numero_reserva", "") or ""),
+            # ── Nombres "de panel" (los que lee el frontend) ──
             "ota": ota,
-            "hotel": str(r.get("nombre_hotel", "") or ""),
+            "hotel": _hotel,
             "periodo_inicio": per,
-            "periodo_fin": str(r.get("periodo_fin", "") or ""),
-            "importe_bruto": _num(r.get("importe_bruto")),
-            "comision_contrato": _num(r.get("porcentaje_pactado")),
-            "comision_cobrada": _num(r.get("porcentaje_factura")),
-            "diferencia_pp": _num(r.get("diferencia_pp")),
-            "importe_reclamable": _num(r.get("discrepancia_euros")),
+            "periodo_fin": _fin,
+            "importe_bruto": _bruto,
+            "comision_contrato": _pactado,
+            "comision_cobrada": _cobrado,
+            "diferencia_pp": _dif,
+            "importe_reclamable": _reclamable,
+            # ── Nombres ORIGINALES del informe de verificacion ──
+            # Se conservan A PROPOSITO. generador_emails.generar_reclamacion_ota
+            # se escribio para leer una fila cruda de verificacion_*.xlsx; al
+            # renombrar aqui solo para el panel, el generador recibia vacios en
+            # hotel, porcentajes e importe, y la IA acababa REDACTANDO UN EMAIL
+            # PIDIENDO ESOS DATOS. Manteniendo ambos juegos de nombres, ningun
+            # consumidor futuro se tropieza con el mismo agujero.
+            "nombre_ota": ota,
+            "nombre_hotel": _hotel,
+            "porcentaje_pactado": _pactado,
+            "porcentaje_factura": _cobrado,
+            "discrepancia_euros": _reclamable,
         })
     return out
 
@@ -262,6 +327,20 @@ def aprobar_enviar():
     disc = {d["id"]: d for d in _discrepancias()}
     ota = disc.get(rid, {}).get("ota", "")
     num = disc.get(rid, {}).get("numero_factura", "")
+
+    # Red final: no sale ningun email que no reclame de verdad. Si el cuerpo no
+    # menciona el importe ni los porcentajes, no es una reclamacion (era la IA
+    # PIDIENDO los datos) y no se envia.
+    _faltan_cifras = _cifras_que_faltan(cuerpo, disc.get(rid, {}))
+    if _faltan_cifras:
+        return jsonify({
+            "ok": False, "sin_cifras": True,
+            "error": ("El email no se envia: el texto no menciona "
+                      + ", ".join(_faltan_cifras)
+                      + ". Un email de reclamacion tiene que llevar las cifras. "
+                        "Vuelve a redactarlo con 'Regenerar' o corrigelo a mano."),
+        }), 422
+
     cuerpo_html = '<div style="font-family:Arial,Helvetica,sans-serif;font-size:14px;color:#0f172a;white-space:pre-wrap;line-height:1.5">' + html.escape(cuerpo) + "</div>"
     try:
         from notificaciones import enviar_email

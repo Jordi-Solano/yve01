@@ -7874,6 +7874,7 @@ async function _reclEnviar(i, btn){
     var d = await r.json();
     if (d && d.ok){ showNotification('✓ Reclamación enviada a '+dest,'success'); cargarReclamacionesOTA(); }
     else if (d && d.ya_enviada){ showNotification('ℹ '+d.error,'info'); cargarReclamacionesOTA(); }
+    else if (d && d.sin_cifras){ showNotification('⚠ '+d.error,'error'); if(btn){btn.disabled=false;btn.textContent='✅ Aprobar y enviar';} }
     else { showNotification('✗ '+((d&&d.error)||'No se pudo enviar'),'error'); if(btn){btn.disabled=false;btn.textContent='✅ Aprobar y enviar';} }
   } catch(e){ showNotification('✗ '+e.message,'error'); if(btn){btn.disabled=false;btn.textContent='✅ Aprobar y enviar';} }
 }

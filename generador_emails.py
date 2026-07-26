@@ -191,7 +191,28 @@ def generar_reclamacion_ota(fila, idioma="es"):
     petición clara de devolución. No suena a plantilla ni agresivo."""
     import json as _json
     g = lambda k, d="": fila.get(k, d)
-    ota = g("nombre_ota") or "la OTA"
+
+    # ── Sin datos no se redacta ────────────────────────────────────────────
+    # Antes se llamaba a la IA con los huecos vacios y esta, logicamente,
+    # respondia PIDIENDO los datos... y ese texto se enviaba como si fuera una
+    # reclamacion. Si falta algo, se falla aqui y se dice exactamente que falta.
+    _OBLIGATORIOS = {
+        "nombre_ota": "nombre de la OTA",
+        "numero_factura": "numero de factura",
+        "nombre_hotel": "hotel",
+        "porcentaje_pactado": "comision pactada en contrato",
+        "porcentaje_factura": "comision aplicada por la OTA",
+        "discrepancia_euros": "importe a devolver",
+    }
+    _vacio = lambda v: v is None or str(v).strip() in ("", "NO_ENCONTRADO", "nan", "None")
+    _faltan = [txt for k, txt in _OBLIGATORIOS.items() if _vacio(fila.get(k))]
+    if _faltan:
+        raise ValueError(
+            "No se puede redactar la reclamacion: faltan datos (" + ", ".join(_faltan) + "). "
+            "Revisa el informe de verificacion; NO se redacta un email sin cifras."
+        )
+
+    ota = g("nombre_ota")
     num = g("numero_factura")
     reserva = g("numero_reserva")
     hotel = g("nombre_hotel")
@@ -234,8 +255,15 @@ ASUNTO: <asunto en una sola linea>
             cuerpo = "\n".join(_lines[_idx + 1:]).strip()
             break
     if not asunto:
-        cuerpo = txt
-        asunto = f"Discrepancia en comision - factura {num} ({ota})"
+        # La IA no ha devuelto el formato pedido -> lo que ha escrito NO es un
+        # email de reclamacion. Antes se le inventaba un asunto y se guardaba su
+        # texto tal cual: asi fue como salio un correo PIDIENDO datos. La senal
+        # estaba aqui y se ignoraba.
+        raise ValueError(
+            "La IA no ha devuelto un email en el formato esperado (falta la linea "
+            "ASUNTO:). No se guarda el borrador. Respuesta recibida: "
+            + txt[:200].replace("\n", " ")
+        )
     cuerpo = re.sub(r"^\s*(cuerpo|body)\s*:\s*", "", cuerpo, flags=re.I).strip()
     return {"asunto": asunto, "cuerpo": cuerpo}
 
