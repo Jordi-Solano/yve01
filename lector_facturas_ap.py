@@ -273,24 +273,6 @@ REGLAS:
     except Exception as e:
         print(f"    AVISO Claude API: {e} — usando regex")
         return extraer_con_regex(texto)
-        
-        # Si tiene tipo_documento, es un documento clasificado (no factura)
-        tipo_doc = datos.get("tipo_documento")
-        if tipo_doc and tipo_doc != "FACTURA":
-            print(f"    [CLASIFICADO] Tipo: {tipo_doc}")
-            return datos  # Devolver los datos clasificados para que el handler los enrute
-        
-        # Si Claude dice explícitamente que no es factura
-        if datos.get("es_factura") is False:
-            tipo_doc = datos.get("tipo_documento", "OTRO")
-            desc = datos.get("descripcion", "documento no financiero")
-            print(f"    [INFO] Tipo: {tipo_doc} — {desc}")
-            return {"_skip": True, "_motivo": f"Claude: {desc}", "tipo_documento": tipo_doc}
-        
-        return datos
-    except Exception as e:
-        print(f"    AVISO Claude API: {e} — usando regex")
-        return extraer_con_regex(texto)
 
 # ── Extracción fallback con regex ─────────────────────────────────────────
 

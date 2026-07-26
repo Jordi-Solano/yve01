@@ -365,6 +365,7 @@ def api_debug():
         "archivos_procesadas": [],
         "cwd": os.getcwd(),
         "python_file": __file__,
+        "python_version": __import__("sys").version.split()[0],
     }
     for d, key in [(_rdir(), "archivos_reportes"), (_pdir(), "archivos_procesadas")]:
         if os.path.isdir(d):
@@ -850,8 +851,11 @@ def api_procesar_batch_stream():
     log = _load_proc_log()
     from datetime import datetime as _dt2
 
+    lote = {}   # solo lo procesado en ESTA tanda (el resumen final se cuenta de aqui)
+
     def _mark(fname, result='OK'):
         log[fname] = {'fecha': _dt2.now().strftime('%Y-%m-%d %H:%M'), 'resultado': result}
+        lote[fname] = {'resultado': result}
         _save_proc_log(log)
 
     def generar():
@@ -1125,11 +1129,14 @@ def api_procesar_batch_stream():
                                                 break
                                         
                                         if match_found:
-                                            docs = match_found.get('documentos', {})
-                                            docs_list = list(docs.keys())
+                                            # OJO: no llamar 'docs' a esto — 'docs' es la
+                                            # lista de archivos del bucle y se pisaba, dejando
+                                            # el contador de progreso en [3/2].
+                                            docs_ev = match_found.get('documentos', {})
+                                            docs_list = list(docs_ev.keys())
                                             # Comparar totales
                                             discrepancias = []
-                                            for doc_tipo, doc_data in docs.items():
+                                            for doc_tipo, doc_data in docs_ev.items():
                                                 doc_total = doc_data.get('total', 0)
                                                 if doc_total and isinstance(total_factura, (int, float)) and total_factura > 0:
                                                     diff = abs(total_factura - doc_total)
@@ -1185,15 +1192,15 @@ def api_procesar_batch_stream():
                 except: pass
 
             # ── Resumen de procesado ──
-            ap_n = sum(1 for v in log.values() if v.get('resultado') == 'AP_OK')
-            ar_n = sum(1 for v in log.values() if v.get('resultado') == 'AR_OK')
-            drr_n = sum(1 for v in log.values() if v.get('resultado') == 'DRR_OK')
-            bank_n = sum(1 for v in log.values() if v.get('resultado') == 'BANK_OK')
-            fb_n = sum(1 for v in log.values() if v.get('resultado') == 'FB_OK')
-            inv_n = sum(1 for v in log.values() if v.get('resultado') == 'INV_OK')
-            rooming_n = sum(1 for v in log.values() if v.get('resultado') == 'ROOMING')
-            skip_n = sum(1 for v in log.values() if 'SKIP' in str(v.get('resultado','')))
-            err_n = sum(1 for v in log.values() if 'ERR' in str(v.get('resultado','')) or 'CRASH' in str(v.get('resultado','')))
+            ap_n = sum(1 for v in lote.values() if v.get('resultado') == 'AP_OK')
+            ar_n = sum(1 for v in lote.values() if v.get('resultado') == 'AR_OK')
+            drr_n = sum(1 for v in lote.values() if v.get('resultado') == 'DRR_OK')
+            bank_n = sum(1 for v in lote.values() if v.get('resultado') == 'BANK_OK')
+            fb_n = sum(1 for v in lote.values() if v.get('resultado') == 'FB_OK')
+            inv_n = sum(1 for v in lote.values() if v.get('resultado') == 'INV_OK')
+            rooming_n = sum(1 for v in lote.values() if v.get('resultado') == 'ROOMING')
+            skip_n = sum(1 for v in lote.values() if 'SKIP' in str(v.get('resultado','')))
+            err_n = sum(1 for v in lote.values() if 'ERR' in str(v.get('resultado','')) or 'CRASH' in str(v.get('resultado','')))
             parts = []
             if ap_n: parts.append(f'{ap_n} facturas AP')
             if ar_n: parts.append(f'{ar_n} informes OTA')
@@ -1202,7 +1209,7 @@ def api_procesar_batch_stream():
             if fb_n: parts.append(f'{fb_n} F&B')
             if inv_n: parts.append(f'{inv_n} inventario/mermas')
             if rooming_n: parts.append(f'{rooming_n} rooming')
-            beo_n = sum(1 for v in log.values() if v.get('resultado') in ('BEO_OK','TM_OK','CONTRATO_OK'))
+            beo_n = sum(1 for v in lote.values() if v.get('resultado') in ('BEO_OK','TM_OK','CONTRATO_OK'))
             if beo_n: parts.append(f'{beo_n} docs evento')
             resumen = ' · '.join(parts) if parts else 'sin documentos procesables'
             yield f'data: \n\n'
