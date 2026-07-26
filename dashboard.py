@@ -1481,21 +1481,10 @@ def api_scan_documento():
         import anthropic
         client = anthropic.Anthropic()
         
-        # Prompt de clasificación y extracción (mismo que para PDFs)
-        prompt = """Eres un experto en operaciones y finanzas hoteleras.
-Esta es una FOTO de un documento físico. Lee TODO el texto visible y:
-
-1. CLASIFICA el documento: FACTURA, BEO, TM, CONTRATO, EXTRACTO_BANCO, 
-   VENTAS_POS, INVENTARIO, MERMAS, COMISIONES_OTA, ROOMING, u OTRO.
-
-2. EXTRAE datos estructurados en JSON según el tipo (mismos schemas que para PDFs).
-
-Si es FACTURA: {"es_factura":true,"numero_factura":"X","fecha":"DD/MM/YYYY","nombre_proveedor":"X","NIF_proveedor":"X","descripcion_concepto":"X","base_imponible":0.0,"porcentaje_iva":21,"cuota_iva":0.0,"total_factura":0.0,"moneda":"EUR"}
-Si es BEO: {"tipo_documento":"BEO","evento":"X","cliente":"X","items":[{"concepto":"X","total":0.0}],"total_estimado":0.0}
-Si es CONTRATO: {"tipo_documento":"CONTRATO","evento":"X","cliente":"X","importe_total":0.0,"items":[{"concepto":"X","importe":0.0}]}
-Si es OTRO: {"tipo_documento":"OTRO","descripcion":"qué es"}
-
-SOLO devuelve JSON, sin markdown ni explicaciones."""
+        # Prompt COMPARTIDO con el lector de documentos: una sola fuente de
+        # verdad. Antes habia aqui una copia con solo 4 de los 12 esquemas.
+        from lector_facturas_ap import prompt_foto as _prompt_foto
+        prompt = _prompt_foto(fname)
 
         resp = client.messages.create(
             model="claude-sonnet-4-6",
@@ -1648,10 +1637,16 @@ SOLO devuelve JSON, sin markdown ni explicaciones."""
             json.dump(rooming_data, open(rooming_path, 'w'), indent=2, ensure_ascii=False)
             mensaje = f'{grupo} — {habs} hab. ({checkin}→{checkout})'
             
-        elif tipo == 'COMISIONES_OTA':
-            ota = datos.get('ota', '?')
-            comision = datos.get('comision', 0)
-            mensaje = f'{ota} — €{comision} comisión'
+        elif tipo in ('COMISIONES_OTA', 'CONTRATO_OTA'):
+            # Reutiliza el enrutado del pipeline: asi una foto de una factura de
+            # comisiones o de un contrato con tarifas pactadas aterriza en el
+            # mismo sitio que su equivalente en PDF (y GUARDA, que antes esta
+            # rama solo componia un mensaje).
+            _m, _mk, _fl = _enrutar_tipo_doc(datos, fname)
+            log[fname] = {'fecha': _dt2.now().strftime('%Y-%m-%d %H:%M'), 'resultado': _mk}
+            _save_proc_log(log)
+            mensaje = _m.split(': ', 1)[-1] if ': ' in _m else _m
+            items_count = len(datos.get('facturas', datos.get('tarifas', [])))
             
         else:
             desc = datos.get('descripcion', tipo)

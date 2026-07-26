@@ -152,21 +152,15 @@ def es_no_factura_por_contenido(texto):
 
 # ── Extracción con Claude API ─────────────────────────────────────────────
 
-def extraer_con_claude(texto, nombre_archivo):
-    api_key = os.getenv("ANTHROPIC_API_KEY")
-    if not api_key:
-        print("    AVISO: ANTHROPIC_API_KEY no encontrada — usando extracción regex")
-        return extraer_con_regex(texto)
-    try:
-        import anthropic
-        client = anthropic.Anthropic(api_key=api_key)
-        # ── Prompt de clasificación y extracción universal ──
-        max_chars = min(len(texto), 8000)
-        
-        prompt = """Eres un experto en operaciones y finanzas hoteleras.
-Analiza el documento y haz DOS cosas: CLASIFICAR y EXTRAER.
-
-CLASIFICACIÓN — Lee TODO el contenido antes de decidir:
+# ── Prompt de clasificacion COMPARTIDO ────────────────────────────────────
+# UNICA fuente de verdad de la clasificacion. Lo usan las dos entradas:
+#   - documentos con texto (PDF, hojas de calculo) -> prompt_documento()
+#   - fotos de documentos fisicos                  -> prompt_foto()
+# Antes habia dos prompts distintos (este y otro incrustado en
+# /api/scan_documento) y se desincronizaron: el de las fotos decia "mismos
+# schemas que para PDFs" pero solo incluia 4 de los 12, asi que una foto de un
+# inventario o de un extracto nunca se extraia bien.
+PROMPT_CLASIFICACION = """CLASIFICACIÓN — Lee TODO el contenido antes de decidir:
 • Lista de productos/ingredientes con stock/cantidades → INVENTARIO  
 • Pérdidas/mermas/desperdicios con costes → MERMAS
 • Ventas de restaurante/platos vendidos/tickets TPV → VENTAS_POS
@@ -232,7 +226,53 @@ REGLAS:
   ni importes facturados, es CONTRATO_OTA, no COMISIONES_OTA
 - Responde SOLO con JSON, sin markdown, sin explicaciones, sin ```
 
-""" + f"ARCHIVO: {nombre_archivo}\nTEXTO:\n{texto[:max_chars]}"
+"""
+
+_CABECERA_DOC = """Eres un experto en operaciones y finanzas hoteleras.
+Analiza el documento y haz DOS cosas: CLASIFICAR y EXTRAER.
+
+"""
+
+_CABECERA_FOTO = """Eres un experto en operaciones y finanzas hoteleras.
+Esta es una FOTO de un documento fisico. Lee TODO el texto visible que aparezca
+(aunque este torcido, con sombras o parcialmente cortado) y despues haz DOS
+cosas: CLASIFICAR y EXTRAER.
+
+"""
+
+_AVISO_OTA = """
+IMPORTANTE — este documento lo emite una OTA (Booking, Expedia, Hotels.com...).
+Una factura emitida POR una OTA al hotel NO es una factura de proveedor: es el
+cargo de comision del canal. Clasificala como COMISIONES_OTA, nunca como
+FACTURA, y rellena "facturas" con una entrada por cada linea/hotel que veas.
+"""
+
+
+def prompt_documento(texto, nombre_archivo, max_chars=8000, es_ota=False):
+    """Prompt para documentos con texto (PDF, CSV, Excel)."""
+    return (_CABECERA_DOC + PROMPT_CLASIFICACION
+            + (_AVISO_OTA if es_ota else "")
+            + f"\nARCHIVO: {nombre_archivo}\nTEXTO:\n{texto[:max_chars]}")
+
+
+def prompt_foto(nombre_archivo=""):
+    """Prompt para fotos de documentos fisicos (Claude Vision)."""
+    return (_CABECERA_FOTO + PROMPT_CLASIFICACION
+            + (f"\nARCHIVO: {nombre_archivo}\n" if nombre_archivo else ""))
+
+
+def extraer_con_claude(texto, nombre_archivo, es_ota=False):
+    api_key = os.getenv("ANTHROPIC_API_KEY")
+    if not api_key:
+        print("    AVISO: ANTHROPIC_API_KEY no encontrada — usando extracción regex")
+        return extraer_con_regex(texto)
+    try:
+        import anthropic
+        client = anthropic.Anthropic(api_key=api_key)
+        # ── Prompt de clasificación y extracción universal ──
+        max_chars = min(len(texto), 8000)
+        
+        prompt = prompt_documento(texto, nombre_archivo, max_chars, es_ota=es_ota)
 
         resp = client.messages.create(
             model="claude-sonnet-4-6",
@@ -460,6 +500,55 @@ def _auto_cuenta_pgc(concepto, proveedor=None):
 
 # ── Procesado principal ───────────────────────────────────────────────────
 
+def _detectar_ota(texto):
+    """Nombre CANONICO de la OTA que aparece en el texto, si es conocida.
+
+    Devuelve el nombre tal y como aparece en comisiones_pactadas.xlsx
+    ("Booking.com"), no como venga en la factura ("Booking.com B.V."):
+    verificador_comisiones casa por nombre exacto, asi que un sufijo societario
+    convierte la reclamacion en OTA_DESCONOCIDA.
+    Recorre de mas largo a mas corto (y en orden estable: OTAS_CONOCIDAS es un
+    set) para que "booking.com" gane a "booking" y el resultado no dependa del
+    orden de iteracion.
+    """
+    t = texto[:3000].lower()
+    for ota in sorted(OTAS_CONOCIDAS, key=lambda s: (-len(s), s)):
+        if ota in t:
+            return ota.title().replace(".Com", ".com").replace(".Es", ".es")
+    return None
+
+
+def _factura_a_comisiones_ota(datos, texto, nombre):
+    """Reencuadra una FACTURA emitida por una OTA como COMISIONES_OTA.
+
+    Red de seguridad: si pese al aviso del prompt la IA la devuelve como
+    FACTURA normal, se traduce aqui para que el enrutado la lleve a AR (y al
+    verificador de comisiones) en vez de contabilizarla como gasto de
+    proveedor. Antes este caso se descartaba entero.
+    """
+    # El nombre canonico manda sobre el que ponga la factura: el verificador
+    # cruza por nombre exacto contra comisiones_pactadas.xlsx.
+    ota = _detectar_ota(texto) or datos.get("nombre_proveedor") or "OTA"
+    bruto = _safe_float(datos.get("base_imponible")) or _safe_float(datos.get("total_factura"))
+    return {
+        "tipo_documento": "COMISIONES_OTA",
+        "ota": ota,
+        "periodo": datos.get("fecha") or "",
+        "importe_bruto": bruto,
+        "comision": _safe_float(datos.get("total_factura")),
+        "porcentaje": _safe_float(datos.get("porcentaje_comision")),
+        "facturas": [{
+            "numero_factura": datos.get("numero_factura"),
+            "nombre_hotel": datos.get("nombre_cliente") or datos.get("nombre_hotel"),
+            "fecha": datos.get("fecha"),
+            "importe_bruto": bruto,
+            "porcentaje_comision": _safe_float(datos.get("porcentaje_comision")),
+            "importe_comision": _safe_float(datos.get("total_factura")),
+        }],
+        "_reencuadrado_desde_factura": True,
+    }
+
+
 def procesar_factura_ap(pdf_path, proveedores):
     nombre = os.path.basename(pdf_path)
     print(f"  Procesando: {nombre}")
@@ -476,9 +565,14 @@ def procesar_factura_ap(pdf_path, proveedores):
         print(f"    ERROR al leer PDF: {e}")
         return {"archivo": nombre, "error": str(e)}
 
-    if es_ota(texto):
-        print(f"    [SKIP] Es factura de OTA — omitida")
-        return {"_skip": True, "_motivo": "factura OTA (va a AR, no AP)"}
+    # Una factura emitida POR una OTA no es un gasto de proveedor: es el cargo
+    # de comision del canal, y va a AR. ANTES se descartaba aqui mismo con
+    # _skip, asi que una factura de Booking cuyo nombre de fichero no llevara
+    # palabra clave se detectaba correctamente... y se tiraba. Ahora se marca y
+    # se extrae como COMISIONES_OTA.
+    _doc_es_ota = es_ota(texto)
+    if _doc_es_ota:
+        print(f"    [OTA] Factura de OTA -> se extrae como comisiones (AR), no como gasto AP")
 
     # Pre-filtro 2: por contenido del PDF (gratis, sin tokens)
     skip2, motivo2 = es_no_factura_por_contenido(texto)
@@ -486,7 +580,7 @@ def procesar_factura_ap(pdf_path, proveedores):
         print(f"    [SKIP] {nombre}: {motivo2}")
         return {"_skip": True, "_motivo": f"contenido: {motivo2}"}
 
-    datos = extraer_con_claude(texto, nombre)
+    datos = extraer_con_claude(texto, nombre, es_ota=_doc_es_ota)
     
     # Si Claude no devolvió nada
     if datos is None:
@@ -496,6 +590,12 @@ def procesar_factura_ap(pdf_path, proveedores):
     # Si Claude clasificó como skip
     if isinstance(datos, dict) and datos.get('_skip'):
         return datos
+
+    # Documento de OTA que la IA ha devuelto como factura normal: reencuadrar
+    # para que acabe en AR y no contabilizado como compra a proveedor.
+    if _doc_es_ota and not datos.get('tipo_documento'):
+        print(f"    [OTA] Reencuadrada como COMISIONES_OTA")
+        return _factura_a_comisiones_ota(datos, texto, nombre)
 
     # Si Claude clasificó como otro tipo (no factura) → pasar al handler para enrutar
     tipo_doc = datos.get('tipo_documento')
