@@ -35,12 +35,50 @@ def cargar_ultimo_excel_procesadas():
     print(f"  Cargando facturas desde: {os.path.basename(ruta)}")
     return pd.read_excel(ruta), ruta
 
+def _norm(v):
+    """Normaliza un nombre para comparar: sin espacios sobrantes, en minusculas.
+    Los vacios, NaN y NO_ENCONTRADO se tratan todos como cadena vacia."""
+    s = "" if v is None else str(v)
+    if s.strip() in ("", NF, "nan", "None"):
+        return ""
+    return " ".join(s.split()).lower()
+
+
 def cargar_comisiones_pactadas():
     if not os.path.exists(COMISIONES_FILE):
         raise FileNotFoundError(f"No se encontro: {COMISIONES_FILE}")
     df = pd.read_excel(COMISIONES_FILE)
-    df["OTA_norm"] = df["OTA"].str.strip().str.lower()
+    df["OTA_norm"] = df["OTA"].map(_norm)
+    # La columna Hotel es OPCIONAL. Una fila sin hotel es la tarifa GENERICA de
+    # esa OTA y vale para todos sus hoteles, asi que los ficheros antiguos (que
+    # no la tienen) siguen comportandose exactamente igual que antes.
+    if "Hotel" in df.columns:
+        df["Hotel_norm"] = df["Hotel"].map(_norm)
+    else:
+        df["Hotel_norm"] = ""
     return df
+
+
+def buscar_tarifa(comisiones_df, ota_norm, hotel_norm):
+    """Tarifa pactada aplicable a (OTA, hotel). Devuelve (fila, origen).
+
+    Prioridad: la tarifa PROPIA del hotel > la generica de la OTA.
+    Si la OTA tiene tarifas pero todas son de OTROS hoteles, devuelve
+    (None, 'SIN_TARIFA_HOTEL'): antes se cogia la primera fila de la OTA, que
+    es como aplicarle a un hotel el porcentaje pactado para otro -- y en un
+    grupo con condiciones distintas por hotel eso reclama de mas o de menos.
+    """
+    de_la_ota = comisiones_df[comisiones_df["OTA_norm"] == ota_norm]
+    if de_la_ota.empty:
+        return None, "OTA_DESCONOCIDA"
+    if hotel_norm:
+        propia = de_la_ota[de_la_ota["Hotel_norm"] == hotel_norm]
+        if not propia.empty:
+            return propia.iloc[0], "hotel"
+    generica = de_la_ota[de_la_ota["Hotel_norm"] == ""]
+    if not generica.empty:
+        return generica.iloc[0], "generica"
+    return None, "SIN_TARIFA_HOTEL"
 
 def convertir_porcentaje(valor):
     if valor is None or str(valor).strip() in ("", NF):
@@ -74,18 +112,25 @@ def convertir_importe(valor):
 
 def verificar_factura(fila, comisiones_df):
     ota_nombre = str(fila.get("nombre_ota", NF))
-    ota_norm   = ota_nombre.strip().lower() if ota_nombre not in (NF,"") else ""
-    match = comisiones_df[comisiones_df["OTA_norm"] == ota_norm]
+    ota_norm   = _norm(ota_nombre)
+    hotel_nombre = str(fila.get("nombre_hotel", NF))
+    hotel_norm = _norm(hotel_nombre)
+    tarifa, origen = buscar_tarifa(comisiones_df, ota_norm, hotel_norm)
     mercado = NF
     comision_pactada = None
     diferencia = None
     importe_discrepancia = None
+    tarifa_aplicada = NF
 
-    if ota_norm == "" or ota_nombre == NF or match.empty:
-        estado = "OTA_DESCONOCIDA"
+    if ota_norm == "" or tarifa is None:
+        estado = origen if origen == "SIN_TARIFA_HOTEL" else "OTA_DESCONOCIDA"
     else:
-        comision_pactada = float(match.iloc[0]["Porcentaje_Comision"])
-        mercado = match.iloc[0]["Mercado"]
+        comision_pactada = float(tarifa["Porcentaje_Comision"])
+        mercado = tarifa["Mercado"]
+        # Deja constancia de QUE tarifa se ha usado: un controller tiene que
+        # poder auditar si se aplico la del hotel o la generica de la OTA.
+        tarifa_aplicada = (str(tarifa.get("Hotel") or hotel_nombre)
+                           if origen == "hotel" else f"{ota_nombre} (genérica)")
         comision_factura = convertir_porcentaje(fila.get("porcentaje_comision"))
         importe_bruto    = convertir_importe(fila.get("importe_bruto"))
         if comision_factura is None:
@@ -110,6 +155,7 @@ def verificar_factura(fila, comisiones_df):
         "periodo_inicio":   fila.get("periodo_inicio", NF),
         "periodo_fin":      fila.get("periodo_fin", NF),
         "importe_bruto":    fila.get("importe_bruto", NF),
+        "tarifa_aplicada":  tarifa_aplicada,
         "porcentaje_pactado":       comision_pactada,
         "porcentaje_factura":       fila.get("porcentaje_comision", NF),
         "diferencia_pp":    round(diferencia,2) if diferencia is not None else NF,
@@ -131,7 +177,8 @@ def aplicar_formato_excel(ws, df):
         return
     for row_idx, row in enumerate(ws.iter_rows(min_row=2), 2):
         estado = ws.cell(row=row_idx, column=col_estado).value
-        fill = {"CORRECTO": VERDE, "DISCREPANCIA": ROJO, "OTA_DESCONOCIDA": AMARILLO, "SIN_PORCENTAJE": AMARILLO}.get(estado)
+        fill = {"CORRECTO": VERDE, "DISCREPANCIA": ROJO, "OTA_DESCONOCIDA": AMARILLO, "SIN_PORCENTAJE": AMARILLO,
+                "SIN_TARIFA_HOTEL": AMARILLO}.get(estado)
         if fill:
             for cell in row:
                 cell.fill = fill

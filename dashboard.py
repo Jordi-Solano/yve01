@@ -672,10 +672,27 @@ _OTA_COL_MAP = {
 # OJO: las columnas van en Mayuscula porque asi las lee verificador_comisiones.
 _PACT_COL_MAP = {
     'OTA': ['ota', 'nombre_ota', 'plataforma', 'canal', 'portal', 'agencia'],
+    'Hotel': ['nombre_hotel', 'hotel', 'establecimiento', 'propiedad', 'property'],
     'Porcentaje_Comision': ['porcentaje_pactado', 'porcentaje', 'comision_pactada',
                             'pct_pactado', 'porcentaje_comision', 'rate', 'comision'],
     'Mercado': ['mercado', 'market', 'zona', 'ambito', 'region'],
 }
+
+def _clave_ota_hotel(ota, hotel):
+    """Clave (OTA, hotel) para deduplicar tarifas pactadas.
+
+    Hecho con Python plano y NO con el accesor .str a proposito: en pandas 3
+    astype(str) YA NO convierte los nulos a la cadena 'nan' -- los deja como
+    NaN -- y .str.lower() los propaga. Con eso, TODAS las filas sin hotel
+    acababan compartiendo la clave NaN y drop_duplicates se llevaba por delante
+    la tabla de tarifas entera menos una fila. Cazado al probar el cruce por
+    hotel, no en revision.
+    """
+    def _t(v):
+        s = '' if v is None else str(v)
+        return '' if s.strip().lower() in ('', 'nan', 'none', '<na>', 'nat') else ' '.join(s.split()).lower()
+    return _t(ota) + '|' + _t(hotel)
+
 
 def _ap_tiene_datos(reg):
     """True si de una factura AP se ha extraido algo aprovechable.
@@ -810,8 +827,14 @@ def _enrutar_tipo_doc(reg, fname):
                 _df_prev = pd.read_excel(_ota_xlsx)
                 _df_ota = pd.concat([_df_prev, _df_ota], ignore_index=True)
                 if 'numero_factura' in _df_ota.columns:
-                    _df_ota.drop_duplicates(subset=['archivo', 'numero_factura'],
-                                            keep='last', inplace=True)
+                    # Solo deduplicar filas con numero de factura real:
+                    # drop_duplicates considera NaN==NaN, asi que dos facturas
+                    # del mismo fichero sin numero se fusionaban en una.
+                    _num = _df_ota['numero_factura'].map(
+                        lambda v: str(v).strip().lower() not in ('', 'nan', 'none', 'no_encontrado'))
+                    _con, _sin = _df_ota[_num], _df_ota[~_num]
+                    _con = _con.drop_duplicates(subset=['archivo', 'numero_factura'], keep='last')
+                    _df_ota = pd.concat([_con, _sin], ignore_index=True)
             os.makedirs(_pdir(), exist_ok=True)
             _df_ota.to_excel(_ota_xlsx, index=False)
             _n_f = len(_facts) if _facts else 1
@@ -839,12 +862,19 @@ def _enrutar_tipo_doc(reg, fname):
             _df_p['OTA'] = _df_p['OTA'].astype(object).fillna(ota)
             if 'Mercado' not in _df_p.columns:
                 _df_p['Mercado'] = None
-            _df_p = _df_p[['OTA', 'Porcentaje_Comision', 'Mercado']]
+            if 'Hotel' not in _df_p.columns:
+                _df_p['Hotel'] = None
+            # El hotel se CONSERVA: el verificador cruza por (OTA, hotel) y un
+            # grupo puede tener porcentajes distintos por establecimiento. Fila
+            # sin hotel = tarifa generica de esa OTA.
+            _df_p = _df_p[['OTA', 'Hotel', 'Porcentaje_Comision', 'Mercado']]
             _df_p = _df_p[_df_p['Porcentaje_Comision'].notna()]
             _n_t = len(_df_p)
             _pact_path = os.path.join(_ddir(), 'comisiones_pactadas.xlsx')
             if os.path.exists(_pact_path):
                 _df_old_p = pd.read_excel(_pact_path)
+                if 'Hotel' not in _df_old_p.columns:
+                    _df_old_p['Hotel'] = None   # ficheros antiguos: todo generico
                 # Si la nueva fila no trae Mercado, conservar el que ya habia
                 # para esa OTA en vez de dejarlo en blanco.
                 _merc = {str(r['OTA']).strip().lower(): r.get('Mercado')
@@ -856,13 +886,19 @@ def _enrutar_tipo_doc(reg, fname):
                 _df_p = pd.concat([_df_old_p, _df_p], ignore_index=True)
             else:
                 _df_p['Mercado'] = _df_p['Mercado'].astype(object).fillna('NO_ENCONTRADO')
-            # El verificador casa por OTA y coge la PRIMERA fila -> una por OTA
-            _df_p['_k'] = _df_p['OTA'].astype(str).str.strip().str.lower()
+            # Una fila por (OTA, hotel): dos hoteles de la misma OTA con
+            # condiciones distintas son DOS tarifas, no una que pisa a la otra.
+            _df_p['_k'] = [_clave_ota_hotel(o, h)
+                           for o, h in zip(_df_p['OTA'], _df_p['Hotel'])]
             _df_p.drop_duplicates(subset=['_k'], keep='last', inplace=True)
             _df_p = _df_p.drop(columns=['_k'])
             _df_p.to_excel(_pact_path, index=False)
-            _pcts = ', '.join(f'{r["OTA"]} {r["Porcentaje_Comision"]}%' for _, r in _df_p.iterrows()
-                              if str(r['OTA']).strip().lower() == str(ota).strip().lower())
+            _pcts = ', '.join(
+                (f'{r["Hotel"]} {r["Porcentaje_Comision"]}%'
+                 if str(r.get('Hotel') or '').strip() not in ('', 'nan', 'None')
+                 else f'{r["OTA"]} {r["Porcentaje_Comision"]}%')
+                for _, r in _df_p.iterrows()
+                if str(r['OTA']).strip().lower() == str(ota).strip().lower())
             _msg = f'✓ Contrato OTA {fname}: {_n_t} tarifa(s) pactada(s) de {ota} ({_pcts or "—"}) guardadas'
             _marca = 'CONTRATO_OTA_OK'
             # Cambiar lo pactado obliga a re-verificar las facturas ya cargadas
