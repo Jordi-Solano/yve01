@@ -274,6 +274,18 @@ def _clave_mov(fila):
                      "" if imp is None else f"{imp:.2f}"])
 
 
+def clave_movimiento(fila):
+    """Identidad publica de un movimiento bancario.
+
+    La exponemos porque la pantalla de conciliacion necesita decir "este
+    movimiento" al servidor sin usar su POSICION en la lista: la posicion cambia
+    en cuanto el extracto crece o se vuelve a bajar con fechas anteriores, y
+    escribir por posicion marcaria conciliado un movimiento distinto.
+    Misma clave que usa el cruce, para que las dos cosas no se separen nunca.
+    """
+    return _clave_mov(fila)
+
+
 def _ultimo_informe(reportes_dir):
     """Ruta del informe de conciliacion mas reciente, o None."""
     hits = glob.glob(os.path.join(reportes_dir, "conciliacion_*.xlsx"))

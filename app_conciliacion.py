@@ -51,44 +51,67 @@ def _sf(v):
 
 @bp.route("/api/stats")
 def api_stats():
-    ruta = _ultimo("conciliacion_*.xlsx", REPORTES_DIR)
-    if not ruta:
-        return jsonify(None)
+    """Movimientos del extracto REAL con el estado del informe.
+
+    Antes leia SOLO el ultimo conciliacion_*.xlsx y la pantalla se quedaba
+    congelada en la foto del dia que se concilio: los movimientos subidos
+    despues no aparecian (reproducido: 2 de 4). Mismo arreglo que ya se hizo en
+    el panel del dashboard, y por el mismo sitio — quien junta extracto e
+    informe es almacen_datos.movimientos_banco(), aqui no se replica nada.
+
+    Cada movimiento viaja con su `clave` (identidad fecha+concepto+importe).
+    La asignacion manual usa esa clave y NO la posicion en la lista: la posicion
+    cambia en cuanto el extracto crece o se rebaja con fechas anteriores.
+    """
     try:
-        df = pd.read_excel(ruta)
-        total = len(df)
-        conc = int((df["estado"] == "CONCILIADO").sum()) if "estado" in df.columns else 0
-        pend = int((df["estado"] == "PENDIENTE").sum()) if "estado" in df.columns else 0
-        diff = int((df["estado"] == "DIFERENCIA").sum()) if "estado" in df.columns else 0
-        imp_total = df["importe"].apply(_sf).sum()
-        imp_pend = df.loc[df.get("estado", pd.Series()) == "PENDIENTE", "importe"].apply(lambda v: abs(_sf(v))).sum() if "estado" in df.columns else 0
-        saldo = _sf(df["saldo"].iloc[-1]) if "saldo" in df.columns and len(df) > 0 else 0
+        import almacen_datos as _alm
+        df, info = _alm.movimientos_banco(reportes_dir=str(REPORTES_DIR))
+        if df is None or df.empty:
+            return jsonify(None)
 
         def _s(v):
             s = str(v)
-            return "" if s in ("nan", "None", "NaT") else s
+            return "" if s in ("nan", "None", "NaT", "<NA>") else s
 
-        rows = []
-        for _, r in df.iterrows():
+        def _estado(v):
+            e = str(v or "").strip().upper()
+            return e if e else "PENDIENTE"
+
+        rows, imp_total, imp_pend = [], 0.0, 0.0
+        conc = pend = diff = 0
+        for r in df.to_dict("records"):
+            est = _estado(r.get("estado"))
+            imp = _sf(r.get("importe", 0))
+            imp_total += imp
+            if est == "CONCILIADO":
+                conc += 1
+            elif est == "DIFERENCIA":
+                diff += 1
+            else:
+                pend += 1
+                imp_pend += abs(imp)
             rows.append({
-                "fecha": str(r.get("fecha", ""))[:10],
+                "clave": _alm.clave_movimiento(r),
+                "fecha": _s(r.get("fecha", ""))[:10],
                 "concepto": _s(r.get("concepto", "")),
-                "importe": _sf(r.get("importe", 0)),
-                "tipo": _s(r.get("tipo", "")),
+                "importe": imp,
+                "tipo": _s(r.get("tipo", "")) or ("ABONO" if imp > 0 else "CARGO"),
                 "referencia": _s(r.get("referencia", "")),
                 "saldo": _sf(r.get("saldo", 0)),
-                "estado": str(r.get("estado", "PENDIENTE")),
+                "estado": est,
                 "factura_ref": _s(r.get("factura_ref", "")),
                 "origen": _s(r.get("origen", "")),
                 "match_proveedor": _s(r.get("match_proveedor", "")),
                 "diferencia": _sf(r.get("diferencia", 0)),
             })
 
+        saldo = rows[-1]["saldo"] if rows else 0
         return jsonify({
-            "total": total, "conciliados": conc, "pendientes": pend,
+            "total": len(rows), "conciliados": conc, "pendientes": pend,
             "diferencias": diff, "importe_total": round(imp_total, 2),
             "importe_pendiente": round(imp_pend, 2), "saldo": round(saldo, 2),
-            "archivo": os.path.basename(ruta),
+            "archivo": info.get("informe"),
+            "extracto": info.get("extracto"),
             "movimientos": rows,
         })
     except Exception as e:
@@ -128,30 +151,80 @@ def api_upload():
     return jsonify({"ok": True})
 
 
+_COLS_INFORME = ["fecha", "concepto", "importe", "tipo", "referencia", "saldo",
+                 "estado", "factura_ref", "origen", "match_proveedor", "diferencia"]
+
+
 @bp.route("/api/asignar_manual", methods=["POST"])
 def api_asignar():
-    """Asigna manualmente un movimiento a una factura."""
+    """Asigna manualmente un movimiento a una factura.
+
+    Identifica el movimiento por su CLAVE (fecha+concepto+importe), nunca por su
+    posicion en la lista: ahora la lista sale del extracto y su orden cambia en
+    cuanto se vuelve a bajar con fechas anteriores. Escribir por posicion
+    marcaria conciliado un movimiento distinto, y sin avisar.
+
+    Si el movimiento aun no esta en el informe (es nuevo desde la ultima
+    conciliacion) se añade una fila: si no, el boton no haria nada justo en los
+    movimientos que mas falta hace poder asignar a mano.
+    """
+    import almacen_datos as _alm
     data = request.get_json(force=True) or {}
-    idx = data.get("idx")
+    clave = str(data.get("clave") or "").strip()
     factura = data.get("factura", "")
-    ruta = _ultimo("conciliacion_*.xlsx", REPORTES_DIR)
-    if not ruta or idx is None:
-        return jsonify({"ok": False}), 400
+    if not clave:
+        return jsonify({"ok": False, "error": "falta la clave del movimiento"}), 400
+
     try:
-        df = pd.read_excel(ruta)
+        df, _info = _alm.movimientos_banco(reportes_dir=str(REPORTES_DIR))
+        mov = next((m for m in df.to_dict("records")
+                    if _alm.clave_movimiento(m) == clave), None) if df is not None and not df.empty else None
+        if mov is None:
+            return jsonify({"ok": False, "error": "ese movimiento ya no esta en el extracto"}), 404
+
+        ruta = _ultimo("conciliacion_*.xlsx", REPORTES_DIR)
+        if ruta:
+            df_rep = pd.read_excel(ruta)
+        else:
+            # nunca se ha conciliado: el informe se crea ahora, si no el boton
+            # no haria nada en una cuenta recien subida.
+            from datetime import datetime as _dt
+            ruta = str(REPORTES_DIR / f"conciliacion_{_dt.now().strftime('%Y%m%d')}.xlsx")
+            df_rep = pd.DataFrame(columns=_COLS_INFORME)
+
+        for col in _COLS_INFORME:
+            if col not in df_rep.columns:
+                df_rep[col] = "" if col not in ("importe", "saldo", "diferencia") else 0.0
         # columnas de texto: si vienen vacías pandas las tipa como numéricas y rechaza strings
-        for _col in ("estado", "factura_ref", "origen", "match_proveedor"):
-            if _col in df.columns:
-                df[_col] = df[_col].astype(object)
-        if 0 <= idx < len(df):
-            df.loc[idx, "estado"] = "CONCILIADO"
-            df.loc[idx, "factura_ref"] = factura
-            df.loc[idx, "origen"] = "MANUAL"
-            df.to_excel(ruta, index=False)
-            return jsonify({"ok": True})
+        for _col in ("estado", "factura_ref", "origen", "match_proveedor", "tipo", "referencia"):
+            df_rep[_col] = df_rep[_col].astype(object)
+
+        # Primera fila con esa clave que NO este ya conciliada. Dos movimientos
+        # identicos tienen la misma clave a proposito: cada uno consume una fila.
+        destino = None
+        for pos, fila in enumerate(df_rep.to_dict("records")):
+            if _alm.clave_movimiento(fila) == clave and \
+               str(fila.get("estado", "")).strip().upper() != "CONCILIADO":
+                destino = pos
+                break
+
+        if destino is None:
+            nueva = {c: mov.get(c, "") for c in _COLS_INFORME}
+            for c in ("importe", "saldo", "diferencia"):
+                try:
+                    nueva[c] = float(nueva.get(c) or 0)
+                except (TypeError, ValueError):
+                    nueva[c] = 0.0
+            df_rep = pd.concat([df_rep, pd.DataFrame([nueva])], ignore_index=True)
+            destino = len(df_rep) - 1
+
+        df_rep.loc[destino, "estado"] = "CONCILIADO"
+        df_rep.loc[destino, "factura_ref"] = factura
+        df_rep.loc[destino, "origen"] = "MANUAL"
+        df_rep[_COLS_INFORME].to_excel(ruta, index=False)
+        return jsonify({"ok": True, "archivo": os.path.basename(ruta)})
     except Exception as e:
         return jsonify({"ok": False, "error": str(e)}), 500
-    return jsonify({"ok": False}), 400
 
 
 @bp.route("/")
@@ -277,8 +350,10 @@ async function loadData() {
     }
     tbody.innerHTML = d.movimientos.map(function(m, i) {
       var tipoColor = m.tipo === 'ABONO' ? 'color:var(--grn)' : 'color:var(--red)';
+      // la clave identifica el movimiento; la POSICIÓN i ya no vale porque la
+      // lista sale del extracto y su orden cambia al rebajarlo
       var accBtn = m.estado === 'PENDIENTE'
-        ? '<button class="btn btn-sec" style="padding:4px 8px;font-size:11px" onclick="asignarManual(' + i + ')">' + tt('Asignar') + '</button>'
+        ? '<button class="btn btn-sec" style="padding:4px 8px;font-size:11px" onclick="asignarManual(' + JSON.stringify(m.clave) + ')">' + tt('Asignar') + '</button>'
         : (m.factura_ref || '—');
       return '<tr>'
         + '<td style="color:var(--dim)">' + m.fecha + '</td>'
@@ -330,17 +405,19 @@ async function uploadFile(input) {
   input.value = '';
 }
 
-async function asignarManual(idx) {
+async function asignarManual(clave) {
   var factura = prompt(tt('Numero de factura para asignar a este movimiento:'));
   if (!factura) return;
+  var msg = document.getElementById('status-msg');
   try {
     var r = await fetch('/conciliacion/api/asignar_manual', {
       method:'POST', headers:{'Content-Type':'application/json'},
-      body:JSON.stringify({idx:idx, factura:factura})
+      body:JSON.stringify({clave:clave, factura:factura})
     });
     var d = await r.json();
-    if (d.ok) loadData();
-  } catch(e) {}
+    if (d.ok) { loadData(); }
+    else if (msg) { msg.textContent = 'Error: ' + (d.error || tt('no se pudo asignar')); }
+  } catch(e) { if (msg) msg.textContent = tt('Error de conexion'); }
 }
 
 // ── i18n: mismo idioma que el dashboard (localStorage yve_lang) ──
