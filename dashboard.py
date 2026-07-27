@@ -1358,8 +1358,13 @@ def api_procesar_batch_stream():
                         _mark(fname, 'INV_OK')
                         continue
                     if is_rooming:
-                        yield f'data: ℹ {fname}: rooming list detectado (ocupación)\n\n'
-                        _mark(fname, 'ROOMING')
+                        # Este camino NO extrae nada: solo reconoce el nombre del
+                        # fichero y sigue. Antes marcaba 'ROOMING' igual que el
+                        # camino de la IA (que si guarda datos), asi que en el
+                        # historial parecian lo mismo.
+                        yield (f'data: ℹ {fname}: parece un rooming por el nombre — '
+                               f'no se ha extraido ningun dato\n\n')
+                        _mark(fname, 'ROOMING_NO_LEIDO')
                         continue
 
                     # Hojas de calculo que no encajaron por nombre en banco/fb/drr/
@@ -1529,7 +1534,9 @@ def api_procesar_batch_stream():
                     _com = f"{_contrato_res.get('comision_total', 0):,.2f}"
                     _di = ' · certificado DI pendiente' if _contrato_res.get('requiere_certificado_di') else ''
                     yield f"data: ✓ Contrato {_contrato_res.get('contrato','')} · {_contrato_res.get('cliente','')} · {_eur}€ (comisión {_com}€){_di}\n\n"
-                    for _a in imgs: _mark(_a, 'CONTRATO_OK')
+                    # marca propia: este contrato SI acaba en AR Real, a diferencia
+                    # del CONTRATO de evento, que solo se guarda para el cruce.
+                    for _a in imgs: _mark(_a, 'AR_REAL_OK')
                     has_ar_real = True
                 elif _contrato_res.get('needs_review'):
                     yield f"data: ⚠ Contrato de grupo: no se pudo leer — {str(_contrato_res.get('error',''))[:80]}\n\n"
@@ -1568,7 +1575,9 @@ def api_procesar_batch_stream():
             if bank_n: parts.append(f'{bank_n} banco')
             if fb_n: parts.append(f'{fb_n} F&B')
             if inv_n: parts.append(f'{inv_n} inventario/mermas')
+            rooming_nl_n = sum(1 for v in lote.values() if v.get('resultado') == 'ROOMING_NO_LEIDO')
             if rooming_n: parts.append(f'{rooming_n} rooming')
+            if rooming_nl_n: parts.append(f'{rooming_nl_n} rooming sin leer')
             beo_n = sum(1 for v in lote.values() if v.get('resultado') in ('BEO_OK','TM_OK','CONTRATO_OK'))
             if beo_n: parts.append(f'{beo_n} docs evento')
             resumen = ' · '.join(parts) if parts else 'sin documentos procesables'
@@ -1583,10 +1592,16 @@ def api_procesar_batch_stream():
             if ar_n: tabs_updated.append('AR — OTAs')
             if bank_n: tabs_updated.append('Banco')
             if fb_n or inv_n: tabs_updated.append('F&B Cost')
-            if rooming_n: tabs_updated.append('Rooming')
             if has_ar_real: tabs_updated.append('AR Real')
             if tabs_updated:
                 yield f'data: 📍 Consulta: {", ".join(tabs_updated)}\n\n'
+            # Rooming y documentos de evento se guardan, pero NO hay pantalla
+            # donde consultarlos. Antes salian en "Consulta:" mandando a
+            # pestañas que no existen; ahora se dice lo que hay.
+            _sin_pantalla = rooming_n + beo_n
+            if _sin_pantalla:
+                yield (f'data: ℹ {_sin_pantalla} documento(s) guardado(s) para cruces internos — '
+                       f'todavia no hay pantalla donde consultarlos\n\n')
             yield 'data: PIPELINE_COMPLETO\n\n'
         except Exception as e:
             yield f'data: ERROR: {str(e)[:200]}\n\n'
@@ -2105,15 +2120,20 @@ def api_historial_procesado():
         elif resultado in ('BANK_OK',): tab = 'Banco'
         elif resultado in ('FB_OK',): tab = 'F&B Cost'
         elif resultado in ('INV_OK',): tab = 'F&B Cost (Inventario/Mermas)'
-        elif resultado in ('ROOMING',): tab = 'Rooming'
-        elif resultado in ('BEO_OK',): tab = 'Evento (BEO)'
-        elif resultado in ('TM_OK',): tab = 'Evento (TM)'
-        elif resultado in ('CONTRATO_OK',): tab = 'Evento (Contrato)'
+        elif resultado in ('AR_REAL_OK',): tab = 'AR Real'
+        # Estos se GUARDAN pero no hay pantalla donde verlos. Decir el nombre de
+        # una pestaña que no existe es mandar al usuario a buscar algo que no
+        # esta: se dice lo que hay.
+        elif resultado in ('ROOMING',): tab = 'Rooming (sin pantalla)'
+        elif resultado in ('ROOMING_NO_LEIDO',): tab = 'Rooming (no leído)'
+        elif resultado in ('BEO_OK',): tab = 'Evento BEO (sin pantalla)'
+        elif resultado in ('TM_OK',): tab = 'Evento TM (sin pantalla)'
+        elif resultado in ('CONTRATO_OK',): tab = 'Evento contrato (sin pantalla)'
         elif 'SKIP' in resultado: tab = 'Omitido'
         elif 'ERR' in resultado or 'CRASH' in resultado: tab = 'Error'
         
         icono = '⚠' if resultado in ('AR_PARCIAL', 'DRR_RECIBIDO') else (
-                '✓' if 'OK' in resultado else ('⚠' if 'SKIP' in resultado else ('ℹ' if resultado == 'ROOMING' else '✗')))
+                '✓' if 'OK' in resultado else ('⚠' if 'SKIP' in resultado else ('ℹ' if resultado.startswith('ROOMING') else '✗')))
         items.append({
             'archivo': fname,
             'fecha': info.get('fecha', '—'),
