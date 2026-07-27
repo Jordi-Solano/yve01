@@ -31,6 +31,7 @@ aprobaciones): esto es solo la capa de acceso a datos.
 
 import os
 import glob
+import warnings
 
 import pandas as pd
 
@@ -194,6 +195,174 @@ def reporte_verificacion(reportes_dir=None):
     _, r = _dirs(None, reportes_dir)
     df, rutas = _leer_etapas([("verificacion_*.xlsx", "reportes")], r, r, hoja="Detalle")
     return _consolidar(df, _ID_AR)
+
+
+# ── Banco ─────────────────────────────────────────────────────────────────
+# El extracto manda: dice QUE movimientos existen y CUANTOS. El informe de
+# conciliacion solo aporta el ESTADO de los que ya se cruzaron (incluidas las
+# asignaciones manuales, que son trabajo humano y no se pueden perder).
+
+_ESTADO_DEFECTO = "PENDIENTE"
+_CAMPOS_INFORME = ("estado", "factura_ref", "origen", "match_proveedor", "diferencia")
+
+
+def _fecha(v):
+    """Fecha normalizada a 'YYYY-MM-DD'. Cadena vacia si no se puede leer.
+
+    Hace falta porque el mismo movimiento llega como Timestamp desde un fichero
+    y como '20/07/2026' desde otro: sin normalizar, no cruzarian nunca.
+    """
+    if v is None:
+        return ""
+    try:
+        # dayfirst avisa cuando la fecha ya viene en ISO; es esperado y ensucia
+        # los logs de produccion, asi que lo callamos solo aqui.
+        with warnings.catch_warnings():
+            warnings.simplefilter("ignore", UserWarning)
+            t = pd.to_datetime(v, dayfirst=True, errors="coerce")
+    except Exception:
+        t = None
+    if t is None or (hasattr(pd, "isna") and pd.isna(t)):
+        return _txt(v)
+    return t.strftime("%Y-%m-%d")
+
+
+def _num(v):
+    """Importe normalizado a float con 2 decimales, o None si no es un numero.
+
+    Tolera '1.234,56', '1,234.56', '-450 EUR'. Se redondea porque el ida y
+    vuelta por Excel puede dejar -450.00000000001 y romperia el cruce.
+    """
+    if v is None:
+        return None
+    if isinstance(v, bool):
+        return None
+    if isinstance(v, (int, float)):
+        try:
+            return None if pd.isna(v) else round(float(v), 2)
+        except Exception:
+            return None
+    s = str(v).strip()
+    for basura in ("EUR", "eur", "\u20ac", "$", " ", "\u00a0"):
+        s = s.replace(basura, "")
+    if not s:
+        return None
+    if "," in s and "." in s:
+        # el separador decimal es el que aparece MAS a la derecha
+        s = (s.replace(".", "").replace(",", ".") if s.rfind(",") > s.rfind(".")
+             else s.replace(",", ""))
+    elif "," in s:
+        ent, _, dec = s.rpartition(",")
+        s = (ent + "." + dec) if len(dec) in (1, 2) else s.replace(",", "")
+    try:
+        return round(float(s), 2)
+    except (TypeError, ValueError):
+        return None
+
+
+def _clave_mov(fila):
+    """Identidad de un movimiento: fecha + concepto + importe.
+
+    A diferencia de las facturas, aqui la clave NUNCA se deja vacia: un
+    movimiento sin concepto sigue siendo un movimiento y tiene que cruzar.
+    Dos movimientos identicos comparten clave a proposito; el cruce los trata
+    como cola (uno consume una entrada del informe), asi que NO se fusionan.
+    """
+    imp = _num(fila.get("importe"))
+    return "|".join([_fecha(fila.get("fecha")),
+                     _txt(fila.get("concepto")),
+                     "" if imp is None else f"{imp:.2f}"])
+
+
+def _ultimo_informe(reportes_dir):
+    """Ruta del informe de conciliacion mas reciente, o None."""
+    hits = glob.glob(os.path.join(reportes_dir, "conciliacion_*.xlsx"))
+    if not hits:
+        return None
+    hits.sort(key=lambda p: (os.path.getmtime(p), p), reverse=True)
+    return hits[0]
+
+
+def movimientos_banco(datos_dir=None, reportes_dir=None):
+    """Movimientos del extracto REAL con el estado de conciliacion del informe.
+
+    Devuelve (df, info). El df lleva las columnas del extracto mas
+    estado/factura_ref/origen/match_proveedor/diferencia. Todo movimiento que
+    no aparezca en el informe queda PENDIENTE.
+
+    Antes el panel leia SOLO el informe: al subir movimientos nuevos seguia
+    enseñando la foto del dia que se concilio y no habia forma de ver lo nuevo.
+    Leer solo el extracto habria sido peor: se perderia lo ya conciliado, y con
+    ello las asignaciones manuales.
+    """
+    from collections import defaultdict, deque
+
+    p, r = _dirs(datos_dir, reportes_dir)
+    datos_dir = datos_dir if datos_dir is not None else _dirs(None, None)[0]
+    # el extracto vive en datos-referencia, no en facturas-procesadas
+    try:
+        from tenant_dirs import datos_dir as _dd
+        ruta_ext = os.path.join(str(os.fspath(_dd()) if hasattr(_dd(), "__fspath__") else _dd()),
+                                "extracto_banco.xlsx")
+    except Exception:
+        ruta_ext = os.path.join(os.path.dirname(os.path.abspath(__file__)),
+                                "datos-referencia", "extracto_banco.xlsx")
+
+    info = {"extracto": None, "informe": None, "movimientos_extracto": 0,
+            "filas_informe": 0, "cruzados": 0}
+
+    df_ext = pd.DataFrame()
+    if os.path.exists(ruta_ext):
+        try:
+            df_ext = pd.read_excel(ruta_ext)
+            info["extracto"] = os.path.basename(ruta_ext)
+        except Exception as e:
+            print(f"[almacen_datos] no se pudo leer el extracto: {e}")
+
+    ruta_rep = _ultimo_informe(r)
+    df_rep = pd.DataFrame()
+    if ruta_rep:
+        try:
+            df_rep = pd.read_excel(ruta_rep)
+            info["informe"] = os.path.basename(ruta_rep)
+        except Exception as e:
+            print(f"[almacen_datos] no se pudo leer {os.path.basename(ruta_rep)}: {e}")
+
+    info["movimientos_extracto"] = len(df_ext)
+    info["filas_informe"] = len(df_rep)
+
+    # Sin extracto no hay nada que enseñar salvo el propio informe.
+    if df_ext.empty:
+        if not df_rep.empty:
+            for c in _CAMPOS_INFORME:
+                if c not in df_rep.columns:
+                    df_rep[c] = "" if c != "diferencia" else 0.0
+            info["cruzados"] = len(df_rep)
+        return df_rep, info
+
+    # Cola por clave: dos movimientos iguales consumen DOS filas del informe.
+    cola = defaultdict(deque)
+    for fila in df_rep.to_dict("records"):
+        cola[_clave_mov(fila)].append(fila)
+
+    filas = []
+    for mov in df_ext.to_dict("records"):
+        fila = dict(mov)
+        q = cola.get(_clave_mov(mov))
+        origen_info = q.popleft() if q else None
+        if origen_info is not None:
+            info["cruzados"] += 1
+            for c in _CAMPOS_INFORME:
+                fila[c] = origen_info.get(c, "")
+            if not _txt(fila.get("estado")):
+                fila["estado"] = _ESTADO_DEFECTO
+        else:
+            fila["estado"] = _ESTADO_DEFECTO
+            for c in _CAMPOS_INFORME[1:]:
+                fila[c] = 0.0 if c == "diferencia" else ""
+        filas.append(fila)
+
+    return pd.DataFrame(filas), info
 
 
 def resumen_fuentes(procesadas_dir=None, reportes_dir=None):

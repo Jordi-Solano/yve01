@@ -2865,63 +2865,63 @@ def api_run_conciliacion():
 
 @app.route("/api/stats_banco")
 def api_stats_banco():
-    """Resumen de conciliacion bancaria para el dashboard."""
-    # Primero intentar conciliación existente
-    ruta = None
-    hits = glob.glob(os.path.join(_rdir(), "conciliacion_*.xlsx"))
-    if hits:
-        hits.sort(key=lambda p: os.path.getmtime(p), reverse=True)
-        ruta = hits[0]
-    
-    # Si no hay conciliación, mostrar datos del extracto directamente
-    if not ruta:
-        extracto_path = os.path.join(_ddir(), "extracto_banco.xlsx")
-        if os.path.exists(extracto_path):
+    """Resumen de conciliacion bancaria para el dashboard.
+
+    El extracto manda: total y movimientos salen SIEMPRE de extracto_banco.xlsx,
+    asi que un movimiento recien subido se ve en el acto. El estado conciliado
+    se recupera del ultimo informe (incluidas las asignaciones manuales) y lo
+    que no este en el informe cuenta como pendiente. Quien junta los dos
+    ficheros es almacen_datos.movimientos_banco(), no este endpoint.
+    """
+    try:
+        import almacen_datos as _alm
+        df, info = _alm.movimientos_banco(reportes_dir=_rdir())
+
+        if df is None or df.empty:
+            return jsonify(None)
+
+        movs = df.to_dict("records")
+
+        def _estado(m):
+            e = str(m.get("estado", "") or "").strip().upper()
+            return e if e else "PENDIENTE"
+
+        total = len(movs)
+        conc = sum(1 for m in movs if _estado(m) == "CONCILIADO")
+        pend = sum(1 for m in movs if _estado(m) == "PENDIENTE")
+        diff = sum(1 for m in movs if _estado(m) == "DIFERENCIA")
+
+        importes = [safe_float(m.get("importe", 0)) for m in movs]
+        cargos = abs(sum(x for x in importes if x < 0))
+        abonos = sum(x for x in importes if x > 0)
+        imp_pend = sum(abs(safe_float(m.get("importe", 0)))
+                       for m in movs if _estado(m) == "PENDIENTE")
+
+        # Alertas: pendientes de mas de 7 dias
+        alertas = []
+        from datetime import datetime as _dtb
+        hoy = _dtb.now()
+        for m in movs:
+            if _estado(m) != "PENDIENTE":
+                continue
             try:
-                df_ext = pd.read_excel(extracto_path)
-                n_movs = len(df_ext)
-                # Calcular cargos y abonos
-                imp_col = None
-                for c in ['importe', 'cantidad', 'amount', 'monto']:
-                    if c in df_ext.columns:
-                        imp_col = c
-                        break
-                cargos = 0
-                abonos = 0
-                if imp_col:
-                    df_ext[imp_col] = df_ext[imp_col].apply(lambda x: safe_float(x) if not pd.isna(x) else 0)
-                    cargos = abs(float(df_ext[df_ext[imp_col] < 0][imp_col].sum()))
-                    abonos = float(df_ext[df_ext[imp_col] > 0][imp_col].sum())
-                return jsonify({"total": n_movs, "conciliados": 0, "pendientes": n_movs,
-                                "diferencias": 0, "importe_pendiente": round(cargos + abonos, 2),
-                                "alertas": [], "sin_conciliar": True,
-                                "cargos": round(cargos, 2), "abonos": round(abonos, 2)})
+                f = pd.to_datetime(m.get("fecha"), dayfirst=True)
+                dias = (hoy - f).days
+                if dias > 7:
+                    alertas.append({"concepto": str(m.get("concepto", ""))[:50],
+                                    "importe": safe_float(m.get("importe", 0)),
+                                    "dias": dias})
             except Exception:
                 pass
-        return jsonify(None)
-    try:
-        df = pd.read_excel(ruta)
-        total = len(df)
-        conc = int((df["estado"] == "CONCILIADO").sum()) if "estado" in df.columns else 0
-        pend = int((df["estado"] == "PENDIENTE").sum()) if "estado" in df.columns else 0
-        diff = int((df["estado"] == "DIFERENCIA").sum()) if "estado" in df.columns else 0
-        imp_pend = float(df.loc[df.get("estado", pd.Series()) == "PENDIENTE", "importe"].apply(lambda v: abs(safe_float(v))).sum()) if "estado" in df.columns else 0
-        # Alertas: pendientes con mas de 7 dias
-        alertas = []
-        if "estado" in df.columns and "fecha" in df.columns:
-            from datetime import datetime
-            hoy = datetime.now()
-            for _, r in df[df["estado"] == "PENDIENTE"].iterrows():
-                try:
-                    f = pd.to_datetime(r["fecha"])
-                    dias = (hoy - f).days
-                    if dias > 7:
-                        alertas.append({"concepto": str(r.get("concepto", ""))[:50], "importe": safe_float(r.get("importe", 0)), "dias": dias})
-                except Exception:
-                    pass
+        alertas.sort(key=lambda a: a["dias"], reverse=True)
+
         return jsonify({"total": total, "conciliados": conc, "pendientes": pend,
                         "diferencias": diff, "importe_pendiente": round(imp_pend, 2),
-                        "alertas": alertas[:10]})
+                        "cargos": round(cargos, 2), "abonos": round(abonos, 2),
+                        "alertas": alertas[:10],
+                        "sin_conciliar": info.get("informe") is None,
+                        "archivo": info.get("informe"),
+                        "extracto": info.get("extracto")})
     except Exception as e:
         return jsonify({"error": str(e)}), 500
 
