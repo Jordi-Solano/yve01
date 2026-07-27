@@ -2085,6 +2085,10 @@ def api_scan_documento():
         # Integrar datos según tipo — MISMO flujo que Procesar Archivos
         items_count = 0
         mensaje = ''
+        # None = "este tipo no dice nada al respecto" -> el frontend mantiene su
+        # ✓ de siempre. Solo el albaran la pone hoy; los demas tipos podrian
+        # adoptarla despues sin mover nada de lo que ya funciona.
+        guardado = None
         
         if tipo == 'FACTURA' and datos.get('es_factura'):
             # Mismo normalizador y mismo guardado que el PDF y la hoja de
@@ -2202,23 +2206,35 @@ def api_scan_documento():
             json.dump(rooming_data, open(rooming_path, 'w'), indent=2, ensure_ascii=False)
             mensaje = f'{grupo} — {habs} hab. ({checkin}→{checkout})'
             
-        elif tipo in ('COMISIONES_OTA', 'CONTRATO_OTA'):
+        elif tipo in ('COMISIONES_OTA', 'CONTRATO_OTA', 'ALBARAN'):
             # Reutiliza el enrutado del pipeline: asi una foto de una factura de
-            # comisiones o de un contrato con tarifas pactadas aterriza en el
-            # mismo sitio que su equivalente en PDF (y GUARDA, que antes esta
-            # rama solo componia un mensaje).
+            # comisiones, de un contrato con tarifas pactadas o de un ALBARAN
+            # aterriza en el mismo sitio que su equivalente en PDF (y GUARDA,
+            # que antes esta rama solo componia un mensaje).
+            # El albaran acaba en _guardar_albaran por dentro de
+            # _enrutar_tipo_doc: ni una linea de guardado duplicada aqui. Un
+            # albaran en papel fotografiado con el movil es el caso MAS normal
+            # de todos, y hasta ahora caia al else generico y no se guardaba.
             _m, _mk, _fl = _enrutar_tipo_doc(datos, fname)
             log[fname] = {'fecha': _dt2.now().strftime('%Y-%m-%d %H:%M'), 'resultado': _mk}
             _save_proc_log(log)
             mensaje = _m.split(': ', 1)[-1] if ': ' in _m else _m
-            items_count = len(datos.get('facturas', datos.get('tarifas', [])))
+            items_count = len(datos.get('facturas', datos.get('tarifas',
+                                        datos.get('lineas', []))))
+            if tipo == 'ALBARAN':
+                # Misma honestidad que en el camino de archivos: un albaran del
+                # que no se ha podido leer una sola linea NO puede cantar
+                # "✓ Albaran". El frontend solo miraba 'ok', asi que pintaba
+                # verde igualmente; ahora se le dice si se guardo algo.
+                guardado = (_mk != 'SKIP')
             
         else:
             desc = datos.get('descripcion', tipo)
             mensaje = desc
         
         return jsonify({'ok': True, 'tipo': tipo, 'mensaje': mensaje,
-                        'items': str(items_count) if items_count else None, 'datos': datos})
+                        'items': str(items_count) if items_count else None,
+                        'guardado': guardado, 'datos': datos})
     except Exception as e:
         return jsonify({'ok': False, 'error': str(e)[:200]}), 500
 
@@ -10224,7 +10240,8 @@ async function _procesarImagenes(imgs, addLine) {
         var r = await fetch('/api/scan_documento', { method: 'POST', body: formData, headers: { 'X-CSRF-Token': _csrfToken } });
         var data = await r.json();
         if (data.ok) {
-          addLine('✓ ' + (file.name || 'foto') + ': ' + (data.tipo || '—') + (data.mensaje ? ' — ' + data.mensaje : ''), 'l-ok');
+          var _ok = (data.guardado !== false);
+          addLine((_ok ? '✓ ' : '⚠ ') + (file.name || 'foto') + ': ' + (data.tipo || '—') + (data.mensaje ? ' — ' + data.mensaje : ''), _ok ? 'l-ok' : 'l-warn');
         } else {
           addLine('✗ ' + (file.name || 'foto') + ': ' + (data.error || 'error'), 'l-err');
           errors++;
