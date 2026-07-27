@@ -63,34 +63,96 @@ def _invalidate():
     _FB_CACHE.clear()
 
 # ── Helpers ──────────────────────────────────────────────────────────────────
+def _num_fb(v, defecto=0.0):
+    """Numero tolerante. NaN, None, vacios y textos no numericos -> defecto.
+
+    OJO con el patron `float(x or 0)`: **NaN es truthy**, asi que NO lo atrapa.
+    Y un NaN que llegue a la respuesta la deja en JSON invalido: Flask lo
+    serializa tal cual, el navegador falla al hacer r.json() y la pestaña se
+    queda EN BLANCO con HTTP 200 (la regla del proyecto sobre NaN).
+    """
+    if v is None:
+        return defecto
+    try:
+        f = float(v)
+    except (TypeError, ValueError):
+        s = str(v).strip().replace(",", ".")
+        try:
+            f = float(s)
+        except (TypeError, ValueError):
+            return defecto
+    return defecto if f != f else f          # f != f es True solo para NaN
+
+
+def _txt_ing(v):
+    """Nombre de ingrediente comparable, tolerando nulos.
+
+    MISMO criterio que hasta ahora —minusculas y sin espacios sobrantes—, solo
+    que ahora no revienta con un vacio: una fila de inventario sin ingrediente
+    tumbaba el endpoint con "'float' object has no attribute 'strip'".
+
+    A PROPOSITO no quita los acentos, aunque `_clave_plato` si lo haga para los
+    platos. Cambiarlo haria cruzar ingredientes que hoy no cruzan ("Cafe" vs
+    "Café") y el food cost SUBIRIA: es una correccion, pero mueve un numero que
+    el usuario mira, asi que va en su propio paso y con su propia comparacion.
+    """
+    s = "" if v is None else str(v)
+    s = " ".join(s.split()).strip().lower()
+    return "" if s in ("", "nan", "none", "nat", "<na>", "null") else s
+
+
 def _calc_recipe_costs(df_rec, df_inv):
-    """Calcula coste teórico y FC% de cada receta."""
-    # Build unit cost map from inventory
+    """Coste teorico y FC% de cada receta, tolerando lo que venga.
+
+    Se tolera AL LEER, mismo criterio que `_ventas_con_receta`: el recetario y
+    el inventario los sube el cliente y vienen con huecos. Un hueco no puede
+    tumbar la pestaña ni colar un NaN en la respuesta.
+
+    Cada receta lleva `sin_precio` cuando no se ha podido leer su PVP: su FC%
+    no es 0, es DESCONOCIDO, y quien agregue tiene que poder dejarla fuera en
+    vez de contarla como la de mejor margen del menu (que es lo que pasaba).
+    """
     cost_map = {}
-    for _, row in df_inv.iterrows():
-        cost_map[row['ingrediente'].strip().lower()] = float(row['coste_unitario'])
+    for fila in (df_inv.to_dict("records") if df_inv is not None and not df_inv.empty else []):
+        nombre = _txt_ing(fila.get("ingrediente"))
+        if not nombre:
+            continue
+        coste = _num_fb(fila.get("coste_unitario"), None)
+        if coste is None:
+            continue        # sin coste no aporta: que gane el de la propia receta
+        cost_map[nombre] = coste
 
     results = []
-    for _, rec in df_rec.iterrows():
-        try:
-            ings = json.loads(rec['ingredientes_json']) if isinstance(rec['ingredientes_json'], str) else []
-        except Exception:
+    for rec in (df_rec.to_dict("records") if df_rec is not None and not df_rec.empty else []):
+        ings = rec.get("ingredientes_json")
+        if isinstance(ings, str):
+            try:
+                ings = json.loads(ings)
+            except Exception:
+                ings = []
+        if not isinstance(ings, list):
             ings = []
-        coste_total = sum(
-            float(ing.get('cantidad', 0)) * cost_map.get(ing.get('ingrediente','').strip().lower(),
-                float(ing.get('coste_unitario', 0)))
-            for ing in ings
-        )
-        precio = float(rec['precio_venta'])
-        fc_pct = round(coste_total / precio * 100, 2) if precio > 0 else 0
+
+        coste_total = 0.0
+        for ing in ings:
+            if not isinstance(ing, dict):
+                continue
+            unit = cost_map.get(_txt_ing(ing.get("ingrediente")))
+            if unit is None:
+                unit = _num_fb(ing.get("coste_unitario"), 0.0)
+            coste_total += _num_fb(ing.get("cantidad"), 0.0) * unit
+
+        precio = _num_fb(rec.get("precio_venta"), 0.0)
+        fc_pct = round(coste_total / precio * 100, 2) if precio > 0 else 0.0
         results.append({
-            'id': rec['id_receta'],
-            'nombre': rec['nombre'],
-            'categoria': rec['categoria'],
-            'precio_venta': precio,
-            'coste_teorico': round(coste_total, 3),
-            'fc_pct': fc_pct,
-            'alerta': fc_pct > 35,
+            "id":            _txt_ing(rec.get("id_receta")) and str(rec.get("id_receta")).strip() or "",
+            "nombre":        str(rec.get("nombre") or "").strip() or "(sin nombre)",
+            "categoria":     str(rec.get("categoria") or "").strip() or "General",
+            "precio_venta":  round(precio, 2),
+            "coste_teorico": round(coste_total, 3),
+            "fc_pct":        fc_pct,
+            "sin_precio":    precio <= 0,
+            "alerta":        fc_pct > 35,
         })
     return results
 
@@ -483,10 +545,17 @@ def api_recetas():
         # Add ranking and margin info
         for i, r in enumerate(sorted(recipes, key=lambda x: x.get('fc_pct', 0))):
             r['rank'] = i + 1
-        avg_fc = round(sum(r.get('fc_pct',0) for r in recipes) / len(recipes), 1) if recipes else 0
+        # Una receta sin PVP tiene un FC% DESCONOCIDO, no un 0%. Contarla como 0
+        # la convertia en "la de mejor margen del menu", que es justo lo
+        # contrario de lo que pasa: no se sabe. Se dejan fuera de las medias y
+        # del ranking, y se dice cuantas son.
+        con_precio = [r for r in recipes if not r.get('sin_precio')]
+        avg_fc = round(sum(r.get('fc_pct', 0) for r in con_precio) / len(con_precio), 1) \
+            if con_precio else 0
         return jsonify({'ok': True, 'recetas': recipes, 'avg_fc_pct': avg_fc,
-                       'best_margin': min(recipes, key=lambda x: x.get('fc_pct',100)).get('nombre','') if recipes else '',
-                       'worst_margin': max(recipes, key=lambda x: x.get('fc_pct',0)).get('nombre','') if recipes else ''})
+                       'sin_precio': len(recipes) - len(con_precio),
+                       'best_margin': min(con_precio, key=lambda x: x.get('fc_pct', 100)).get('nombre', '') if con_precio else '',
+                       'worst_margin': max(con_precio, key=lambda x: x.get('fc_pct', 0)).get('nombre', '') if con_precio else ''})
     except Exception as e:
         return jsonify({'ok': False, 'error': str(e)}), 500
 

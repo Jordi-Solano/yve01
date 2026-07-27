@@ -352,7 +352,7 @@
   "bk.sinFacturas": "keine AP/AR-Rechnungen zum Abgleich: zuerst Rechnungen verarbeiten",
   "fb.sinInventario": "Keine Inventardaten. Lade ein Inventar mit ⚡ hoch.",
   "fb.sinMermas": "Kein Schwund erfasst.",
-  "fb.sinRecetas": "Keine Rezepte. Verarbeite F&B-Dokumente, um sie zu laden.",
+  "fb.sinRecetas": "Noch keine Rezepturen. Ohne sie zeigt Yve deine Umsätze, kann aber die Food Cost nicht berechnen.",
   "fb.enCarta": "Rezepte auf der Karte",
   "bk.dias": "Tage",
   "bk.sinConciliar": "nicht abgestimmt:",

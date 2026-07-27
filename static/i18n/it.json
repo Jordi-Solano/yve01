@@ -352,7 +352,7 @@
   "bk.sinFacturas": "nessuna fattura AP/AR da incrociare: elabora prima le fatture",
   "fb.sinInventario": "Nessun dato di inventario. Carica un inventario con ⚡.",
   "fb.sinMermas": "Nessuno spreco registrato.",
-  "fb.sinRecetas": "Nessuna ricetta. Elabora documenti F&B per caricarle.",
+  "fb.sinRecetas": "Ancora nessun ricettario. Senza di esso, Yve mostra le tue vendite ma non può calcolare il food cost.",
   "fb.enCarta": "ricette nel menu",
   "bk.dias": "giorni",
   "bk.sinConciliar": "non riconciliato:",

@@ -352,7 +352,7 @@
   "bk.sinFacturas": "no AP/AR invoices to match: process invoices first",
   "fb.sinInventario": "No inventory data. Upload an inventory with ⚡ Process Files.",
   "fb.sinMermas": "No waste recorded.",
-  "fb.sinRecetas": "No recipes. Process F&B documents to load them.",
+  "fb.sinRecetas": "No recipes yet. Without them, Yve shows your sales but can't calculate food cost.",
   "fb.enCarta": "recipes on the menu",
   "bk.dias": "days",
   "bk.sinConciliar": "unmatched:",

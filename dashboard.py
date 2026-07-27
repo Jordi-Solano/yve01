@@ -11030,7 +11030,7 @@ async function loadFBRecetas() {
     const res = await fetch('/fb/api/recetas');
     const data = await res.json();
     if (!data.ok) { cont.innerHTML = '<div class="empty"><p>Error recetas</p></div>'; return; }
-    if (!data.recetas || !data.recetas.length) { cont.innerHTML = _emptyState('📖', t('fb.recVacioTitulo', 'Sin recetas cargadas'), t('fb.sinRecetas', 'Sin recetas. Procesa documentos F&B para cargarlas.')); return; }
+    if (!data.recetas || !data.recetas.length) { cont.innerHTML = _emptyState('📖', t('fb.recVacioTitulo', 'Sin recetas cargadas'), t('fb.sinRecetas', 'Aún no hay recetario. Sin él, Yve enseña tus ventas pero no puede calcular el food cost.')); return; }
 
     const avg = data.recetas.length ? data.recetas.reduce((a,r)=>a+r.fc_pct,0)/data.recetas.length : 0;
     let html = '<div class="fb-kpi-grid" style="display:grid;grid-template-columns:repeat(3,1fr);gap:14px;margin-bottom:20px">';

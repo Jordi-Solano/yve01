@@ -352,7 +352,7 @@
   "bk.sinFacturas": "sem faturas AP/AR para cruzar: processe faturas primeiro",
   "fb.sinInventario": "Sem dados de inventário. Envie um inventário com ⚡.",
   "fb.sinMermas": "Sem perdas registradas.",
-  "fb.sinRecetas": "Sem receitas. Processe documentos F&B para carregá-las.",
+  "fb.sinRecetas": "Ainda não há fichas técnicas. Sem elas, o Yve mostra as tuas vendas mas não consegue calcular o food cost.",
   "fb.enCarta": "receitas no cardápio",
   "bk.dias": "dias",
   "bk.sinConciliar": "sem conciliar:",
