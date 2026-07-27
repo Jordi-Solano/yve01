@@ -352,7 +352,7 @@
   "bk.sinFacturas": "nessuna fattura AP/AR da incrociare: elabora prima le fatture",
   "fb.sinInventario": "Nessun dato di inventario. Carica un inventario con ⚡.",
   "fb.sinMermas": "Nessuno spreco registrato.",
-  "fb.sinRecetas": "Ancora nessun ricettario. Senza di esso, Yve mostra le tue vendite ma non può calcolare il food cost.",
+  "fb.sinRecetas": "Ancora nessun ricettario. Caricalo con «Importa ricettario»: una riga per ingrediente (ricetta, ingrediente, quantità, costo) e Yve calcola il food cost di ogni piatto.",
   "fb.enCarta": "ricette nel menu",
   "bk.dias": "giorni",
   "bk.sinConciliar": "non riconciliato:",
@@ -378,5 +378,6 @@
   "mh.todasCadenas": "Tutte le catene",
   "mh.todosHoteles": "Tutti gli hotel",
   "mh.vistaGrupo": "Vista di gruppo (tutti gli hotel)",
-  "mh.verHotel": "Vedi solo questo hotel"
+  "mh.verHotel": "Vedi solo questo hotel",
+  "btn.importarRecetario": "📋 Importa ricettario"
 }

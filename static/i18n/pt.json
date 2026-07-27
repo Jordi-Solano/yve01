@@ -352,7 +352,7 @@
   "bk.sinFacturas": "sem faturas AP/AR para cruzar: processe faturas primeiro",
   "fb.sinInventario": "Sem dados de inventário. Envie um inventário com ⚡.",
   "fb.sinMermas": "Sem perdas registradas.",
-  "fb.sinRecetas": "Ainda não há fichas técnicas. Sem elas, o Yve mostra as tuas vendas mas não consegue calcular o food cost.",
+  "fb.sinRecetas": "Ainda não há fichas técnicas. Carrega-as com «Importar fichas»: uma linha por ingrediente (receita, ingrediente, quantidade, custo) e o Yve calcula o food cost de cada prato.",
   "fb.enCarta": "receitas no cardápio",
   "bk.dias": "dias",
   "bk.sinConciliar": "sem conciliar:",
@@ -378,5 +378,6 @@
   "mh.todasCadenas": "Todas as redes",
   "mh.todosHoteles": "Todos os hotéis",
   "mh.vistaGrupo": "Visão de grupo (todos os hotéis)",
-  "mh.verHotel": "Ver apenas este hotel"
+  "mh.verHotel": "Ver apenas este hotel",
+  "btn.importarRecetario": "📋 Importar fichas"
 }

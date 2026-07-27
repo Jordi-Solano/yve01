@@ -352,7 +352,7 @@
   "bk.sinFacturas": "no AP/AR invoices to match: process invoices first",
   "fb.sinInventario": "No inventory data. Upload an inventory with ⚡ Process Files.",
   "fb.sinMermas": "No waste recorded.",
-  "fb.sinRecetas": "No recipes yet. Without them, Yve shows your sales but can't calculate food cost.",
+  "fb.sinRecetas": "No recipes yet. Upload them with «Import recipes»: one row per ingredient (recipe, ingredient, quantity, cost) and Yve calculates the food cost of every dish.",
   "fb.enCarta": "recipes on the menu",
   "bk.dias": "days",
   "bk.sinConciliar": "unmatched:",
@@ -378,5 +378,6 @@
   "mh.todasCadenas": "All chains",
   "mh.todosHoteles": "All hotels",
   "mh.vistaGrupo": "Group view (all hotels)",
-  "mh.verHotel": "View only this hotel"
+  "mh.verHotel": "View only this hotel",
+  "btn.importarRecetario": "📋 Import recipes"
 }

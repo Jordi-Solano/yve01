@@ -352,7 +352,7 @@
   "bk.sinFacturas": "keine AP/AR-Rechnungen zum Abgleich: zuerst Rechnungen verarbeiten",
   "fb.sinInventario": "Keine Inventardaten. Lade ein Inventar mit ⚡ hoch.",
   "fb.sinMermas": "Kein Schwund erfasst.",
-  "fb.sinRecetas": "Noch keine Rezepturen. Ohne sie zeigt Yve deine Umsätze, kann aber die Food Cost nicht berechnen.",
+  "fb.sinRecetas": "Noch keine Rezepturen. Lade sie mit «Rezepturen importieren» hoch: eine Zeile pro Zutat (Rezept, Zutat, Menge, Kosten) und Yve berechnet die Food Cost jedes Gerichts.",
   "fb.enCarta": "Rezepte auf der Karte",
   "bk.dias": "Tage",
   "bk.sinConciliar": "nicht abgestimmt:",
@@ -378,5 +378,6 @@
   "mh.todasCadenas": "Alle Ketten",
   "mh.todosHoteles": "Alle Hotels",
   "mh.vistaGrupo": "Gruppenansicht (alle Hotels)",
-  "mh.verHotel": "Nur dieses Hotel anzeigen"
+  "mh.verHotel": "Nur dieses Hotel anzeigen",
+  "btn.importarRecetario": "📋 Rezepturen importieren"
 }

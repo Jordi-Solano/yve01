@@ -3719,6 +3719,224 @@ def api_upload_ventas_pos():
     except Exception as e:
         return jsonify({"ok": False, "error": str(e)}), 500
 
+# Como se llama cada cosa en el Excel de un hotel. El orden importa: se mira
+# de la mas especifica a la mas general, porque "precio" a secas puede ser el
+# PVP del plato o el coste del ingrediente.
+_REC_COLS = [
+    ('id_receta',      ('id_receta', 'id receta', 'idreceta', 'codigo', 'cod', 'ref')),
+    ('nombre',         ('receta', 'plato', 'nombre_plato', 'nombre receta', 'nombre', 'elaboracion')),
+    ('categoria',      ('categoria', 'familia', 'tipo', 'grupo', 'seccion')),
+    ('precio_venta',   ('precio_venta', 'pvp', 'precio venta', 'precio_pvp', 'venta')),
+    ('ingrediente',    ('ingrediente', 'producto', 'articulo', 'materia_prima', 'materia prima', 'item')),
+    ('cantidad',       ('cantidad', 'cant', 'qty', 'peso', 'dosis', 'racion')),
+    ('unidad',         ('unidad', 'ud', 'medida', 'um')),
+    ('coste_unitario', ('coste_unitario', 'coste unitario', 'coste', 'precio_coste',
+                        'precio coste', 'coste_kg', 'importe_unitario')),
+]
+
+
+def _rec_norm_cab(col):
+    """Cabecera -> nombre canonico, o None si no se reconoce."""
+    import unicodedata as _u
+    s = _u.normalize('NFKD', str(col))
+    s = ''.join(c for c in s if not _u.combining(c)).strip().lower()
+    for ch in ('.', '-', '/', '\\'):
+        s = s.replace(ch, ' ')
+    s = ' '.join(s.split())
+    # Las columnas del formato INTERNO se respetan tal cual y salen antes de
+    # cualquier alias. Si no, 'ingredientes_json' cae en la busqueda laxa por
+    # 'ingrediente' —es subcadena suya— y el fichero exportado por Yve se leia
+    # como si fuera el del hotelero (la trampa de siempre con los nombres que
+    # son sufijo de otro).
+    if s.replace(' ', '_') in ('ingredientes_json', 'id_receta', 'precio_venta'):
+        return s.replace(' ', '_')
+    for destino, alias in _REC_COLS:
+        if s == destino or s in alias:
+            return destino
+    for destino, alias in _REC_COLS:
+        if any(a in s for a in alias):
+            return destino
+    return None
+
+
+@app.route("/fb/api/upload_recetas", methods=["POST"])
+@login_required
+def api_upload_recetas():
+    """Sube el escandallo del cliente a recetas.xlsx.
+
+    DOS formatos, detectados solos:
+      1. UNA FILA POR INGREDIENTE — el que tiene de verdad un hotelero:
+         receta | ingrediente | cantidad | unidad | coste | PVP | categoria
+         Se agrupa por receta y se construye el `ingredientes_json` por dentro.
+      2. El formato INTERNO (una fila por receta, con `ingredientes_json`),
+         para poder reimportar lo que exporte Yve.
+
+    Se REEMPLAZA POR id_receta: una receta corregida pisa a la vieja, y las que
+    no vengan en el fichero se conservan. Asi se puede subir un fichero con dos
+    platos para arreglarlos sin perder la carta entera.
+    """
+    import pandas as pd, json as _json
+    from tab_fb_dashboard import _clave_plato, _invalidate as _fb_inv, _num_fb
+
+    f = request.files.get("file")
+    if not f:
+        return jsonify({"ok": False, "error": "No se recibió archivo"}), 400
+    fname = (f.filename or '').lower()
+    try:
+        if fname.endswith('.csv'):
+            df = pd.read_csv(f, sep=None, engine='python')
+        elif fname.endswith(('.xlsx', '.xls')):
+            df = pd.read_excel(f)
+        else:
+            return jsonify({"ok": False, "error": "Formato no soportado. Usa .xlsx o .csv"}), 400
+    except Exception as e:
+        return jsonify({"ok": False, "error": f"No se ha podido leer el archivo: {str(e)[:120]}"}), 400
+
+    df = df.rename(columns={c: (_rec_norm_cab(c) or c) for c in df.columns})
+    filas = df.to_dict('records')
+    avisos = []
+
+    # ── formato interno: una fila por receta, con el JSON ya hecho ─────────
+    if 'ingredientes_json' in df.columns:
+        nuevas = []
+        for r in filas:
+            nombre = str(r.get('nombre') or '').strip()
+            if not nombre:
+                continue
+            ings = r.get('ingredientes_json')
+            if not isinstance(ings, str) or not ings.strip():
+                ings = '[]'
+            try:
+                _json.loads(ings)
+            except Exception:
+                avisos.append(f"«{nombre}»: ingredientes_json ilegible, se ha dejado vacío")
+                ings = '[]'
+            nuevas.append({
+                'id_receta': str(r.get('id_receta') or '').strip() or _clave_plato(nombre),
+                'nombre': nombre,
+                'categoria': str(r.get('categoria') or '').strip() or 'General',
+                'precio_venta': _num_fb(r.get('precio_venta'), 0.0),
+                'ingredientes_json': ings,
+            })
+        n_ing = sum(len(_json.loads(x['ingredientes_json'])) for x in nuevas)
+        formato = 'interno (una fila por receta)'
+    else:
+        # ── formato del hotelero: una fila por ingrediente ─────────────────
+        if 'ingrediente' not in df.columns or 'nombre' not in df.columns:
+            return jsonify({"ok": False, "error":
+                "No encuentro las columnas mínimas. El archivo debe tener una fila por "
+                "ingrediente con al menos: receta (o plato) e ingrediente. Y a poder ser "
+                "cantidad, unidad, coste y precio de venta."}), 400
+        grupos, orden = {}, []
+        for r in filas:
+            nombre = str(r.get('nombre') or '').strip()
+            if not nombre:
+                continue
+            # la clave de agrupacion es el id si lo traen, y si no el nombre
+            # normalizado: tiene que ser ESTABLE entre subidas para que
+            # "reemplazar por id_receta" funcione al volver a subir el fichero.
+            rid = str(r.get('id_receta') or '').strip() or _clave_plato(nombre)
+            if rid not in grupos:
+                grupos[rid] = {'nombre': nombre, 'categoria': '', 'precio_venta': 0.0, 'ings': []}
+                orden.append(rid)
+            g = grupos[rid]
+            if not g['categoria']:
+                g['categoria'] = str(r.get('categoria') or '').strip()
+            if not g['precio_venta']:
+                g['precio_venta'] = _num_fb(r.get('precio_venta'), 0.0)
+            ing_nom = str(r.get('ingrediente') or '').strip()
+            cant = _num_fb(r.get('cantidad'), 0.0)
+            if not ing_nom or cant <= 0:
+                continue        # una linea sin ingrediente o sin cantidad no aporta
+            linea = {'ingrediente': ing_nom, 'cantidad': cant}
+            _u = str(r.get('unidad') or '').strip()
+            if _u:
+                linea['unidad'] = _u
+            _c = _num_fb(r.get('coste_unitario'), None)
+            if _c is not None and _c > 0:
+                linea['coste_unitario'] = _c
+            g['ings'].append(linea)
+
+        nuevas, sin_ing = [], []
+        for rid in orden:
+            g = grupos[rid]
+            if not g['ings']:
+                # Una receta sin una sola linea util costaria 0 y saldria con
+                # food cost 0%: eso es peor que no tenerla. No se guarda y se
+                # dice cual.
+                sin_ing.append(g['nombre'])
+                continue
+            nuevas.append({
+                'id_receta': rid,
+                'nombre': g['nombre'],
+                'categoria': g['categoria'] or 'General',
+                'precio_venta': g['precio_venta'],
+                'ingredientes_json': _json.dumps(g['ings'], ensure_ascii=False),
+            })
+        if sin_ing:
+            avisos.append(f"{len(sin_ing)} receta(s) sin ningún ingrediente con cantidad, "
+                          f"no se han guardado: {', '.join(sin_ing[:4])}"
+                          + ("..." if len(sin_ing) > 4 else ""))
+        n_ing = sum(len(g['ings']) for g in grupos.values())
+        formato = 'una fila por ingrediente'
+
+    if not nuevas:
+        return jsonify({"ok": False, "error":
+            "No se ha podido leer ninguna receta del archivo. " + (avisos[0] if avisos else "")}), 400
+
+    # ── avisar de lo que costara de menos ─────────────────────────────────
+    # Un ingrediente que no esta en el inventario Y no trae coste propio vale 0:
+    # la receta sale mas barata de lo que es y el food cost mas bajo. Callarselo
+    # seria dar por bueno un numero que no lo es.
+    try:
+        _inv_path = os.path.join(_ddir(), 'inventario.xlsx')
+        _inv = pd.read_excel(_inv_path) if os.path.exists(_inv_path) else pd.DataFrame()
+        _conocidos = {str(x).strip().lower() for x in _inv.get('ingrediente', [])
+                      if str(x).strip().lower() not in ('', 'nan', 'none')}
+        _huerfanos = set()
+        for x in nuevas:
+            for ing in _json.loads(x['ingredientes_json']):
+                if (str(ing.get('ingrediente', '')).strip().lower() not in _conocidos
+                        and not ing.get('coste_unitario')):
+                    _huerfanos.add(str(ing.get('ingrediente', ''))[:30])
+        if _huerfanos:
+            avisos.append(f"{len(_huerfanos)} ingrediente(s) no están en tu inventario y no "
+                          f"traen coste, así que cuentan 0 €: "
+                          f"{', '.join(sorted(_huerfanos)[:4])}"
+                          + ("..." if len(_huerfanos) > 4 else ""))
+    except Exception:
+        pass
+
+    # ── guardar: REEMPLAZAR por id_receta, conservar el resto ─────────────
+    ruta = os.path.join(_ddir(), 'recetas.xlsx')
+    try:
+        df_old = pd.read_excel(ruta) if os.path.exists(ruta) else pd.DataFrame()
+    except Exception:
+        df_old = pd.DataFrame()
+    ids_nuevos = {x['id_receta'] for x in nuevas}
+    if not df_old.empty and 'id_receta' in df_old.columns:
+        df_old = df_old[df_old['id_receta'].map(lambda v: str(v).strip() not in ids_nuevos)]
+    _COLS = ['id_receta', 'nombre', 'categoria', 'precio_venta', 'ingredientes_json']
+    df_fin = pd.concat([df_old, pd.DataFrame(nuevas)], ignore_index=True)
+    for c in _COLS:
+        if c not in df_fin.columns:
+            df_fin[c] = ''
+    df_fin[_COLS].to_excel(ruta, index=False)
+
+    if 'recetas.xlsx' in _EXCEL_CACHE:
+        del _EXCEL_CACHE['recetas.xlsx']
+    try:
+        _fb_inv()
+    except Exception:
+        pass
+
+    return jsonify({"ok": True, "formato": formato,
+                    "recetas_importadas": len(nuevas),
+                    "ingredientes": n_ing,
+                    "total_recetas": len(df_fin),
+                    "avisos": avisos})
+
+
 @app.route("/api/cache/clear", methods=["POST"])
 @login_required
 def api_cache_clear():
@@ -4887,6 +5105,8 @@ svg.yvi{width:1em;height:1em;vertical-align:-0.125em;flex-shrink:0;display:inlin
       <div style="display:flex;gap:8px;align-items:center">
         <label for="fb-upload-input" class="btn-ref" style="cursor:pointer;font-size:12px" data-i18n="btn.importarPos">📤 Importar ventas POS</label>
         <input type="file" id="fb-upload-input" accept=".xlsx,.xls,.csv" style="display:none" onchange="fbUploadPOS(this)">
+        <label for="fb-rec-input" class="btn-ref" style="cursor:pointer;font-size:12px" data-i18n="btn.importarRecetario">📋 Importar recetario</label>
+        <input type="file" id="fb-rec-input" accept=".xlsx,.xls,.csv" style="display:none" onchange="fbUploadRecetas(this)">
         <a href="/api/exportar/fb/pdf" class="btn-ref" style="text-decoration:none;font-size:12px">📄 PDF</a>
       </div>
     </div>
@@ -10688,6 +10908,40 @@ function loadFB() { if (typeof cargarFB === 'function') cargarFB(); else if (typ
 var _fbLoaded = {resumen:false, inventario:false, mermas:false, recetas:false};
 var _fbActive = 'resumen';
 
+async function fbUploadRecetas(input) {
+  const file = input.files[0];
+  if (!file) return;
+  const msg = document.getElementById('fb-upload-msg');
+  msg.style.color = 'var(--mut)';
+  msg.textContent = 'Subiendo ' + file.name + '...';
+  const form = new FormData();
+  form.append('file', file);
+  try {
+    const r = await fetch('/fb/api/upload_recetas', {method: 'POST', body: form,
+                          headers: {'X-CSRF-Token': _csrfToken}});
+    const d = await r.json();
+    if (d.ok) {
+      // Los avisos NO son un fallo, pero tampoco se pueden esconder: dicen que
+      // parte del escandallo va a contar de menos.
+      const hayAvisos = d.avisos && d.avisos.length;
+      msg.style.color = hayAvisos ? 'var(--ora)' : 'var(--grn)';
+      msg.textContent = (hayAvisos ? '⚠ ' : '✓ ') + d.recetas_importadas +
+        ' recetas (' + d.ingredientes + ' ingredientes) — total ' + d.total_recetas +
+        (hayAvisos ? ' · ' + d.avisos.join(' · ') : '');
+      _fbLoaded.recetas = false; _fbLoaded.resumen = false;
+      if (_fbActive === 'recetas') loadFBRecetas();
+      else if (_fbActive === 'resumen') loadFBResumen();
+    } else {
+      msg.style.color = 'var(--red)';
+      msg.textContent = '✗ ' + (d.error || 'Error al importar');
+    }
+  } catch(e) {
+    msg.style.color = 'var(--red)';
+    msg.textContent = '✗ ' + e.message;
+  }
+  input.value = '';
+}
+
 async function fbUploadPOS(input) {
   const file = input.files[0];
   if (!file) return;
@@ -11030,7 +11284,7 @@ async function loadFBRecetas() {
     const res = await fetch('/fb/api/recetas');
     const data = await res.json();
     if (!data.ok) { cont.innerHTML = '<div class="empty"><p>Error recetas</p></div>'; return; }
-    if (!data.recetas || !data.recetas.length) { cont.innerHTML = _emptyState('📖', t('fb.recVacioTitulo', 'Sin recetas cargadas'), t('fb.sinRecetas', 'Aún no hay recetario. Sin él, Yve enseña tus ventas pero no puede calcular el food cost.')); return; }
+    if (!data.recetas || !data.recetas.length) { cont.innerHTML = _emptyState('📖', t('fb.recVacioTitulo', 'Sin recetas cargadas'), t('fb.sinRecetas', 'Aún no hay recetario. Súbelo con «Importar recetario»: una fila por ingrediente (receta, ingrediente, cantidad, coste) y Yve calcula el food cost de cada plato.')); return; }
 
     const avg = data.recetas.length ? data.recetas.reduce((a,r)=>a+r.fc_pct,0)/data.recetas.length : 0;
     let html = '<div class="fb-kpi-grid" style="display:grid;grid-template-columns:repeat(3,1fr);gap:14px;margin-bottom:20px">';
