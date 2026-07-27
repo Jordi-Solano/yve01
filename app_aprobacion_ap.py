@@ -292,7 +292,7 @@ function alertClass(m) {
 
 async function loadData() {
   const dept = document.getElementById('dept-filter').value;
-  const url  = '/api/facturas' + (dept ? '?departamento='+encodeURIComponent(dept) : '');
+  const url  = '/aprobaciones-ap/api/facturas' + (dept ? '?departamento='+encodeURIComponent(dept) : '');
   const [fr, sr] = await Promise.all([fetch(url), fetch('/aprobaciones-ap/api/stats')]);
   const rows = await fr.json();
   const stats= await sr.json();
@@ -329,8 +329,8 @@ async function loadData() {
         '<option value="Seguridad">Seguridad</option></select></div>' +
         '<textarea id="c-'+i+'" placeholder="Comentario obligatorio..." oninput="chk('+i+')"></textarea>' +
         '<div class="btn-row">' +
-          '<button class="btn ok disabled" id="a-'+i+'" onclick="accion('+i+',\'APROBADA\',\''+r.numero_factura+'\')">✓ Aprobar</button>' +
-          '<button class="btn ko disabled" id="k-'+i+'" onclick="accion('+i+',\'RECHAZADA\',\''+r.numero_factura+'\')">✗ Rechazar</button>' +
+          '<button class="btn ok disabled" id="a-'+i+'" onclick="accion('+i+',\\'APROBADA\\',\\''+r.numero_factura+'\\')">✓ Aprobar</button>' +
+          '<button class="btn ko disabled" id="k-'+i+'" onclick="accion('+i+',\\'RECHAZADA\\',\\''+r.numero_factura+'\\')">✗ Rechazar</button>' +
         '</div>'
       ) : '') +
     '</div>';
