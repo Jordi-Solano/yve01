@@ -2756,6 +2756,40 @@ def calcular_stats_ap(df):
             "manual":manual,"aprobadas":aprobadas,"rechazadas":rechazadas}
 
 
+def safe_str(val):
+    """Texto de una celda, tratando el NaN como vacio.
+
+    `str(float('nan'))` es 'nan', que es VERDADERO, asi que el patron habitual
+    `str(x).strip() or "—"` nunca cae en el fallback y pinta el NaN en crudo.
+    Es la misma trampa de pandas 3 del banco y de F&B, aqui en la pantalla:
+    cuando el asignador regenera el informe contable, lo que era '' vuelve de
+    Excel como NaN. Reproducido en produccion. `app_aprobacion_ap.safe_str`
+    ya hacia esto mismo; el panel no lo tenia.
+    """
+    if val is None:
+        return ''
+    s = str(val).strip()
+    # NO_ENCONTRADO se deja pasar a proposito: dice algo (la IA no lo encontro)
+    # y hoy se ve asi. Cambiarlo seria mover otra cosa en el mismo paso.
+    return '' if s.lower() in ('', 'nan', 'none', '<na>', 'nat') else s
+
+
+def _cuenta_str(val):
+    """El codigo contable sin el '.0' que le pega el viaje por Excel.
+
+    cuenta_contable vuelve como float64 ('629.0'). Un numero de cuenta con
+    decimal no es un numero de cuenta.
+    """
+    s = safe_str(val)
+    if not s:
+        return ''
+    try:
+        f = float(s)
+    except (TypeError, ValueError):
+        return s                      # 'REVISAR_MANUAL' y demas: tal cual
+    return str(int(f)) if f == int(f) else s
+
+
 def df_ap_a_lista(df):
     """Convierte DataFrame AP a lista de dicts."""
     rows = []
@@ -2767,16 +2801,20 @@ def df_ap_a_lista(df):
             if c in df.columns:
                 total = safe_float(r.get(c, 0))
                 break
-        est = str(r.get("estado_matching", r.get("estado", ""))).strip().upper()
+        # OJO con el orden: r.get('estado_matching') devuelve el NaN, no el
+        # segundo argumento, asi que el fallback tiene que ir por safe_str.
+        # Una factura que no ha pasado por el cruce NO esta "sin PO": esta
+        # PENDIENTE de cruzar, y decir otra cosa seria mentir sobre lo hecho.
+        est = safe_str(r.get("estado_matching")) or safe_str(r.get("estado"))
         rows.append({
-            "numero_factura":    str(r.get("numero_factura","")).strip() or "N/D",
-            "proveedor":         str(r.get("nombre_proveedor","")).strip() or "Desconocido",
-            "tipo":              str(r.get("tipo_proveedor","")).strip().upper() or "OTRAS",
+            "numero_factura":    safe_str(r.get("numero_factura")) or "N/D",
+            "proveedor":         safe_str(r.get("nombre_proveedor")) or "Desconocido",
+            "tipo":              safe_str(r.get("tipo_proveedor")).upper() or "OTRAS",
             "total":             total,
-            "cuenta_contable":   str(r.get("cuenta_contable","")).strip() or "—",
-            "estado":            est or "PENDIENTE",
-            "accion":            str(r.get("accion","")).strip().upper() or "",
-            "detalle_alerta":    str(r.get("detalle_alerta","")).strip() or "",
+            "cuenta_contable":   _cuenta_str(r.get("cuenta_contable")) or "—",
+            "estado":            est.upper() or "PENDIENTE",
+            "accion":            safe_str(r.get("accion")).upper(),
+            "detalle_alerta":    safe_str(r.get("detalle_alerta")),
         })
     return rows
 
