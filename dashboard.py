@@ -46,15 +46,38 @@ import time as _time
 _EXCEL_CACHE: dict = {}
 _CACHE_TTL = 300  # seconds
 
+def _huella_fichero(path):
+    """(mtime, tamaño) del fichero, o None si no existe.
+
+    Los dos y no solo el mtime: su resolucion puede ser de 1 s y una reescritura
+    dentro del mismo segundo pasaria desapercibida.
+    """
+    try:
+        st = os.stat(path)
+        return (st.st_mtime, st.st_size)
+    except OSError:
+        return None
+
+
 def _excel(path, sheet_name=0, header=0, **kw):
+    """Lee un Excel con cache que se invalida SOLA cuando el fichero cambia.
+
+    Antes caducaba solo por TTL (5 min) y _invalidate_cache() no la llamaba
+    nadie en todo el proyecto, asi que tras regenerar un fichero se seguian
+    sirviendo los numeros viejos. Mismo criterio que en tab_fb_dashboard._xlsx:
+    la correccion vive AQUI, en un sitio, en vez de repartir invalidaciones por
+    cada escritor — que es lo que siempre se acaba olvidando.
+    El TTL se queda como red de seguridad (relojes raros, ficheros en red).
+    """
     key = f"{path}|{sheet_name}|{header}"
     now = _time.time()
+    huella = _huella_fichero(path)
     if key in _EXCEL_CACHE:
-        df, ts = _EXCEL_CACHE[key]
-        if now - ts < _CACHE_TTL:
+        df, ts, huella_cache = _EXCEL_CACHE[key]
+        if huella == huella_cache and now - ts < _CACHE_TTL:
             return df
     df = pd.read_excel(path, sheet_name=sheet_name, header=header, **kw)
-    _EXCEL_CACHE[key] = (df, now)
+    _EXCEL_CACHE[key] = (df, now, huella)
     return df
 
 def _invalidate_cache(path_fragment=None):
