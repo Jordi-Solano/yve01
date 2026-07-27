@@ -108,6 +108,22 @@ def _calc_recipe_costs(df_rec, df_inv):
 import unicodedata as _ud
 
 
+def _vacio(v):
+    """True si el valor no dice nada: None, NaN, '' o los 'nan'/'NaT' de texto.
+
+    Hace falta porque tras un concat de pandas conviven None, float('nan') y la
+    cadena 'nan' (la que deja str(NaN)) en la misma columna.
+    """
+    if v is None:
+        return True
+    try:
+        if pd.isna(v):
+            return True
+    except (TypeError, ValueError):
+        pass
+    return str(v).strip().lower() in ("", "nan", "none", "nat", "<na>")
+
+
 def _clave_plato(v):
     """Nombre de plato normalizado para cruzar ventas con escandallo.
 
@@ -135,14 +151,33 @@ def _ventas_con_receta(df_ven, recipes):
     """
     df = df_ven.copy()
 
-    # nombre del plato: el que haya, y si no hay ninguno una columna vacia.
-    if 'nombre_plato' not in df.columns:
-        for alt in ('plato', 'nombre', 'producto', 'item', 'descripcion'):
-            if alt in df.columns:
-                df['nombre_plato'] = df[alt]
-                break
-        else:
-            df['nombre_plato'] = ''
+    # Completar por CELDA, no por columna. Las ventas pueden llegar por tres
+    # puertas distintas y una de ellas (capa 1 del pipeline, la que decide por
+    # el nombre del fichero) concatena el CSV EN CRUDO con lo que ya habia: el
+    # resultado tiene 'plato' e 'importe' en unas filas y 'nombre_plato' y
+    # 'total_venta' en otras, con NaN en los huecos. Rellenando celda a celda se
+    # recuperan las dos mitades.
+    for destino, alternativas in (
+            ('nombre_plato',      ('plato', 'nombre', 'producto', 'item', 'descripcion', 'dish')),
+            ('categoria',         ('tipo', 'category', 'grupo', 'familia')),
+            ('unidades_vendidas', ('cantidad', 'qty', 'units', 'unidades')),
+            ('total_venta',       ('total', 'importe', 'revenue', 'ventas')),
+    ):
+        valores = list(df[destino]) if destino in df.columns else [None] * len(df)
+        for alt in alternativas:
+            if alt not in df.columns:
+                continue
+            suplentes = list(df[alt])
+            valores = [s if _vacio(v) else v for v, s in zip(valores, suplentes)]
+        df[destino] = valores
+
+    # Nada de NaN a partir de aqui: el JSON de Flask serializa NaN tal cual y el
+    # resultado NO es JSON valido, asi que el navegador no puede leer la
+    # respuesta y el tab se queda en blanco aunque el servidor devuelva 200.
+    for col in ('unidades_vendidas', 'total_venta'):
+        df[col] = pd.to_numeric(df[col], errors='coerce').fillna(0)
+    df['nombre_plato'] = ['' if _vacio(v) else str(v).strip() for v in df['nombre_plato']]
+    df['categoria'] = ['General' if _vacio(v) else str(v).strip() for v in df['categoria']]
 
     por_nombre = {}
     for r in recipes:
@@ -179,7 +214,8 @@ def _ventas_con_receta(df_ven, recipes):
             ventas_cruzan += imp
         else:
             ventas_sueltas += imp
-            n = str(fila.get('nombre_plato') or '').strip()
+            n = fila.get('nombre_plato')
+            n = '' if _vacio(n) else str(n).strip()
             if n and n not in sin_receta:
                 sin_receta.append(n)
 
