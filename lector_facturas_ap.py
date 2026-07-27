@@ -186,8 +186,13 @@ PROMPT_CLASIFICACION = """CLASIFICACIÓN — Lee TODO el contenido antes de deci
 
 EXTRACCIÓN — Devuelve SOLO JSON según el tipo:
 
-FACTURA:
+FACTURA (UNA sola factura en el documento — el caso normal de un PDF o una foto):
 {"es_factura":true,"numero_factura":"X","fecha":"DD/MM/YYYY","nombre_proveedor":"X","NIF_proveedor":"X","descripcion_concepto":"X","base_imponible":0.0,"porcentaje_iva":21,"cuota_iva":0.0,"total_factura":0.0,"moneda":"EUR"}
+
+FACTURA (VARIAS facturas en el MISMO documento, tipico en una hoja de cálculo con
+una factura por fila. Usa esta forma SOLO si de verdad hay más de una; si hay una
+sola, usa la de arriba):
+{"es_factura":true,"facturas":[{"numero_factura":"X","fecha":"DD/MM/YYYY","nombre_proveedor":"X","NIF_proveedor":"X","descripcion_concepto":"X","base_imponible":0.0,"porcentaje_iva":21,"cuota_iva":0.0,"total_factura":0.0,"moneda":"EUR"}]}
 
 INVENTARIO:
 {"tipo_documento":"INVENTARIO","items":[{"ingrediente":"nombre","categoria":"tipo","coste_unitario":0.0,"stock_actual_kg_l":0.0,"stock_inicial_kg_l":0.0,"unidad":"kg","proveedor":"nombre","critico":false}]}
@@ -613,6 +618,63 @@ def procesar_factura_ap(pdf_path, proveedores):
         print(f"    [CLASIFICADO] {nombre}: tipo={tipo_doc}")
         return datos  # El streaming handler lo enrutará al módulo correcto
 
+    return facturas_de_respuesta(datos, nombre, proveedores, como_dict=True)
+
+
+# Campos que describen al DOCUMENTO y no a una factura concreta: cuando el
+# clasificador devuelve varias facturas, estos pueden venir una sola vez arriba.
+_COMUNES_FACTURA = ("nombre_proveedor", "NIF_proveedor", "moneda")
+
+
+def facturas_de_respuesta(datos, nombre, proveedores, como_dict=False):
+    """Convierte UNA respuesta del clasificador en las facturas que contiene.
+
+    Punto UNICO de normalizacion de facturas AP: lo usan los tres caminos de
+    entrada (PDF, foto y hoja de calculo). Antes cada uno normalizaba por su
+    cuenta y las copias se habian desincronizado.
+
+    Un documento puede traer VARIAS facturas —una hoja de calculo con una
+    factura por fila es el caso normal—, asi que el prompt admite "facturas".
+    Si viene esa lista se normalizan TODAS; si no, es una sola y se devuelve
+    igual que siempre.
+
+    como_dict=True conserva el contrato historico de procesar_factura_ap:
+    devuelve un dict. Si habia varias, la lista completa viaja en "_facturas"
+    para que quien sepa guardarlas las guarde todas y no se pierda ninguna en
+    silencio.
+    """
+    lista = datos.get("facturas") if isinstance(datos, dict) else None
+    if isinstance(lista, list) and any(isinstance(f, dict) for f in lista):
+        comunes = {k: datos[k] for k in _COMUNES_FACTURA
+                   if datos.get(k) not in (None, "")}
+        filas = []
+        for i, f in enumerate(lista):
+            if not isinstance(f, dict):
+                continue
+            filas.append(normalizar_factura_ap({**comunes, **f}, nombre, proveedores))
+            # Cada factura necesita su propio "archivo": el Excel deduplica por
+            # esa columna, asi que repetir el nombre se comeria todas menos la
+            # ultima. Se usa el numero de factura para que reprocesar el mismo
+            # fichero actualice sus filas en vez de duplicarlas.
+            marca = str(f.get("numero_factura") or "").strip()
+            filas[-1]["archivo"] = "%s#%s" % (nombre, marca or (i + 1))
+        if filas:
+            if len(filas) == 1:
+                filas[0]["archivo"] = nombre        # una sola: como toda la vida
+            if not como_dict:
+                return filas
+            return dict(filas[0], _facturas=filas) if len(filas) > 1 else filas[0]
+
+    una = normalizar_factura_ap(datos, nombre, proveedores)
+    return una if como_dict else [una]
+
+
+def normalizar_factura_ap(datos, nombre, proveedores):
+    """Los campos de UNA factura -> la fila que se guarda en facturas_ap_*.xlsx.
+
+    Movido tal cual desde procesar_factura_ap: clasificacion del proveedor,
+    autocalculo de base/IVA/total cuando falta alguno, y cuenta PGC.
+    """
     tipo_prov, cuenta = clasificar_proveedor(datos.get("nombre_proveedor"), proveedores)
 
     # ── Validar y auto-calcular campos ──────────────────────────────────
@@ -680,6 +742,19 @@ def procesar_factura_ap(pdf_path, proveedores):
         print(f"    [{icono}] {k}: {v}")
     return resultado
 
+def _filas_limpias(reg):
+    """Las facturas de un resultado, sin las claves internas (_facturas, _skip).
+
+    procesar_factura_ap devuelve un dict por compatibilidad; si el documento
+    traia varias, la lista completa va en "_facturas". Esto las despliega.
+    """
+    if not isinstance(reg, dict):
+        return []
+    filas = reg.get("_facturas") or [reg]
+    return [{k: v for k, v in f.items() if not str(k).startswith("_")}
+            for f in filas if isinstance(f, dict)]
+
+
 def guardar_excel(registros, ruta):
     df = pd.DataFrame(registros)
     os.makedirs(os.path.dirname(ruta), exist_ok=True)
@@ -716,7 +791,8 @@ def main():
         if reg is None:
             skipped += 1
         elif not reg.get("error"):
-            registros.append(reg)
+            # un documento puede traer varias facturas: guardarlas todas
+            registros.extend(_filas_limpias(reg))
 
     if not registros:
         print("\n  No se procesaron facturas AP.")
@@ -757,10 +833,11 @@ if __name__ == "__main__":
                 print(f"documento no procesable — saltando")
                 sys.exit(2)
             elif reg and not reg.get("error"):
+                filas = _filas_limpias(reg)
                 ruta_excel = os.path.join(SALIDA_DIR, f"facturas_ap_{FECHA_HOY}.xlsx")
                 if os.path.exists(ruta_excel):
                     df_existing = pd.read_excel(ruta_excel)
-                    df_new = pd.DataFrame([reg])
+                    df_new = pd.DataFrame(filas)
                     df_combined = pd.concat([df_existing, df_new], ignore_index=True)
                     # Deduplicar por archivo Y por numero_factura+proveedor
                     df_combined.drop_duplicates(subset=["archivo"], keep="last", inplace=True)
@@ -773,7 +850,7 @@ if __name__ == "__main__":
                             df_combined = df_combined.drop(idx_to_drop)
                     df_combined.to_excel(ruta_excel, index=False)
                 else:
-                    guardar_excel([reg], ruta_excel)
+                    guardar_excel(filas, ruta_excel)
                 print(f"OK: {os.path.basename(file_path)} procesado correctamente")
                 sys.exit(0)
             else:

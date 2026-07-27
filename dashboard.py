@@ -872,6 +872,70 @@ def _ap_tiene_datos(reg):
                for k in ('nombre_proveedor', 'numero_factura', 'total_factura'))
 
 
+def _tipo_documento(reg):
+    """El tipo que ha dicho la IA, con FACTURA como caso especial.
+
+    De los 13 esquemas del prompt, FACTURA es el UNICO que no lleva
+    `tipo_documento`: se reconoce por `es_factura`. El camino de fotos ya hacia
+    esta traduccion por su cuenta; el de hojas de calculo no, y por eso una
+    planilla de facturas de proveedor perfectamente leida volvia como "hoja de
+    calculo sin clasificar" y se tiraba. Ahora la traduccion esta en un sitio.
+    """
+    if not isinstance(reg, dict):
+        return ''
+    t = str(reg.get('tipo_documento') or '').strip().upper()
+    if t:
+        return t
+    return 'FACTURA' if reg.get('es_factura') else ''
+
+
+def _guardar_factura_ap(filas):
+    """Guarda 1..N facturas AP en el Excel del dia. UNICO sitio que las guarda.
+
+    Antes habia tres copias de esto —PDF, foto y la entrada --file— y se habian
+    desincronizado: la de las fotos usaba guardar_excel(), que SOBRESCRIBE el
+    fichero, asi que escanear una factura con el movil borraba las que el lote
+    hubiera guardado ese mismo dia. Reproducido antes de arreglarlo.
+
+    Devuelve cuantas filas se han guardado.
+    """
+    from lector_facturas_ap import guardar_excel as _gx
+    filas = [filas] if isinstance(filas, dict) else list(filas or [])
+    # las claves internas (_facturas, _skip...) no son datos de la factura
+    filas = [{k: v for k, v in f.items() if not str(k).startswith('_')}
+             for f in filas if isinstance(f, dict)]
+    if not filas:
+        return 0
+    ruta = os.path.join(_pdir(), f'facturas_ap_{date.today().strftime("%Y%m%d")}.xlsx')
+    if os.path.exists(ruta):
+        _df = pd.concat([pd.read_excel(ruta), pd.DataFrame(filas)], ignore_index=True)
+        _df.drop_duplicates(subset=['archivo'], keep='last', inplace=True)
+        _df.to_excel(ruta, index=False)
+    else:
+        _gx(filas, ruta)
+    return len(filas)
+
+
+def _resumen_factura_ap(filas):
+    """Texto honesto de lo guardado: una factura, o cuantas y por cuanto."""
+    def _importe(f):
+        v = f.get('total_factura')
+        return float(v) if isinstance(v, (int, float)) else 0.0
+    if not filas:
+        return 'sin datos aprovechables'
+    if len(filas) == 1:
+        prov = str(filas[0].get('nombre_proveedor', '') or '')
+        v = filas[0].get('total_factura')
+        return f'{prov} — €{v:,.2f}' if isinstance(v, (int, float)) else prov
+    provs = []
+    for f in filas:
+        p = str(f.get('nombre_proveedor') or '').strip()
+        if p and p != 'NO_ENCONTRADO' and p not in provs:
+            provs.append(p)
+    quien = provs[0] if len(provs) == 1 else f'{len(provs)} proveedores'
+    return f'{len(filas)} facturas · {quien} — €{sum(_importe(f) for f in filas):,.2f}'
+
+
 def _hoja_a_texto(fpath, max_filas=200, max_chars=8000):
     """Vuelca una hoja de calculo a texto plano para que la IA pueda clasificarla.
 
@@ -1029,7 +1093,23 @@ def _enrutar_tipo_doc(reg, fname, fpath=None):
     _flags = {}
     # Claude clasificó el documento como otro tipo — enrutar
     _tipo_doc = reg['tipo_documento']
-    if _tipo_doc == 'EXTRACTO_BANCO' and reg.get('movimientos'):
+    if _tipo_doc == 'FACTURA':
+        # Una factura de proveedor tambien es un tipo clasificado: hasta ahora
+        # solo el camino de PDF sabia guardarla, asi que la misma factura en
+        # una hoja de calculo se perdia. Un documento puede traer varias.
+        from lector_facturas_ap import facturas_de_respuesta, cargar_proveedores
+        _filas = [f for f in facturas_de_respuesta(reg, fname, cargar_proveedores())
+                  if _ap_tiene_datos(f)]
+        if not _filas:
+            _msg = f'⚠ {fname}: no se pudo extraer ningún dato de la factura — revisar manualmente'
+            _marca = 'SKIP'
+        else:
+            _guardar_factura_ap(_filas)
+            _msg = f'✓ AP {fname}: {_resumen_factura_ap(_filas)}'
+            _marca = 'AP_OK'
+            _flags['has_ap'] = True
+            _flags['ap_n'] = len(_filas)
+    elif _tipo_doc == 'EXTRACTO_BANCO' and reg.get('movimientos'):
         try:
             _movs = reg['movimientos']
             _df_movs = _normalize_cols(pd.DataFrame(_movs), _BANK_COL_MAP)
@@ -1358,6 +1438,8 @@ def api_procesar_batch_stream():
             total = len(archivos)
             yield f'data: >> Procesando {total} archivo(s)...\n\n'
             has_ar = False; has_ap = False; has_ar_real = False
+            # un fichero puede traer VARIAS facturas: el resumen cuenta facturas
+            ap_extra = 0
 
             # Las fotos valen como cualquier documento digital: primero se clasifican.
             # Si son un contrato de grupo (multipágina) -> AR Real. Si no, cada foto se
@@ -1561,13 +1643,20 @@ def api_procesar_batch_stream():
                             except Exception as _eia:
                                 yield f'data: ⚠ {fname}: la IA no pudo leerlo — {str(_eia)[:60]}\n\n'
                                 _reg_hoja = None
-                        if (isinstance(_reg_hoja, dict) and _reg_hoja.get('tipo_documento')
-                                and not _reg_hoja.get('_skip')):
+                        _tipo_hoja = _tipo_documento(_reg_hoja)
+                        if _tipo_hoja and not _reg_hoja.get('_skip'):
+                            # FACTURA no viene con tipo_documento en el JSON: se
+                            # normaliza aqui para que el enrutado la vea como un
+                            # tipo mas y no se caiga al "sin clasificar".
+                            _reg_hoja['tipo_documento'] = _tipo_hoja
                             _msg, _marca, _flags = _enrutar_tipo_doc(_reg_hoja, fname, fpath)
                             yield f'data: {_msg}\n\n'
                             _mark(fname, _marca)
                             if _flags.get('has_ar'):
                                 has_ar = True
+                            if _flags.get('has_ap'):
+                                has_ap = True
+                                ap_extra += max(0, int(_flags.get('ap_n', 1)) - 1)
                         else:
                             yield f'data: ⚠ {fname}: hoja de cálculo sin clasificar — revisar manualmente\n\n'
                             _mark(fname, 'SKIP')
@@ -1626,23 +1715,17 @@ def api_procesar_batch_stream():
                                 yield f'data: ⚠ {fname}: no se pudo extraer ningún dato de la factura — revisar manualmente\n\n'
                                 _mark(fname, 'SKIP')
                             elif reg and not reg.get('error'):
-                                # Guardar resultado
-                                _ap_excel = os.path.join(_pdir(), f'facturas_ap_{date.today().strftime("%Y%m%d")}.xlsx')
-                                if os.path.exists(_ap_excel):
-                                    _df_e = pd.read_excel(_ap_excel)
-                                    _df_n = pd.DataFrame([reg])
-                                    _df_c = pd.concat([_df_e, _df_n], ignore_index=True)
-                                    _df_c.drop_duplicates(subset=['archivo'], keep='last', inplace=True)
-                                    _df_c.to_excel(_ap_excel, index=False)
-                                else:
-                                    guardar_excel([reg], _ap_excel)
-                                total_importe = reg.get('total_factura', 0)
-                                if isinstance(total_importe, (int, float)):
-                                    yield f'data: ✓ AP {fname}: {reg.get("nombre_proveedor","")} — €{total_importe:,.2f}\n\n'
-                                else:
-                                    yield f'data: ✓ AP {fname}: {reg.get("nombre_proveedor","")}\n\n'
+                                # Mismo guardado que la hoja de calculo y que la
+                                # foto: un solo sitio. _filas_limpias despliega
+                                # las varias facturas si el documento traia mas
+                                # de una, en vez de quedarse con la primera.
+                                from lector_facturas_ap import _filas_limpias as _fl_ap
+                                _filas = _fl_ap(reg)
+                                _n_ap = _guardar_factura_ap(_filas)
+                                yield f'data: ✓ AP {fname}: {_resumen_factura_ap(_filas)}\n\n'
                                 _mark(fname, 'AP_OK')
                                 has_ap = True
+                                ap_extra += max(0, _n_ap - 1)
                                 
                                 # 3-WAY MATCHING: buscar BEO/contrato del mismo evento/cliente
                                 try:
@@ -1731,7 +1814,7 @@ def api_procesar_batch_stream():
                 except: pass
 
             # ── Resumen de procesado ──
-            ap_n = sum(1 for v in lote.values() if v.get('resultado') == 'AP_OK')
+            ap_n = sum(1 for v in lote.values() if v.get('resultado') == 'AP_OK') + ap_extra
             ar_n = sum(1 for v in lote.values() if v.get('resultado') == 'AR_OK')
             drr_n = sum(1 for v in lote.values() if v.get('resultado') == 'DRR_OK')
             bank_n = sum(1 for v in lote.values() if v.get('resultado') == 'BANK_OK')
@@ -1848,7 +1931,7 @@ def api_scan_documento():
             raw = raw[first:last+1]
         
         datos = json.loads(raw)
-        tipo = datos.get('tipo_documento', 'FACTURA' if datos.get('es_factura') else 'OTRO')
+        tipo = _tipo_documento(datos) or 'OTRO'
         
         # Guardar en historial
         from datetime import datetime as _dt2
@@ -1861,26 +1944,22 @@ def api_scan_documento():
         mensaje = ''
         
         if tipo == 'FACTURA' and datos.get('es_factura'):
-            from lector_facturas_ap import clasificar_proveedor, cargar_proveedores, _safe_float, _auto_cuenta_pgc, guardar_excel, SALIDA_DIR, NF
-            provs = cargar_proveedores()
-            tipo_prov, cuenta = clasificar_proveedor(datos.get('nombre_proveedor'), provs)
-            if cuenta == NF and datos.get('descripcion_concepto'):
-                cuenta = _auto_cuenta_pgc(datos.get('descripcion_concepto'), datos.get('nombre_proveedor'))
-            reg = {
-                'archivo': fname, 'numero_factura': datos.get('numero_factura',''),
-                'fecha': datos.get('fecha',''), 'nombre_proveedor': datos.get('nombre_proveedor',''),
-                'NIF_proveedor': datos.get('NIF_proveedor',''),
-                'descripcion_concepto': datos.get('descripcion_concepto',''),
-                'base_imponible': _safe_float(datos.get('base_imponible')) or 0,
-                'porcentaje_iva': _safe_float(datos.get('porcentaje_iva')) or 0,
-                'cuota_iva': _safe_float(datos.get('cuota_iva')) or 0,
-                'total_factura': _safe_float(datos.get('total_factura')) or 0,
-                'tipo_proveedor': tipo_prov, 'cuenta_contable': cuenta,
-                'moneda': datos.get('moneda','EUR'), 'error': ''
-            }
-            ruta = os.path.join(_pdir(), f'facturas_ap_{date.today().strftime("%Y%m%d")}.xlsx')
-            guardar_excel([reg], ruta)
-            mensaje = f'{datos.get("nombre_proveedor","")} — €{reg["total_factura"]:,.2f}'
+            # Mismo normalizador y mismo guardado que el PDF y la hoja de
+            # calculo. Esto era una TERCERA copia: no autocalculaba base ni IVA
+            # cuando faltaban, y guardaba con guardar_excel(), que SOBRESCRIBE
+            # el fichero del dia y se llevaba por delante las facturas que el
+            # lote hubiera guardado antes.
+            from lector_facturas_ap import facturas_de_respuesta, cargar_proveedores
+            _filas = [f for f in facturas_de_respuesta(datos, fname, cargar_proveedores())
+                      if _ap_tiene_datos(f)]
+            if _filas:
+                _guardar_factura_ap(_filas)
+                # items_count solo cuenta cuando hay MAS de una: con una sola,
+                # la pantalla decia 0 y no se toca lo que hoy funciona.
+                items_count = len(_filas) if len(_filas) > 1 else 0
+                mensaje = _resumen_factura_ap(_filas)
+            else:
+                mensaje = 'factura detectada, pero no se pudo extraer ningún dato — revisar manualmente'
             
         elif tipo in ('BEO','TM','CONTRATO'):
             ref_path = os.path.join(_ddir(), 'eventos_referencia.json')
