@@ -48,10 +48,20 @@ _ETAPAS_AP = [
     ("facturas_ap_*.xlsx",             "procesadas"),
 ]
 
-# Albaranes (notas de entrega). Hoy solo hay una etapa; cuando exista el cruce
-# factura-albaran, su informe entrara DELANTE en esta lista y ganara, igual que
-# facturas_contabilizadas gana sobre facturas_ap.
+# Albaranes (notas de entrega). El informe del cruce factura-albaran va DELANTE
+# y gana, igual que facturas_contabilizadas gana sobre facturas_ap: es el que
+# lleva el estado (ALBARAN_FACTURADO / ALBARAN_SIN_FACTURAR). Su hoja se llama
+# "Albaranes" a proposito, para que las dos etapas se lean con la misma hoja.
 _ETAPAS_ALB = [
+    ("matching_albaran_*.xlsx", "reportes"),
+    ("albaranes_*.xlsx",        "procesadas"),
+]
+
+# Las LINEAS solo viven en albaranes_*: el informe del cruce no las repite. Si
+# se reutilizara _ETAPAS_ALB, al no encontrar la hoja "Lineas" en el informe
+# _leer_etapas caeria a leer su PRIMERA hoja (Facturas) y colaria facturas en
+# la lista de lineas.
+_ETAPAS_ALB_LIN = [
     ("albaranes_*.xlsx", "procesadas"),
 ]
 
@@ -204,7 +214,7 @@ def lineas_albaran(procesadas_dir=None, reportes_dir=None):
     reprocesar dos veces el mismo fichero.
     """
     p, r = _dirs(procesadas_dir, reportes_dir)
-    df, _rutas = _leer_etapas(_ETAPAS_ALB, p, r, hoja="Lineas")
+    df, _rutas = _leer_etapas(_ETAPAS_ALB_LIN, p, r, hoja="Lineas")
     if df.empty:
         return df
     cols = [c for c in df.columns if c != "_etapa"]
