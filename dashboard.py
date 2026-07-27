@@ -230,37 +230,20 @@ def api_hotel_activo():
 
 def cargar_datos():
     """
-    Carga los datos AR del archivo más reciente disponible.
-    Prioridad:
-      1. reportes/doble_imposicion_*.xlsx   (salida de detector_doble_imposicion.py)
-      2. reportes/verificacion_*.xlsx        (salida de verificador_comisiones.py)
-      3. facturas-procesadas/facturas_procesadas_*.xlsx  (salida de lector_ota.py)
-    En todos los casos usa el archivo más reciente por fecha de modificación.
+    Carga los datos AR de TODOS los dias, ya consolidados.
+
+    La lectura y el deduplicado viven en almacen_datos (punto unico a cambiar
+    el dia de la migracion a persistencia). Aqui solo queda el enriquecimiento.
     """
-    print(f"[cargar_datos] BASE_DIR={BASE_DIR}")
-    # Buscar todos los archivos AR posibles y usar el MÁS RECIENTE
-    import glob as _glob
-    candidatos = []
-    for patron, dir_ in [
-        ("doble_imposicion_*.xlsx", _rdir()),
-        ("verificacion_*.xlsx", _rdir()),
-        ("facturas_procesadas_*.xlsx", _pdir()),
-    ]:
-        for f in _glob.glob(os.path.join(dir_, patron)):
-            candidatos.append((os.path.getmtime(f), f))
-    if not candidatos:
-        print("[cargar_datos] ADVERTENCIA: no se encontró ningún Excel AR")
-        return pd.DataFrame(), {}
-    candidatos.sort(reverse=True)
-    ruta = candidatos[0][1]
-    print(f"[cargar_datos] Usando archivo más reciente: {os.path.basename(ruta)}")
-    try:
-        df = pd.read_excel(ruta)
-    except Exception as e:
-        print(f"[cargar_datos] ERROR leyendo {ruta}: {e}")
-        return pd.DataFrame(), {}
+    from almacen_datos import facturas_ar as _facturas_ar, resumen_fuentes as _fuentes
+    df = _facturas_ar(_pdir(), _rdir())
     if df is None or df.empty:
+        print("[cargar_datos] ADVERTENCIA: no se encontró ningún dato AR")
         return pd.DataFrame(), {}
+    try:
+        ruta = ", ".join(_fuentes(_pdir(), _rdir())["ar"]) or "consolidado"
+    except Exception:
+        ruta = "consolidado"
 
     apro_path = os.path.join(_adir(), "aprobaciones.xlsx")
     if os.path.exists(apro_path):
@@ -277,7 +260,7 @@ def cargar_datos():
             df[col] = None
 
     df = _filtrar_hotel_activo(df)
-    meta = {"ruta": os.path.basename(ruta) if ruta else ""}
+    meta = {"ruta": ruta}
     return df, meta
 
 def calcular_stats(df):
@@ -2272,21 +2255,14 @@ FACTURAS_AP_DIR_LEGACY      = os.path.join(BASE_DIR, "facturas-procesadas")
 APROBACIONES_AP_DIR_LEGACY  = os.path.join(BASE_DIR, "aprobaciones")
 
 def cargar_datos_ap():
-    """Carga facturas AP — usa el archivo MÁS RECIENTE entre contabilizadas y procesadas."""
-    import glob
-    candidatos = []
-    for patron in ["facturas_contabilizadas_*.xlsx", "facturas_ap_*.xlsx"]:
-        for f in glob.glob(os.path.join(_pdir(), patron)):
-            candidatos.append((os.path.getmtime(f), f))
-    if not candidatos:
-        return pd.DataFrame()
-    # El más reciente
-    candidatos.sort(reverse=True)
-    ruta = candidatos[0][1]
-    try:
-        df = pd.read_excel(ruta)
-    except Exception:
-        return pd.DataFrame()
+    """Carga facturas AP de TODOS los dias, ya consolidadas.
+
+    La lectura y el deduplicado viven en almacen_datos: ese es el UNICO sitio
+    que habra que tocar cuando migremos a persistencia con almacen por hotel.
+    Aqui solo queda el enriquecimiento (aprobaciones, hotel activo).
+    """
+    from almacen_datos import facturas_ap as _facturas_ap
+    df = _facturas_ap(_pdir(), _rdir())
     if df is None or df.empty:
         return pd.DataFrame()
 
