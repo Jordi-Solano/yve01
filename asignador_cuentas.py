@@ -131,13 +131,40 @@ def generar_asiento(fila, cuenta_gasto, plan_cc):
         "asiento_contable":   " | ".join(lineas),
     }
 
+# Columnas que escribe Oracle y que NUNCA se pueden perder al regenerar el
+# informe: oracle_status es el unico candado que impide contabilizar dos veces.
+_COLS_ORACLE = ("oracle_status", "oracle_journal_id", "oracle_batch_id",
+                "oracle_fecha", "oracle_error")
+
+
 def cargar_todas_facturas_ap():
-    """Carga facturas_ap + une los resultados de matching si existen."""
-    excels = sorted(glob.glob(os.path.join(PROCESADAS_DIR, "facturas_ap_*.xlsx")), reverse=True)
-    if not excels:
+    """Carga TODAS las facturas AP (todos los dias) conservando lo ya contabilizado.
+
+    ANTES leia SOLO el facturas_ap_*.xlsx mas reciente y regeneraba el informe
+    desde cero. Dos consecuencias, las dos malas:
+
+      - al cambiar de dia, el informe PERDIA las facturas de los dias anteriores;
+      - y perdia la columna `oracle_status`, que es el unico candado que impide
+        que Oracle contabilice dos veces la misma factura.
+
+    Y como `oracle_lector_facturas.py` abre SOLO el informe mas reciente, una
+    factura ya contabilizada que reapareciera sin su marcador se contabilizaria
+    OTRA VEZ en el libro mayor. Reproducido antes de arreglarlo.
+
+    `almacen_datos.facturas_ap()` junta todos los dias y hace ganar la etapa mas
+    avanzada (facturas_contabilizadas por encima de facturas_ap), asi que el
+    marcador viaja solo. Es el mismo punto unico que ya usan el panel, el banco
+    y la conciliacion.
+    """
+    import almacen_datos as _alm
+    df = _alm.facturas_ap(PROCESADAS_DIR, REPORTES_DIR)
+    if df is None or df.empty:
         raise FileNotFoundError("No hay facturas_ap_*.xlsx. Ejecuta lector_facturas_ap.py")
-    df = pd.read_excel(excels[0])
-    print(f"  Facturas AP: {os.path.basename(excels[0])}")
+    ya = 0
+    if "oracle_status" in df.columns:
+        ya = int((df["oracle_status"].astype(str).str.upper() == "CONTABILIZADA").sum())
+    print(f"  Facturas AP: {len(df)} de todos los dias"
+          + (f" · {ya} ya contabilizada(s) en Oracle (marcador conservado)" if ya else ""))
 
     # Intentar unir estado_matching de ambos reportes
     for patron in [f"matching_otras_{FECHA_HOY}.xlsx",
@@ -147,6 +174,10 @@ def cargar_todas_facturas_ap():
             try:
                 dm = pd.read_excel(ruta, sheet_name=0)
                 if "archivo" in dm.columns and "estado_matching" in dm.columns:
+                    # quitar las de la pasada anterior: si no, el merge crea
+                    # estado_matching_x / estado_matching_y y se pierde la buena
+                    df = df.drop(columns=[c for c in ("estado_matching", "detalle_matching")
+                                          if c in df.columns])
                     df = df.merge(dm[["archivo","estado_matching","alerta_detalle"]]
                                   .rename(columns={"alerta_detalle":"detalle_matching"}),
                                   on="archivo", how="left")
@@ -196,6 +227,8 @@ def main():
             icono = "✓"
         print(f"  [{icono}] {fila.get('archivo',NF)} → {cuenta_gasto} [{metodo}]")
 
+        # fila.to_dict() ya arrastra las columnas de Oracle si venian del
+        # informe anterior; el orden importa: asiento_dict NO las pisa.
         resultados.append({
             **fila.to_dict(),
             **asiento_dict,
