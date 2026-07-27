@@ -1508,6 +1508,7 @@ def api_procesar_batch_stream():
             total = len(archivos)
             yield f'data: >> Procesando {total} archivo(s)...\n\n'
             has_ar = False; has_ap = False; has_ar_real = False
+            has_albaran = False
             # un fichero puede traer VARIAS facturas: el resumen cuenta facturas
             ap_extra = 0
 
@@ -1727,6 +1728,8 @@ def api_procesar_batch_stream():
                             if _flags.get('has_ap'):
                                 has_ap = True
                                 ap_extra += max(0, int(_flags.get('ap_n', 1)) - 1)
+                            if _flags.get('albaran'):
+                                has_albaran = True
                         else:
                             yield f'data: ⚠ {fname}: hoja de cálculo sin clasificar — revisar manualmente\n\n'
                             _mark(fname, 'SKIP')
@@ -1882,6 +1885,47 @@ def api_procesar_batch_stream():
                     _sp2.run(['python3','detector_doble_imposicion.py'], cwd=BASE_DIR, timeout=30, capture_output=True)
                     yield 'data: ✓ Verificación completada\n\n'
                 except: pass
+
+            if has_ap or has_albaran:
+                # ORDEN: el cruce va ANTES que el asignador porque el asignador
+                # une su informe al generar facturas_contabilizadas. Al reves,
+                # el estado llegaria al panel un lote tarde.
+                # Tambien corre si SOLO han entrado albaranes: una entrega nueva
+                # puede completar una factura que ayer no cuadraba.
+                yield 'data: >> Cruzando facturas con albaranes...\n\n'
+                yield ': ping\n\n'
+                try:
+                    import subprocess as _sp4
+                    _r_alb = _sp4.run(['python3', 'matching_ap_albaran.py'], cwd=BASE_DIR,
+                                      timeout=180, capture_output=True, text=True,
+                                      env=_env_tenant())
+                    # el modulo lo dice el mismo: contar lineas de su consola
+                    # se comia tambien la fila del resumen y salian 2 donde habia 1
+                    _n_fac = _n_alb = 0
+                    for _ln in (_r_alb.stdout or '').splitlines():
+                        if _ln.startswith('INCIDENCIAS:'):
+                            try:
+                                _a, _b = _ln.split(':', 1)[1].strip().split('|')
+                                _n_fac, _n_alb = int(_a), int(_b)
+                            except Exception:
+                                pass
+                    if _r_alb.returncode == 0:
+                        _partes = []
+                        if _n_fac:
+                            _partes.append(f'{_n_fac} factura(s) sin entrega que las respalde '
+                                           f'o con diferencia de importe')
+                        if _n_alb:
+                            _partes.append(f'{_n_alb} albarán(es) entregado(s) sin facturar')
+                        if _partes:
+                            yield f'data: ⚠ Cruce con albaranes: {" · ".join(_partes)}\n\n'
+                        else:
+                            yield 'data: ✓ Cruce con albaranes: sin incidencias\n\n'
+                    else:
+                        _e_alb = (_r_alb.stderr or _r_alb.stdout or 'error').strip().splitlines()
+                        _e_alb = (_e_alb[-1] if _e_alb else 'error')[:90]
+                        yield f'data: ⚠ No se ha podido cruzar con los albaranes — {_e_alb}\n\n'
+                except Exception as _ea2:
+                    yield f'data: ⚠ No se ha podido cruzar con los albaranes — {str(_ea2)[:80]}\n\n'
 
             if has_ap:
                 # Las facturas ya estan guardadas; ahora se les pone cuenta y
@@ -2809,8 +2853,11 @@ def calcular_stats_ap(df):
     manual      = 0
     if est_col:
         estados = df[est_col].astype(str).str.upper()
-        matches        = int((estados.isin(["MATCH_CORRECTO","MATCH_3WAY_OK"])).sum())
-        discrepancias  = int((estados == "DISCREPANCIA_PO").sum())
+        # MATCH_ALBARAN_OK y DIFERENCIA_IMPORTE vienen del cruce con albaranes:
+        # sin esto los tiles se quedaban a cero aunque el cruce hubiera corrido.
+        matches        = int((estados.isin(["MATCH_CORRECTO","MATCH_3WAY_OK",
+                                            "MATCH_ALBARAN_OK"])).sum())
+        discrepancias  = int((estados.isin(["DISCREPANCIA_PO","DIFERENCIA_IMPORTE"])).sum())
         sin_po         = int((estados == "SIN_PO").sum())
         alertas        = int((estados == "ALERTA_CONSUMO").sum())
         manual         = int((estados == "REVISAR_MANUAL").sum())

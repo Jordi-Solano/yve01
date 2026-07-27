@@ -256,17 +256,44 @@ def emparejar(df_fact, df_alb):
     return empare, porque
 
 
-def analizar_factura(fila_f, indices_alb, df_alb, porque, i_f):
+def fecha_corte(df_alb):
+    """La entrega mas antigua registrada. Antes de esa fecha no habia albaranes.
+
+    Una factura anterior a ese dia NO puede tener albaran, asi que marcarla como
+    "sin albaran" es una alerta que nadie puede accionar. Y una pantalla que
+    grita en todo lo que mira consigue que se deje de mirar: entonces se pierde
+    la alerta de verdad. Solo se alerta de facturas que DEBERIAN tener albaran
+    porque, cuando entraron, ya se estaban registrando.
+    """
+    fechas = [f for f in (_fecha(a.get("fecha_entrega")) for _, a in df_alb.iterrows()) if f]
+    return min(fechas) if fechas else None
+
+
+def analizar_factura(fila_f, indices_alb, df_alb, porque, i_f, corte=None):
     base, aviso = _base_factura(fila_f)
     albs = [df_alb.loc[i] for i in indices_alb]
     nums = [_txt(a.get("numero_albaran")) or "s/n" for a in albs]
     suma = sum(_num(a.get("total_albaran")) or 0.0 for a in albs)
 
     if not albs:
-        estado = "FACTURA_SIN_ALBARAN"
-        detalle = ("no se ha encontrado ninguna entrega que respalde esta factura "
-                   f"(mismo proveedor, {VENTANA_DIAS} días antes)")
+        f_fact = _fecha(fila_f.get("fecha"))
         diff = dif_pct = NF
+        if corte and f_fact and f_fact < corte:
+            # no es una incidencia: cuando se emitio esta factura todavia no se
+            # registraban albaranes, asi que no hay nada que reclamar
+            estado = "ANTERIOR_AL_REGISTRO"
+            detalle = (f"factura del {f_fact.strftime('%d/%m/%Y')}, anterior al primer "
+                       f"albarán registrado ({corte.strftime('%d/%m/%Y')}): no se puede "
+                       f"esperar que tenga uno")
+        else:
+            estado = "FACTURA_SIN_ALBARAN"
+            detalle = ("no se ha encontrado ninguna entrega que respalde esta factura "
+                       f"(mismo proveedor, {VENTANA_DIAS} días antes)")
+            if not f_fact:
+                # sin fecha no se puede saber si deberia tener albaran. Se deja
+                # como incidencia A PROPOSITO: una factura sin fecha legible ya
+                # es motivo para mirarla.
+                detalle += " · además no se ha podido leer su fecha"
     elif base is None:
         estado = "SIN_IMPORTE"
         detalle = f"{len(albs)} albarán(es) encontrado(s), pero {aviso}"
@@ -322,13 +349,14 @@ def analizar_albaranes(df_alb, asignados_por_alb, df_fact):
             estado = "ALBARAN_FACTURADO"
             num_f = _txt(df_fact.loc[i_f].get("numero_factura")) or NF
             detalle = f"facturado en {num_f}"
+        # OJO: se arrastra la fila ENTERA del albaran, no una seleccion de
+        # campos. Esta hoja es la etapa mas avanzada de _ETAPAS_ALB, asi que es
+        # la que gana en almacen_datos.albaranes(): si aqui se perdiera
+        # `referencia_factura`, el siguiente cruce ya no podria emparejar por
+        # referencia explicita — el modulo se romperia a si mismo. Mismo patron
+        # que usan matching_ap_otras/fb con **fila.to_dict().
         filas.append({
-            "clave":            _txt(alb.get("clave")),
-            "numero_albaran":   _txt(alb.get("numero_albaran")) or NF,
-            "nombre_proveedor": _txt(alb.get("nombre_proveedor")) or NF,
-            "fecha_entrega":    _txt(alb.get("fecha_entrega")) or NF,
-            "total_albaran":    _num(alb.get("total_albaran")) or NF,
-            "n_lineas":         alb.get("n_lineas", NF),
+            **{k: v for k, v in alb.to_dict().items() if not str(k).startswith("_")},
             "numero_factura":   num_f,
             "estado":           estado,
             "detalle":          detalle,
@@ -342,6 +370,7 @@ _COLORES = {
     "MATCH_ALBARAN_OK": VERDE, "ALBARAN_FACTURADO": VERDE,
     "DIFERENCIA_IMPORTE": ROJO,
     "FACTURA_SIN_ALBARAN": AMARILLO, "ALBARAN_SIN_FACTURAR": AMARILLO,
+    "ANTERIOR_AL_REGISTRO": AZUL,
     "SIN_IMPORTE": AZUL,
 }
 
@@ -385,6 +414,8 @@ def generar_resumen(df_f, df_a):
          "Cantidad": f"{TOL_CANTIDAD*100:.0f}%", "Pct": ""},
         {"Bloque": "Criterio", "Estado": "se compara la BASE IMPONIBLE (el albarán no lleva IVA)",
          "Cantidad": "", "Pct": ""},
+        {"Bloque": "Criterio", "Estado": "no se alerta de facturas anteriores al primer albarán registrado",
+         "Cantidad": "", "Pct": ""},
     ]
     return pd.DataFrame(filas)
 
@@ -410,15 +441,17 @@ def main():
     empare, porque = emparejar(df_fact, df_alb)
     por_alb = {i_a: i_f for i_f, idxs in empare.items() for i_a in idxs}
 
-    res_f = [analizar_factura(df_fact.loc[i_f], idxs, df_alb, porque, i_f)
+    corte = fecha_corte(df_alb)
+    res_f = [analizar_factura(df_fact.loc[i_f], idxs, df_alb, porque, i_f, corte)
              for i_f, idxs in empare.items()]
     res_a = analizar_albaranes(df_alb, por_alb, df_fact)
 
     iconos = {"MATCH_ALBARAN_OK": "✓", "DIFERENCIA_IMPORTE": "✗",
-              "FACTURA_SIN_ALBARAN": "?", "SIN_IMPORTE": "~"}
+              "FACTURA_SIN_ALBARAN": "?", "SIN_IMPORTE": "~",
+              "ANTERIOR_AL_REGISTRO": "·"}
     for r in res_f:
         print(f"  [{iconos.get(r['estado_matching'], '·')}] {r['numero_factura']} → {r['estado_matching']}")
-        if r["estado_matching"] != "MATCH_ALBARAN_OK":
+        if r["estado_matching"] not in ("MATCH_ALBARAN_OK", "ANTERIOR_AL_REGISTRO"):
             print(f"       {r['detalle_matching']}")
     sin_facturar = [r for r in res_a if r["estado"] == "ALBARAN_SIN_FACTURAR"]
     for r in sin_facturar:
@@ -448,6 +481,14 @@ def main():
     print("─" * 60)
     for _, r in df_sum.iterrows():
         print(f"  {str(r['Bloque']):<12} {str(r['Estado']):<58} {str(r['Cantidad'])}")
+    # Linea legible por maquina, para que quien lo lance no tenga que contar
+    # lineas de la consola: contarlas se comia tambien la fila del resumen y el
+    # lote cantaba 2 incidencias donde habia 1. Mismo patron que el "FALTAN:"
+    # de lector_ota.py.
+    _inc_f = int((df_res_f["estado_matching"].isin(
+        ["FACTURA_SIN_ALBARAN", "DIFERENCIA_IMPORTE"])).sum()) if not df_res_f.empty else 0
+    _inc_a = len(sin_facturar)
+    print(f"INCIDENCIAS: {_inc_f}|{_inc_a}")
     print(f"\n✅ Reporte: {SALIDA}")
     print("=" * 60)
     return 0

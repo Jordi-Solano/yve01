@@ -179,24 +179,52 @@ def cargar_todas_facturas_ap():
     print(f"  Facturas AP: {len(df)} de todos los dias"
           + (f" · {ya} ya contabilizada(s) en Oracle (marcador conservado)" if ya else ""))
 
-    # Intentar unir estado_matching de ambos reportes
+    # ── Unir el estado de los cruces ──────────────────────────────────────
+    # ANTES se hacia un merge POR INFORME dentro del bucle, y cada uno quitaba
+    # la columna del anterior: con dos cruces activos, el ultimo pisaba al
+    # primero y se perdia. Ahora se juntan todos en uno y se mezcla UNA vez.
+    #
+    # El orden importa: gana el PRIMERO que tenga estado para esa factura. El
+    # cruce contra PO va delante del de albaranes porque los estados del panel
+    # (SIN_PO, DISCREPANCIA_PO) se diseñaron para el. Meter dos cruces
+    # independientes —¿estaba pedido? / ¿llego la mercancia?— en una sola
+    # columna es una simplificacion; se revisa en la fase del PO.
+    _cruces = []
     for patron in [f"matching_otras_{FECHA_HOY}.xlsx",
-                   f"matching_fb_{FECHA_HOY}.xlsx"]:
+                   f"matching_fb_{FECHA_HOY}.xlsx",
+                   f"matching_albaran_{FECHA_HOY}.xlsx"]:
         ruta = os.path.join(REPORTES_DIR, patron)
-        if os.path.exists(ruta):
-            try:
-                dm = pd.read_excel(ruta, sheet_name=0)
-                if "archivo" in dm.columns and "estado_matching" in dm.columns:
-                    # quitar las de la pasada anterior: si no, el merge crea
-                    # estado_matching_x / estado_matching_y y se pierde la buena
-                    df = df.drop(columns=[c for c in ("estado_matching", "detalle_matching")
-                                          if c in df.columns])
-                    df = df.merge(dm[["archivo","estado_matching","alerta_detalle"]]
-                                  .rename(columns={"alerta_detalle":"detalle_matching"}),
-                                  on="archivo", how="left")
-                    print(f"  Matching unido: {patron}")
-            except Exception:
-                pass
+        if not os.path.exists(ruta):
+            continue
+        try:
+            dm = pd.read_excel(ruta, sheet_name=0)
+        except Exception:
+            continue
+        if "archivo" not in dm.columns or "estado_matching" not in dm.columns:
+            continue
+        # cada modulo llama al detalle de una manera
+        _det = next((c for c in ("detalle_matching", "alerta_detalle", "detalle")
+                     if c in dm.columns), None)
+        dm = dm[["archivo", "estado_matching"] + ([_det] if _det else [])].copy()
+        if _det:
+            dm = dm.rename(columns={_det: "detalle_matching"})
+        else:
+            dm["detalle_matching"] = ""
+        # una fila sin 'archivo' no puede unirse a nada, y ademas pandas 3
+        # trata NaN==NaN al deduplicar: se irian todas menos una
+        dm = dm[dm["archivo"].map(lambda v: str(v).strip().lower()
+                                  not in ("", "nan", "none", "no_encontrado"))]
+        if not dm.empty:
+            _cruces.append(dm)
+            print(f"  Matching unido: {patron}")
+    if _cruces:
+        dm_total = pd.concat(_cruces, ignore_index=True).drop_duplicates(
+            subset=["archivo"], keep="first")
+        # quitar las de la pasada anterior: si no, el merge crea
+        # estado_matching_x / estado_matching_y y se pierde la buena
+        df = df.drop(columns=[c for c in ("estado_matching", "detalle_matching")
+                              if c in df.columns])
+        df = df.merge(dm_total, on="archivo", how="left")
     return df
 
 def aplicar_formato(ws):
