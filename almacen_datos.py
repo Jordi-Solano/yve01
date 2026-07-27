@@ -84,12 +84,23 @@ def _clave_doc(fila, campos_id):
 
 
 def _dirs(procesadas_dir=None, reportes_dir=None):
-    """Resuelve los directorios del tenant activo si no se pasan explicitos."""
+    """Resuelve los directorios del tenant activo si no se pasan explicitos.
+
+    Acepta cadenas, Path o los envoltorios multi-tenant _TDir/_TFile (que
+    resuelven la ruta en cada uso). Se normaliza a str aqui, en el modulo, para
+    que ningun consumidor tenga que preocuparse de que tipo esta pasando.
+    """
+    def _s(v):
+        if v is None:
+            return None
+        return v if isinstance(v, str) else str(os.fspath(v) if hasattr(v, "__fspath__") else v)
+
+    procesadas_dir, reportes_dir = _s(procesadas_dir), _s(reportes_dir)
     if procesadas_dir is None or reportes_dir is None:
         try:
             from tenant_dirs import procesadas_dir as _p, reportes_dir as _r
-            procesadas_dir = procesadas_dir or _p()
-            reportes_dir = reportes_dir or _r()
+            procesadas_dir = procesadas_dir or _s(_p())
+            reportes_dir = reportes_dir or _s(_r())
         except Exception:
             base = os.path.dirname(os.path.abspath(__file__))
             procesadas_dir = procesadas_dir or os.path.join(base, "facturas-procesadas")

@@ -98,49 +98,45 @@ def cargar_facturas():
     """Carga todas las facturas AP y AR disponibles para matching."""
     facturas = []
 
-    # AP — facturas proveedores
-    for patron in ["facturas_contabilizadas_*.xlsx", "facturas_ap_*.xlsx"]:
-        ruta = _ultimo_excel(patron, PROCESADAS_DIR)
-        if ruta:
-            try:
-                df = pd.read_excel(ruta)
-                for _, r in df.iterrows():
-                    imp = _sf(r.get("total_factura", r.get("importe_total", 0)))
-                    if imp > 0:
-                        facturas.append({
-                            "origen": "AP",
-                            "numero": str(r.get("numero_factura", "")),
-                            "proveedor": str(r.get("nombre_proveedor", "")),
-                            "importe": imp,
-                            "fecha": r.get("fecha"),
-                            "tipo_mov": "CARGO",
-                        })
-            except Exception:
-                pass
-            break
+    # Antes cada bloque hacia su propio "coge el fichero mas reciente" + break,
+    # asi que la conciliacion cruzaba los movimientos del banco contra UN SOLO
+    # dia de facturas: un pago a una factura de ayer quedaba PENDIENTE para
+    # siempre. La lectura y el deduplicado viven en almacen_datos, que es el
+    # unico sitio a tocar cuando migremos a persistencia.
+    from almacen_datos import facturas_ap as _fap, facturas_ar as _far
 
-    # AR — facturas OTA (cobros)
-    for patron in ["doble_imposicion_*.xlsx", "verificacion_*.xlsx", "facturas_procesadas_*.xlsx"]:
-        ruta = _ultimo_excel(patron, REPORTES_DIR)
-        if ruta is None:
-            ruta = _ultimo_excel(patron, PROCESADAS_DIR)
-        if ruta:
-            try:
-                df = pd.read_excel(ruta)
-                for _, r in df.iterrows():
-                    imp = _sf(r.get("importe_bruto", 0))
-                    if imp > 0:
-                        facturas.append({
-                            "origen": "AR",
-                            "numero": str(r.get("numero_factura", "")),
-                            "proveedor": str(r.get("nombre_ota", "")),
-                            "importe": imp,
-                            "fecha": r.get("fecha"),
-                            "tipo_mov": "ABONO",
-                        })
-            except Exception:
-                pass
-            break
+    # AP — facturas proveedores (TODOS los dias)
+    try:
+        for _, r in _fap(PROCESADAS_DIR, REPORTES_DIR).iterrows():
+            imp = _sf(r.get("total_factura", r.get("importe_total", 0)))
+            if imp > 0:
+                facturas.append({
+                    "origen": "AP",
+                    "numero": str(r.get("numero_factura", "")),
+                    "proveedor": str(r.get("nombre_proveedor", "")),
+                    "importe": imp,
+                    "fecha": r.get("fecha"),
+                    "tipo_mov": "CARGO",
+                })
+    except Exception as e:
+        print(f"  [conciliacion] no se pudieron cargar facturas AP: {e}")
+
+    # AR — facturas OTA / cobros (TODOS los dias)
+    try:
+        for _, r in _far(PROCESADAS_DIR, REPORTES_DIR).iterrows():
+            imp = _sf(r.get("importe_bruto", 0))
+            if imp > 0:
+                facturas.append({
+                    "origen": "AR",
+                    "numero": str(r.get("numero_factura", "")),
+                    "proveedor": str(r.get("nombre_ota", "")),
+                    "importe": imp,
+                    "fecha": r.get("fecha"),
+                    "tipo_mov": "ABONO",
+                })
+    except Exception as e:
+        print(f"  [conciliacion] no se pudieron cargar facturas AR: {e}")
+
 
     return facturas
 
