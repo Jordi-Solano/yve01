@@ -48,10 +48,18 @@ _ETAPAS_AP = [
     ("facturas_ap_*.xlsx",             "procesadas"),
 ]
 
+# Albaranes (notas de entrega). Hoy solo hay una etapa; cuando exista el cruce
+# factura-albaran, su informe entrara DELANTE en esta lista y ganara, igual que
+# facturas_contabilizadas gana sobre facturas_ap.
+_ETAPAS_ALB = [
+    ("albaranes_*.xlsx", "procesadas"),
+]
+
 # Campos que identifican un documento. El PRIMERO es obligatorio: si viene
 # vacio, la fila NO se deduplica (ver _clave_doc).
 _ID_AR = ("numero_factura", "nombre_ota", "periodo_inicio")
 _ID_AP = ("numero_factura", "nombre_proveedor")
+_ID_ALB = ("numero_albaran", "nombre_proveedor")
 
 _VACIOS = ("", "nan", "none", "nat", "<na>", "no_encontrado", "null")
 
@@ -173,6 +181,34 @@ def facturas_ar(procesadas_dir=None, reportes_dir=None):
     p, r = _dirs(procesadas_dir, reportes_dir)
     df, rutas = _leer_etapas(_ETAPAS_AR, p, r)
     return _consolidar(df, _ID_AR)
+
+
+def albaranes(procesadas_dir=None, reportes_dir=None):
+    """Cabeceras de TODOS los albaranes del tenant, de TODOS los dias.
+
+    Un albaran es una cabecera con N lineas y se guarda en dos hojas
+    (`Albaranes` / `Lineas`) unidas por la columna `clave`. Esto devuelve las
+    cabeceras; para las lineas, `lineas_albaran()`.
+    """
+    p, r = _dirs(procesadas_dir, reportes_dir)
+    df, _rutas = _leer_etapas(_ETAPAS_ALB, p, r, hoja="Albaranes")
+    return _consolidar(df, _ID_ALB)
+
+
+def lineas_albaran(procesadas_dir=None, reportes_dir=None):
+    """Lineas de TODOS los albaranes, de TODOS los dias.
+
+    NO se deduplican por identidad de documento: un albaran puede repetir el
+    mismo producto en dos lineas (dos lotes, dos precios) y fusionarlas seria
+    perder mercancia. Se quitan solo los duplicados EXACTOS, que es lo que deja
+    reprocesar dos veces el mismo fichero.
+    """
+    p, r = _dirs(procesadas_dir, reportes_dir)
+    df, _rutas = _leer_etapas(_ETAPAS_ALB, p, r, hoja="Lineas")
+    if df.empty:
+        return df
+    cols = [c for c in df.columns if c != "_etapa"]
+    return df.drop_duplicates(subset=cols, keep="last").reset_index(drop=True)
 
 
 def facturas_ota_para_verificar(procesadas_dir=None):

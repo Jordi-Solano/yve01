@@ -177,7 +177,16 @@ PROMPT_CLASIFICACION = """CLASIFICACIÓN — Lee TODO el contenido antes de deci
   condiciones): porcentajes y vigencia, SIN nº de factura ni importes
   facturados → CONTRATO_OTA. Ojo: esto NO es una factura, es lo acordado.
 • Lista de habitaciones/huéspedes de un grupo → ROOMING
-• Número de factura + proveedor + IVA/VAT + total → FACTURA
+• Nota de entrega / albarán / delivery note: lo que el proveedor dice que ha
+  ENTREGADO, con cantidades por producto y a menudo un hueco para la firma de
+  quien lo recibe → ALBARAN.
+  OJO: un albarán SE PARECE a una factura (mismo proveedor, fechas, precios)
+  pero NO lo es. Señales de albarán: NO lleva IVA/VAT, NO lleva número de
+  factura, habla de "entrega"/"envío"/"remito" y detalla CANTIDADES servidas.
+  Si dudas entre FACTURA y ALBARAN: sin IVA y sin número de factura, es ALBARAN.
+• Número de factura + proveedor + IVA/VAT + total → FACTURA.
+  Al revés también: si hay número de factura E IVA, es FACTURA aunque venga con
+  el detalle de lo entregado.
 • Depósito/anticipo/proforma con importe → FACTURA
 • BEO/Banquet Event Order con desglose de servicios y precios → BEO
 • TM/Technical Manual/requisitos técnicos de evento → TM
@@ -193,6 +202,10 @@ FACTURA (VARIAS facturas en el MISMO documento, tipico en una hoja de cálculo c
 una factura por fila. Usa esta forma SOLO si de verdad hay más de una; si hay una
 sola, usa la de arriba):
 {"es_factura":true,"facturas":[{"numero_factura":"X","fecha":"DD/MM/YYYY","nombre_proveedor":"X","NIF_proveedor":"X","descripcion_concepto":"X","base_imponible":0.0,"porcentaje_iva":21,"cuota_iva":0.0,"total_factura":0.0,"moneda":"EUR"}]}
+
+ALBARAN (una entrada en "lineas" por CADA producto entregado.
+referencia_pedido y referencia_factura solo si el albarán las trae):
+{"tipo_documento":"ALBARAN","numero_albaran":"X","nombre_proveedor":"X","NIF_proveedor":"X","fecha_entrega":"DD/MM/YYYY","referencia_pedido":"X","referencia_factura":"X","lineas":[{"descripcion":"X","cantidad":0.0,"unidad":"kg|ud|l|caja","precio_unitario":0.0,"importe":0.0}],"total_albaran":0.0}
 
 INVENTARIO:
 {"tipo_documento":"INVENTARIO","items":[{"ingrediente":"nombre","categoria":"tipo","coste_unitario":0.0,"stock_actual_kg_l":0.0,"stock_inicial_kg_l":0.0,"unidad":"kg","proveedor":"nombre","critico":false}]}
@@ -741,6 +754,105 @@ def normalizar_factura_ap(datos, nombre, proveedores):
         icono = "✓" if v not in (NF, None, "") else "✗"
         print(f"    [{icono}] {k}: {v}")
     return resultado
+
+def _txt_alb(v):
+    """Texto comparable para las claves de albaran. NaN y NO_ENCONTRADO = vacio."""
+    s = "" if v is None else str(v)
+    s = " ".join(s.split()).strip().lower()
+    return "" if s in ("", "nan", "none", "nat", "<na>", "no_encontrado", "null") else s
+
+
+def clave_albaran(numero, proveedor, archivo=""):
+    """Identidad de un albaran: numero + proveedor.
+
+    Mismo criterio que `almacen_datos`: si el campo principal (el numero) viene
+    vacio, la fila NO puede deduplicarse con ninguna otra, asi que la clave
+    incluye el fichero de origen. Preferimos un albaran repetido a dos albaranes
+    distintos fusionados en uno — con mercancia de por medio, fusionar dos
+    entregas es perder una.
+    """
+    n, p = _txt_alb(numero), _txt_alb(proveedor)
+    return f"{n}|{p}" if n else f"|{p}|{_txt_alb(archivo)}"
+
+
+def albaran_de_respuesta(datos, nombre):
+    """Un ALBARAN del clasificador -> (cabecera, lineas). Punto UNICO.
+
+    Un albaran es una cabecera con N lineas, asi que se guarda en dos hojas
+    unidas por `clave` (ver _guardar_albaran en dashboard.py). Aqui solo se
+    normaliza: nada de disco.
+
+    Se autocompletan los huecos aritmeticos porque el cruce factura-albaran
+    compara cantidades y precios: sin importe por linea no se puede comparar
+    nada. Lo que NO se puede derivar se queda vacio, nunca inventado.
+    """
+    if not isinstance(datos, dict):
+        return {}, []
+    numero = str(datos.get("numero_albaran") or "").strip()
+    prov   = str(datos.get("nombre_proveedor") or "").strip()
+    clave  = clave_albaran(numero, prov, nombre)
+
+    lineas = []
+    for i, ln in enumerate(datos.get("lineas") or []):
+        if not isinstance(ln, dict):
+            continue
+        desc = str(ln.get("descripcion") or "").strip()
+        cant = _safe_float(ln.get("cantidad"))
+        prec = _safe_float(ln.get("precio_unitario"))
+        imp  = _safe_float(ln.get("importe"))
+        if imp is None and cant is not None and prec is not None:
+            imp = round(cant * prec, 2)
+        elif prec is None and imp is not None and cant:
+            prec = round(imp / cant, 4)
+        elif cant is None and imp is not None and prec:
+            cant = round(imp / prec, 3)
+        # una linea sin descripcion, sin cantidad y sin importe no es una linea
+        if not desc and cant is None and imp is None:
+            continue
+        lineas.append({
+            "clave":           clave,
+            "numero_albaran":  numero,
+            "nombre_proveedor": prov,
+            "n_linea":         i + 1,
+            "descripcion":     desc,
+            "cantidad":        cant,
+            "unidad":          str(ln.get("unidad") or "").strip(),
+            "precio_unitario": prec,
+            "importe":         imp,
+        })
+
+    total = _safe_float(datos.get("total_albaran"))
+    if total is None and lineas:
+        _sum = [l["importe"] for l in lineas if l["importe"] is not None]
+        total = round(sum(_sum), 2) if _sum else None
+
+    cabecera = {
+        "clave":              clave,
+        "archivo":            nombre,
+        "numero_albaran":     numero,
+        "nombre_proveedor":   prov,
+        "NIF_proveedor":      str(datos.get("NIF_proveedor") or "").strip(),
+        "fecha_entrega":      str(datos.get("fecha_entrega") or "").strip(),
+        "referencia_pedido":  str(datos.get("referencia_pedido") or "").strip(),
+        "referencia_factura": str(datos.get("referencia_factura") or "").strip(),
+        "total_albaran":      total,
+        "n_lineas":           len(lineas),
+    }
+    return cabecera, lineas
+
+
+def albaran_tiene_datos(cabecera, lineas):
+    """True si del albaran ha salido algo con lo que se pueda cruzar despues.
+
+    Misma regla de producto que `_ap_tiene_datos`: si no hay nada aprovechable,
+    NO se dice "✓ Albaran". Vale con una linea util, o con numero + total.
+    """
+    if any((l.get("cantidad") is not None or l.get("importe") is not None)
+           and (l.get("descripcion") or l.get("importe") is not None) for l in lineas):
+        return True
+    return bool(_txt_alb(cabecera.get("numero_albaran"))
+                and cabecera.get("total_albaran") is not None)
+
 
 def _filas_limpias(reg):
     """Las facturas de un resultado, sin las claves internas (_facturas, _skip).

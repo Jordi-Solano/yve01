@@ -916,6 +916,60 @@ def _guardar_factura_ap(filas):
     return len(filas)
 
 
+_COLS_LINEA_ALB = ('clave', 'numero_albaran', 'nombre_proveedor', 'n_linea',
+                   'descripcion', 'cantidad', 'unidad', 'precio_unitario', 'importe')
+
+
+def _guardar_albaran(cabecera, lineas):
+    """Guarda un albaran en albaranes_YYYYMMDD.xlsx, en DOS hojas.
+
+    Un albaran es una cabecera con N lineas y un Excel es plano. Dos hojas
+    (`Albaranes` y `Lineas`) unidas por `clave` es justo lo que necesitara el
+    cruce factura-albaran, y ademas se puede abrir y auditar a ojo. La
+    alternativa —las lineas serializadas en una columna JSON— obliga a parsear
+    en cada lectura y no se ve en Excel.
+
+    Reprocesar el mismo albaran lo ACTUALIZA: se quitan antes su cabecera Y sus
+    lineas viejas. Si solo se quitara la cabecera quedarian lineas huerfanas de
+    una version anterior mezcladas con las nuevas, y el cruce sumaria mercancia
+    que no se entrego.
+    """
+    ruta = os.path.join(_pdir(), f'albaranes_{date.today().strftime("%Y%m%d")}.xlsx')
+    df_cab = pd.DataFrame([cabecera])
+    df_lin = pd.DataFrame(lineas) if lineas else pd.DataFrame(columns=list(_COLS_LINEA_ALB))
+    if os.path.exists(ruta):
+        try:
+            _cab_old = pd.read_excel(ruta, sheet_name='Albaranes')
+        except Exception:
+            _cab_old = pd.DataFrame()
+        try:
+            _lin_old = pd.read_excel(ruta, sheet_name='Lineas')
+        except Exception:
+            _lin_old = pd.DataFrame()
+        _cl = str(cabecera.get('clave', ''))
+        if not _cab_old.empty and 'clave' in _cab_old.columns:
+            _cab_old = _cab_old[_cab_old['clave'].astype(str) != _cl]
+        if not _lin_old.empty and 'clave' in _lin_old.columns:
+            _lin_old = _lin_old[_lin_old['clave'].astype(str) != _cl]
+        if not _cab_old.empty:
+            df_cab = pd.concat([_cab_old, df_cab], ignore_index=True)
+        if not _lin_old.empty:
+            df_lin = pd.concat([_lin_old, df_lin], ignore_index=True)
+    with pd.ExcelWriter(ruta, engine='openpyxl') as _w:
+        df_cab.to_excel(_w, sheet_name='Albaranes', index=False)
+        df_lin.to_excel(_w, sheet_name='Lineas', index=False)
+    return len(lineas)
+
+
+def _resumen_albaran(cabecera, lineas):
+    """Texto honesto de lo guardado. No promete pantalla: todavia no hay."""
+    num = str(cabecera.get('numero_albaran') or '').strip() or 's/n'
+    prov = str(cabecera.get('nombre_proveedor') or '').strip() or 'proveedor sin identificar'
+    tot = cabecera.get('total_albaran')
+    eur = f' — €{tot:,.2f}' if isinstance(tot, (int, float)) else ''
+    return f'{num} · {prov} · {len(lineas)} línea(s){eur}'
+
+
 def _resumen_factura_ap(filas):
     """Texto honesto de lo guardado: una factura, o cuantas y por cuanto."""
     def _importe(f):
@@ -1109,6 +1163,22 @@ def _enrutar_tipo_doc(reg, fname, fpath=None):
             _marca = 'AP_OK'
             _flags['has_ap'] = True
             _flags['ap_n'] = len(_filas)
+    elif _tipo_doc == 'ALBARAN':
+        # Una nota de entrega NO es una factura por pagar. Antes el prompt no
+        # sabia que existia el albaran, asi que el mas parecido que encontraba
+        # era FACTURA: se guardaba en facturas_ap, se le asignaba cuenta y
+        # acababa esperando aprobacion de PAGO. Reproducido antes de arreglarlo.
+        from lector_facturas_ap import albaran_de_respuesta, albaran_tiene_datos
+        _cab_alb, _lin_alb = albaran_de_respuesta(reg, fname)
+        if not albaran_tiene_datos(_cab_alb, _lin_alb):
+            _msg = (f'⚠ {fname}: albarán detectado, pero no se ha podido extraer '
+                    f'ninguna línea — revisar manualmente')
+            _marca = 'SKIP'
+        else:
+            _guardar_albaran(_cab_alb, _lin_alb)
+            _msg = f'✓ Albarán {_resumen_albaran(_cab_alb, _lin_alb)}'
+            _marca = 'ALBARAN_OK'
+            _flags['albaran'] = True
     elif _tipo_doc == 'EXTRACTO_BANCO' and reg.get('movimientos'):
         try:
             _movs = reg['movimientos']
@@ -1848,6 +1918,7 @@ def api_procesar_batch_stream():
             fb_n = sum(1 for v in lote.values() if v.get('resultado') == 'FB_OK')
             inv_n = sum(1 for v in lote.values() if v.get('resultado') == 'INV_OK')
             rooming_n = sum(1 for v in lote.values() if v.get('resultado') == 'ROOMING')
+            alb_n = sum(1 for v in lote.values() if v.get('resultado') == 'ALBARAN_OK')
             skip_n = sum(1 for v in lote.values() if 'SKIP' in str(v.get('resultado','')))
             err_n = sum(1 for v in lote.values() if 'ERR' in str(v.get('resultado','')) or 'CRASH' in str(v.get('resultado','')))
             parts = []
@@ -1861,6 +1932,7 @@ def api_procesar_batch_stream():
             if bank_n: parts.append(f'{bank_n} banco')
             if fb_n: parts.append(f'{fb_n} F&B')
             if inv_n: parts.append(f'{inv_n} inventario/mermas')
+            if alb_n: parts.append(f'{alb_n} albaranes')
             rooming_nl_n = sum(1 for v in lote.values() if v.get('resultado') == 'ROOMING_NO_LEIDO')
             if rooming_n: parts.append(f'{rooming_n} rooming')
             if rooming_nl_n: parts.append(f'{rooming_nl_n} rooming sin leer')
@@ -1884,7 +1956,7 @@ def api_procesar_batch_stream():
             # Rooming y documentos de evento se guardan, pero NO hay pantalla
             # donde consultarlos. Antes salian en "Consulta:" mandando a
             # pestañas que no existen; ahora se dice lo que hay.
-            _sin_pantalla = rooming_n + beo_n
+            _sin_pantalla = rooming_n + beo_n + alb_n
             if _sin_pantalla:
                 yield (f'data: ℹ {_sin_pantalla} documento(s) guardado(s) para cruces internos — '
                        f'todavia no hay pantalla donde consultarlos\n\n')
@@ -2406,6 +2478,7 @@ def api_historial_procesado():
         # Estos se GUARDAN pero no hay pantalla donde verlos. Decir el nombre de
         # una pestaña que no existe es mandar al usuario a buscar algo que no
         # esta: se dice lo que hay.
+        elif resultado in ('ALBARAN_OK',): tab = 'Albarán (sin pantalla)'
         elif resultado in ('ROOMING',): tab = 'Rooming (sin pantalla)'
         elif resultado in ('ROOMING_NO_LEIDO',): tab = 'Rooming (no leído)'
         elif resultado in ('BEO_OK',): tab = 'Evento BEO (sin pantalla)'
