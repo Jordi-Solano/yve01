@@ -10168,6 +10168,11 @@ async function loadFBResumen() {
       return;
     }
     const r = data.resumen;
+    // Cobertura: sobre qué parte de la facturación está calculado el food cost.
+    // Un FC sin cobertura al lado es un número que tranquiliza sin haberse
+    // ganado la tranquilidad — las ventas sin escandallo no cuentan para el
+    // coste, así que sin este dato el porcentaje parece mejor de lo que es.
+    const cob = data.cobertura || r.cobertura || null;
     const fcColor = r.alerta ? 'var(--red)' : (r.fc_real_pct <= r.fc_teorico_pct ? 'var(--grn)' : 'var(--ora)');
     const fcDiff  = (r.fc_real_pct - r.fc_teorico_pct).toFixed(2);
     const fcSign  = fcDiff > 0 ? '+' : '';
@@ -10182,10 +10187,11 @@ async function loadFBResumen() {
     // ── KPIs: 4 cards en fila ──
     html += '<div class="fb-kpi-grid" style="display:grid;grid-template-columns:repeat(4,1fr);gap:12px;margin-bottom:16px">';
     html += _fbKpi(t('fb.ventasFb', 'Ventas F&B'), '€' + Math.round(r.total_ventas).toLocaleString('es-ES'), t('fb.periodoCompleto', 'período completo'), 'var(--acc2)');
-    html += _fbKpi(t('fb.fcTeorico', 'FC Teórico'), r.fc_teorico_pct + '%', t('fb.objetivoCalc', 'objetivo calculado'), 'var(--grn)');
+    html += _fbKpi(t('fb.fcTeorico', 'FC Teórico'), r.fc_teorico_pct + '%', _fbSobre(cob), 'var(--grn)');
     html += _fbKpi(t('fb.fcReal', 'FC Real'), r.fc_real_pct + '%', fcSign + fcDiff + ' ' + (t('fb.vsObjetivo', 'pp vs objetivo')), fcColor);
     html += _fbKpi(t('fb.mermasLabel', 'Mermas'), '€' + r.coste_mermas.toLocaleString('es-ES'), r.alerta ? t('fb.revisar', '⚠ Revisar') : t('fb.bajoControl', 'bajo control'), r.alerta ? 'var(--red)' : 'var(--mut)');
     html += '</div>';
+    html += _fbAvisoCobertura(cob);
 
     // ── Fila: gráfico ventas (izq, ancho) + gauge FC% (der, estrecho) ──
     const maxG = Math.max(r.fc_teorico_pct, r.fc_real_pct) * 1.35;
@@ -10454,6 +10460,32 @@ function _emptyState(emoji, titulo, sub, conCta) {
     '<div style="font-size:12.5px;color:var(--mut);max-width:340px;margin:0 auto 18px;line-height:1.6">' + sub + '</div>' +
     (conCta !== false ? '<button class="btn-run" onclick="openUploadModal()" style="margin:0 auto;font-size:13px">' + t('nav.procesar', '⚡ Procesar Archivos') + '</button>' : '') +
     '</div>';
+}
+
+function _fbSobre(cob) {
+  // Subtítulo del food cost: sobre qué % de la facturación está calculado.
+  if (!cob || typeof cob.pct !== 'number') return t('fb.objetivoCalc', 'objetivo calculado');
+  if (cob.pct >= 99.95) return t('fb.sobreTodas', 'sobre todas las ventas');
+  return t('fb.sobreEl', 'sobre el') + ' ' + cob.pct.toLocaleString('es-ES') + '% ' +
+         t('fb.deLasVentas', 'de las ventas');
+}
+
+function _fbAvisoCobertura(cob) {
+  // Solo aparece si hay ventas que no cruzan con ninguna receta. Decimos
+  // cuánto dinero se queda fuera y qué platos son, que es lo accionable.
+  if (!cob || !cob.n_platos_sin_receta) return '';
+  var eurSin = Math.round(cob.ventas_sin_receta || 0).toLocaleString('es-ES');
+  var lista  = (cob.platos_sin_receta || []).join(', ');
+  var mas    = cob.n_platos_sin_receta > (cob.platos_sin_receta || []).length
+             ? ' (+' + (cob.n_platos_sin_receta - cob.platos_sin_receta.length) + ')' : '';
+  return '<div style="background:var(--s1);border:1px solid var(--s2);border-left:3px solid var(--ora);' +
+         'border-radius:9px;padding:11px 14px;margin-bottom:16px;font-size:12px;color:var(--mut)">' +
+         '<b style="color:var(--ora)">' + cob.n_platos_sin_receta + ' ' +
+         (cob.n_platos_sin_receta === 1 ? t('fb.platoSinEscandallo', 'plato sin escandallo')
+                                        : t('fb.platosSinEscandallo', 'platos sin escandallo')) +
+         '</b> — €' + eurSin + ' ' +
+         t('fb.noCuentanFc', 'de ventas que no cuentan para el food cost') + ': ' +
+         lista + mas + '</div>';
 }
 
 function _fbKpi(lbl, val, sub, color) {
