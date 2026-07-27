@@ -745,6 +745,116 @@ def _hoja_a_texto(fpath, max_filas=200, max_chars=8000):
         return ''
 
 
+def _procesar_drr(fpath, fname):
+    """Ejecuta lector_drr.py sobre un .xlsm y devuelve (mensaje, marca).
+
+    ANTES: el fichero se copiaba a reportes/drr_upload.xlsm, se decia
+    "✓ DRR cargado" y ahi moria — nadie lo procesaba, asi que /api/stats_drr se
+    quedaba en null para siempre. El lector ya existia y genera exactamente el
+    drr_procesado_*.xlsx que el dashboard sabe leer; solo faltaba llamarlo.
+
+    NUNCA decimos "cargado" si no se ha procesado. El lector esta probado con un
+    .xlsm sintetico con la estructura que espera (DAILY_MASTER, hojas 1-31,
+    CtaCble), NO con un fichero real de un hotel: es perfectamente posible que el
+    primero que llegue no encaje. Por eso el fallo se cuenta como recibido-sin-
+    procesar y con el motivo delante, no como exito.
+    """
+    import subprocess as _spd, glob as _gd, shutil as _shd
+    rdir = _rdir()
+    os.makedirs(rdir, exist_ok=True)
+    # copia de trabajo dentro del arbol del tenant (antes iba a la ruta base)
+    destino = os.path.join(rdir, 'drr_upload.xlsm')
+    try:
+        _shd.copy2(fpath, destino)
+    except Exception as e:
+        return f'⚠ DRR {fname}: recibido, no se ha podido guardar — {str(e)[:60]}', 'DRR_RECIBIDO'
+
+    # El lector escribe SIEMPRE drr_procesado_<hoy>.xlsx, asi que una segunda
+    # subida del mismo dia machaca la primera ANTES de que podamos comprobar si
+    # ha salido bien. Guardamos copia y la devolvemos si el intento falla: subir
+    # un fichero que no es un DRR no puede costarte el DRR bueno de esta mañana.
+    import tempfile as _tf
+    previos = set(_gd.glob(os.path.join(rdir, 'drr_procesado_*.xlsx')))
+    respaldo = _tf.mkdtemp(prefix='drr_prev_')
+    for _p in previos:
+        try:
+            _shd.copy2(_p, os.path.join(respaldo, os.path.basename(_p)))
+        except OSError:
+            pass
+
+    def _restaurar():
+        """Deja los informes como estaban antes del intento."""
+        for _q in _gd.glob(os.path.join(rdir, 'drr_procesado_*.xlsx')):
+            if _q not in previos:
+                try:
+                    os.remove(_q)          # lo creo este intento fallido
+                except OSError:
+                    pass
+        for _b in _gd.glob(os.path.join(respaldo, '*.xlsx')):
+            try:
+                _shd.copy2(_b, os.path.join(rdir, os.path.basename(_b)))
+            except OSError:
+                pass
+        _shd.rmtree(respaldo, ignore_errors=True)
+
+    # OJO: el lector escribe siempre el MISMO nombre, asi que "ha aparecido un
+    # fichero nuevo" no sirve para saber si ha funcionado — al reprocesar el
+    # mismo dia no aparece ninguno. Nos fijamos en la HUELLA: vale como salida
+    # todo informe nuevo O que haya cambiado de contenido.
+    def _huellas():
+        h = {}
+        for _q in _gd.glob(os.path.join(rdir, 'drr_procesado_*.xlsx')):
+            h[_q] = _huella_fichero(_q)
+        return h
+
+    antes_h = _huellas()
+    try:
+        r = _spd.run([sys.executable, 'lector_drr.py', destino],
+                     cwd=BASE_DIR, capture_output=True, text=True,
+                     timeout=180, env=_env_tenant())
+    except _spd.TimeoutExpired:
+        _restaurar()
+        return (f'⚠ DRR {fname}: recibido, no se ha podido procesar — '
+                f'tarda demasiado (>180 s)'), 'DRR_RECIBIDO'
+    except Exception as e:
+        _restaurar()
+        return (f'⚠ DRR {fname}: recibido, no se ha podido procesar — '
+                f'{str(e)[:60]}'), 'DRR_RECIBIDO'
+
+    ahora_h = _huellas()
+    salida = sorted(q for q, h in ahora_h.items() if antes_h.get(q) != h)
+    if r.returncode != 0 or not salida:
+        # el motivo util suele estar en la ultima linea del stderr
+        motivo = ''
+        for linea in reversed((r.stderr or '').strip().splitlines()):
+            if linea.strip():
+                motivo = linea.strip()[:70]
+                break
+        if not motivo:
+            motivo = 'el archivo no tiene la estructura de un DRR (DAILY_MASTER, hojas 1-31)'
+        _restaurar()
+        return f'⚠ DRR {fname}: recibido, no se ha podido procesar — {motivo}', 'DRR_RECIBIDO'
+
+    # Contar lo que de verdad se ha extraido, para no decir un exito vacio
+    dias = oob = 0
+    try:
+        _df = pd.read_excel(salida[-1], sheet_name='Trial_Balance_Completo')
+        dias = int(_df['Día'].nunique())
+        oob = int(_df[_df['Out of Balance'].astype(str).str.contains('OOB', na=False)]['Día'].nunique())
+    except Exception:
+        pass
+    if dias == 0:
+        # Un informe vacio NO se deja en disco: _cargar_drr_procesado() coge el
+        # mas reciente, asi que taparia un DRR bueno anterior y el panel
+        # enseñaria ceros como si hubiera datos. Justo lo que estamos quitando.
+        _restaurar()
+        return (f'⚠ DRR {fname}: recibido, procesado sin datos — '
+                f'no se ha extraido ningun dia'), 'DRR_RECIBIDO'
+    _shd.rmtree(respaldo, ignore_errors=True)
+    extra = f' · {oob} día(s) descuadrado(s)' if oob else ' · todo cuadrado'
+    return f'✓ DRR {fname}: {dias} día(s) procesado(s){extra}', 'DRR_OK'
+
+
 def _enrutar_tipo_doc(reg, fname):
     """Enruta un documento YA clasificado (reg['tipo_documento']) al modulo que toca.
 
@@ -1142,10 +1252,10 @@ def api_procesar_batch_stream():
                     is_merma = _is_spreadsheet and any(x in fl for x in ['merma','waste','pérdida','perdida'])
 
                     if is_drr_file:
-                        import shutil as _sh2
-                        _sh2.copy2(fpath, os.path.join(BASE_DIR, 'reportes', 'drr_upload.xlsm'))
-                        yield f'data: ✓ DRR {fname}: cargado\n\n'
-                        _mark(fname, 'DRR_OK')
+                        yield f'data: >> Procesando DRR {fname} (puede tardar)...\n\n'
+                        _m_drr, _marca_drr = _procesar_drr(fpath, fname)
+                        yield f'data: {_m_drr}\n\n'
+                        _mark(fname, _marca_drr)
                         continue
                     if is_bank:
                         ext = os.path.splitext(fname)[1].lower()
@@ -1991,6 +2101,7 @@ def api_historial_procesado():
         elif resultado in ('AR_PARCIAL',): tab = 'AR — OTAs (incompleto)'
         elif resultado in ('CONTRATO_OTA_OK',): tab = 'AR — OTAs (tarifas pactadas)'
         elif resultado in ('DRR_OK',): tab = 'DRR'
+        elif resultado in ('DRR_RECIBIDO',): tab = 'DRR (recibido, sin procesar)'
         elif resultado in ('BANK_OK',): tab = 'Banco'
         elif resultado in ('FB_OK',): tab = 'F&B Cost'
         elif resultado in ('INV_OK',): tab = 'F&B Cost (Inventario/Mermas)'
@@ -2001,7 +2112,7 @@ def api_historial_procesado():
         elif 'SKIP' in resultado: tab = 'Omitido'
         elif 'ERR' in resultado or 'CRASH' in resultado: tab = 'Error'
         
-        icono = '⚠' if resultado == 'AR_PARCIAL' else (
+        icono = '⚠' if resultado in ('AR_PARCIAL', 'DRR_RECIBIDO') else (
                 '✓' if 'OK' in resultado else ('⚠' if 'SKIP' in resultado else ('ℹ' if resultado == 'ROOMING' else '✗')))
         items.append({
             'archivo': fname,
@@ -2140,13 +2251,10 @@ def api_procesar_batch():
                 
                 try:
                     if tipo == 'DRR':
-                        # Copy to expected DRR location and trigger reader
-                        import shutil
-                        drr_dest = os.path.join(BASE_DIR, 'reportes', 'drr_upload.xlsm')
-                        shutil.copy2(fpath, drr_dest)
-                        yield f'data: ✓ DRR {fname}: copiado para procesamiento\n\n'
-                        _mark_processed(fname, 'DRR_OK')
-                        has_drr = True
+                        _m_drr, _marca_drr = _procesar_drr(fpath, fname)
+                        yield f'data: {_m_drr}\n\n'
+                        _mark_processed(fname, _marca_drr)
+                        has_drr = (_marca_drr == 'DRR_OK')
                     
                     elif tipo in ('AR', 'AR_o_AP', 'AP'):
                         # Run OTA reader for AR, AP reader for others

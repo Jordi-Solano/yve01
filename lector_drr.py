@@ -21,9 +21,18 @@ from openpyxl.styles import PatternFill, Font, Alignment, Border, Side
 
 # ─── Rutas ────────────────────────────────────────────────────────────────────
 
-BASE_DIR     = Path(__file__).parent
-REPORTES_DIR = BASE_DIR / "reportes"
-REPORTES_DIR.mkdir(exist_ok=True)
+BASE_DIR = Path(__file__).parent
+
+# Multi-tenant: al correr por subprocess desde el dashboard, tenant_dirs lee
+# YVE_TENANT del entorno (lo pone _env_tenant()). Mismo patron que
+# verificador_comisiones. Sin esto, el informe de un cliente se escribiria en el
+# arbol del tenant base y su panel de DRR seguiria vacio.
+try:
+    from tenant_dirs import reportes_dir as _t_rdir
+    REPORTES_DIR = Path(_t_rdir())
+except Exception:
+    REPORTES_DIR = BASE_DIR / "reportes"
+REPORTES_DIR.mkdir(parents=True, exist_ok=True)
 HOY          = datetime.now().strftime("%Y%m%d")
 
 # ─── Estilos para Excel de salida ─────────────────────────────────────────────
