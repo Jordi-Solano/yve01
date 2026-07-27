@@ -94,6 +94,106 @@ def _calc_recipe_costs(df_rec, df_inv):
         })
     return results
 
+# ── Ventas ↔ escandallo ────────────────────────────────────────────────────
+# El TPV manda el NOMBRE del plato, no el id de la receta: el prompt de
+# VENTAS_POS (lector_facturas_ap.py) no lo pide y _VEN_COL_MAP no lo genera.
+# Antes, el calculo hacia sale['id_receta'] a pelo y un cliente que subiera sus
+# ventas reales se cargaba el tab F&B entero con un KeyError.
+#
+# El cruce se resuelve AQUI, al leer, y NO al guardar: el recetario puede llegar
+# despues que las ventas (o cambiar). Un id congelado en el fichero dejaria esas
+# ventas huerfanas para siempre; resuelto al leer, el dia que entre el escandallo
+# se encienden solas todas las ventas historicas.
+
+import unicodedata as _ud
+
+
+def _clave_plato(v):
+    """Nombre de plato normalizado para cruzar ventas con escandallo.
+
+    En Python plano y no con el accesor .str: en pandas 3 los nulos se propagan
+    y todas las filas sin nombre acabarian compartiendo la MISMA clave, con lo
+    que platos distintos cruzarian contra la misma receta.
+    Sin acentos a proposito: "Sangria" y "Sangría" son el mismo plato.
+    """
+    s = "" if v is None else str(v)
+    s = " ".join(s.split()).strip().lower()
+    if s in ("", "nan", "none", "nat", "<na>"):
+        return ""
+    s = _ud.normalize("NFKD", s)
+    return "".join(c for c in s if not _ud.combining(c))
+
+
+def _ventas_con_receta(df_ven, recipes):
+    """Devuelve (df, cobertura) con las columnas id_receta y nombre_plato SIEMPRE.
+
+    - Si falta id_receta, se rellena cruzando el nombre del plato con el
+      escandallo. Lo que no cruza se queda con id vacio: cuenta como ingreso,
+      no cuenta para el coste, y no tumba nada.
+    - cobertura mide EUROS, no filas: el food cost es un ratio de dinero, asi
+      que lo que importa es que parte de la facturacion tiene escandallo.
+    """
+    df = df_ven.copy()
+
+    # nombre del plato: el que haya, y si no hay ninguno una columna vacia.
+    if 'nombre_plato' not in df.columns:
+        for alt in ('plato', 'nombre', 'producto', 'item', 'descripcion'):
+            if alt in df.columns:
+                df['nombre_plato'] = df[alt]
+                break
+        else:
+            df['nombre_plato'] = ''
+
+    por_nombre = {}
+    for r in recipes:
+        k = _clave_plato(r.get('nombre'))
+        if k and k not in por_nombre:      # primera receta gana: orden estable
+            por_nombre[k] = r['id']
+
+    ids_validos = {r['id'] for r in recipes}
+    if 'id_receta' not in df.columns:
+        df['id_receta'] = ''
+
+    resueltos = []
+    for fila in df.to_dict('records'):
+        rid = fila.get('id_receta')
+        rid = '' if rid is None else str(rid).strip()
+        if rid in ('', 'nan', 'None', 'NaT'):
+            rid = ''
+        # un id que no existe en el escandallo no vale; probamos por nombre
+        if rid not in ids_validos:
+            rid = por_nombre.get(_clave_plato(fila.get('nombre_plato')), '')
+        resueltos.append(rid)
+    df['id_receta'] = resueltos
+
+    def _eur(v):
+        try:
+            return 0.0 if v is None or pd.isna(v) else float(v)
+        except (TypeError, ValueError):
+            return 0.0
+
+    ventas_cruzan, ventas_sueltas, sin_receta = 0.0, 0.0, []
+    for fila in df.to_dict('records'):
+        imp = _eur(fila.get('total_venta'))
+        if fila.get('id_receta'):
+            ventas_cruzan += imp
+        else:
+            ventas_sueltas += imp
+            n = str(fila.get('nombre_plato') or '').strip()
+            if n and n not in sin_receta:
+                sin_receta.append(n)
+
+    total = ventas_cruzan + ventas_sueltas
+    cobertura = {
+        'pct': round(ventas_cruzan / total * 100, 1) if total > 0 else 0.0,
+        'ventas_con_receta': round(ventas_cruzan, 2),
+        'ventas_sin_receta': round(ventas_sueltas, 2),
+        'platos_sin_receta': sorted(sin_receta)[:10],
+        'n_platos_sin_receta': len(sin_receta),
+    }
+    return df, cobertura
+
+
 # ── Resultados consolidados ────────────────────────────────────────────────
 @fb_bp.route("/api/resultados")
 def api_resultados():
@@ -119,21 +219,33 @@ def api_resultados():
         recipes = _calc_recipe_costs(df_rec, df_inv)
         recipe_map = {r['id']: r for r in recipes}
 
-        # Ventas: total y coste real
-        total_ventas   = float(df_ven['total_venta'].sum())
+        # id_receta garantizado: sin esto el tab entero se caia con KeyError
+        # cuando las ventas venian del TPV (ver _ventas_con_receta).
+        df_ven, cobertura = _ventas_con_receta(df_ven, recipes)
+
+        # Ventas: total facturado y coste de lo que SI tiene escandallo
+        total_ventas   = float(pd.to_numeric(df_ven['total_venta'], errors='coerce').fillna(0).sum())
         coste_real_sum = 0.0
-        for _, sale in df_ven.iterrows():
-            rid  = sale['id_receta']
-            uds  = float(sale['unidades_vendidas'])
-            rec  = recipe_map.get(rid)
-            if rec: coste_real_sum += rec['coste_teorico'] * uds
+        for sale in df_ven.to_dict('records'):
+            rec = recipe_map.get(sale.get('id_receta'))
+            if not rec:
+                continue
+            try:
+                uds = float(sale.get('unidades_vendidas') or 0)
+            except (TypeError, ValueError):
+                uds = 0.0
+            coste_real_sum += rec['coste_teorico'] * uds
 
-        fc_teorico_global = round(
-            sum(r['coste_teorico'] * float(df_ven[df_ven['id_receta']==r['id']]['unidades_vendidas'].sum())
-                for r in recipes) / total_ventas * 100, 2
-        ) if total_ventas > 0 else 0
-
-        fc_real_global = round(coste_real_sum / total_ventas * 100, 2) if total_ventas > 0 else 0
+        # El food cost se calcula SOLO sobre las ventas que cruzan con receta.
+        # Dividir entre TODAS las ventas daria un numero mas bajo y tranquilizador
+        # justamente cuando falta escandallo: parecerian margenes buenos cuando en
+        # realidad no se sabe. La cobertura va al lado para que se vea sobre que
+        # parte de la facturacion esta calculado.
+        base_fc = cobertura['ventas_con_receta']
+        # fc_teorico y fc_real salen identicos por construccion (misma suma
+        # calculada de dos formas); esta en el cajon de pendientes.
+        fc_teorico_global = round(coste_real_sum / base_fc * 100, 2) if base_fc > 0 else 0
+        fc_real_global    = fc_teorico_global
 
         # Mermas — normalizar columnas
         if 'coste_merma' not in df_mer.columns and 'coste' in df_mer.columns:
@@ -168,13 +280,16 @@ def api_resultados():
                 'alerta': fc_t > 35,
             })
 
-        # Ranking top platos por ventas
-        # Defensivo: usar columna de nombre que exista
-        nombre_col = 'nombre_plato' if 'nombre_plato' in df_ven.columns else ('plato' if 'plato' in df_ven.columns else 'id_receta')
-        ranking = (df_ven.groupby(['id_receta', nombre_col])['total_venta']
+        # Ranking top platos por ventas.
+        # _ventas_con_receta ya garantiza id_receta y nombre_plato, asi que aqui
+        # no hay que adivinar la columna. IMPORTANTE: si alguna de las dos
+        # faltase, pandas 3 interpretaria la lista ['id_receta','nombre_plato']
+        # como un ARRAY de etiquetas cuando el df tiene exactamente 2 filas, y
+        # devolveria un ranking inventado SIN dar error. Por eso se garantizan
+        # antes en vez de resolverlas aqui.
+        ranking = (df_ven.groupby(['id_receta', 'nombre_plato'])['total_venta']
                    .sum().reset_index()
                    .sort_values('total_venta', ascending=False).head(8))
-        ranking = ranking.rename(columns={nombre_col: 'nombre_plato'})
         ranking_top = []
         for _, row in ranking.iterrows():
             rec = recipe_map.get(row['id_receta'], {})
@@ -198,7 +313,9 @@ def api_resultados():
                 'fc_real_pct':     fc_real_global,
                 'coste_mermas':    round(coste_mermas, 2),
                 'alerta':          fc_real_global > fc_teorico_global + 3,
+                'cobertura':       cobertura,
             },
+            'cobertura': cobertura,
             'categorias': categorias,
             'ranking_top': ranking_top,
             'ventas_diarias': {
