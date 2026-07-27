@@ -3776,7 +3776,8 @@ def api_upload_recetas():
     platos para arreglarlos sin perder la carta entera.
     """
     import pandas as pd, json as _json
-    from tab_fb_dashboard import _clave_plato, _invalidate as _fb_inv, _num_fb
+    from tab_fb_dashboard import (_clave_plato, _invalidate as _fb_inv,
+                                  _num_fb, _txt_ing)
 
     f = request.files.get("file")
     if not f:
@@ -3891,12 +3892,15 @@ def api_upload_recetas():
     try:
         _inv_path = os.path.join(_ddir(), 'inventario.xlsx')
         _inv = pd.read_excel(_inv_path) if os.path.exists(_inv_path) else pd.DataFrame()
-        _conocidos = {str(x).strip().lower() for x in _inv.get('ingrediente', [])
-                      if str(x).strip().lower() not in ('', 'nan', 'none')}
+        # _txt_ing y no una normalizacion propia: es LA MISMA clave con la que
+        # `_calc_recipe_costs` cruza contra el inventario. Con dos criterios
+        # distintos, el aviso cantaria "Café molido no esta en tu inventario"
+        # mientras el calculo ya lo esta cobrando contra "Cafe molido".
+        _conocidos = {k for k in (_txt_ing(x) for x in _inv.get('ingrediente', [])) if k}
         _huerfanos = set()
         for x in nuevas:
             for ing in _json.loads(x['ingredientes_json']):
-                if (str(ing.get('ingrediente', '')).strip().lower() not in _conocidos
+                if (_txt_ing(ing.get('ingrediente')) not in _conocidos
                         and not ing.get('coste_unitario')):
                     _huerfanos.add(str(ing.get('ingrediente', ''))[:30])
         if _huerfanos:
