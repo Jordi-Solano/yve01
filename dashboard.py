@@ -624,6 +624,166 @@ def _normalize_cols(df, expected_map):
         df = df.rename(columns=rename)
     return df
 
+# ── Capa 1: el nombre PROPONE, las cabeceras CONFIRMAN ───────────────────
+# Antes el nombre del fichero mandaba y el archivo no se abria nunca: un CSV
+# llamado "extracto_movimientos_junio" con ventas dentro acababa en el libro de
+# banco, metiendo 276 EUR de comida como abonos y añadiendo columnas 'plato' y
+# 'unidades' al extracto. Medido: 4 de 9 nombres plausibles acababan en la
+# seccion equivocada, dos de ellos por el ORDEN de las reglas y no por nombres
+# engañosos ('movimientos' ganaba a 'stock', 'food' ganaba a 'waste').
+#
+# Ahora cada regla de nombre tiene que superar una comprobacion de CABECERAS
+# (leer solo la fila de titulos: milisegundos, cero llamadas a la IA). Si no la
+# supera, se sigue probando el resto de reglas — asi el orden deja de importar —
+# y si ninguna encaja, el fichero cae al clasificador de IA, que es el camino
+# que ya sabemos que acierta (probado en produccion: banco, F&B, inventario y
+# mermas, 4 de 4 con nombres neutros).
+#
+# El fallo es SIEMPRE hacia el lado seguro: dudar cuesta una llamada a la IA;
+# fiarse del nombre costaba contaminar una seccion.
+
+_CAB_TIPOS = {
+    'BANCO': {
+        'requiere': [
+            {'fecha', 'date', 'dia', 'f_valor', 'fecha_valor', 'fecha_operacion'},
+            {'concepto', 'descripcion', 'description', 'detalle', 'referencia',
+             'movimiento', 'operacion'},
+            {'importe', 'cantidad', 'amount', 'monto', 'valor', 'cargo', 'abono',
+             'debe', 'haber'},
+        ],
+        'excluye': {'plato', 'producto', 'ingrediente', 'articulo', 'receta',
+                    'stock', 'merma', 'habitacion', 'huesped'},
+    },
+    'F&B': {
+        'requiere': [
+            {'plato', 'nombre_plato', 'producto', 'articulo', 'item', 'dish',
+             'menu', 'receta'},
+            {'total', 'importe', 'venta', 'ventas', 'revenue', 'precio',
+             'unidades', 'cantidad', 'qty', 'units'},
+        ],
+        'excluye': {'saldo', 'concepto', 'stock_actual', 'stock_inicial',
+                    'existencias', 'merma', 'habitacion'},
+    },
+    'INVENTARIO': {
+        'requiere': [
+            {'ingrediente', 'producto', 'articulo', 'material', 'item', 'nombre'},
+            {'stock', 'existencias', 'cantidad_actual', 'cantidad_inicial'},
+        ],
+        'excluye': {'saldo', 'concepto', 'plato', 'merma', 'habitacion'},
+    },
+    'MERMAS': {
+        'requiere': [
+            {'ingrediente', 'producto', 'articulo', 'item', 'nombre'},
+            {'merma', 'waste', 'desperdicio', 'perdida', 'causa', 'motivo'},
+        ],
+        'excluye': {'saldo', 'concepto', 'plato', 'stock_inicial'},
+    },
+    'ROOMING': {
+        'requiere': [
+            {'grupo', 'group', 'cliente', 'evento'},
+            {'habitacion', 'habitaciones', 'rooms', 'pax', 'huesped', 'guest',
+             'entrada', 'checkin', 'check_in', 'salida', 'checkout', 'noches'},
+        ],
+        'excluye': {'saldo', 'concepto', 'plato', 'stock', 'merma'},
+    },
+}
+
+# nombre -> tipo que PROPONE, en el orden en que se prueban
+_CAB_KEYWORDS = [
+    ('BANCO',      ['extracto', 'bank', 'statement', 'movimientos', 'bancario']),
+    ('F&B',        ['pos', 'ventas', 'sales', 'tpv', 'food', 'beverage', 'f&b', 'fnb',
+                    'restaurante', 'bar ', 'menu_mix', 'product_mix', 'ticket']),
+    ('INVENTARIO', ['inventario', 'inventory', 'stock', 'almacen']),
+    ('MERMAS',     ['merma', 'waste', 'pérdida', 'perdida']),
+    ('ROOMING',    ['rooming', 'room list', 'guest list', 'room block']),
+]
+
+_DRR_KEYWORDS = ['drr', 'revenue report', 'daily report', 'daily_report']
+
+
+def _norm_cab(v):
+    """Cabecera normalizada: minusculas, sin acentos, espacios y puntos a '_'."""
+    import unicodedata as _u
+    s = '' if v is None else str(v)
+    s = _u.normalize('NFKD', s)
+    s = ''.join(c for c in s if not _u.combining(c))
+    s = s.strip().lower()
+    for ch in (' ', '.', '-', '/', '\\'):
+        s = s.replace(ch, '_')
+    while '__' in s:
+        s = s.replace('__', '_')
+    return s.strip('_')
+
+
+def _leer_cabeceras(fpath):
+    """Solo la fila de titulos. Devuelve [] si no se puede leer.
+
+    Barato a proposito: nrows=0 no parsea los datos. Si falla, quien llama debe
+    tratarlo como "sin evidencia" y mandar el fichero a la IA, nunca aceptarlo
+    a ciegas.
+    """
+    try:
+        ext = os.path.splitext(fpath)[1].lower()
+        if ext == '.csv':
+            try:
+                df = pd.read_csv(fpath, nrows=0, sep=None, engine='python')
+            except Exception:
+                df = pd.read_csv(fpath, nrows=0)
+        elif ext in ('.xlsx', '.xls'):
+            df = pd.read_excel(fpath, nrows=0)
+        else:
+            return []
+        return [_norm_cab(c) for c in df.columns]
+    except Exception:
+        return []
+
+
+def _cabeceras_encajan(tipo, cabeceras):
+    """True si las cabeceras confirman que el fichero ES de ese tipo."""
+    regla = _CAB_TIPOS.get(tipo)
+    if not regla or not cabeceras:
+        return False
+    unidas = '|'.join(cabeceras)
+    # ninguna señal que contradiga
+    for prohibido in regla['excluye']:
+        if prohibido in unidas:
+            return False
+    # al menos una cabecera de cada grupo obligatorio
+    for grupo in regla['requiere']:
+        if not any(t in unidas for t in grupo):
+            return False
+    return True
+
+
+def _destino_capa1(fname, fpath):
+    """A donde manda la capa 1: 'DRR', 'BANCO', 'F&B', 'INVENTARIO', 'MERMAS',
+    'ROOMING' o 'IA' (que el clasificador lo decida abriendo el fichero).
+
+    El DRR es la excepcion y sigue mandando por NOMBRE: el prompt del
+    clasificador no tenia tipo DRR y, sobre todo, un DRR de 33 hojas no cabe en
+    la ventana del clasificador (medido: solo ve DAILY_MASTER y dia y medio, no
+    ve CtaCble ni ningun 'Out of Balance'), y lo que si ve son filas de debe y
+    haber con fechas — o sea, exactamente el aspecto de un extracto bancario.
+    """
+    fl = (fname or '').lower()
+    ext = os.path.splitext(fl)[1]
+    if ext == '.xlsm' and any(k in fl for k in _DRR_KEYWORDS):
+        return 'DRR'
+    if ext not in ('.xlsx', '.xls', '.csv'):
+        # fotos y PDFs no pasan por aqui: van al lector universal / Vision.
+        return 'IA'
+
+    candidatos = [t for t, kws in _CAB_KEYWORDS if any(k in fl for k in kws)]
+    if not candidatos:
+        return 'IA'
+
+    cabeceras = _leer_cabeceras(fpath)
+    for tipo in candidatos:                 # el orden solo desempata entre iguales
+        if _cabeceras_encajan(tipo, cabeceras):
+            return tipo
+    return 'IA'
+
+
 _INV_COL_MAP = {
     'ingrediente': ['producto', 'nombre', 'item', 'articulo', 'material'],
     'categoria': ['tipo', 'category', 'grupo', 'familia'],
@@ -1244,12 +1404,17 @@ def api_procesar_batch_stream():
                     is_ar = (not _is_image) and (tipo == 'AR' or (tipo == 'AR_o_AP' and any(
                         x in fl for x in ['booking','expedia','hotels','despegar','ota','comision','commission']
                     )))
-                    is_bank = _is_spreadsheet and any(x in fl for x in ['extracto','bank','statement','movimientos','bancario'])
-                    is_rooming = any(x in fl for x in ['rooming','room list','guest list','room block'])
-                    is_drr_file = fl.endswith('.xlsm') and any(x in fl for x in ['drr','revenue report','daily report','daily_report'])
-                    is_fb = _is_spreadsheet and any(x in fl for x in ['pos','ventas','sales','tpv','food','beverage','f&b','fnb','restaurante','bar ','menu_mix','product_mix','ticket'])
-                    is_inventory = _is_spreadsheet and any(x in fl for x in ['inventario','inventory','stock','almacen'])
-                    is_merma = _is_spreadsheet and any(x in fl for x in ['merma','waste','pérdida','perdida'])
+                    # El nombre propone y las cabeceras confirman (ver _destino_capa1).
+                    # Las fotos ya no las captura ninguna regla de nombre: un
+                    # 'rooming_grupo.jpg' iba antes a una rama que no extraia nada
+                    # en vez de llegar a Claude Vision.
+                    _destino = _destino_capa1(fname, fpath)
+                    is_drr_file = _destino == 'DRR'
+                    is_bank     = _destino == 'BANCO'
+                    is_fb       = _destino == 'F&B'
+                    is_inventory= _destino == 'INVENTARIO'
+                    is_merma    = _destino == 'MERMAS'
+                    is_rooming  = _destino == 'ROOMING'
 
                     if is_drr_file:
                         yield f'data: >> Procesando DRR {fname} (puede tardar)...\n\n'
