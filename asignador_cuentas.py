@@ -10,9 +10,22 @@ import pandas as pd
 from openpyxl.styles import PatternFill, Font, Alignment
 
 BASE_DIR       = os.path.dirname(os.path.abspath(__file__))
-REPORTES_DIR   = os.path.join(BASE_DIR, "reportes")
-PROCESADAS_DIR = os.path.join(BASE_DIR, "facturas-procesadas")
-REFERENCIA_DIR = os.path.join(BASE_DIR, "datos-referencia")
+
+# Multi-tenant: al lanzarse por subprocess desde el dashboard, tenant_dirs lee
+# YVE_TENANT del entorno (lo pone _env_tenant()). Mismo patron que
+# verificador_comisiones y lector_drr. Sin esto, las facturas de un cliente se
+# leerian y el informe contable se escribiria en el arbol raiz, mezclando los
+# datos financieros de dos hoteles. Para el tenant 'default' tenant_dirs
+# devuelve BASE_DIR, asi que no cambia nada de lo que ya funciona.
+try:
+    from tenant_dirs import reportes_dir as _t_rep, procesadas_dir as _t_proc, datos_dir as _t_datos
+    REPORTES_DIR   = _t_rep()
+    PROCESADAS_DIR = _t_proc()
+    REFERENCIA_DIR = _t_datos()
+except Exception:
+    REPORTES_DIR   = os.path.join(BASE_DIR, "reportes")
+    PROCESADAS_DIR = os.path.join(BASE_DIR, "facturas-procesadas")
+    REFERENCIA_DIR = os.path.join(BASE_DIR, "datos-referencia")
 os.makedirs(REPORTES_DIR, exist_ok=True)
 
 PROV_FILE  = os.path.join(REFERENCIA_DIR, "proveedores.xlsx")

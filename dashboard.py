@@ -1813,6 +1813,33 @@ def api_procesar_batch_stream():
                     yield 'data: ✓ Verificación completada\n\n'
                 except: pass
 
+            if has_ap:
+                # Las facturas ya estan guardadas; ahora se les pone cuenta y
+                # asiento. Es lo que alimenta /aprobaciones-ap, que hasta ahora
+                # solo se llenaba pulsando el boton del pipeline a mano.
+                #
+                # NO se lanzan matching_ap_otras ni matching_ap_fb: revientan
+                # con KeyError 'proveedor' y necesitan el concepto de PO, que
+                # va en su fase. Y NADA de Oracle: aqui solo se genera el
+                # informe, no se contabiliza nada en el libro mayor.
+                yield 'data: >> Asignando cuentas contables...\n\n'
+                yield ': ping\n\n'
+                try:
+                    import subprocess as _sp3
+                    _r_asig = _sp3.run(['python3', 'asignador_cuentas.py'], cwd=BASE_DIR,
+                                       timeout=180, capture_output=True, text=True,
+                                       env=_env_tenant())
+                    if _r_asig.returncode == 0:
+                        yield 'data: ✓ Cuentas y asientos asignados — pendientes de aprobar en Aprobaciones AP\n\n'
+                    else:
+                        # Honestidad: las facturas SI estan guardadas. Lo que ha
+                        # fallado es la contabilizacion, y hay que decirlo.
+                        _e_asig = (_r_asig.stderr or _r_asig.stdout or 'error').strip().splitlines()
+                        _e_asig = (_e_asig[-1] if _e_asig else 'error')[:90]
+                        yield f'data: ⚠ Facturas guardadas, pero no se han podido asignar las cuentas — {_e_asig}\n\n'
+                except Exception as _ea:
+                    yield f'data: ⚠ Facturas guardadas, pero no se han podido asignar las cuentas — {str(_ea)[:80]}\n\n'
+
             # ── Resumen de procesado ──
             ap_n = sum(1 for v in lote.values() if v.get('resultado') == 'AP_OK') + ap_extra
             ar_n = sum(1 for v in lote.values() if v.get('resultado') == 'AR_OK')
