@@ -165,6 +165,12 @@ PROMPT_CLASIFICACION = """CLASIFICACIÓN — Lee TODO el contenido antes de deci
 • Pérdidas/mermas/desperdicios con costes → MERMAS
 • Ventas de restaurante/platos vendidos/tickets TPV → VENTAS_POS
 • Movimientos bancarios con fechas, importes y saldos → EXTRACTO_BANCO
+• Informe diario de ingresos de un hotel (Daily Revenue Report): tiene una hoja
+  DAILY_MASTER con Occupancy/ADR/RevPAR/GOP, hojas numeradas 1..31 con el Trial
+  Balance del dia (ASSETS/LIABILITIES/INCOME/EXPENSES, debe y haber) y a menudo
+  una hoja CtaCble → DRR.
+  OJO: un DRR SE PARECE a un extracto bancario (filas con fechas, debe y haber)
+  pero NO lo es. Si ves secciones contables o hojas por dia numeradas, es DRR.
 • Comisiones que una OTA (Booking/Expedia...) TE FACTURA, con nº de factura,
   periodo facturado e importes ya devengados → COMISIONES_OTA
 • Tarifas de comisión PACTADAS con una OTA (contrato, acuerdo, anexo de
@@ -194,6 +200,10 @@ VENTAS_POS:
 
 EXTRACTO_BANCO:
 {"tipo_documento":"EXTRACTO_BANCO","movimientos":[{"fecha":"DD/MM/YYYY","concepto":"descripción","importe":0.0,"saldo":0.0}]}
+
+DRR (NO extraigas nada: el fichero es demasiado grande y lo lee un lector
+propio. Basta con identificarlo):
+{"tipo_documento":"DRR"}
 
 COMISIONES_OTA (una entrada en "facturas" por CADA factura/hotel que veas):
 {"tipo_documento":"COMISIONES_OTA","ota":"nombre","periodo":"mes/año","importe_bruto":0.0,"comision":0.0,"porcentaje":0.0,"facturas":[{"numero_factura":"X","nombre_hotel":"X","fecha":"DD/MM/YYYY","periodo_inicio":"DD/MM/YYYY","periodo_fin":"DD/MM/YYYY","importe_bruto":0.0,"porcentaje_comision":0.0,"importe_comision":0.0,"importe_neto":0.0}]}

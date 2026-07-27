@@ -1015,7 +1015,7 @@ def _procesar_drr(fpath, fname):
     return f'✓ DRR {fname}: {dias} día(s) procesado(s){extra}', 'DRR_OK'
 
 
-def _enrutar_tipo_doc(reg, fname):
+def _enrutar_tipo_doc(reg, fname, fpath=None):
     """Enruta un documento YA clasificado (reg['tipo_documento']) al modulo que toca.
 
     Extraido tal cual del bucle de /api/procesar_batch_stream para poder
@@ -1303,6 +1303,17 @@ def _enrutar_tipo_doc(reg, fname):
         desc = reg.get('descripcion', 'no clasificable')
         _msg = f'⚠ {fname}: {desc}'
         _marca = 'SKIP'
+    elif _tipo_doc == 'DRR':
+        # Un DRR con nombre neutro cae al clasificador. Antes no existia el tipo
+        # y lo mas probable era que dijese EXTRACTO_BANCO (filas con fechas,
+        # debe y haber): 31 dias de contabilidad entrando en el libro de banco.
+        # Ahora se identifica y se manda al lector de DRR, que si sabe leerlo.
+        if fpath:
+            _msg, _marca = _procesar_drr(fpath, fname)
+        else:
+            _msg = (f'ℹ {fname}: parece un DRR — subelo desde el boton "Subir DRR" '
+                    f'del tab DRR para procesarlo')
+            _marca = 'DRR_RECIBIDO'
     else:
         _msg = f'ℹ {fname}: tipo {_tipo_doc} detectado por IA'
         _marca = 'SKIP'
@@ -1552,7 +1563,7 @@ def api_procesar_batch_stream():
                                 _reg_hoja = None
                         if (isinstance(_reg_hoja, dict) and _reg_hoja.get('tipo_documento')
                                 and not _reg_hoja.get('_skip')):
-                            _msg, _marca, _flags = _enrutar_tipo_doc(_reg_hoja, fname)
+                            _msg, _marca, _flags = _enrutar_tipo_doc(_reg_hoja, fname, fpath)
                             yield f'data: {_msg}\n\n'
                             _mark(fname, _marca)
                             if _flags.get('has_ar'):
@@ -1603,7 +1614,7 @@ def api_procesar_batch_stream():
                             elif isinstance(reg, dict) and reg.get('tipo_documento'):
                                 # Claude clasificó el documento como otro tipo — enrutar
                                 # (árbol de enrutado extraído a _enrutar_tipo_doc)
-                                _msg, _marca, _flags = _enrutar_tipo_doc(reg, fname)
+                                _msg, _marca, _flags = _enrutar_tipo_doc(reg, fname, fpath)
                                 yield f'data: {_msg}\n\n'
                                 _mark(fname, _marca)
                                 if _flags.get('has_ar'):
