@@ -18,18 +18,45 @@ class _TDatos:
 DATOS = _TDatos()
 
 # ── Cache ────────────────────────────────────────────────────────────────────
+import os as _os_cache
+
 _FB_CACHE: dict = {}
 _FB_TTL = 180  # 3 min
 
+def _huella(path):
+    """(mtime, tamaño) del fichero, o None si no existe.
+
+    Los dos y no solo el mtime: su resolucion puede ser de 1s y una escritura
+    dentro del mismo segundo pasaria desapercibida.
+    """
+    try:
+        st = _os_cache.stat(path)
+        return (st.st_mtime, st.st_size)
+    except OSError:
+        return None
+
+
 def _xlsx(fname, **kw):
+    """Lee un Excel del tenant con cache que se invalida SOLA.
+
+    La cache se descarta en cuanto el fichero cambia (mtime o tamaño), asi que
+    ningun escritor tiene que acordarse de llamar a _invalidate(): antes,
+    Procesar Archivos escribia ventas/inventario/mermas y el tab seguia
+    mostrando los numeros viejos hasta 3 minutos. Poner la correccion aqui, en
+    UN solo sitio, en vez de repartir llamadas por cada escritor, es el mismo
+    criterio que en almacen_datos.
+    El TTL se queda como red de seguridad (relojes raros, ficheros en red).
+    """
     path = DATOS / fname
     key  = _t_tid() + "|" + fname
     now  = _t.time()
+    huella = _huella(path)
     if key in _FB_CACHE:
-        df, ts = _FB_CACHE[key]
-        if now - ts < _FB_TTL: return df
+        df, ts, huella_cache = _FB_CACHE[key]
+        if huella == huella_cache and now - ts < _FB_TTL:
+            return df
     df = pd.read_excel(path, **kw)
-    _FB_CACHE[key] = (df, now)
+    _FB_CACHE[key] = (df, now, huella)
     return df
 
 def _invalidate():
