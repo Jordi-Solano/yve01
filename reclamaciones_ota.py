@@ -218,17 +218,14 @@ def _cifras_que_faltan(cuerpo, d):
 
 def _discrepancias():
     """Lista de discrepancias (estado DISCREPANCIA) del último reporte de verificación."""
-    rep = _ultimo_reporte()
-    if not rep:
-        return []
-    df = None
-    for sheet in ("Detalle", 0):
-        try:
-            df = pd.read_excel(rep, sheet_name=sheet)
-            break
-        except Exception:
-            df = None
-    if df is None or "estado" not in df.columns:
+    # Consolidado de TODOS los dias: una reclamacion pendiente de ayer tiene
+    # que seguir viendose hoy. La lectura vive en almacen_datos.
+    try:
+        from almacen_datos import reporte_verificacion
+        df = reporte_verificacion(_rdir())
+    except Exception:
+        df = None
+    if df is None or df.empty or "estado" not in df.columns:
         return []
     dd = df[df["estado"].astype(str).str.upper() == "DISCREPANCIA"]
     out = []

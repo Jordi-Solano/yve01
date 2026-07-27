@@ -28,12 +28,19 @@ except ImportError:
     USAR_FORMATO = False
 
 def cargar_ultimo_excel_procesadas():
-    excels = sorted(glob.glob(os.path.join(PROCESADAS_DIR, "facturas_procesadas_*.xlsx")), reverse=True)
-    if not excels:
+    """Facturas OTA de TODOS los dias, consolidadas.
+
+    Antes leia solo el fichero mas reciente, asi que al cambiar de dia cruzaba
+    una fraccion de las facturas y las reclamaciones del dia anterior
+    desaparecian. La lectura y el deduplicado viven en almacen_datos: es el
+    unico sitio a tocar cuando migremos a persistencia.
+    """
+    from almacen_datos import facturas_ota_para_verificar
+    df, rutas = facturas_ota_para_verificar(PROCESADAS_DIR)
+    if df is None or df.empty:
         raise FileNotFoundError(f"No hay facturas_procesadas_*.xlsx en {PROCESADAS_DIR}")
-    ruta = excels[0]
-    print(f"  Cargando facturas desde: {os.path.basename(ruta)}")
-    return pd.read_excel(ruta), ruta
+    print(f"  Cargando facturas desde: {len(rutas)} fichero(s) · {len(df)} facturas")
+    return df, (rutas[-1] if rutas else PROCESADAS_DIR)
 
 def _norm(v):
     """Normaliza un nombre para comparar: sin espacios sobrantes, en minusculas.

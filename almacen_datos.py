@@ -97,7 +97,7 @@ def _dirs(procesadas_dir=None, reportes_dir=None):
     return procesadas_dir, reportes_dir
 
 
-def _leer_etapas(etapas, procesadas_dir, reportes_dir):
+def _leer_etapas(etapas, procesadas_dir, reportes_dir, hoja=None):
     """Lee TODOS los ficheros de TODAS las etapas y TODOS los dias.
 
     Devuelve (df_concatenado, rutas). Cada fila lleva '_etapa' con la prioridad
@@ -108,10 +108,14 @@ def _leer_etapas(etapas, procesadas_dir, reportes_dir):
         directorio = reportes_dir if cual == "reportes" else procesadas_dir
         for ruta in sorted(glob.glob(os.path.join(directorio, patron))):
             try:
-                df = pd.read_excel(ruta)
-            except Exception as e:
-                print(f"[almacen_datos] no se pudo leer {os.path.basename(ruta)}: {e}")
-                continue
+                # Algunos informes tienen varias hojas (Detalle / Resumen)
+                df = pd.read_excel(ruta, sheet_name=hoja) if hoja else pd.read_excel(ruta)
+            except Exception:
+                try:
+                    df = pd.read_excel(ruta)
+                except Exception as e:
+                    print(f"[almacen_datos] no se pudo leer {os.path.basename(ruta)}: {e}")
+                    continue
             if df is None or df.empty:
                 continue
             df = df.copy()
@@ -177,7 +181,7 @@ def reporte_verificacion(reportes_dir=None):
     tiene que seguir viendose hoy.
     """
     _, r = _dirs(None, reportes_dir)
-    df, rutas = _leer_etapas([("verificacion_*.xlsx", "reportes")], r, r)
+    df, rutas = _leer_etapas([("verificacion_*.xlsx", "reportes")], r, r, hoja="Detalle")
     return _consolidar(df, _ID_AR)
 
 
