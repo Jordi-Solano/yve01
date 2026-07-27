@@ -27,15 +27,21 @@ def api_exportar(tipo):
             filename = os.path.basename(output_file)
             result = (output, filename)
         elif tipo == 'banco':
-            import glob as _g, os as _os
+            # Antes se mandaba TAL CUAL el ultimo conciliacion_*.xlsx, asi que la
+            # descarga se quedaba en la foto del dia que se concilio y le faltaban
+            # los movimientos subidos despues. Ahora sale del mismo sitio que la
+            # pantalla y el panel: extracto real + estado del informe.
             from datetime import datetime as _dt
             from tenant_dirs import reportes_dir as _t_rdir
-            REPORTES_DIR = _t_rdir()
-            hits = _g.glob(_os.path.join(REPORTES_DIR, 'conciliacion_*.xlsx'))
-            if not hits: return jsonify({'error': 'No hay datos bancarios'}), 404
-            hits.sort(key=lambda p: _os.path.getmtime(p), reverse=True)
+            import almacen_datos as _alm
             from io import BytesIO
-            result = (open(hits[0],'rb'), _os.path.basename(hits[0]))
+            _df_bk, _info_bk = _alm.movimientos_banco(reportes_dir=_t_rdir())
+            if _df_bk is None or _df_bk.empty:
+                return jsonify({'error': 'No hay datos bancarios'}), 404
+            _buf = BytesIO()
+            _df_bk.to_excel(_buf, index=False)
+            _buf.seek(0)
+            result = (_buf, f'banco_movimientos_{_dt.now().strftime("%Y%m%d")}.xlsx')
         elif tipo == 'ar_real':
             import os as _os
             ruta = __import__('tenant_dirs').datos_dir() + '/reservas_credito.xlsx'
