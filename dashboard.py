@@ -2950,9 +2950,13 @@ def api_upload_drr():
     if not os.path.exists(script):
         return jsonify({"ok": False, "error": "lector_drr.py no encontrado"}), 500
     try:
+        # env=_env_tenant(): sin esto el informe de un cliente se escribe en el
+        # arbol del tenant base y _cargar_drr_procesado() (que lee el del
+        # tenant de la sesion) no lo encuentra nunca.
         res = subprocess.run(
             [sys.executable, script, save_path],
-            capture_output=True, text=True, timeout=120, cwd=BASE_DIR
+            capture_output=True, text=True, timeout=120, cwd=BASE_DIR,
+            env=_env_tenant()
         )
         if res.returncode != 0:
             return jsonify({"ok": False, "error": res.stderr[-300:] if res.stderr else "Error desconocido"}), 500
