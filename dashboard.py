@@ -5222,7 +5222,7 @@ svg.yvi{width:1em;height:1em;vertical-align:-0.125em;flex-shrink:0;display:inlin
     </div>
     <div style="margin-top:16px;display:flex;flex-wrap:wrap;gap:8px;align-items:center">
       <a href="/api/exportar/banco" class="btn-ref" style="text-decoration:none;font-size:12px">⬇️ Excel</a>
-        <a href="/api/exportar/asientos" class="btn-ref" style="text-decoration:none;font-size:12px;background:rgba(99,102,241,.15);border-color:rgba(99,102,241,.4);color:#818cf8" title="Exportar Libro Diario para A3, Sage, Holded...">📒 Libro Diario</a>
+        <a href="/api/exportar/asientos" class="btn-ref" style="text-decoration:none;font-size:12px;background:rgba(var(--acc-r,59),var(--acc-g,130),var(--acc-b,246),.15);border-color:rgba(var(--acc-r,59),var(--acc-g,130),var(--acc-b,246),.4);color:var(--acc2)" title="Exportar Libro Diario para A3, Sage, Holded...">📒 Libro Diario</a>
       <button class="btn-run" onclick="runConciliacion()" style="font-size:12px">⚡ Conciliar</button>
       <a href="/conciliacion/" class="btn-ref" style="text-decoration:none;font-size:12px" data-i18n="btn.verConciliacion">🏦 Ver conciliación</a>
     </div>
@@ -11292,7 +11292,13 @@ function switchTab(tab, el) {
   el.classList.add('active');
   var panel = document.getElementById('panel-' + tab);
   if (panel) panel.classList.add('active');
-  window.scrollTo({top:0, behavior:'smooth'});
+  // Salto INSTANTANEO, no suave. Medido: viniendo de otro apartado con la
+  // pagina desplazada 600 px, el scroll suave hacia arriba se cruza con el
+  // cambio de alto del panel (AR OTAs mide 1604 px, DRR 1172, Banco 751), el
+  // navegador lo corta a medias y te deja en 423 en vez de arriba. Por eso solo
+  // se notaba al entrar en los apartados largos: en los cortos no hay sitio
+  // donde quedarse a medias.
+  window.scrollTo(0, 0);
   // Mobile: scroll tab into view + highlight bottom nav
   if (IS_MOBILE && el) {
     setTimeout(function(){ el.scrollIntoView({behavior:'smooth',block:'nearest',inline:'center'}); }, 50);
