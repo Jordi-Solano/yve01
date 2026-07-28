@@ -259,6 +259,20 @@ body::before{content:'';position:fixed;inset:0;z-index:0;pointer-events:none;
 .b-rec{background:rgba(239,68,68,.14);color:#fca5a5;border:1px solid rgba(239,68,68,.30)}
 .b-pen{background:rgba(148,163,184,.10);color:var(--mut);border:1px solid var(--s2)}
 .info-grid{display:grid;grid-template-columns:repeat(2,1fr);gap:14px 18px;margin-bottom:14px}
+.card-acc{display:flex;align-items:center;gap:8px;flex-shrink:0}
+.chev{background:none;border:1px solid var(--s2);color:var(--mut);width:28px;height:28px;
+  border-radius:8px;cursor:pointer;font-size:10px;line-height:1;display:flex;
+  align-items:center;justify-content:center;flex-shrink:0;font-family:var(--font);
+  transition:transform .18s,border-color .15s,color .15s}
+.chev:hover{border-color:var(--acc);color:var(--acc2)}
+.chev.abierta{transform:rotate(180deg);color:var(--acc2);
+  border-color:rgba(var(--acc-r,59),var(--acc-g,130),var(--acc-b,246),.45)}
+.detalle{display:none;border-top:1px solid var(--s2);margin-bottom:14px;padding-top:14px}
+.detalle.abierta{display:block}
+.detalle .info-grid{margin-bottom:0}
+.det-full{grid-column:1 / -1}
+.det-full .val{font-size:13px;font-weight:600;line-height:1.5}
+.det-arch{font-family:var(--mono);font-size:11px;color:var(--dim);word-break:break-all}
 .ii .lbl{font-size:9.5px;color:var(--mut);text-transform:uppercase;letter-spacing:.6px;
   margin-bottom:4px}
 .ii .val{font-size:15px;font-weight:700;color:var(--tx);font-variant-numeric:tabular-nums}
@@ -412,6 +426,21 @@ textarea:focus{border-color:var(--acc);outline:none;
 })();
 
 const historial = [];
+// Que tarjetas estan desplegadas, por NUMERO DE FACTURA y no por indice: la
+// lista se repinta entera tras aprobar, y con indices se quedaria abierta la
+// tarjeta equivocada.
+const _abiertas = new Set();
+
+function toggleDet(i) {
+  const card = document.getElementById('card-'+i);
+  const det  = document.getElementById('det-'+i);
+  const chev = document.getElementById('chev-'+i);
+  if (!card || !det) return;
+  const abierta = det.classList.toggle('abierta');
+  if (chev) chev.classList.toggle('abierta', abierta);
+  const num = card.dataset.num || '';
+  if (abierta) _abiertas.add(num); else _abiertas.delete(num);
+}
 
 // Importe en formato español, y NUNCA 'nan' en pantalla (regla del NaN)
 function eur(v) {
@@ -478,16 +507,29 @@ async function loadData() {
   lista.innerHTML = rows.map((r,i) => {
     const needsAlert = r.estado_matching && r.estado_matching !== 'MATCH_3WAY_OK' && r.estado_matching !== 'MATCH_CORRECTO' && r.alerta_detalle;
     const alertHtml  = needsAlert ? '<div class="alerta-box '+alertClass(r.estado_matching)+'">'+r.alerta_detalle+'</div>' : '';
-    return '<div class="card" id="card-'+i+'">' +
+    const _num = txt(r.numero_factura);
+    const _ab = _abiertas.has(_num);
+    return '<div class="card" id="card-'+i+'" data-num="'+_num+'">' +
       '<div class="card-top">' +
-        '<div><div class="prov-name">'+txt(r.nombre_proveedor)+'</div><div class="prov-num">'+txt(r.numero_factura)+'</div></div>' +
-        '<span class="badge '+(r.tipo_proveedor==='FB'?'b-fb':'b-otras')+'">'+txt(r.tipo_proveedor)+'</span>' +
+        '<div><div class="prov-name">'+txt(r.nombre_proveedor)+'</div><div class="prov-num">'+_num+'</div></div>' +
+        '<div class="card-acc">' +
+          '<span class="badge '+(r.tipo_proveedor==='FB'?'b-fb':'b-otras')+'">'+txt(r.tipo_proveedor)+'</span>' +
+          '<button class="chev'+(_ab?' abierta':'')+'" id="chev-'+i+'" onclick="toggleDet('+i+')" title="Ver la factura completa">▼</button>' +
+        '</div>' +
       '</div>' +
       '<div class="info-grid">' +
         '<div class="ii"><div class="lbl">Total</div><div class="val">'+eur(r.total_factura)+'</div></div>' +
         '<div class="ii"><div class="lbl">IVA</div><div class="val">'+eur(r.cuota_iva)+'</div></div>' +
         '<div class="ii"><div class="lbl">Matching</div><div class="val">'+bMatch(r.estado_matching)+'</div></div>' +
         '<div class="ii"><div class="lbl">Departamento</div><div class="val">'+txt(r.departamento_po)+'</div></div>' +
+      '</div>' +
+      '<div class="detalle'+(_ab?' abierta':'')+'" id="det-'+i+'">' +
+        '<div class="info-grid">' +
+          '<div class="ii"><div class="lbl">Base imponible</div><div class="val">'+eur(r.base_imponible)+'</div></div>' +
+          '<div class="ii"><div class="lbl">NIF del proveedor</div><div class="val">'+txt(r.NIF_proveedor)+'</div></div>' +
+          '<div class="ii det-full"><div class="lbl">Concepto</div><div class="val">'+txt(r.descripcion)+'</div></div>' +
+          '<div class="ii det-full"><div class="lbl">Documento de origen</div><div class="val det-arch">'+txt(r.archivo)+'</div></div>' +
+        '</div>' +
       '</div>' +
       (r.cuenta_debe ? '<div class="cuenta-tag">📒 Cuenta ' + r.cuenta_debe + ' — ' + txt(r.estado_asignacion) + '</div>' : '') +
       alertHtml +
