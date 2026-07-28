@@ -82,7 +82,7 @@ var P={
  tag:'<path d="M20.59 13.41 12 22l-9-9V3h10l7.59 7.59a2 2 0 0 1 0 2.82z"/><line x1="7" y1="7" x2="7.01" y2="7"/>',
  plane:'<path d="M17.8 19.2 16 11l3.5-3.5a2.12 2.12 0 0 0-3-3L13 8 4.8 6.2a1 1 0 0 0-.9 1.7l5.6 3.4-2.3 2.3-2.6-.5a1 1 0 0 0-.9 1.6l2.6 2.6a1 1 0 0 0 1.6-.9l-.5-2.6 2.3-2.3 3.4 5.6a1 1 0 0 0 1.7-.9z"/>',
  link:'<path d="M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.71"/><path d="M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07l1.71-1.71"/>',
- back:'<line x1="19" y1="12" x2="5" y2="12"/><polyline points="12 19 5 12 12 5"/>'
+ back:'<line x1="19" y1="12" x2="5" y2="12"/><polyline points="12 19 5 12 12 5"/>',
 };
 window.icon=function(n,cls){var p=P[n];if(!p)return '';
  return '<svg class="yvi'+(cls?' '+cls:'')+'" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">'+p+'</svg>';};
@@ -146,12 +146,36 @@ function iconizeIn(root){
 }
 window.iconizeIn=iconizeIn;
 window._iconizeAll=function(){ if(typeof _saveOriginals==='function'){try{_saveOriginals();}catch(e){}} iconizeIn(document.body); };
-var _icoT=null;
+
+// El observador de antes esperaba 120 ms y REINICIABA la espera con cada
+// mutacion. Medido en produccion: el dashboard muta ~11 veces por segundo sin
+// parar (contadores, tablas, animaciones), asi que la espera no llegaba a
+// saltar NUNCA y el observador no era una red de seguridad: era un adorno.
+// Todo lo que se pintaba fuera del camino directo se quedaba sin icono - por
+// ejemplo el menu entero al terminar de cargarse el idioma.
+// Ahora se apunta QUE nodos han cambiado y se repasan solo esos, con un plazo
+// corto que no se reinicia: siempre pasa, y el trabajo es proporcional a lo
+// que se ha movido, no a la pagina entera.
+var _icoPend=[], _icoT=null;
+function _icoAnota(ms){
+  for(var i=0;i<ms.length;i++){
+    var t=ms[i].target, el=(t&&t.nodeType===1)?t:(t&&t.parentNode);
+    if(el&&el.nodeType===1) _icoPend.push(el);
+  }
+  if(_icoT) return;
+  _icoT=setTimeout(function(){
+    _icoT=null;
+    var lista=_icoPend; _icoPend=[];
+    for(var i=0;i<lista.length && i<400;i++){
+      if(lista[i].isConnected!==false) iconizeIn(lista[i]);
+    }
+  },60);
+}
 function boot(){
   window._iconizeAll();
   try{
-    new MutationObserver(function(){ clearTimeout(_icoT); _icoT=setTimeout(function(){ iconizeIn(document.body); },120); })
-      .observe(document.body,{childList:true,subtree:true,characterData:true});
+    window._icoObs=new MutationObserver(_icoAnota);
+    window._icoObs.observe(document.body,{childList:true,subtree:true,characterData:true});
   }catch(e){}
 }
 if(document.readyState==='loading') document.addEventListener('DOMContentLoaded',function(){ setTimeout(boot,150); });

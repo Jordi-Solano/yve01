@@ -7943,11 +7943,15 @@ function applyI18n(data) {
   // After translating data-i18n elements, also walk text nodes
   if (_i18nLang && _i18nLang !== 'es') {
     // SINCRONO. Antes esperaba 120 ms "por si quedaba algun render pendiente",
-    // y ese retraso es justo lo que se veia al cambiar de idioma. Si algo pinta
-    // despues, el observer lo recoge igual.
+    // y ese retraso es justo lo que se veia al cambiar de idioma.
     _applyStrMap(_i18nLang);
     if (typeof _applyPlaceholders === 'function') _applyPlaceholders(_i18nLang);
   }
+  // Y los iconos AQUI MISMO. Traducir escribe textContent, o sea que borra los
+  // SVG y devuelve el emoji del .json en su sitio. Confiar en el observador no
+  // valia: la pagina muta ~11 veces por segundo y su espera no llegaba a saltar
+  // (medido). Se veia en el menu: "Administracion" salia sin su icono.
+  try { if (typeof iconizeIn === 'function') iconizeIn(document.body); } catch (e) {}
 }
 
 // Also expose so render functions can call it after innerHTML updates
