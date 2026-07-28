@@ -26,6 +26,19 @@ NF = "NO_ENCONTRADO"
 _EUR = r"(?:EUR|€|USD|\$)\s*"
 _AMT = r"([0-9]{1,3}(?:[.,][0-9]{3})*[.,][0-9]{2}|[0-9]+\.[0-9]{2})"
 
+# El mismo importe pero con la moneda DETRAS: "4.165,00 EUR". Asi es como se
+# escribe una factura en España, y hasta ahora solo `importe_bruto` tenia una
+# variante asi; comision y neto solo aceptaban la forma anglosajona
+# ("EUR 4.165,00"), o sea que una liquidacion española se leia a medias: salia
+# el numero de factura y el hotel, pero los importes no, y la factura acababa
+# en "guardado con campos incompletos".
+_AMT_EUR = _AMT + r"\s*(?:EUR|€)"
+
+# Las etiquetas españolas suelen llevar palabras entre medias antes de los dos
+# puntos: "Importe bruto DE RESERVAS: ...". Se permiten unas pocas, sin salir
+# de la linea y sin pasarse de los dos puntos, para no tragarse media pagina.
+_COLA = r"[^\n:]{0,20}"
+
 # ── Patrones de extracción ─────────────────────────────────────────────────
 # Cada campo tiene varios patrones ordenados de más específico a más general.
 # Se usa el primer match encontrado.
@@ -80,7 +93,10 @@ PATRONES = {
     # ── Importe bruto (ventas de habitaciones) ────────────────────────────
     "importe_bruto": [
         # Español con moneda detrás: "Importe reservas: 28.333,33 EUR" / "Importe bruto: 12.450,00 €"
-        r"(?:importe\s+(?:de\s+)?reservas|importe\s+bruto|total\s+reservas)[:\s]+" + _AMT + r"\s*(?:EUR|€)",
+        # El _COLA es para "Importe bruto de reservas: 24.500,00 EUR", que sin
+        # el se quedaba fuera: casaba "importe bruto" y luego se encontraba
+        # "de reservas" donde esperaba la cifra.
+        r"(?:importe\s+(?:de\s+)?reservas|importe\s+bruto|total\s+reservas)" + _COLA + r"[:\s]+" + _AMT_EUR,
         # Expedia explícito: "Gross booking revenue: EUR 2,460.00"
         r"(?:gross\s+booking\s+revenue|gross\s+revenue|total\s+room\s+revenue|importe\s+bruto)[:\s]+" + _EUR + _AMT,
         # Booking tabla: "Reservations EUR 12,450.00 EUR 1,867.50" → primer importe
@@ -104,6 +120,13 @@ PATRONES = {
 
     # ── Importe de comisión ───────────────────────────────────────────────
     "importe_comision": [
+        # Español con la moneda detrás: "Importe comision: 4.165,00 EUR".
+        # Va PRIMERO porque es la forma mas concreta de las tres.
+        # Ojo con el orden dentro de la alternancia: "importe (de) comision"
+        # antes que "comision" a secas, para no cortar en la palabra corta y
+        # dejarse el "importe" delante.
+        r"(?:importe\s+(?:de\s+)?(?:la\s+)?comisi[oó]n|total\s+comisi[oó]n|comisi[oó]n\s+facturada)"
+        + _COLA + r"[:\s]+" + _AMT_EUR,
         # Expedia explícito: "Total commission amount: EUR 442.80"
         r"(?:total\s+commission\s+amount|commission\s+amount|importe\s+comisi[oó]n)[:\s]+" + _EUR + _AMT,
         # Booking tabla: "Reservations EUR 8,300.00 EUR 1,494.00" → SEGUNDO importe
@@ -114,6 +137,9 @@ PATRONES = {
 
     # ── Importe neto ──────────────────────────────────────────────────────
     "importe_neto": [
+        # Español con la moneda detrás: "Importe neto: 20.335,00 EUR"
+        r"(?:importe\s+neto|total\s+neto|neto\s+a\s+(?:pagar|abonar|transferir)|l[ií]quido\s+a\s+percibir)"
+        + _COLA + r"[:\s]+" + _AMT_EUR,
         # Expedia: "Net amount to be paid to hotel: EUR 2,017.20"
         r"(?:net\s+amount\s+to\s+be\s+paid(?:\s+to\s+hotel)?|net\s+payout|importe\s+neto|total\s+neto)[:\s]+" + _EUR + _AMT,
         # Booking: "Total amount due EUR 1,891.88"

@@ -170,6 +170,21 @@ def verificar_factura(fila, comisiones_df):
         "importe_neto":     fila.get("importe_neto", NF),
         "discrepancia_euros": importe_discrepancia if importe_discrepancia is not None else NF,
         "estado":           estado,
+        # El hotel viaja con la factura de una etapa a la siguiente.
+        #
+        # Este diccionario se escribe a mano, campo por campo, asi que lo que
+        # no se copie aqui se PIERDE. `hotel_id` no estaba, y eso rompia dos
+        # cosas a la vez: la clave de deduplicacion de `almacen_datos` lleva el
+        # hotel al final, o sea que esta fila (sin hotel) y la de
+        # facturas_procesadas_*.xlsx (con hotel) dejaban de ser la misma
+        # factura y salian DUPLICADAS; y encima la fila enriquecida —la que
+        # trae estado y discrepancia— se iba a "sin asignar", asi que al elegir
+        # un hotel solo quedaba la version cruda, sin analisis.
+        #
+        # Va al final para no mover ninguna columna de sitio. El formateado del
+        # Excel busca "estado" por nombre, no por posicion, asi que no le
+        # afecta (comprobado en aplicar_formato_excel).
+        "hotel_id":         fila.get("hotel_id", ""),
     }
 
 def aplicar_formato_excel(ws, df):
