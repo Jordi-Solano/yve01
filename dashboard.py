@@ -934,12 +934,23 @@ def _guardar_factura_ap(filas):
              for f in _crudas]
     if not filas:
         return 0
+    # ── El hotel al que pertenece lo que entra (fase 2) ──────────────────
+    # Se estampa AQUI, despues de clasificar y leer el documento: el papel no
+    # dice de que hotel es, lo dice la sesion. El clasificador no se entera.
+    _hid = censo_hoteles.para_guardar()
+    for _f in filas:
+        _f['hotel_id'] = _hid
     ruta = os.path.join(_pdir(), f'facturas_ap_{date.today().strftime("%Y%m%d")}.xlsx')
-    _lineas = [l for f in _crudas for l in (f.get('_lineas') or [])]
+    _lineas = [dict(l, hotel_id=_hid) for f in _crudas for l in (f.get('_lineas') or [])]
     _claves = {str(f.get('archivo', '')) for f in filas}
     if os.path.exists(ruta):
         _df = pd.concat([pd.read_excel(ruta), pd.DataFrame(filas)], ignore_index=True)
-        _df.drop_duplicates(subset=['archivo'], keep='last', inplace=True)
+        # La identidad dentro del fichero es (archivo, hotel). Solo con el
+        # nombre del fichero, dos hoteles del mismo grupo que subieran
+        # `factura_enero.pdf` el mismo dia se pisaban: el segundo borraba al
+        # primero. Con el hotel dentro, cada uno tiene la suya.
+        _sub = [c for c in ('archivo', 'hotel_id') if c in _df.columns]
+        _df.drop_duplicates(subset=_sub, keep='last', inplace=True)
         # Las lineas viejas de los MISMOS documentos se van con ellos (Fase 3c).
         # Si solo se sustituyera la cabecera quedarian lineas huerfanas de una
         # version anterior mezcladas con las nuevas, y el cruce sumaria
@@ -949,7 +960,13 @@ def _guardar_factura_ap(filas):
         except Exception:
             _lv = pd.DataFrame()
         if not _lv.empty and 'archivo' in _lv.columns:
-            _lv = _lv[~_lv['archivo'].astype(str).isin(_claves)]
+            # Solo se van las lineas del MISMO hotel: reprocesar un documento
+            # en el hotel B no puede llevarse por delante las lineas que el
+            # hotel A tenia para un fichero que se llama igual.
+            _fuera = _lv['archivo'].astype(str).isin(_claves)
+            if 'hotel_id' in _lv.columns:
+                _fuera = _fuera & (_lv['hotel_id'].astype(str) == str(_hid))
+            _lv = _lv[~_fuera]
         _dfl = pd.concat([_lv, pd.DataFrame(_lineas)], ignore_index=True) \
             if (not _lv.empty or _lineas) else pd.DataFrame()
     else:
@@ -984,8 +1001,11 @@ def _guardar_albaran(cabecera, lineas):
     que no se entrego.
     """
     ruta = os.path.join(_pdir(), f'albaranes_{date.today().strftime("%Y%m%d")}.xlsx')
+    _hid = censo_hoteles.para_guardar()
+    cabecera = dict(cabecera, hotel_id=_hid)
+    lineas = [dict(l, hotel_id=_hid) for l in (lineas or [])]
     df_cab = pd.DataFrame([cabecera])
-    df_lin = pd.DataFrame(lineas) if lineas else pd.DataFrame(columns=list(_COLS_LINEA_ALB))
+    df_lin = pd.DataFrame(lineas) if lineas else pd.DataFrame(columns=list(_COLS_LINEA_ALB) + ['hotel_id'])
     if os.path.exists(ruta):
         try:
             _cab_old = pd.read_excel(ruta, sheet_name='Albaranes')
@@ -996,10 +1016,17 @@ def _guardar_albaran(cabecera, lineas):
         except Exception:
             _lin_old = pd.DataFrame()
         _cl = str(cabecera.get('clave', ''))
-        if not _cab_old.empty and 'clave' in _cab_old.columns:
-            _cab_old = _cab_old[_cab_old['clave'].astype(str) != _cl]
-        if not _lin_old.empty and 'clave' in _lin_old.columns:
-            _lin_old = _lin_old[_lin_old['clave'].astype(str) != _cl]
+        # Se sustituye SOLO la version de este hotel. Sin el hotel en la
+        # condicion, reprocesar un albaran en el hotel B borraba el del A.
+        def _quitar(_d):
+            if _d.empty or 'clave' not in _d.columns:
+                return _d
+            _m = _d['clave'].astype(str) == _cl
+            if 'hotel_id' in _d.columns:
+                _m = _m & (_d['hotel_id'].astype(str) == str(_hid))
+            return _d[~_m]
+        _cab_old = _quitar(_cab_old)
+        _lin_old = _quitar(_lin_old)
         if not _cab_old.empty:
             df_cab = pd.concat([_cab_old, df_cab], ignore_index=True)
         if not _lin_old.empty:
@@ -1026,8 +1053,11 @@ def _guardar_orden_compra(cabecera, lineas):
     anterior y el cruce sumaria un compromiso que ya no existe.
     """
     ruta = os.path.join(_pdir(), f'ordenes_compra_{date.today().strftime("%Y%m%d")}.xlsx')
+    _hid = censo_hoteles.para_guardar()
+    cabecera = dict(cabecera, hotel_id=_hid)
+    lineas = [dict(l, hotel_id=_hid) for l in (lineas or [])]
     df_cab = pd.DataFrame([cabecera])
-    df_lin = pd.DataFrame(lineas) if lineas else pd.DataFrame(columns=list(_COLS_LINEA_PO))
+    df_lin = pd.DataFrame(lineas) if lineas else pd.DataFrame(columns=list(_COLS_LINEA_PO) + ['hotel_id'])
     if os.path.exists(ruta):
         try:
             _cab_old = pd.read_excel(ruta, sheet_name='Ordenes')
@@ -1038,10 +1068,17 @@ def _guardar_orden_compra(cabecera, lineas):
         except Exception:
             _lin_old = pd.DataFrame()
         _cl = str(cabecera.get('clave', ''))
-        if not _cab_old.empty and 'clave' in _cab_old.columns:
-            _cab_old = _cab_old[_cab_old['clave'].astype(str) != _cl]
-        if not _lin_old.empty and 'clave' in _lin_old.columns:
-            _lin_old = _lin_old[_lin_old['clave'].astype(str) != _cl]
+        # Se sustituye SOLO la version de este hotel. Sin el hotel en la
+        # condicion, reprocesar un albaran en el hotel B borraba el del A.
+        def _quitar(_d):
+            if _d.empty or 'clave' not in _d.columns:
+                return _d
+            _m = _d['clave'].astype(str) == _cl
+            if 'hotel_id' in _d.columns:
+                _m = _m & (_d['hotel_id'].astype(str) == str(_hid))
+            return _d[~_m]
+        _cab_old = _quitar(_cab_old)
+        _lin_old = _quitar(_lin_old)
         if not _cab_old.empty:
             df_cab = pd.concat([_cab_old, df_cab], ignore_index=True)
         if not _lin_old.empty:
@@ -3026,7 +3063,35 @@ def cargar_datos_ap():
                 df = df.merge(ultimas[["numero_factura","accion","comentario"]], on="numero_factura", how="left")
         except Exception:
             pass
-    return _filtrar_hotel_activo(df)
+    # FASE 2: AP ya no se filtra por NOMBRE contra una columna de texto, sino
+    # por `hotel_id` dentro de almacen_datos. `_filtrar_hotel_activo` se queda
+    # para AR y AR Real, que todavia no llevan etiqueta.
+    _hid = censo_hoteles.activo()
+    if not _hid:
+        return df
+    from almacen_datos import COL_HOTEL as _COLH
+    if _COLH not in df.columns:
+        # Todo lo que hay es anterior a la etiqueta. Con un hotel elegido no se
+        # le puede atribuir nada: se devuelve vacio (fallar en cerrado) y el
+        # panel avisa de cuantas quedan sin asignar.
+        return df.iloc[0:0].copy()
+    _col = df[_COLH].map(lambda v: "" if v is None else str(v).strip())
+    _col = _col.map(lambda s: "" if s.lower() in ("nan", "none", "nat") else s)
+    return df[_col == str(_hid)].copy()
+
+
+def contar_ap_sin_asignar():
+    """Cuantas facturas AP no tienen hotel. Para poder DECIRLO en pantalla.
+
+    Sin este numero, elegir un hotel haria desaparecer las facturas antiguas
+    sin ninguna explicacion — que es peor que el problema que estamos
+    arreglando.
+    """
+    try:
+        from almacen_datos import facturas_ap as _fap, SIN_ASIGNAR as _SA
+        return int(len(_fap(_pdir(), _rdir(), hotel=_SA)))
+    except Exception:
+        return 0
 
 
 def calcular_stats_ap(df):
@@ -3142,7 +3207,10 @@ def df_ap_a_lista(df):
 @app.route("/api/stats_ap")
 def api_stats_ap():
     df = cargar_datos_ap()
-    return jsonify(calcular_stats_ap(df))
+    _s = calcular_stats_ap(df)
+    _s["hotel_activo"] = censo_hoteles.activo()
+    _s["sin_asignar"] = contar_ap_sin_asignar() if _s["hotel_activo"] else 0
+    return jsonify(_s)
 
 
 @app.route("/api/facturas_ap")
@@ -5157,6 +5225,10 @@ svg.yvi{width:1em;height:1em;vertical-align:-0.125em;flex-shrink:0;display:inlin
           <option value="DISCREPANCIA_PO">Discrepancias</option>
           <option value="ALERTA_CONSUMO">Alertas</option>
         </select></div>
+    <div id="ap-sin-asignar" style="display:none;margin-bottom:14px;padding:10px 14px;border-radius:10px;
+      font-size:12.5px;line-height:1.5;color:var(--mut);
+      background:rgba(var(--acc-r,59),var(--acc-g,130),var(--acc-b,246),.07);
+      border:1px solid rgba(var(--acc-r,59),var(--acc-g,130),var(--acc-b,246),.22)"></div>
     <div class="stats" id="stats-ap-grid">
       <div class="sc hl c-blu"><div class="sc-lbl" data-i18n="ap.totalLabel">Total Facturas AP</div><div class="sc-val" id="ap-total" data-tip="Facturas AP registradas este ciclo">—</div><div class="sc-sub" data-i18n="ap.proveedores">proveedores</div></div>
       <div class="sc"><div class="sc-lbl" data-i18n="ap.importe">Importe Total</div><div class="sc-val" id="ap-importe" data-tip="Importe bruto total de facturas AP" style="font-size:18px;letter-spacing:-.5px">—</div><div class="sc-sub">EUR</div></div>
@@ -12009,6 +12081,19 @@ async function loadAP() {
     if (el('ap-alertas')) el('ap-alertas').textContent = stats.alertas_consumo ?? '—';
     if (el('ap-manual')) el('ap-manual').textContent = stats.manual ?? '—';
     if (el('ap-aprobadas')) el('ap-aprobadas').textContent = stats.aprobadas ?? '—';
+    // Con un hotel elegido, lo procesado ANTES de separar por hotel no se le
+    // puede atribuir a nadie. No se reparte a ojo: se dice cuanto hay.
+    var _sa = el('ap-sin-asignar');
+    if (_sa) {
+      var _n = Number(stats.sin_asignar || 0);
+      if (stats.hotel_activo && _n > 0) {
+        _sa.style.display = '';
+        _sa.textContent = 'ℹ ' + _n + ' ' +
+          t('ap.sinAsignar', 'factura(s) sin hotel asignado — se procesaron antes de separar por hotel y no se cuentan en esta vista. Quita el filtro de hotel para verlas.');
+      } else {
+        _sa.style.display = 'none';
+      }
+    }
     _skelOff(['ap-total','ap-importe','ap-matches','ap-disc','ap-sinpo','ap-aprobadas']);
     setTimeout(() => injectSparklines(AP_SPARKS), 60);
 

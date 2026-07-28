@@ -106,6 +106,30 @@ def activo():
         return ""
 
 
+def para_guardar():
+    """El hotel con el que etiquetar un documento que entra AHORA.
+
+    La regla, acordada con el usuario:
+
+      0 hoteles en el censo -> ''  (todo como antes; nadie nota nada)
+      1 hotel               -> ese, sin preguntar; no hay ambiguedad posible
+      2 o mas               -> el hotel activo de la sesion
+
+    Con 2 o mas y ninguno activo devuelve '' — o sea "sin asignar". NO se
+    reparte a ojo ni se coge el primero: una factura sin hotel no es "del hotel
+    principal", es una factura de la que no sabemos el hotel. Queda visible
+    como pendiente de asignar, que es lo honesto. El paso siguiente es que el
+    modal de subida lo EXIJA cuando hay mas de un hotel.
+    """
+    act = activo()
+    if act:
+        return act
+    lista = hoteles()
+    if len(lista) == 1:
+        return str(lista[0]["id"])
+    return ""
+
+
 def para_selector():
     """[{id, nombre}] de los hoteles activos, para el desplegable."""
     return [{"id": str(h["id"]), "nombre": str(h["nombre"])} for h in hoteles()]
