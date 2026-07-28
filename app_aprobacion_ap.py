@@ -312,7 +312,7 @@ HTML = """<!DOCTYPE html>
 /* Paleta y tipografia salen de /static/yve.css — aqui NO se redefinen,
    asi el color personalizado del usuario (yve_accent/yve_bg) tambien manda aqui. */
 *{box-sizing:border-box;margin:0;padding:0}
-html{overflow-x:hidden}
+html{overflow-x:hidden;scrollbar-gutter:stable}
 body{overflow-x:hidden;background:var(--bg);color:var(--tx);font-family:var(--font);
   min-height:100vh;line-height:1.5;position:relative}
 /* Ambiente igual que el dashboard y el login */

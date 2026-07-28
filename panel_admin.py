@@ -162,6 +162,7 @@ HTML = r"""<!DOCTYPE html>
 <style>
 :root{--bg:#0f172a;--s1:#1e293b;--s2:#334155;--acc:#3b82f6;--acc2:#60a5fa;--tx:#f1f5f9;--mut:#94a3b8;--dim:#64748b;--grn:#22c55e;--red:#ef4444}
 *{box-sizing:border-box;margin:0;padding:0}
+html{scrollbar-gutter:stable}
 body{background:var(--bg);color:var(--tx);font-family:'Inter',-apple-system,BlinkMacSystemFont,sans-serif;padding:calc(28px + env(safe-area-inset-top)) 28px 40px;-webkit-font-smoothing:antialiased;position:relative;min-height:100vh}
 body::before{content:'';position:fixed;inset:0;z-index:0;pointer-events:none;background:radial-gradient(900px 500px at 90% -5%,rgba(var(--acc-r,59),var(--acc-g,130),var(--acc-b,246),.10),transparent 60%),radial-gradient(700px 400px at -5% 105%,rgba(139,92,246,.08),transparent 55%)}
 body>*{position:relative;z-index:1}
@@ -181,8 +182,8 @@ h1{font-size:20px;font-weight:800;margin-bottom:6px}
 .g2{display:grid;grid-template-columns:1fr 1fr;gap:18px}
 @media(max-width:768px){.g2{grid-template-columns:1fr}body{padding:calc(16px + env(safe-area-inset-top)) 14px 32px}.card{padding:16px;overflow-x:auto;min-width:0}.g2>div{min-width:0}.sg{grid-template-columns:repeat(2,1fr)}[style*="grid-template-columns:1fr 1fr"]{grid-template-columns:1fr!important}.ut{font-size:12px}h1{font-size:18px}input,select,textarea{font-size:16px!important}}
 .admin-top{display:flex;align-items:center;gap:12px;margin-bottom:16px;flex-wrap:wrap}
-.admin-back{display:inline-flex;align-items:center;gap:6px;background:var(--s1);border:1px solid var(--s2);color:var(--tx);padding:9px 15px;border-radius:10px;font-size:13px;font-weight:600;text-decoration:none;-webkit-tap-highlight-color:rgba(var(--acc-r,59),var(--acc-g,130),var(--acc-b,246),.2)}
-.admin-back:active,.admin-back:hover{border-color:var(--acc);color:var(--acc2)}
+.admin-back{display:inline-flex;align-items:center;gap:6px;background:rgba(var(--acc-r,59),var(--acc-g,130),var(--acc-b,246),.12);border:1px solid rgba(var(--acc-r,59),var(--acc-g,130),var(--acc-b,246),.35);color:var(--acc2);padding:9px 15px;border-radius:10px;font-size:13px;font-weight:600;text-decoration:none;-webkit-tap-highlight-color:rgba(var(--acc-r,59),var(--acc-g,130),var(--acc-b,246),.2)}
+.admin-back:active,.admin-back:hover{background:rgba(var(--acc-r,59),var(--acc-g,130),var(--acc-b,246),.22);border-color:rgba(var(--acc-r,59),var(--acc-g,130),var(--acc-b,246),.6);color:var(--acc2)}
 .brand-dot{width:11px;height:11px;border-radius:50%;background:var(--acc);box-shadow:0 0 14px var(--acc);flex-shrink:0}
 label{display:block;font-size:11px;color:var(--mut);text-transform:uppercase;letter-spacing:.4px;margin-bottom:5px;margin-top:12px;font-weight:600}
 label:first-child{margin-top:0}
@@ -208,7 +209,6 @@ input:focus,select:focus,textarea:focus{border-color:var(--acc);box-shadow:0 0 0
   <span class="brand-dot"></span>
   <h1 style="margin:0">Admin · <span style="color:var(--acc2)">Yve.01</span></h1>
 </div>
-<div class="sub">Panel de administración — solo administradores</div>
 <div class="sg">
   <div class="kc"><div class="kl">Usuarios</div><div class="kv" id="su">-</div></div>
   <div class="kc"><div class="kl">Activos</div><div class="kv" id="sa">-</div></div>

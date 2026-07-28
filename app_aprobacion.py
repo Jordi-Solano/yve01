@@ -112,6 +112,7 @@ HTML_BASE = """<!DOCTYPE html>
 <meta name="apple-mobile-web-app-capable" content="yes">
 <title>Yve.01 — Aprobaciones</title>
 <style>
+html{scrollbar-gutter:stable}
   :root {
     --verde:   #16a34a; --verde-claro: #dcfce7; --verde-txt: #14532d;
     --rojo:    #dc2626; --rojo-claro:  #fee2e2; --rojo-txt:  #7f1d1d;

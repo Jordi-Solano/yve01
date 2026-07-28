@@ -74,13 +74,18 @@
     var s = document.createElement('style');
     s.id = 'yve-tema-css';
     s.textContent =
+      // .hist-item y .empty son burbujas tambien, aunque no se llamen .card:
+      // las entradas del historial de facturas por aprobar y los avisos de
+      // "todavia no hay nada". Sin esto se quedaban grises con el acento puesto.
       'body.acentuar-todo .sc,body.acentuar-todo .card,body.acentuar-todo .kc,' +
+      'body.acentuar-todo .hist-item,body.acentuar-todo .empty,' +
       'body.acentuar-todo .fb-kpi-card{' +
       'border-color:rgba(var(--acc-r,59),var(--acc-g,130),var(--acc-b,246),.4)!important;' +
       'background:rgba(var(--acc-r,59),var(--acc-g,130),var(--acc-b,246),.06)!important}' +
       'body.acentuar-todo .sc .sc-val,body.acentuar-todo .kv,' +
       'body.acentuar-todo .fb-kpi-val{color:var(--acc2)!important}' +
       'body.acentuar-todo .card-title,body.acentuar-todo .ct,body.acentuar-todo .kl,' +
+      'body.acentuar-todo .empty .tit,body.acentuar-todo .hist-info .n,' +
       'body.acentuar-todo .fb-kpi-lbl{color:var(--acc2)!important;opacity:.85}';
     (document.head || document.documentElement).appendChild(s);
   }

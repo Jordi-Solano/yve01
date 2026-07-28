@@ -4237,7 +4237,11 @@ body.light-mode .tab-btn.active{color:var(--acc-dark)}
   --grn:#22c55e;--red:#ef4444;--ora:#f97316;--yel:#eab308;--pur:#8b5cf6;
 }
 *{box-sizing:border-box;margin:0;padding:0}
-html{overflow-x:hidden}
+/* Reservar SIEMPRE el hueco de la barra de desplazamiento. Sin esto, un
+   apartado que no llena la ventana se queda sin barra, la pagina es 10 px
+   mas ancha y toda la interfaz se corre a la derecha; al volver a uno
+   largo, salta. Medido: nav 501 con barra / 511 sin ella. */
+html{overflow-x:hidden;scrollbar-gutter:stable}
 body{
   overflow-x:hidden;background:var(--bg);color:var(--tx);
   font-family:'Inter',-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif;
