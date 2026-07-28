@@ -2050,11 +2050,6 @@ def api_procesar_batch_stream():
                             yield f'data: ⚠ AR {fname}: guardado con campos incompletos{_det} — revisar manualmente\n\n'
                             _mark(fname, 'AR_PARCIAL')
                             has_ar = True
-                        # Linea propia y empezando por ⚠, para que el log la
-                        # pinte de aviso en vez de esconderla al final de una
-                        # linea verde de exito.
-                        if _aviso_hotel:
-                            yield f'data: ⚠ {fname}: {_aviso_hotel}\n\n'
                         elif r.returncode == 3:
                             yield f'data: ⚠ {fname}: no se pudo extraer ningún dato de factura OTA — revisar manualmente\n\n'
                             _mark(fname, 'SKIP')
@@ -2062,6 +2057,19 @@ def api_procesar_batch_stream():
                             msg = r.stderr[:80] or r.stdout[:80] or 'error'
                             yield f'data: ✗ AR {fname}: {msg}\n\n'
                             _mark(fname, f'ERR:{msg[:30]}')
+                        # DESPUES de toda la cadena, no en medio. Metido entre
+                        # el `elif 2` y el `elif 3` partia la cadena en dos: el
+                        # `elif 3` y el `else` pasaban a colgar de este `if`,
+                        # asi que un fichero correcto SIN aviso caia en el
+                        # `else` y se cantaba como error, con un "✗" y un
+                        # trozo de la salida del lector como mensaje.
+                        #
+                        # Va en su propia linea y empezando por ⚠ para que el
+                        # log lo pinte de aviso: pegado al final del "✓ ...:
+                        # OK" salia en verde, al final de una linea larga, en
+                        # un panel que va scrolleando — o sea, invisible.
+                        if _aviso_hotel:
+                            yield f'data: ⚠ {fname}: {_aviso_hotel}\n\n'
                     else:
                         # AP: import directo (más rápido, sin cargar Python de nuevo)
                         try:
