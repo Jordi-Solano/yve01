@@ -100,10 +100,17 @@ def activo():
     siempre cuando no hay nada elegido.
     """
     try:
-        from flask import session
-        return normalizar(session.get("hotel_activo"))
+        from flask import session, has_request_context
+        if has_request_context():
+            v = session.get("hotel_activo")
+            if v:
+                return normalizar(v)
     except Exception:
-        return ""
+        pass
+    # Sin peticion (los scripts que se lanzan como subproceso) el hotel llega
+    # por el entorno, igual que el tenant con YVE_TENANT.
+    import os as _os
+    return normalizar(_os.environ.get("YVE_HOTEL", ""))
 
 
 def para_guardar():

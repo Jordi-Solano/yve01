@@ -305,12 +305,23 @@ if __name__ == "__main__":
             from datetime import date as _date
             fecha_hoy = _date.today().strftime("%Y%m%d")
             ruta_excel = os.path.join(SALIDA_DIR, f"facturas_procesadas_{fecha_hoy}.xlsx")
+            # El hotel al que pertenece. Llega por el entorno porque esto
+            # corre como subproceso y no hay sesion de Flask. Se estampa
+            # DESPUES de leer el documento: el papel no decide de que hotel es.
+            try:
+                import censo_hoteles as _censo
+                registro["hotel_id"] = _censo.para_guardar()
+            except Exception:
+                registro["hotel_id"] = os.environ.get("YVE_HOTEL", "")
             if os.path.exists(ruta_excel):
                 df_existing = pd.read_excel(ruta_excel)
                 df_new = pd.DataFrame([registro])
                 df_combined = pd.concat([df_existing, df_new], ignore_index=True)
-                if "archivo" in df_combined.columns:
-                    df_combined.drop_duplicates(subset=["archivo"], keep="last", inplace=True)
+                # La identidad incluye el hotel: dos hoteles del mismo grupo
+                # suben la liquidacion de la misma OTA y una borraba a la otra.
+                _sub = [c for c in ("archivo", "hotel_id") if c in df_combined.columns]
+                if _sub:
+                    df_combined.drop_duplicates(subset=_sub, keep="last", inplace=True)
                 df_combined.to_excel(ruta_excel, index=False)
             else:
                 guardar_excel([registro], ruta_excel)

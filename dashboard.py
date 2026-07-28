@@ -31,9 +31,18 @@ from tenant_dirs import (datos_dir as _ddir, reportes_dir as _rdir,
                          aprobaciones_dir as _adir, tenant_id as _tenant_id)
 
 def _env_tenant():
-    """Entorno para subprocess con el tenant de la sesión (los scripts lo leen via YVE_TENANT)."""
+    """Entorno para subprocess con el tenant Y el hotel de la sesión.
+
+    Los scripts que se lanzan como subproceso no tienen sesión de Flask: leen
+    YVE_TENANT para saber en qué árbol escribir y YVE_HOTEL para saber con qué
+    hotel etiquetar lo que guarden.
+    """
     e = os.environ.copy()
     e["YVE_TENANT"] = _tenant_id()
+    try:
+        e["YVE_HOTEL"] = censo_hoteles.para_guardar() or ""
+    except Exception:
+        e["YVE_HOTEL"] = ""
     return e
 
 REPORTES_DIR_LEGACY     = os.path.join(BASE_DIR, "reportes")
@@ -1988,7 +1997,11 @@ def api_procesar_batch_stream():
                     if is_ar:
                         # AR: usar subprocess (lector_ota.py tiene su propia lógica)
                         cmd = ['python3', 'lector_ota.py', '--file', fpath]
-                        r = _sp.run(cmd, capture_output=True, text=True, cwd=BASE_DIR, timeout=60)
+                        # env=_env_tenant(): sin esto el subproceso escribia en
+                        # el arbol del tenant `default` fuera quien fuera el
+                        # usuario, y ahora ademas necesita saber el hotel.
+                        r = _sp.run(cmd, capture_output=True, text=True, cwd=BASE_DIR,
+                                    timeout=60, env=_env_tenant())
                         # lector_ota distingue: 0=OK, 2=guardado incompleto,
                         # 3=leido pero sin datos OTA (no guarda nada). Antes
                         # cualquier returncode 0 se cantaba como "✓ OK" aunque
