@@ -35,10 +35,13 @@ def _get_reservas():
     if not _os.path.exists(ruta): return pd.DataFrame()
     df = pd.read_excel(ruta)
     # filtro por hotel activo de la sesión (si el df tiene columna hotel)
+    # FASE 0: la sesión guarda el ID; el nombre sale del censo. Se sigue
+    # cruzando por nombre, igual que antes, para no mover nada en esta fase.
     try:
-        _h = session.get('hotel_activo')
-        if _h and 'hotel' in df.columns:
-            df = df[df['hotel'].astype(str).str.contains(_h, case=False, na=False, regex=False)].copy()
+        import censo_hoteles as _censo
+        _nom = _censo.nombre_de(_censo.activo())
+        if _nom and 'hotel' in df.columns:
+            df = df[df['hotel'].astype(str).str.contains(_nom, case=False, na=False, regex=False)].copy()
     except Exception:
         pass
     for col in ['fecha_entrada','fecha_salida','fecha_emision']:

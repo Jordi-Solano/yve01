@@ -150,6 +150,7 @@ inicializar_usuarios()
 from login import bp as auth_bp
 from onboarding import onboarding_bp as config_bp
 from panel_admin import bp as admin_bp
+import censo_hoteles
 from version_estaticos import SELLO as SELLO_ESTATICOS
 from app_aprobacion import bp as aprob_ar_bp
 from app_aprobacion_ap import bp as aprob_ap_bp
@@ -218,16 +219,28 @@ def safe_float(val):
 
 def _filtrar_hotel_activo(df, cols=("hotel", "nombre_hotel")):
     """Si hay un hotel activo en sesión y el df tiene columna de hotel, filtra por él.
-    Si el df no tiene columna de hotel, se devuelve tal cual (datos de grupo)."""
+    Si el df no tiene columna de hotel, se devuelve tal cual (datos de grupo).
+
+    FASE 0: la sesión guarda el ID; el nombre se resuelve del censo. El cruce
+    sigue siendo por NOMBRE contra las mismas columnas — a propósito, para que
+    esta fase no cambie ni un número. En la fase 1 esto se muda a
+    `almacen_datos` y pasa a cruzarse por `hotel_id`, que es lo que de verdad
+    arregla el problema de los nombres parecidos.
+    """
     try:
-        h = session.get("hotel_activo")
+        hid = censo_hoteles.activo()
     except Exception:
         return df
-    if not h or df is None or getattr(df, "empty", True):
+    if not hid or df is None or getattr(df, "empty", True):
+        return df
+    nombre = censo_hoteles.nombre_de(hid)
+    if not nombre:
+        # El hotel activo ya no está en el censo (lo han dado de baja). Vista de
+        # grupo, que enseña de más y no de menos.
         return df
     for c in cols:
         if c in df.columns:
-            mask = df[c].astype(str).str.contains(h, case=False, na=False, regex=False)
+            mask = df[c].astype(str).str.contains(nombre, case=False, na=False, regex=False)
             return df[mask].copy()
     return df
 
@@ -235,21 +248,25 @@ def _filtrar_hotel_activo(df, cols=("hotel", "nombre_hotel")):
 @app.route("/api/hotel_activo", methods=["GET", "POST"])
 @login_required
 def api_hotel_activo():
-    """Hotel activo de la sesión: filtra AR/AP/AR Real. Vacío = vista de grupo."""
+    """Hotel activo de la sesión: filtra AR/AP/AR Real. Vacío = vista de grupo.
+
+    Habla en IDs, no en nombres (fase 0). `normalizar` acepta también un nombre
+    para no romper las páginas que ya estuvieran abiertas al desplegar.
+    """
     if request.method == "POST":
         data = request.get_json(force=True) or {}
-        h = (data.get("hotel") or "").strip()
-        if h:
-            session["hotel_activo"] = h
+        hid = censo_hoteles.normalizar(data.get("hotel"))
+        if hid:
+            session["hotel_activo"] = hid
         else:
             session.pop("hotel_activo", None)
-        return jsonify({"ok": True, "hotel": session.get("hotel_activo")})
-    try:
-        hoteles = json.load(open(os.path.join(_ddir(), "hoteles.json"), encoding="utf-8"))
-        nombres = [x.get("nombre") for x in hoteles if x.get("nombre") and x.get("activo", True)]
-    except Exception:
-        nombres = []
-    return jsonify({"ok": True, "hotel": session.get("hotel_activo"), "hoteles": nombres})
+        actual = session.get("hotel_activo", "")
+        return jsonify({"ok": True, "hotel": actual,
+                        "nombre": censo_hoteles.nombre_de(actual)})
+    hid = censo_hoteles.activo()
+    return jsonify({"ok": True, "hotel": hid,
+                    "nombre": censo_hoteles.nombre_de(hid),
+                    "hoteles": censo_hoteles.para_selector()})
 
 
 def cargar_datos():
@@ -11192,17 +11209,25 @@ async function _initHotelActivo() {
     if (!sel) return;
     if (!d.hoteles || d.hoteles.length < 2) { sel.style.display = 'none'; return; }
     sel.style.display = '';
+    // El value es el ID; lo que se lee es el nombre. Antes el value era el
+    // nombre y por eso dos hoteles parecidos se confundian.
     sel.innerHTML = '<option value="">🌍 ' + t('mh.todosHoteles', 'Todos los hoteles') + '</option>' +
       d.hoteles.map(function(h) {
-        return '<option value="' + h.replace(/"/g, '&quot;') + '"' + (d.hotel === h ? ' selected' : '') + '>🏨 ' + h + '</option>';
+        var _id = String((h && h.id) || ''), _nom = String((h && h.nombre) || '');
+        return '<option value="' + _id.replace(/"/g, '&quot;') + '"' + (d.hotel === _id ? ' selected' : '') +
+               '>🏨 ' + _nom.replace(/</g, '&lt;') + '</option>';
       }).join('');
   } catch(e) {}
 }
 
 async function seleccionarHotelActivo(h, irATab) {
   try {
-    await _postJson('/api/hotel_activo', {hotel: h || ''});
-    showNotification(h ? '🏨 ' + h : '🌍 ' + t('mh.vistaGrupo', 'Vista de grupo (todos los hoteles)'), 'info');
+    // `h` es el ID; el nombre para el aviso lo devuelve el servidor, que es
+    // quien tiene el censo.
+    var _r = await _postJson('/api/hotel_activo', {hotel: h || ''});
+    var _d = {}; try { _d = await _r.json(); } catch(e) {}
+    var _nom = (_d && _d.nombre) || '';
+    showNotification(_nom ? '🏨 ' + _nom : '🌍 ' + t('mh.vistaGrupo', 'Vista de grupo (todos los hoteles)'), 'info');
     _initHotelActivo();
     loadAll(); loadAP(); loadBanco();
     if (typeof cargarARRealData === 'function') { try { cargarARRealData(); } catch(e) {} }
