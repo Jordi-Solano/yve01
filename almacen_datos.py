@@ -65,6 +65,15 @@ _ETAPAS_ALB_LIN = [
     ("albaranes_*.xlsx", "procesadas"),
 ]
 
+# Lineas de FACTURA (Fase 3c). Mismo razonamiento que _ETAPAS_ALB_LIN: solo
+# viven en facturas_ap_*, porque facturas_contabilizadas_* no las repite. Si se
+# reutilizara _ETAPAS_AP, al no encontrar la hoja "Lineas" en el informe del
+# asignador _leer_etapas caeria a su PRIMERA hoja y colaria facturas enteras en
+# la lista de lineas.
+_ETAPAS_FAC_LIN = [
+    ("facturas_ap_*.xlsx", "procesadas"),
+]
+
 # Campos que identifican un documento. El PRIMERO es obligatorio: si viene
 # vacio, la fila NO se deduplica (ver _clave_doc).
 _ID_AR = ("numero_factura", "nombre_ota", "periodo_inicio")
@@ -215,6 +224,37 @@ def lineas_albaran(procesadas_dir=None, reportes_dir=None):
     """
     p, r = _dirs(procesadas_dir, reportes_dir)
     df, _rutas = _leer_etapas(_ETAPAS_ALB_LIN, p, r, hoja="Lineas")
+    if df.empty:
+        return df
+    cols = [c for c in df.columns if c != "_etapa"]
+    return df.drop_duplicates(subset=cols, keep="last").reset_index(drop=True)
+
+
+def lineas_factura(procesadas_dir=None, reportes_dir=None):
+    """Lineas de TODAS las facturas AP, de TODOS los dias (Fase 3c).
+
+    Igual que `lineas_albaran`: NO se deduplican por identidad de documento —una
+    factura puede repetir el mismo producto en dos lineas, dos lotes y dos
+    precios, y fusionarlas seria perder mercancia—, solo se quitan los
+    duplicados EXACTOS, que es lo que deja reprocesar dos veces el mismo
+    fichero.
+
+    Un fichero de facturas sin hoja "Lineas" (los de antes de la Fase 3c, o un
+    dia en el que solo entraron facturas de un concepto suelto) no es un error:
+    devuelve vacio y el nivel 3 del cruce simplemente no se aplica.
+    """
+    p, r = _dirs(procesadas_dir, reportes_dir)
+    df, _rutas = _leer_etapas(_ETAPAS_FAC_LIN, p, r, hoja="Lineas")
+    if df.empty:
+        return df
+    # OJO (reproducido): si el fichero no tiene hoja "Lineas" —todos los de
+    # antes de la Fase 3c, y cualquier dia en el que solo entraran facturas de
+    # un concepto suelto— `_leer_etapas` cae a leer su PRIMERA hoja, o sea las
+    # FACTURAS, y volvian disfrazadas de linea. `n_linea` es la columna que solo
+    # tiene una linea de verdad: sin ella, esto no son lineas.
+    if "n_linea" not in df.columns:
+        return df.iloc[0:0]
+    df = df[df["n_linea"].notna()]
     if df.empty:
         return df
     cols = [c for c in df.columns if c != "_etapa"]

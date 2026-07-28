@@ -901,18 +901,42 @@ def _guardar_factura_ap(filas):
     """
     from lector_facturas_ap import guardar_excel as _gx
     filas = [filas] if isinstance(filas, dict) else list(filas or [])
-    # las claves internas (_facturas, _skip...) no son datos de la factura
+    _crudas = [f for f in filas if isinstance(f, dict)]
+    # las claves internas (_facturas, _skip, _lineas...) no son columnas de la
+    # factura: se quitan de la hoja plana. `_crudas` las conserva porque las
+    # lineas de la Fase 3c viajan justamente en una de ellas.
     filas = [{k: v for k, v in f.items() if not str(k).startswith('_')}
-             for f in filas if isinstance(f, dict)]
+             for f in _crudas]
     if not filas:
         return 0
     ruta = os.path.join(_pdir(), f'facturas_ap_{date.today().strftime("%Y%m%d")}.xlsx')
+    _lineas = [l for f in _crudas for l in (f.get('_lineas') or [])]
+    _claves = {str(f.get('archivo', '')) for f in filas}
     if os.path.exists(ruta):
         _df = pd.concat([pd.read_excel(ruta), pd.DataFrame(filas)], ignore_index=True)
         _df.drop_duplicates(subset=['archivo'], keep='last', inplace=True)
-        _df.to_excel(ruta, index=False)
+        # Las lineas viejas de los MISMOS documentos se van con ellos (Fase 3c).
+        # Si solo se sustituyera la cabecera quedarian lineas huerfanas de una
+        # version anterior mezcladas con las nuevas, y el cruce sumaria
+        # mercancia que no se facturo. Misma leccion que en _guardar_albaran.
+        try:
+            _lv = pd.read_excel(ruta, sheet_name='Lineas')
+        except Exception:
+            _lv = pd.DataFrame()
+        if not _lv.empty and 'archivo' in _lv.columns:
+            _lv = _lv[~_lv['archivo'].astype(str).isin(_claves)]
+        _dfl = pd.concat([_lv, pd.DataFrame(_lineas)], ignore_index=True) \
+            if (not _lv.empty or _lineas) else pd.DataFrame()
     else:
-        _gx(filas, ruta)
+        _df = pd.DataFrame(filas)
+        _dfl = pd.DataFrame(_lineas)
+    # La hoja de facturas va PRIMERA: todo el mundo lee este fichero con
+    # pd.read_excel(ruta) sin nombre de hoja, o sea la primera. Si se colara
+    # delante otra hoja, cada consumidor de AP leeria otra cosa.
+    with pd.ExcelWriter(ruta, engine='openpyxl') as _w:
+        _df.to_excel(_w, sheet_name='Facturas', index=False)
+        if not _dfl.empty:
+            _dfl.to_excel(_w, sheet_name='Lineas', index=False)
     return len(filas)
 
 

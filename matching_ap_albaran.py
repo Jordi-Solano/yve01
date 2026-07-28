@@ -66,10 +66,12 @@ VENTANA_DIAS = 45
 # criterio se cruzo. La de CANTIDAD es deliberadamente mas laxa: en alimentacion
 # el peso servido difiere del pedido por naturaleza, y una alerta que grita por
 # 800 gramos de merluza consigue que el AP Manager deje de mirar las alertas.
-# OJO: TOL_CANTIDAD no se aplica todavia — hace falta que la factura traiga
-# lineas (fase 3c). Se declara aqui para que las dos vivan en el mismo sitio.
+# TOL_CANTIDAD se aplica en el nivel 3 (Fase 3c), linea a linea.
 TOL_IMPORTE = 0.02    # 2 % sobre la base imponible
-TOL_CANTIDAD = 0.10   # 10 % — se usara en la fase 3c
+TOL_CANTIDAD = 0.10   # 10 % — nivel 3. Mas laxa que la de importe A PROPOSITO:
+                      # en alimentacion el peso servido difiere del pedido por
+                      # naturaleza, y una alerta que grita por 800 g de merluza
+                      # consigue que se dejen de mirar las alertas.
 
 VERDE = PatternFill(start_color="C6EFCE", end_color="C6EFCE", fill_type="solid")
 ROJO = PatternFill(start_color="FFC7CE", end_color="FFC7CE", fill_type="solid")
@@ -182,6 +184,15 @@ def cargar_albaranes():
     return df if df is not None else pd.DataFrame()
 
 
+def cargar_lineas():
+    """Las lineas de las dos partes, para el nivel 3. Vacias = nivel 3 apagado."""
+    import almacen_datos as _alm
+    lf = _alm.lineas_factura(PROCESADAS_DIR, REPORTES_DIR)
+    la = _alm.lineas_albaran(PROCESADAS_DIR, REPORTES_DIR)
+    return (lf if lf is not None else pd.DataFrame(),
+            la if la is not None else pd.DataFrame())
+
+
 # ── el cruce ──────────────────────────────────────────────────────────────
 
 def _cita_explicita(fila_f, alb):
@@ -269,7 +280,80 @@ def fecha_corte(df_alb):
     return min(fechas) if fechas else None
 
 
-def analizar_factura(fila_f, indices_alb, df_alb, porque, i_f, corte=None):
+def _clave_desc(v):
+    """Descripcion comparable: sin acentos, sin mayusculas, sin espacios de mas.
+
+    Misma tecnica que _clave_plato/_txt_ing en F&B, y por el mismo motivo: la
+    factura escribe "Solomillo de Ternera" y el albaran "SOLOMILLO DE TERNERA".
+    En Python plano, nunca con el accesor `.str`.
+    """
+    import unicodedata
+    s = _txt(v).lower()
+    s = unicodedata.normalize("NFKD", s)
+    s = "".join(c for c in s if not unicodedata.combining(c))
+    return " ".join(s.split())
+
+
+def _lineas_de(df_lin, columna, valores):
+    """Las lineas cuyo `columna` esta en `valores`. Sin .str (pandas 3)."""
+    if df_lin is None or df_lin.empty or columna not in df_lin.columns:
+        return []
+    vals = {_txt(v) for v in valores if _txt(v)}
+    if not vals:
+        return []
+    return [r for _, r in df_lin.iterrows() if _txt(r.get(columna)) in vals]
+
+
+def comparar_lineas(lin_f, lin_a):
+    """NIVEL 3 · linea a linea. Devuelve (avisos, euros_en_juego, sin_pareja).
+
+    Empareja por descripcion normalizada y compara precio unitario y cantidad.
+    Lo que no se puede emparejar NO se inventa: se cuenta y se dice.
+    """
+    avisos, euros, sin_pareja = [], 0.0, 0
+    if not lin_f or not lin_a:
+        return avisos, euros, sin_pareja
+
+    por_desc = {}
+    for la in lin_a:
+        por_desc.setdefault(_clave_desc(la.get("descripcion")), []).append(la)
+
+    for lf in lin_f:
+        k = _clave_desc(lf.get("descripcion"))
+        cand = por_desc.get(k)
+        if not cand:
+            sin_pareja += 1
+            continue
+        # si el albaran repite el producto (dos lotes), se suma la cantidad y se
+        # usa el precio medio ponderado: fusionar dos lotes en uno seria perder
+        # la mercancia de uno de ellos
+        cant_a = sum(_num(c.get("cantidad")) or 0.0 for c in cand)
+        imp_a = sum(_num(c.get("importe")) or 0.0 for c in cand)
+        prec_a = (imp_a / cant_a) if cant_a else (_num(cand[0].get("precio_unitario")))
+        prec_f = _num(lf.get("precio_unitario"))
+        cant_f = _num(lf.get("cantidad"))
+        desc = _txt(lf.get("descripcion")) or "(sin descripción)"
+
+        if prec_f is not None and prec_a:
+            dif = abs(prec_f - prec_a) / prec_a
+            if dif > TOL_IMPORTE:
+                de_mas = (prec_f - prec_a) * (cant_f if cant_f is not None else 0.0)
+                euros += de_mas
+                signo = "más" if prec_f > prec_a else "menos"
+                avisos.append(f"{desc}: {prec_f:.2f} EUR/ud en factura vs "
+                              f"{prec_a:.2f} en albarán ({dif*100:.1f}% {signo}"
+                              + (f", {abs(de_mas):.2f} EUR" if cant_f else "") + ")")
+        if cant_f is not None and cant_a:
+            difc = abs(cant_f - cant_a) / cant_a
+            if difc > TOL_CANTIDAD:
+                signo = "más" if cant_f > cant_a else "menos"
+                avisos.append(f"{desc}: factura {cant_f:g} vs albarán {cant_a:g} "
+                              f"({difc*100:.1f}% {signo})")
+    return avisos, round(euros, 2), sin_pareja
+
+
+def analizar_factura(fila_f, indices_alb, df_alb, porque, i_f, corte=None,
+                     df_lin_f=None, df_lin_a=None):
     base, aviso = _base_factura(fila_f)
     albs = [df_alb.loc[i] for i in indices_alb]
     nums = [_txt(a.get("numero_albaran")) or "s/n" for a in albs]
@@ -319,6 +403,38 @@ def analizar_factura(fila_f, indices_alb, df_alb, porque, i_f, corte=None):
         if aviso:
             detalle += f" · OJO: {aviso}"
 
+    # ── NIVEL 3 · linea a linea (Fase 3c) ────────────────────────────────
+    # Lo que el nivel 2 no puede ver: suben un producto y bajan otro, el total
+    # cuadra y la factura pasa. Solo se mira si hay albaranes emparejados.
+    n_comp = n_sin_pareja = 0
+    euros_linea = NF
+    avisos_l = []
+    if albs and estado not in ("ANTERIOR_AL_REGISTRO", "FACTURA_SIN_ALBARAN"):
+        lin_f = _lineas_de(df_lin_f, "archivo", [fila_f.get("archivo")])
+        if not lin_f:
+            lin_f = _lineas_de(df_lin_f, "numero_factura", [fila_f.get("numero_factura")])
+        lin_a = _lineas_de(df_lin_a, "numero_albaran",
+                           [a.get("numero_albaran") for a in albs])
+        avisos_l, euros_linea, n_sin_pareja = comparar_lineas(lin_f, lin_a)
+        n_comp = len(lin_f)
+        if avisos_l:
+            if estado == "MATCH_ALBARAN_OK":
+                # el total cuadraba: esto es lo que 3c existe para pillar
+                estado = "DIFERENCIA_LINEA"
+                detalle = ("el total cuadra pero las líneas NO: "
+                           + " · ".join(avisos_l))
+                if euros_linea:
+                    signo = "de más" if euros_linea > 0 else "de menos"
+                    detalle += f" · {abs(euros_linea):.2f} EUR {signo} en total"
+            else:
+                # ya habia incidencia: el estado NO cambia, se dice cual es
+                detalle += " · por líneas: " + " · ".join(avisos_l)
+        if n_sin_pareja and n_comp:
+            detalle += (f" · {n_sin_pareja} de {n_comp} línea(s) de la factura sin "
+                        "pareja en el albarán: no se han podido comparar")
+        if not lin_f:
+            euros_linea = NF
+
     return {
         "archivo":            _txt(fila_f.get("archivo")) or NF,
         "numero_factura":     _txt(fila_f.get("numero_factura")) or NF,
@@ -331,6 +447,9 @@ def analizar_factura(fila_f, indices_alb, df_alb, porque, i_f, corte=None):
         "total_albaranes":    round(suma, 2) if albs else NF,
         "diferencia_importe": diff,
         "diferencia_pct":     f"{dif_pct*100:.2f}%" if isinstance(dif_pct, float) else NF,
+        "lineas_comparadas":  n_comp if n_comp else NF,
+        "lineas_con_aviso":    len(avisos_l) if avisos_l else 0,
+        "desvio_por_lineas":   euros_linea,
         "estado_matching":    estado,
         "detalle_matching":   detalle,
     }
@@ -410,7 +529,7 @@ def generar_resumen(df_f, df_a):
          "Cantidad": f"{VENTANA_DIAS} días", "Pct": ""},
         {"Bloque": "Criterio", "Estado": "tolerancia de importe",
          "Cantidad": f"{TOL_IMPORTE*100:.0f}%", "Pct": ""},
-        {"Bloque": "Criterio", "Estado": "tolerancia de cantidad (aún sin aplicar: la factura no trae líneas)",
+        {"Bloque": "Criterio", "Estado": "tolerancia de cantidad (nivel 3, línea a línea)",
          "Cantidad": f"{TOL_CANTIDAD*100:.0f}%", "Pct": ""},
         {"Bloque": "Criterio", "Estado": "se compara la BASE IMPONIBLE (el albarán no lleva IVA)",
          "Cantidad": "", "Pct": ""},
@@ -441,14 +560,26 @@ def main():
     empare, porque = emparejar(df_fact, df_alb)
     por_alb = {i_a: i_f for i_f, idxs in empare.items() for i_a in idxs}
 
+    df_lin_f, df_lin_a = cargar_lineas()
+    if not df_lin_f.empty and not df_lin_a.empty:
+        print(f"  Nivel 3 activo: {len(df_lin_f)} línea(s) de factura vs "
+              f"{len(df_lin_a)} de albarán · tolerancia cantidad "
+              f"{TOL_CANTIDAD*100:.0f}%\n")
+    else:
+        # honestidad: si no hay lineas por los dos lados, el nivel 3 no se
+        # aplica y hay que decirlo, no callarlo
+        _falta = "la factura" if df_lin_f.empty else "el albarán"
+        print(f"  Nivel 3 (línea a línea) no se aplica: {_falta} no trae líneas.\n")
+
     corte = fecha_corte(df_alb)
-    res_f = [analizar_factura(df_fact.loc[i_f], idxs, df_alb, porque, i_f, corte)
+    res_f = [analizar_factura(df_fact.loc[i_f], idxs, df_alb, porque, i_f, corte,
+                              df_lin_f, df_lin_a)
              for i_f, idxs in empare.items()]
     res_a = analizar_albaranes(df_alb, por_alb, df_fact)
 
     iconos = {"MATCH_ALBARAN_OK": "✓", "DIFERENCIA_IMPORTE": "✗",
               "FACTURA_SIN_ALBARAN": "?", "SIN_IMPORTE": "~",
-              "ANTERIOR_AL_REGISTRO": "·"}
+              "ANTERIOR_AL_REGISTRO": "·", "DIFERENCIA_LINEA": "✗"}
     for r in res_f:
         print(f"  [{iconos.get(r['estado_matching'], '·')}] {r['numero_factura']} → {r['estado_matching']}")
         if r["estado_matching"] not in ("MATCH_ALBARAN_OK", "ANTERIOR_AL_REGISTRO"):
@@ -486,7 +617,8 @@ def main():
     # lote cantaba 2 incidencias donde habia 1. Mismo patron que el "FALTAN:"
     # de lector_ota.py.
     _inc_f = int((df_res_f["estado_matching"].isin(
-        ["FACTURA_SIN_ALBARAN", "DIFERENCIA_IMPORTE"])).sum()) if not df_res_f.empty else 0
+        ["FACTURA_SIN_ALBARAN", "DIFERENCIA_IMPORTE",
+         "DIFERENCIA_LINEA"])).sum()) if not df_res_f.empty else 0
     _inc_a = len(sin_facturar)
     print(f"INCIDENCIAS: {_inc_f}|{_inc_a}")
     print(f"\n✅ Reporte: {SALIDA}")

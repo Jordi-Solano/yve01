@@ -195,13 +195,17 @@ PROMPT_CLASIFICACION = """CLASIFICACIÓN — Lee TODO el contenido antes de deci
 
 EXTRACCIÓN — Devuelve SOLO JSON según el tipo:
 
-FACTURA (UNA sola factura en el documento — el caso normal de un PDF o una foto):
-{"es_factura":true,"numero_factura":"X","fecha":"DD/MM/YYYY","nombre_proveedor":"X","NIF_proveedor":"X","descripcion_concepto":"X","base_imponible":0.0,"porcentaje_iva":21,"cuota_iva":0.0,"total_factura":0.0,"moneda":"EUR"}
+FACTURA (UNA sola factura en el documento — el caso normal de un PDF o una foto).
+"lineas" SOLO si la factura detalla lo servido producto por producto; si es una
+factura de un concepto suelto (luz, alquiler, una comisión), OMITE "lineas".
+Tener líneas NO convierte la factura en albarán: manda la regla de arriba (con
+número de factura E IVA es FACTURA):
+{"es_factura":true,"numero_factura":"X","fecha":"DD/MM/YYYY","nombre_proveedor":"X","NIF_proveedor":"X","descripcion_concepto":"X","base_imponible":0.0,"porcentaje_iva":21,"cuota_iva":0.0,"total_factura":0.0,"moneda":"EUR","lineas":[{"descripcion":"X","cantidad":0.0,"unidad":"kg|ud|l|caja","precio_unitario":0.0,"importe":0.0}]}
 
 FACTURA (VARIAS facturas en el MISMO documento, tipico en una hoja de cálculo con
 una factura por fila. Usa esta forma SOLO si de verdad hay más de una; si hay una
 sola, usa la de arriba):
-{"es_factura":true,"facturas":[{"numero_factura":"X","fecha":"DD/MM/YYYY","nombre_proveedor":"X","NIF_proveedor":"X","descripcion_concepto":"X","base_imponible":0.0,"porcentaje_iva":21,"cuota_iva":0.0,"total_factura":0.0,"moneda":"EUR"}]}
+{"es_factura":true,"facturas":[{"numero_factura":"X","fecha":"DD/MM/YYYY","nombre_proveedor":"X","NIF_proveedor":"X","descripcion_concepto":"X","base_imponible":0.0,"porcentaje_iva":21,"cuota_iva":0.0,"total_factura":0.0,"moneda":"EUR","lineas":[{"descripcion":"X","cantidad":0.0,"unidad":"kg|ud|l|caja","precio_unitario":0.0,"importe":0.0}]}]}
 
 ALBARAN (una entrada en "lineas" por CADA producto entregado.
 referencia_pedido y referencia_factura solo si el albarán las trae):
@@ -661,6 +665,7 @@ def facturas_de_respuesta(datos, nombre, proveedores, como_dict=False):
         comunes = {k: datos[k] for k in _COMUNES_FACTURA
                    if datos.get(k) not in (None, "")}
         filas = []
+        _origen = []            # el dict ORIGINAL de cada factura, para sus lineas
         for i, f in enumerate(lista):
             if not isinstance(f, dict):
                 continue
@@ -671,14 +676,27 @@ def facturas_de_respuesta(datos, nombre, proveedores, como_dict=False):
             # fichero actualice sus filas en vez de duplicarlas.
             marca = str(f.get("numero_factura") or "").strip()
             filas[-1]["archivo"] = "%s#%s" % (nombre, marca or (i + 1))
+            _origen.append(f)
         if filas:
             if len(filas) == 1:
                 filas[0]["archivo"] = nombre        # una sola: como toda la vida
+            # Fase 3c: las lineas viajan en una clave PRIVADA. _guardar_factura_ap
+            # ya filtra las que empiezan por '_', asi que la hoja plana de
+            # facturas no cambia ni una columna. Las lineas se leen de CADA
+            # factura, nunca de las comunes del documento: copiarlas a todas
+            # multiplicaria la mercancia por el numero de facturas de la hoja.
+            for _fila, _f in zip(filas, _origen):
+                _lin = lineas_factura(_f, _fila, nombre)
+                if _lin:
+                    _fila["_lineas"] = _lin
             if not como_dict:
                 return filas
             return dict(filas[0], _facturas=filas) if len(filas) > 1 else filas[0]
 
     una = normalizar_factura_ap(datos, nombre, proveedores)
+    _lin = lineas_factura(datos, una, nombre)
+    if _lin:
+        una["_lineas"] = _lin
     return una if como_dict else [una]
 
 
@@ -773,6 +791,62 @@ def clave_albaran(numero, proveedor, archivo=""):
     """
     n, p = _txt_alb(numero), _txt_alb(proveedor)
     return f"{n}|{p}" if n else f"|{p}|{_txt_alb(archivo)}"
+
+
+def lineas_factura(datos, fila, nombre):
+    """Las lineas de UNA factura -> filas para la hoja `Lineas`. Punto UNICO.
+
+    Fase 3c. Hermana de las lineas del albaran, y por los mismos motivos: el
+    nivel 3 del cruce compara cantidades y precios producto a producto, y sin
+    importe por linea no se puede comparar nada. Se autocompletan los huecos
+    aritmeticos (importe = cantidad x precio y al reves); lo que NO se puede
+    derivar se queda vacio, nunca inventado.
+
+    La clave es `archivo`, la MISMA columna con la que la hoja de facturas
+    deduplica: asi reprocesar un documento se lleva sus lineas viejas en vez de
+    dejarlas huerfanas sumando mercancia que no se facturo.
+
+    Una factura de un concepto suelto (luz, alquiler, una comision) no trae
+    lineas y no pasa nada: el nivel 3 simplemente no se puede aplicar ahi, y
+    decirlo es mejor que inventarse una linea con el total dentro.
+    """
+    if not isinstance(datos, dict):
+        return []
+    archivo = str((fila or {}).get("archivo") or nombre or "").strip()
+    numero  = str((fila or {}).get("numero_factura")
+                  or datos.get("numero_factura") or "").strip()
+    prov    = str((fila or {}).get("nombre_proveedor")
+                  or datos.get("nombre_proveedor") or "").strip()
+
+    filas = []
+    for i, ln in enumerate(datos.get("lineas") or []):
+        if not isinstance(ln, dict):
+            continue
+        desc = str(ln.get("descripcion") or "").strip()
+        cant = _safe_float(ln.get("cantidad"))
+        prec = _safe_float(ln.get("precio_unitario"))
+        imp  = _safe_float(ln.get("importe"))
+        if imp is None and cant is not None and prec is not None:
+            imp = round(cant * prec, 2)
+        elif prec is None and imp is not None and cant:
+            prec = round(imp / cant, 4)
+        elif cant is None and imp is not None and prec:
+            cant = round(imp / prec, 3)
+        # una linea sin descripcion, sin cantidad y sin importe no es una linea
+        if not desc and cant is None and imp is None:
+            continue
+        filas.append({
+            "archivo":          archivo,
+            "numero_factura":   numero,
+            "nombre_proveedor": prov,
+            "n_linea":          i + 1,
+            "descripcion":      desc,
+            "cantidad":         cant,
+            "unidad":           str(ln.get("unidad") or "").strip(),
+            "precio_unitario":  prec,
+            "importe":          imp,
+        })
+    return filas
 
 
 def albaran_de_respuesta(datos, nombre):

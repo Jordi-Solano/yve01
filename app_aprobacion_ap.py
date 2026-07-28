@@ -441,6 +441,7 @@ function bMatch(m) {
     SIN_DATOS_POS:['b-nopo','~ Sin POS'], SIN_IMPORTE:['b-man','~ Sin Importe'],
     MATCH_ALBARAN_OK:['b-ok','✓ Cuadra con albarán'],
     DIFERENCIA_IMPORTE:['b-disc','✗ Diferencia de importe'],
+    DIFERENCIA_LINEA:['b-disc','✗ Diferencia en una línea'],
     FACTURA_SIN_ALBARAN:['b-nopo','⚠ Sin albarán'],
     ALBARAN_SIN_FACTURAR:['b-alert','⚠ Albarán sin facturar'],
     ANTERIOR_AL_REGISTRO:['b-pen','· Anterior al registro'],
