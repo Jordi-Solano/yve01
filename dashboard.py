@@ -1329,9 +1329,28 @@ def _enrutar_tipo_doc(reg, fname, fpath=None):
         # facturas_procesadas_*.xlsx, que es de donde lee verificador_comisiones.
         ota = reg.get('ota', '?')
         comision = reg.get('comision', 0)
+        _facts_pre = reg.get('facturas') or []
+        # Misma regla de producto que el albaran y el PO: si no ha salido nada
+        # aprovechable NO se dice "✓". Sin nombre de OTA y sin una sola cifra
+        # esto no es una factura de comisiones — antes se guardaba una fila
+        # fantasma "1 factura(s) de ? — €0.00" y salia en verde.
+        def _cifra(v):
+            try:
+                return float(str(v).replace(',', '.')) not in (0.0,)
+            except (TypeError, ValueError):
+                return False
+        _ota_ok = str(ota or '').strip() not in ('', '?', '—', 'None')
+        _hay_cifras = _cifra(comision) or _cifra(reg.get('importe_bruto')) or any(
+            _cifra(f.get('importe_comision')) or _cifra(f.get('importe_bruto'))
+            for f in _facts_pre if isinstance(f, dict))
+        if not _ota_ok and not _hay_cifras:
+            _msg = (f'⚠ {fname}: parece un informe de comisiones de OTA, pero no se ha '
+                    f'podido leer ni la OTA ni ningún importe — revisar manualmente')
+            _marca = 'SKIP'
+            return _msg, _marca, _flags
         try:
             _NFO = 'NO_ENCONTRADO'
-            _facts = reg.get('facturas') or []
+            _facts = _facts_pre
             if _facts:
                 _df_ota = _normalize_cols(pd.DataFrame(_facts), _OTA_COL_MAP)
             else:
@@ -1382,8 +1401,17 @@ def _enrutar_tipo_doc(reg, fname, fpath=None):
         # lado del cruce: sin esto el verificador no sabe que porcentaje deberia
         # haberse aplicado. NO va a facturas: aqui no hay nada devengado.
         ota = reg.get('ota', '?')
+        _tarifas_pre = reg.get('tarifas') or []
+        # Un contrato de OTA SON sus tarifas pactadas: sin ninguna no hay nada
+        # que cruzar despues. Antes decia "0 tarifa(s) pactada(s) de ? guardadas"
+        # en verde, que es un exito con las manos vacias.
+        if not _tarifas_pre and str(ota or '').strip() in ('', '?', '—', 'None'):
+            _msg = (f'⚠ {fname}: parece un contrato de OTA, pero no se ha podido leer '
+                    f'ni la OTA ni ninguna tarifa pactada — revisar manualmente')
+            _marca = 'SKIP'
+            return _msg, _marca, _flags
         try:
-            _tarifas = reg.get('tarifas') or []
+            _tarifas = _tarifas_pre
             if _tarifas:
                 _df_p = _normalize_cols(pd.DataFrame(_tarifas), _PACT_COL_MAP)
             else:
@@ -2213,8 +2241,10 @@ def api_scan_documento():
                 # la pantalla decia 0 y no se toca lo que hoy funciona.
                 items_count = len(_filas) if len(_filas) > 1 else 0
                 mensaje = _resumen_factura_ap(_filas)
+                guardado = True
             else:
                 mensaje = 'factura detectada, pero no se pudo extraer ningún dato — revisar manualmente'
+                guardado = False
             
         elif tipo in ('BEO','TM','CONTRATO'):
             ref_path = os.path.join(_ddir(), 'eventos_referencia.json')
@@ -2237,6 +2267,9 @@ def api_scan_documento():
             items_count = len(datos.get('items',[]))
             n_docs = len([r for r in refs if r.get('evento_key')==evento_key][0].get('documentos',{}))
             mensaje = f'{evento} ({datos.get("cliente","")}) — {items_count} items · {n_docs} docs del evento'
+            # el documento se registra igual, pero sin items ni nombre de evento
+            # no se ha leido nada aprovechable: no puede salir en verde
+            guardado = bool(items_count) or evento_key != fname.lower().strip()[:50]
             
         elif tipo == 'EXTRACTO_BANCO':
             movimientos = datos.get('movimientos', [])
@@ -2249,8 +2282,10 @@ def api_scan_documento():
                 _df_movs.to_excel(banco_path, index=False)
                 items_count = len(movimientos)
                 mensaje = f'{items_count} movimientos bancarios integrados'
+                guardado = True
             else:
                 mensaje = 'Extracto detectado (sin movimientos extraíbles)'
+                guardado = False
                 
         elif tipo == 'VENTAS_POS':
             platos = datos.get('platos', [])
@@ -2267,8 +2302,10 @@ def api_scan_documento():
                 _df_v.to_excel(ventas_path, index=False)
                 items_count = len(platos)
                 mensaje = f'{items_count} platos, €{total} integrados'
+                guardado = True
             else:
                 mensaje = f'Ventas detectadas — €{total}'
+                guardado = False
                 
         elif tipo == 'INVENTARIO':
             inv_items = datos.get('items', datos.get('productos', []))
@@ -2284,8 +2321,10 @@ def api_scan_documento():
                 items_count = len(inv_items)
                 nombres = [str(i.get('ingrediente', '?'))[:15] for i in inv_items[:4]]
                 mensaje = f'{items_count} productos ({", ".join(nombres)}...) integrados'
+                guardado = True
             else:
                 mensaje = 'Inventario detectado (sin items extraíbles)'
+                guardado = False
                 
         elif tipo == 'MERMAS':
             merma_items = datos.get('items', datos.get('mermas', []))
@@ -2299,8 +2338,10 @@ def api_scan_documento():
                 items_count = len(merma_items)
                 total_merma = sum(float(m.get('coste_merma', m.get('coste', 0)) or 0) for m in merma_items)
                 mensaje = f'{items_count} registros — €{total_merma:.2f} integrados'
+                guardado = True
             else:
                 mensaje = 'Mermas detectadas (sin registros extraíbles)'
+                guardado = False
                 
         elif tipo == 'ROOMING':
             grupo = datos.get('grupo', '—')
@@ -2313,6 +2354,9 @@ def api_scan_documento():
                 'checkin': checkin, 'checkout': checkout, 'fecha_procesado': date.today().isoformat()})
             json.dump(rooming_data, open(rooming_path, 'w'), indent=2, ensure_ascii=False)
             mensaje = f'{grupo} — {habs} hab. ({checkin}→{checkout})'
+            # el json se escribe igual, pero un rooming del que no se ha sacado
+            # ni el grupo ni el numero de habitaciones no es un rooming leido
+            guardado = bool(str(grupo).strip() not in ('', '—')) or str(habs).strip() not in ('', '?')
             
         elif tipo in ('COMISIONES_OTA', 'CONTRATO_OTA', 'ALBARAN', 'ORDEN_COMPRA'):
             # Reutiliza el enrutado del pipeline: asi una foto de una factura de
@@ -2329,7 +2373,10 @@ def api_scan_documento():
             mensaje = _m.split(': ', 1)[-1] if ': ' in _m else _m
             items_count = len(datos.get('facturas', datos.get('tarifas',
                                         datos.get('lineas', []))))
-            if tipo in ('ALBARAN', 'ORDEN_COMPRA'):
+            # TODOS los tipos que pasan por el enrutador comun heredan su
+            # veredicto: si volvio SKIP no se guardo nada, y la rama de OTA
+            # cantaba verde igual sobre un SKIP.
+            if True:
                 # Misma honestidad que en el camino de archivos: un albaran del
                 # que no se ha podido leer una sola linea NO puede cantar
                 # "✓ Albaran". El frontend solo miraba 'ok', asi que pintaba
@@ -2339,8 +2386,11 @@ def api_scan_documento():
                 guardado = (_mk != 'SKIP')
             
         else:
+            # tipo sin rama propia (OTRO y los que no tienen destino todavia):
+            # no se guarda nada en ningun sitio, asi que no puede salir verde
             desc = datos.get('descripcion', tipo)
             mensaje = desc
+            guardado = False
         
         return jsonify({'ok': True, 'tipo': tipo, 'mensaje': mensaje,
                         'items': str(items_count) if items_count else None,
