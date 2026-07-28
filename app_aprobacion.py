@@ -51,6 +51,22 @@ def cargar_facturas():
         df = pd.read_excel(excels[0], sheet_name="Detalle")
         df["estado_di"] = NF
 
+    # El hotel elegido manda tambien aqui.
+    #
+    # Este modulo lee el xlsx por su cuenta, con su propio glob, sin pasar por
+    # `almacen_datos` — asi que se saltaba el filtro por hotel entero y
+    # enseñaba las facturas de todo el grupo. Aprobar una factura de otro hotel
+    # desde el panel del tuyo es exactamente lo que la fase 3 venia a evitar.
+    #
+    # Va ANTES del fillna(NF): despues, un `hotel_id` vacio valdria la cadena
+    # "NO_ENCONTRADO" y ya no habria forma de distinguir "sin asignar" de un id
+    # de verdad.
+    try:
+        from almacen_datos import solo_del_hotel_activo as _solo
+        df = _solo(df)
+    except Exception:
+        pass
+
     # Convertir a tipos seguros para JSON
     for col in df.columns:
         df[col] = df[col].fillna(NF).astype(str)

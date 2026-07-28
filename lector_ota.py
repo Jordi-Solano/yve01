@@ -356,6 +356,16 @@ if __name__ == "__main__":
             else:
                 guardar_excel([registro], ruta_excel)
 
+            # El hotel que dice el PAPEL, en una linea que se pueda leer desde
+            # fuera. Quien lanza esto como subproceso —el lote de "Procesar
+            # Archivos"— no tiene otra forma de enterarse, y sin eso no puede
+            # avisar de que has subido la liquidacion de un hotel teniendo
+            # elegido otro. Es informativo: no asigna nada, el hotel lo sigue
+            # decidiendo la sesion.
+            _hdoc = str(registro.get("nombre_hotel") or "").strip()
+            if _hdoc and _hdoc != NF:
+                print(f"HOTEL_DOC: {_hdoc}")
+
             if calidad == "PARCIAL":
                 print(f"FALTAN: {', '.join(faltan)}")
                 print(f"PARCIAL: {os.path.basename(file_path)} guardado con campos incompletos")

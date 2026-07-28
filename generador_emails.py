@@ -43,6 +43,20 @@ CONTACTOS_OTA = {
 
 # ── Carga de reportes ───────────────────────────────────────────────────────
 
+def _solo_hotel(df):
+    """El hotel elegido manda tambien en los emails de reclamacion.
+
+    De estos reportes salen correos que se le mandan a Booking. Reclamar una
+    factura que no es de este hotel no es un fallo de pantalla: es un email
+    equivocado saliendo a un tercero.
+    """
+    try:
+        from almacen_datos import solo_del_hotel_activo as _solo
+        return _solo(df)
+    except Exception:
+        return df
+
+
 def cargar_reporte_di() -> pd.DataFrame:
     """Carga el reporte de doble imposicion mas reciente (hoja Detalle_DI)."""
     excels = sorted(
@@ -56,7 +70,7 @@ def cargar_reporte_di() -> pd.DataFrame:
         )
     ruta = excels[0]
     print(f"  Cargando reporte DI: {os.path.basename(ruta)}")
-    return pd.read_excel(ruta, sheet_name="Detalle_DI")
+    return _solo_hotel(pd.read_excel(ruta, sheet_name="Detalle_DI"))
 
 
 def cargar_reporte_verificacion() -> pd.DataFrame:
@@ -67,7 +81,7 @@ def cargar_reporte_verificacion() -> pd.DataFrame:
     )
     if not excels:
         return pd.DataFrame()
-    return pd.read_excel(excels[0], sheet_name="Detalle")
+    return _solo_hotel(pd.read_excel(excels[0], sheet_name="Detalle"))
 
 
 # ── Helpers ──────────────────────────────────────────────────────────────────

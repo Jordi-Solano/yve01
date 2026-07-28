@@ -252,6 +252,30 @@ def _mismo_hotel(nombre_doc, nombre_asignado):
     return a in b or b in a
 
 
+def _aviso_otro_hotel(nombre_doc):
+    """La coletilla de aviso si el papel nombra un hotel distinto del elegido.
+
+    Devuelve '' cuando todo cuadra o cuando no hay nada que comparar, para
+    poder pegarla al mensaje sin condicionales por todas partes.
+
+    Se le pregunta al CENSO con que hotel encaja el nombre del documento en vez
+    de compararlo solo con el asignado: "Hotel Sol Mar" contiene "Hotel Sol",
+    asi que entre hermanos la comparacion simple se quedaba callada — el error
+    exacto que esto existe para cazar. `_mismo_hotel` se queda como red de
+    seguridad para los nombres que el censo no reconoce.
+    """
+    nombre_doc = str(nombre_doc or "").strip()
+    hid = censo_hoteles.activo()
+    if not hid or not nombre_doc:
+        return ''
+    asignado = censo_hoteles.nombre_de(hid)
+    otro = censo_hoteles.encaje(nombre_doc)
+    if (otro and otro != hid) or (not otro and not _mismo_hotel(nombre_doc, asignado)):
+        return (f' · ⚠ ojo: el documento nombra otro hotel '
+                f'({nombre_doc}) y se ha guardado en {asignado}')
+    return ''
+
+
 def _filtrar_hotel_activo(df, cols=("hotel", "nombre_hotel")):
     """Si hay un hotel activo en sesión y el df tiene columna de hotel, filtra por él.
     Si el df no tiene columna de hotel, se devuelve tal cual (datos de grupo).
@@ -1495,22 +1519,13 @@ def _enrutar_tipo_doc(reg, fname, fpath=None):
             # asignar (una regex sobre un PDF no puede decidir la contabilidad
             # de nadie), pero si para avisar de que quiza te has equivocado de
             # hotel al subirlo.
-            if _hid:
-                _nom_asignado = censo_hoteles.nombre_de(_hid)
-                _nom_doc = ''
-                for _c in ('nombre_hotel',):
-                    if _c in _df_ota.columns and len(_df_ota):
-                        _nom_doc = str(_df_ota[_c].iloc[0] or '')
-                        break
-                # Se pregunta al CENSO con que hotel encaja el nombre del
-                # documento. Comparar solo con el asignado se quedaba callado
-                # entre hermanos: "Hotel Sol Mar" contiene "Hotel Sol", asi que
-                # subir la liquidacion del uno teniendo elegido el otro pasaba
-                # sin aviso — el error que esto existe para cazar.
-                _otro = censo_hoteles.encaje(_nom_doc)
-                if (_otro and _otro != _hid) or (not _otro and not _mismo_hotel(_nom_doc, _nom_asignado)):
-                    _msg += (f' · ⚠ ojo: el documento nombra otro hotel '
-                             f'({_nom_doc.strip()}) y se ha guardado en {_nom_asignado}')
+            # La comparacion vive en `_aviso_otro_hotel`, compartida con la
+            # rama del lote: tener dos copias es como se llego a que este
+            # camino avisara y el otro —el que se usa de verdad— no.
+            _nom_doc = ''
+            if 'nombre_hotel' in _df_ota.columns and len(_df_ota):
+                _nom_doc = str(_df_ota['nombre_hotel'].iloc[0] or '')
+            _msg += _aviso_otro_hotel(_nom_doc)
             _marca = 'AR_OK'
             _flags['has_ar'] = True
         except Exception as _eota:
@@ -2007,16 +2022,25 @@ def api_procesar_batch_stream():
                         # cualquier returncode 0 se cantaba como "✓ OK" aunque
                         # la fila fuera entera NO_ENCONTRADO.
                         _faltan = ''
+                        _hotel_doc = ''
                         for _ln in (r.stdout or '').splitlines():
                             if _ln.startswith('FALTAN:'):
                                 _faltan = _ln.split(':', 1)[1].strip()
+                            elif _ln.startswith('HOTEL_DOC:'):
+                                _hotel_doc = _ln.split(':', 1)[1].strip()
+                        # El aviso de "te has equivocado de hotel" solo existia
+                        # en la rama de escaneo, y este es el camino que se usa
+                        # de verdad: subes la liquidacion de un hotel teniendo
+                        # elegido otro y se guardaba callando. No corrige nada
+                        # —el hotel lo decide la sesion, no el papel—, avisa.
+                        _aviso_hotel = _aviso_otro_hotel(_hotel_doc)
                         if r.returncode == 0:
-                            yield f'data: ✓ AR {fname}: OK\n\n'
+                            yield f'data: ✓ AR {fname}: OK{_aviso_hotel}\n\n'
                             _mark(fname, 'AR_OK')
                             has_ar = True
                         elif r.returncode == 2:
                             _det = f' (faltan: {_faltan})' if _faltan else ''
-                            yield f'data: ⚠ AR {fname}: guardado con campos incompletos{_det} — revisar manualmente\n\n'
+                            yield f'data: ⚠ AR {fname}: guardado con campos incompletos{_det} — revisar manualmente{_aviso_hotel}\n\n'
                             _mark(fname, 'AR_PARCIAL')
                             has_ar = True
                         elif r.returncode == 3:
@@ -3120,16 +3144,15 @@ def _solo_hotel_activo(df):
     Falla en CERRADO: si no hay columna de hotel, con un hotel elegido no se
     devuelve nada. Devolver todo seria repetir el fallo que estamos quitando —
     un filtro que parece filtrar y no filtra.
+
+    El cuerpo vive ahora en `almacen_datos.solo_del_hotel_activo`, porque hay
+    mas paneles que necesitan lo mismo (reclamaciones, aprobar AR,
+    notificaciones, los emails) y tener el criterio repetido en cada uno es
+    justo como se acaba con cuatro respuestas distintas a "que datos son de
+    este hotel". Aqui se queda el nombre, que es el que usan AP y AR.
     """
-    hid = censo_hoteles.activo()
-    if not hid or df is None or getattr(df, "empty", True):
-        return df
-    from almacen_datos import COL_HOTEL as _COLH
-    if _COLH not in df.columns:
-        return df.iloc[0:0].copy()
-    col = df[_COLH].map(lambda v: "" if v is None else str(v).strip())
-    col = col.map(lambda s: "" if s.lower() in ("nan", "none", "nat") else s)
-    return df[col == str(hid)].copy()
+    from almacen_datos import solo_del_hotel_activo as _solo
+    return _solo(df)
 
 
 def cargar_datos_ap():

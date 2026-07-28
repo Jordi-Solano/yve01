@@ -487,6 +487,14 @@ def escanear_alertas():
         if ruta:
             try:
                 df = pd.read_excel(ruta)
+                # Con un hotel elegido, solo alertas suyas. Este modulo tambien
+                # lee el xlsx por su cuenta y se saltaba el filtro: te avisaba
+                # de discrepancias de otro hotel como si fueran del tuyo.
+                try:
+                    from almacen_datos import solo_del_hotel_activo as _solo
+                    df = _solo(df)
+                except Exception:
+                    pass
                 if "estado" in df.columns:
                     disc = df[df["estado"].astype(str).str.upper() == "DISCREPANCIA"]
                     for _, r in disc.iterrows():

@@ -370,15 +370,41 @@ def facturas_ota_para_verificar(procesadas_dir=None):
     return _consolidar(df, _ID_AR), rutas
 
 
-def reporte_verificacion(reportes_dir=None):
+def reporte_verificacion(reportes_dir=None, hotel=None):
     """Informe de verificacion consolidado de TODOS los dias.
 
     Lo consume el panel de reclamaciones OTA: una reclamacion pendiente de ayer
     tiene que seguir viendose hoy.
+
+    El `hotel=` llego tarde: en la fase 1 se lo puse a las siete funciones de
+    documentos y esta se me quedo fuera. Justo esta, que es la que alimenta las
+    reclamaciones, asi que ese panel enseñaba las facturas de TODOS los hoteles
+    a la vez — y un email de reclamacion a Booking salido de ahi podia reclamar
+    una factura que no es de ese hotel.
     """
     _, r = _dirs(None, reportes_dir)
     df, rutas = _leer_etapas([("verificacion_*.xlsx", "reportes")], r, r, hoja="Detalle")
-    return _consolidar(df, _ID_AR)
+    return _filtrar_hotel(_consolidar(df, _ID_AR), hotel)
+
+
+def solo_del_hotel_activo(df):
+    """Deja solo las filas del hotel elegido en la sesion.
+
+    Existe para los consumidores que NO leen por aqui: `app_aprobacion` y
+    compañia globean los xlsx por su cuenta y se saltaban el filtro entero. En
+    vez de repetirles la logica a cada uno —que es como se llega a tener tres
+    versiones distintas de "los datos de este hotel"— se les da esta.
+
+    Falla en CERRADO: con un hotel elegido y sin columna de hotel no se
+    devuelve nada. Devolver todo seria repetir el fallo que estamos quitando,
+    un filtro que parece filtrar y no filtra.
+    """
+    try:
+        import censo_hoteles
+        hid = censo_hoteles.activo()
+    except Exception:
+        return df
+    return _filtrar_hotel(df, hid) if hid else df
 
 
 # ── Banco ─────────────────────────────────────────────────────────────────

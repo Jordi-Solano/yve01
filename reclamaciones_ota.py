@@ -222,7 +222,11 @@ def _discrepancias():
     # que seguir viendose hoy. La lectura vive en almacen_datos.
     try:
         from almacen_datos import reporte_verificacion
-        df = reporte_verificacion(_rdir())
+        # Con un hotel elegido, solo las suyas. Antes se pedia sin hotel y este
+        # panel enseñaba las facturas de todo el grupo estuvieras donde
+        # estuvieras — y de aqui salen los emails de reclamacion.
+        import censo_hoteles as _censo
+        df = reporte_verificacion(_rdir(), hotel=_censo.activo() or None)
     except Exception:
         df = None
     if df is None or df.empty or "estado" not in df.columns:
