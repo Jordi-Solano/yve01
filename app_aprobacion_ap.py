@@ -187,6 +187,17 @@ def api_historial():
     if df.empty or "accion" not in df.columns:
         return jsonify([])
     vigentes = _acciones_por_clave()
+    # La factura entera, para poder desplegarla desde el historial. Se cruza
+    # por clave. Si el fichero ya no la tiene (en Render el disco se borra en
+    # cada despliegue) la entrada sale sin detalle y sin flecha: no hay nada
+    # que enseñar y es mejor decirlo callando que inventar campos vacios.
+    detalle = {}
+    try:
+        for f in facturas_a_lista(cargar_facturas_ap()):
+            if f.get("clave"):
+                detalle[f["clave"]] = f
+    except Exception:
+        detalle = {}
     filas = df.to_dict("records")
     if "fecha_hora" in df.columns:
         filas.sort(key=lambda r: safe_str(r.get("fecha_hora")), reverse=True)
@@ -204,6 +215,8 @@ def api_historial():
             "aprobador":      safe_str(r.get("aprobador")),
             # si despues se rectifico, esta entrada ya no es la que manda
             "vigente":        vigentes.get(k, "") == accion,
+            # None cuando la factura ya no esta: el front no pinta flecha
+            "factura":        detalle.get(k),
         })
     return jsonify(out)
 
@@ -442,7 +455,13 @@ textarea:focus{border-color:var(--acc);outline:none;
   transition:opacity .3s;pointer-events:none;z-index:300;box-shadow:var(--shadow-lift)}
 .toast.on{opacity:1}
 .hist-item{background:var(--s1);border:1px solid var(--s2);border-radius:12px;padding:12px 14px;
-  margin-bottom:8px;display:flex;align-items:center;gap:12px}
+  margin-bottom:8px;display:flex;align-items:center;gap:12px;flex-wrap:wrap}
+/* El desplegable ocupa toda la fila, debajo. Se usa flex-wrap en vez de
+   reestructurar el DOM: la fila de arriba se queda exactamente igual. */
+.hist-det{flex-basis:100%;width:100%;display:none;border-top:1px solid var(--s2);
+  margin-top:10px;padding-top:12px}
+.hist-det.abierta{display:block}
+.hist-det .info-grid{margin-bottom:0}
 .hist-icon{width:34px;height:34px;border-radius:50%;display:flex;align-items:center;
   justify-content:center;font-size:14px;flex-shrink:0}
 .hist-icon.a{background:rgba(34,197,94,.15);color:#4ade80}
@@ -614,8 +633,7 @@ async function loadData() {
         '<div><div class="prov-name">'+txt(r.nombre_proveedor)+'</div><div class="prov-num">'+_num+'</div></div>' +
         '<div class="card-acc">' +
           '<span class="badge '+(r.tipo_proveedor==='FB'?'b-fb':'b-otras')+'">'+txt(r.tipo_proveedor)+'</span>' +
-          (r.accion ? '' :
-            '<button class="chev'+(_ab?' abierta':'')+'" id="chev-'+i+'" onclick="toggleDet('+i+')" title="Ver la factura completa">▼</button>') +
+          '<button class="chev'+(_ab?' abierta':'')+'" id="chev-'+i+'" onclick="toggleDet('+i+')" title="Ver la factura completa">▼</button>' +
         '</div>' +
       '</div>' +
       '<div class="info-grid">' +
@@ -624,7 +642,6 @@ async function loadData() {
         '<div class="ii"><div class="lbl">Matching</div><div class="val">'+bMatch(r.estado_matching)+'</div></div>' +
         '<div class="ii"><div class="lbl">Departamento</div><div class="val">'+txt(r.departamento_po)+'</div></div>' +
       '</div>' +
-      (r.accion ? '' :
       '<div class="detalle'+(_ab?' abierta':'')+'" id="det-'+i+'">' +
         '<div class="info-grid">' +
           '<div class="ii"><div class="lbl">Base imponible</div><div class="val">'+eur(r.base_imponible)+'</div></div>' +
@@ -632,7 +649,7 @@ async function loadData() {
           '<div class="ii det-full"><div class="lbl">Concepto</div><div class="val">'+txt(r.descripcion)+'</div></div>' +
           '<div class="ii det-full"><div class="lbl">Documento de origen</div><div class="val det-arch">'+txt(r.archivo)+'</div></div>' +
         '</div>' +
-      '</div>') +
+      '</div>' +
       (r.cuenta_debe ? '<div class="cuenta-tag">📒 Cuenta ' + r.cuenta_debe + ' — ' + txt(r.estado_asignacion) + '</div>' : '') +
       alertHtml +
       (r.accion ? '<div class="estado-row"><span class="badge '+(r.accion==='APROBADA'?'b-apr':'b-rec')+'">'+(r.accion==='APROBADA'?'✓ ':'✗ ')+r.accion+'</span></div>' : '') +
@@ -696,17 +713,52 @@ async function cargarHist() {
 function renderHist() {
   const el=document.getElementById('hist-list');
   document.getElementById('hist-empty').style.display=historial.length?'none':'';
-  el.innerHTML=historial.map(h=>{
+  el.innerHTML=historial.map((h,i)=>{
     const ap = h.accion==='APROBADA';
     // una entrada rectificada despues deja de ser la que manda: se dice
     const viejo = (h.vigente===false) ? ' <span class="hist-old">rectificada</span>' : '';
+    const f = h.factura;                       // null si la factura ya no esta
+    const ab = _histAbiertas.has(String(i));
+    const flecha = f
+      ? '<button class="chev'+(ab?' abierta':'')+'" id="hchev-'+i+'" onclick="toggleHist('+i+')" title="Ver la factura completa">▼</button>'
+      : '';
+    const det = f
+      ? '<div class="hist-det'+(ab?' abierta':'')+'" id="hdet-'+i+'">' +
+          '<div class="info-grid">' +
+            '<div class="ii"><div class="lbl">Proveedor</div><div class="val">'+txt(f.nombre_proveedor)+'</div></div>' +
+            '<div class="ii"><div class="lbl">NIF del proveedor</div><div class="val">'+txt(f.NIF_proveedor)+'</div></div>' +
+            '<div class="ii"><div class="lbl">Total</div><div class="val">'+eur(f.total_factura)+'</div></div>' +
+            '<div class="ii"><div class="lbl">IVA</div><div class="val">'+eur(f.cuota_iva)+'</div></div>' +
+            '<div class="ii"><div class="lbl">Base imponible</div><div class="val">'+eur(f.base_imponible)+'</div></div>' +
+            '<div class="ii"><div class="lbl">Departamento</div><div class="val">'+txt(f.departamento_po)+'</div></div>' +
+            '<div class="ii det-full"><div class="lbl">Concepto</div><div class="val">'+txt(f.descripcion)+'</div></div>' +
+            (f.cuenta_debe ? '<div class="ii det-full"><div class="lbl">Cuenta contable</div><div class="val">'+txt(f.cuenta_debe)+' — '+txt(f.estado_asignacion)+'</div></div>' : '') +
+            '<div class="ii det-full"><div class="lbl">Documento de origen</div><div class="val det-arch">'+txt(f.archivo)+'</div></div>' +
+          '</div>' +
+        '</div>'
+      : '';
     return '<div class="hist-item'+(h.vigente===false?' pasada':'')+'">' +
       '<div class="hist-icon '+(ap?'a':'r')+'">'+(ap?'✓':'✗')+'</div>' +
       '<div class="hist-info"><div class="n">'+txt(h.numero_factura)+viejo+'</div>' +
         '<div class="d">'+txt(h.fecha_hora)+(h.departamento?' · '+txt(h.departamento):'')+
         (h.comentario?' · '+txt(h.comentario):'')+'</div></div>' +
-      '<span class="hist-accion '+(ap?'a':'r')+'">'+txt(h.accion)+'</span></div>';
+      '<span class="hist-accion '+(ap?'a':'r')+'">'+txt(h.accion)+'</span>' +
+      flecha + det + '</div>';
   }).join('');
+}
+
+// Que entradas del historial estan desplegadas. Aqui SI vale el indice: el
+// historial se vuelve a pintar entero, pero siempre en el mismo orden (lo
+// ordena el servidor por fecha), asi que la posicion no se mueve bajo los pies.
+const _histAbiertas = new Set();
+
+function toggleHist(i) {
+  const det  = document.getElementById('hdet-'+i);
+  const chev = document.getElementById('hchev-'+i);
+  if (!det) return;
+  const abierta = det.classList.toggle('abierta');
+  if (chev) chev.classList.toggle('abierta', abierta);
+  if (abierta) _histAbiertas.add(String(i)); else _histAbiertas.delete(String(i));
 }
 
 function showToast(msg, color) {
