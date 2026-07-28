@@ -90,10 +90,20 @@ _ETAPAS_PO_LIN = [
 
 # Campos que identifican un documento. El PRIMERO es obligatorio: si viene
 # vacio, la fila NO se deduplica (ver _clave_doc).
-_ID_AR = ("numero_factura", "nombre_ota", "periodo_inicio")
-_ID_AP = ("numero_factura", "nombre_proveedor")
-_ID_ALB = ("numero_albaran", "nombre_proveedor")
-_ID_PO = ("numero_po", "nombre_proveedor")
+# ── Separacion por hotel (fase 1) ─────────────────────────────────────────
+# La etiqueta es el ID del hotel (censo_hoteles), nunca su nombre: los nombres
+# se editan, llevan acentos y se parecen entre si.
+COL_HOTEL = "hotel_id"
+# Lo procesado antes de que existiera la etiqueta. NO se reparte entre hoteles
+# a ojo: una factura sin hotel no es "del hotel principal", es una factura de
+# la que no sabemos el hotel, y hay que poder pedirla y verla como tal.
+SIN_ASIGNAR = "sin_asignar"
+
+
+_ID_AR = ("numero_factura", "nombre_ota", "periodo_inicio", COL_HOTEL)
+_ID_AP = ("numero_factura", "nombre_proveedor", COL_HOTEL)
+_ID_ALB = ("numero_albaran", "nombre_proveedor", COL_HOTEL)
+_ID_PO = ("numero_po", "nombre_proveedor", COL_HOTEL)
 
 _VACIOS = ("", "nan", "none", "nat", "<na>", "no_encontrado", "null")
 
@@ -110,6 +120,31 @@ def _txt(v):
     s = "" if v is None else str(v)
     s = " ".join(s.split())
     return "" if s.lower() in _VACIOS else s.lower()
+
+
+def _filtrar_hotel(df, hotel):
+    """Deja solo las filas de un hotel.
+
+      None o ''    -> todo (vista de grupo; el comportamiento de siempre)
+      '<id>'       -> solo ese hotel
+      SIN_ASIGNAR  -> solo lo que no lleva etiqueta
+
+    Cuando la columna todavia no existe en ningun fichero, pedir un hotel
+    concreto no devuelve NADA. Es a proposito: fallar en cerrado. Devolver todo
+    seria repetir el fallo que estamos quitando — un filtro que parece filtrar
+    y no filtra.
+    """
+    if hotel is None or hotel == "" or df is None or getattr(df, "empty", True):
+        return df
+    objetivo = str(hotel).strip()
+    if COL_HOTEL not in df.columns:
+        return df if objetivo == SIN_ASIGNAR else df.iloc[0:0].copy()
+    # .map en Python plano, no el accesor .str (regla 3): con .str los nulos se
+    # propagan y las filas sin etiqueta acabarian compartiendo valor.
+    col = df[COL_HOTEL].map(_txt)
+    if objetivo == SIN_ASIGNAR:
+        return df[col == ""].copy()
+    return df[col == _txt(objetivo)].copy()
 
 
 def _clave_doc(fila, campos_id):
@@ -203,21 +238,21 @@ def _consolidar(df, campos_id):
 
 # ── API publica ───────────────────────────────────────────────────────────
 
-def facturas_ap(procesadas_dir=None, reportes_dir=None):
+def facturas_ap(procesadas_dir=None, reportes_dir=None, hotel=None):
     """Todas las facturas AP del tenant, de TODOS los dias, deduplicadas."""
     p, r = _dirs(procesadas_dir, reportes_dir)
     df, rutas = _leer_etapas(_ETAPAS_AP, p, r)
-    return _consolidar(df, _ID_AP)
+    return _filtrar_hotel(_consolidar(df, _ID_AP), hotel)
 
 
-def facturas_ar(procesadas_dir=None, reportes_dir=None):
+def facturas_ar(procesadas_dir=None, reportes_dir=None, hotel=None):
     """Todas las facturas AR/OTA del tenant, de TODOS los dias, deduplicadas."""
     p, r = _dirs(procesadas_dir, reportes_dir)
     df, rutas = _leer_etapas(_ETAPAS_AR, p, r)
-    return _consolidar(df, _ID_AR)
+    return _filtrar_hotel(_consolidar(df, _ID_AR), hotel)
 
 
-def albaranes(procesadas_dir=None, reportes_dir=None):
+def albaranes(procesadas_dir=None, reportes_dir=None, hotel=None):
     """Cabeceras de TODOS los albaranes del tenant, de TODOS los dias.
 
     Un albaran es una cabecera con N lineas y se guarda en dos hojas
@@ -226,10 +261,10 @@ def albaranes(procesadas_dir=None, reportes_dir=None):
     """
     p, r = _dirs(procesadas_dir, reportes_dir)
     df, _rutas = _leer_etapas(_ETAPAS_ALB, p, r, hoja="Albaranes")
-    return _consolidar(df, _ID_ALB)
+    return _filtrar_hotel(_consolidar(df, _ID_ALB), hotel)
 
 
-def lineas_albaran(procesadas_dir=None, reportes_dir=None):
+def lineas_albaran(procesadas_dir=None, reportes_dir=None, hotel=None):
     """Lineas de TODOS los albaranes, de TODOS los dias.
 
     NO se deduplican por identidad de documento: un albaran puede repetir el
@@ -242,10 +277,10 @@ def lineas_albaran(procesadas_dir=None, reportes_dir=None):
     if df.empty:
         return df
     cols = [c for c in df.columns if c != "_etapa"]
-    return df.drop_duplicates(subset=cols, keep="last").reset_index(drop=True)
+    return _filtrar_hotel(df.drop_duplicates(subset=cols, keep="last").reset_index(drop=True), hotel)
 
 
-def lineas_factura(procesadas_dir=None, reportes_dir=None):
+def lineas_factura(procesadas_dir=None, reportes_dir=None, hotel=None):
     """Lineas de TODAS las facturas AP, de TODOS los dias (Fase 3c).
 
     Igual que `lineas_albaran`: NO se deduplican por identidad de documento —una
@@ -273,10 +308,10 @@ def lineas_factura(procesadas_dir=None, reportes_dir=None):
     if df.empty:
         return df
     cols = [c for c in df.columns if c != "_etapa"]
-    return df.drop_duplicates(subset=cols, keep="last").reset_index(drop=True)
+    return _filtrar_hotel(df.drop_duplicates(subset=cols, keep="last").reset_index(drop=True), hotel)
 
 
-def ordenes_compra(procesadas_dir=None, reportes_dir=None):
+def ordenes_compra(procesadas_dir=None, reportes_dir=None, hotel=None):
     """Ordenes de compra del tenant, de TODOS los dias, deduplicadas (Fase 4a).
 
     Punto UNICO de lectura de POs, decision del usuario: el dia que haya
@@ -295,10 +330,10 @@ def ordenes_compra(procesadas_dir=None, reportes_dir=None):
     # el bug que reproduje en lineas_factura.
     if "numero_po" not in df.columns and "clave" not in df.columns:
         return df.iloc[0:0]
-    return _consolidar(df, _ID_PO)
+    return _filtrar_hotel(_consolidar(df, _ID_PO), hotel)
 
 
-def lineas_po(procesadas_dir=None, reportes_dir=None):
+def lineas_po(procesadas_dir=None, reportes_dir=None, hotel=None):
     """Lineas de TODAS las ordenes de compra, de todos los dias.
 
     Igual que `lineas_albaran` y `lineas_factura`: NO se deduplican por identidad
@@ -321,7 +356,7 @@ def lineas_po(procesadas_dir=None, reportes_dir=None):
     if df.empty:
         return df
     cols = [c for c in df.columns if c != "_etapa"]
-    return df.drop_duplicates(subset=cols, keep="last").reset_index(drop=True)
+    return _filtrar_hotel(df.drop_duplicates(subset=cols, keep="last").reset_index(drop=True), hotel)
 
 
 def facturas_ota_para_verificar(procesadas_dir=None):
