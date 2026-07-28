@@ -217,6 +217,32 @@ def safe_float(val):
     except Exception:
         return 0.0
 
+def _plegar(s):
+    """Texto comparable: sin acentos, sin mayusculas, sin dobles espacios."""
+    import unicodedata
+    s = unicodedata.normalize("NFKD", str(s or ""))
+    s = "".join(c for c in s if not unicodedata.combining(c))
+    return " ".join(s.lower().split())
+
+
+def _mismo_hotel(nombre_doc, nombre_asignado):
+    """Si el hotel que nombra el documento es el que le hemos asignado.
+
+    TOLERANTE a proposito: `nombre_hotel` sale de una expresion regular sobre
+    el PDF de la OTA, asi que llega con mayusculas raras, acentos comidos y
+    coletillas ("HOTEL SOL MAR S.L.", "Hotel Sol Mar - Sitges"). Se pliegan los
+    acentos y basta con que uno contenga al otro. Un aviso que salta cada dos
+    por tres se ignora, y entonces ya no avisa de nada.
+
+    Ante la duda (falta cualquiera de los dos nombres) dice que SI cuadra: no
+    se molesta al usuario con lo que no se sabe.
+    """
+    a, b = _plegar(nombre_doc), _plegar(nombre_asignado)
+    if not a or not b or a in ("no_encontrado", "nan", "none"):
+        return True
+    return a in b or b in a
+
+
 def _filtrar_hotel_activo(df, cols=("hotel", "nombre_hotel")):
     """Si hay un hotel activo en sesión y el df tiene columna de hotel, filtra por él.
     Si el df no tiene columna de hotel, se devuelve tal cual (datos de grupo).
@@ -300,7 +326,10 @@ def cargar_datos():
         if col not in df.columns:
             df[col] = None
 
-    df = _filtrar_hotel_activo(df)
+    # FASE 3: AR filtra por `hotel_id`, igual que AP, y no por el nombre que
+    # venia del PDF. `_filtrar_hotel_activo` se queda solo para AR Real, que
+    # todavia no lleva etiqueta.
+    df = _solo_hotel_activo(df)
     meta = {"ruta": ruta}
     return df, meta
 
@@ -1418,6 +1447,9 @@ def _enrutar_tipo_doc(reg, fname, fpath=None):
                     'importe_comision': comision,
                 }])
             _df_ota['archivo'] = fname
+            # ── El hotel al que pertenece (fase 3) ───────────────────────
+            _hid = censo_hoteles.para_guardar()
+            _df_ota['hotel_id'] = _hid
             if 'nombre_ota' not in _df_ota.columns:
                 _df_ota['nombre_ota'] = ota
             _df_ota['nombre_ota'] = _df_ota['nombre_ota'].astype(object).fillna(ota)
@@ -1439,13 +1471,31 @@ def _enrutar_tipo_doc(reg, fname, fpath=None):
                     _num = _df_ota['numero_factura'].map(
                         lambda v: str(v).strip().lower() not in ('', 'nan', 'none', 'no_encontrado'))
                     _con, _sin = _df_ota[_num], _df_ota[~_num]
-                    _con = _con.drop_duplicates(subset=['archivo', 'numero_factura'], keep='last')
+                    # El hotel entra en la identidad: dos hoteles del mismo
+                    # grupo reciben liquidaciones con el mismo numero de la
+                    # misma OTA, y sin el hotel una borraba a la otra.
+                    _sub = [c for c in ('archivo', 'numero_factura', 'hotel_id') if c in _con.columns]
+                    _con = _con.drop_duplicates(subset=_sub, keep='last')
                     _df_ota = pd.concat([_con, _sin], ignore_index=True)
             os.makedirs(_pdir(), exist_ok=True)
             _df_ota.to_excel(_ota_xlsx, index=False)
             _n_f = len(_facts) if _facts else 1
             _com_txt = f'{float(comision):,.2f}' if isinstance(comision, (int, float)) else str(comision or '—')
             _msg = f'✓ AR {fname}: {_n_f} factura(s) de {ota} — €{_com_txt} en comisiones, guardadas para verificar'
+            # El documento trae su propio nombre de hotel. NO se usa para
+            # asignar (una regex sobre un PDF no puede decidir la contabilidad
+            # de nadie), pero si para avisar de que quiza te has equivocado de
+            # hotel al subirlo.
+            if _hid:
+                _nom_asignado = censo_hoteles.nombre_de(_hid)
+                _nom_doc = ''
+                for _c in ('nombre_hotel',):
+                    if _c in _df_ota.columns and len(_df_ota):
+                        _nom_doc = str(_df_ota[_c].iloc[0] or '')
+                        break
+                if not _mismo_hotel(_nom_doc, _nom_asignado):
+                    _msg += (f' · ⚠ ojo: el documento nombra otro hotel '
+                             f'({_nom_doc.strip()}) y se ha guardado en {_nom_asignado}')
             _marca = 'AR_OK'
             _flags['has_ar'] = True
         except Exception as _eota:
@@ -3041,6 +3091,28 @@ _pipeline_oracle_lock    = threading.Lock()
 FACTURAS_AP_DIR_LEGACY      = os.path.join(BASE_DIR, "facturas-procesadas")
 APROBACIONES_AP_DIR_LEGACY  = os.path.join(BASE_DIR, "aprobaciones")
 
+def _solo_hotel_activo(df):
+    """Deja solo las filas del hotel elegido, cruzando por `hotel_id`.
+
+    Lo usan AP (fase 2) y AR (fase 3). No cruza por NOMBRE: los nombres se
+    editan, llevan acentos y se parecen entre si — con "Hotel Sol" y "Hotel Sol
+    Mar" en el mismo grupo, el primero se llevaba las filas del segundo.
+
+    Falla en CERRADO: si no hay columna de hotel, con un hotel elegido no se
+    devuelve nada. Devolver todo seria repetir el fallo que estamos quitando —
+    un filtro que parece filtrar y no filtra.
+    """
+    hid = censo_hoteles.activo()
+    if not hid or df is None or getattr(df, "empty", True):
+        return df
+    from almacen_datos import COL_HOTEL as _COLH
+    if _COLH not in df.columns:
+        return df.iloc[0:0].copy()
+    col = df[_COLH].map(lambda v: "" if v is None else str(v).strip())
+    col = col.map(lambda s: "" if s.lower() in ("nan", "none", "nat") else s)
+    return df[col == str(hid)].copy()
+
+
 def cargar_datos_ap():
     """Carga facturas AP de TODOS los dias, ya consolidadas.
 
@@ -3063,35 +3135,7 @@ def cargar_datos_ap():
                 df = df.merge(ultimas[["numero_factura","accion","comentario"]], on="numero_factura", how="left")
         except Exception:
             pass
-    # FASE 2: AP ya no se filtra por NOMBRE contra una columna de texto, sino
-    # por `hotel_id` dentro de almacen_datos. `_filtrar_hotel_activo` se queda
-    # para AR y AR Real, que todavia no llevan etiqueta.
-    _hid = censo_hoteles.activo()
-    if not _hid:
-        return df
-    from almacen_datos import COL_HOTEL as _COLH
-    if _COLH not in df.columns:
-        # Todo lo que hay es anterior a la etiqueta. Con un hotel elegido no se
-        # le puede atribuir nada: se devuelve vacio (fallar en cerrado) y el
-        # panel avisa de cuantas quedan sin asignar.
-        return df.iloc[0:0].copy()
-    _col = df[_COLH].map(lambda v: "" if v is None else str(v).strip())
-    _col = _col.map(lambda s: "" if s.lower() in ("nan", "none", "nat") else s)
-    return df[_col == str(_hid)].copy()
-
-
-def contar_ap_sin_asignar():
-    """Cuantas facturas AP no tienen hotel. Para poder DECIRLO en pantalla.
-
-    Sin este numero, elegir un hotel haria desaparecer las facturas antiguas
-    sin ninguna explicacion — que es peor que el problema que estamos
-    arreglando.
-    """
-    try:
-        from almacen_datos import facturas_ap as _fap, SIN_ASIGNAR as _SA
-        return int(len(_fap(_pdir(), _rdir(), hotel=_SA)))
-    except Exception:
-        return 0
+    return _solo_hotel_activo(df)
 
 
 def calcular_stats_ap(df):
@@ -3207,10 +3251,7 @@ def df_ap_a_lista(df):
 @app.route("/api/stats_ap")
 def api_stats_ap():
     df = cargar_datos_ap()
-    _s = calcular_stats_ap(df)
-    _s["hotel_activo"] = censo_hoteles.activo()
-    _s["sin_asignar"] = contar_ap_sin_asignar() if _s["hotel_activo"] else 0
-    return jsonify(_s)
+    return jsonify(calcular_stats_ap(df))
 
 
 @app.route("/api/facturas_ap")
@@ -5225,10 +5266,6 @@ svg.yvi{width:1em;height:1em;vertical-align:-0.125em;flex-shrink:0;display:inlin
           <option value="DISCREPANCIA_PO">Discrepancias</option>
           <option value="ALERTA_CONSUMO">Alertas</option>
         </select></div>
-    <div id="ap-sin-asignar" style="display:none;margin-bottom:14px;padding:10px 14px;border-radius:10px;
-      font-size:12.5px;line-height:1.5;color:var(--mut);
-      background:rgba(var(--acc-r,59),var(--acc-g,130),var(--acc-b,246),.07);
-      border:1px solid rgba(var(--acc-r,59),var(--acc-g,130),var(--acc-b,246),.22)"></div>
     <div class="stats" id="stats-ap-grid">
       <div class="sc hl c-blu"><div class="sc-lbl" data-i18n="ap.totalLabel">Total Facturas AP</div><div class="sc-val" id="ap-total" data-tip="Facturas AP registradas este ciclo">—</div><div class="sc-sub" data-i18n="ap.proveedores">proveedores</div></div>
       <div class="sc"><div class="sc-lbl" data-i18n="ap.importe">Importe Total</div><div class="sc-val" id="ap-importe" data-tip="Importe bruto total de facturas AP" style="font-size:18px;letter-spacing:-.5px">—</div><div class="sc-sub">EUR</div></div>
@@ -8341,6 +8378,7 @@ var _sseFrags = [
   "Rooming ",
   " línea(s)",
   "revisar manualmente",
+  "ojo: el documento nombra otro hotel",
 ];
 var _sseTrans = {
   en: [
@@ -8437,6 +8475,7 @@ var _sseTrans = {
     "Rooming ",
     " line(s)",
     "review manually",
+    "careful: the document names a different hotel",
   ],
   ca: [
   "full de càlcul sense classificar — revisar manualment",
@@ -8532,6 +8571,7 @@ var _sseTrans = {
     "Rooming ",
     " línia/es",
     "revisar-ho manualment",
+    "compte: el document anomena un altre hotel",
   ],
   fr: [
   "feuille de calcul non classée — vérifier manuellement",
@@ -8627,6 +8667,7 @@ var _sseTrans = {
     "Rooming ",
     " ligne(s)",
     "à vérifier manuellement",
+    "attention : le document nomme un autre hôtel",
   ],
   de: [
   "Tabelle nicht klassifiziert — manuell prüfen",
@@ -8722,6 +8763,7 @@ var _sseTrans = {
     "Rooming ",
     " Position(en)",
     "manuell prüfen",
+    "Achtung: das Dokument nennt ein anderes Hotel",
   ],
   it: [
   "foglio di calcolo non classificato — verificare manualmente",
@@ -8817,6 +8859,7 @@ var _sseTrans = {
     "Rooming ",
     " riga/righe",
     "da rivedere manualmente",
+    "attenzione: il documento nomina un altro hotel",
   ],
   pt: [
   "planilha sem classificar — revisar manualmente",
@@ -8912,6 +8955,7 @@ var _sseTrans = {
     "Rooming ",
     " linha(s)",
     "rever manualmente",
+    "atenção: o documento nomeia outro hotel",
   ],
 };
 function _tSSE(txt) {
@@ -12081,19 +12125,6 @@ async function loadAP() {
     if (el('ap-alertas')) el('ap-alertas').textContent = stats.alertas_consumo ?? '—';
     if (el('ap-manual')) el('ap-manual').textContent = stats.manual ?? '—';
     if (el('ap-aprobadas')) el('ap-aprobadas').textContent = stats.aprobadas ?? '—';
-    // Con un hotel elegido, lo procesado ANTES de separar por hotel no se le
-    // puede atribuir a nadie. No se reparte a ojo: se dice cuanto hay.
-    var _sa = el('ap-sin-asignar');
-    if (_sa) {
-      var _n = Number(stats.sin_asignar || 0);
-      if (stats.hotel_activo && _n > 0) {
-        _sa.style.display = '';
-        _sa.textContent = 'ℹ ' + _n + ' ' +
-          t('ap.sinAsignar', 'factura(s) sin hotel asignado — se procesaron antes de separar por hotel y no se cuentan en esta vista. Quita el filtro de hotel para verlas.');
-      } else {
-        _sa.style.display = 'none';
-      }
-    }
     _skelOff(['ap-total','ap-importe','ap-matches','ap-disc','ap-sinpo','ap-aprobadas']);
     setTimeout(() => injectSparklines(AP_SPARKS), 60);
 
