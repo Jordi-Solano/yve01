@@ -177,6 +177,16 @@ PROMPT_CLASIFICACION = """CLASIFICACIÓN — Lee TODO el contenido antes de deci
   condiciones): porcentajes y vigencia, SIN nº de factura ni importes
   facturados → CONTRATO_OTA. Ojo: esto NO es una factura, es lo acordado.
 • Lista de habitaciones/huéspedes de un grupo → ROOMING
+• Orden de compra / pedido / purchase order: lo que el hotel PIDE, ANTES de
+  recibir nada. Lleva número de pedido u orden, suele decir "aprobado por" y a
+  qué departamento se carga, y NO acredita ni entrega ni cobro → ORDEN_COMPRA.
+  OJO: un pedido SE PARECE a un albarán y a una factura (mismo proveedor,
+  fechas, importes, a veces el detalle de artículos) pero NO es ninguno de los
+  dos. Es un COMPROMISO de gasto, no un gasto.
+  Si dudas entre ORDEN_COMPRA y ALBARAN: el pedido no tiene firma de recepción
+  y habla de "pedido"/"orden"/"solicitud"; el albarán habla de lo ENTREGADO.
+  Si dudas entre ORDEN_COMPRA y FACTURA: sin número de factura y sin IVA no es
+  una factura. Un importe "aprobado" o "presupuestado" es de un pedido.
 • Nota de entrega / albarán / delivery note: lo que el proveedor dice que ha
   ENTREGADO, con cantidades por producto y a menudo un hueco para la firma de
   quien lo recibe → ALBARAN.
@@ -206,6 +216,13 @@ FACTURA (VARIAS facturas en el MISMO documento, tipico en una hoja de cálculo c
 una factura por fila. Usa esta forma SOLO si de verdad hay más de una; si hay una
 sola, usa la de arriba):
 {"es_factura":true,"facturas":[{"numero_factura":"X","fecha":"DD/MM/YYYY","nombre_proveedor":"X","NIF_proveedor":"X","descripcion_concepto":"X","base_imponible":0.0,"porcentaje_iva":21,"cuota_iva":0.0,"total_factura":0.0,"moneda":"EUR","lineas":[{"descripcion":"X","cantidad":0.0,"unidad":"kg|ud|l|caja","precio_unitario":0.0,"importe":0.0}]}]}
+
+ORDEN_COMPRA (lo PEDIDO, no lo entregado ni lo cobrado).
+"importe_aprobado" es el total del pedido. "iva_incluido": true SOLO si ese
+importe ya lleva el IVA dentro; si el pedido se aprueba sin IVA —lo normal— pon
+false. Si no se puede saber, omite el campo, NO lo adivines.
+"lineas" solo si el pedido detalla artículos:
+{"tipo_documento":"ORDEN_COMPRA","numero_po":"X","nombre_proveedor":"X","NIF_proveedor":"X","fecha_pedido":"DD/MM/YYYY","departamento":"X","importe_aprobado":0.0,"iva_incluido":false,"moneda":"EUR","estado":"ABIERTO","lineas":[{"descripcion":"X","cantidad":0.0,"unidad":"kg|ud|l|caja","precio_unitario":0.0,"importe":0.0}]}
 
 ALBARAN (una entrada en "lineas" por CADA producto entregado.
 referencia_pedido y referencia_factura solo si el albarán las trae):
@@ -847,6 +864,112 @@ def lineas_factura(datos, fila, nombre):
             "importe":          imp,
         })
     return filas
+
+
+def clave_po(numero, proveedor, archivo=""):
+    """Identidad de un PO. Si el numero viene vacio, la clave incluye el fichero.
+
+    Mismo criterio que `clave_albaran`, y por un motivo equivalente: **fusionar
+    dos pedidos es perder un compromiso de gasto**. Dos pedidos sin numero del
+    mismo proveedor son dos pedidos, no uno.
+    """
+    n = _txt_alb(numero)
+    p = _txt_alb(proveedor)
+    return f"{n}|{p}" if n else f"|{p}|{_txt_alb(archivo)}"
+
+
+def orden_compra_de_respuesta(datos, nombre):
+    """Una ORDEN_COMPRA del clasificador -> (cabecera, lineas). Punto UNICO.
+
+    Clonado de `albaran_de_respuesta` a proposito: un pedido tambien es una
+    cabecera con N lineas y se guarda en dos hojas unidas por `clave`.
+
+    Las LINEAS se guardan pero **el cruce por totales NO las usa**: son para el
+    dia que se haga la comparacion articulo por articulo. Guardarlas ahora sale
+    gratis porque la infraestructura de lineas ya existe, y evita volver a tocar
+    el esquema compartido mas adelante.
+
+    `iva_incluido` es la pieza que evita la trampa del IVA: un pedido se aprueba
+    normalmente SIN IVA y la factura llega CON IVA. Medido antes de escribir
+    esto: comparar el total de la factura contra el importe aprobado marcaba como
+    discrepancia el 100% de las facturas correctas. Si el clasificador no lo
+    dice, se queda en None y quien compare tendra que avisarlo, nunca adivinarlo.
+    """
+    if not isinstance(datos, dict):
+        return {}, []
+    numero = str(datos.get("numero_po") or datos.get("numero_pedido") or "").strip()
+    prov   = str(datos.get("nombre_proveedor") or "").strip()
+    clave  = clave_po(numero, prov, nombre)
+
+    lineas = []
+    for i, ln in enumerate(datos.get("lineas") or []):
+        if not isinstance(ln, dict):
+            continue
+        desc = str(ln.get("descripcion") or "").strip()
+        cant = _safe_float(ln.get("cantidad"))
+        prec = _safe_float(ln.get("precio_unitario"))
+        imp  = _safe_float(ln.get("importe"))
+        if imp is None and cant is not None and prec is not None:
+            imp = round(cant * prec, 2)
+        elif prec is None and imp is not None and cant:
+            prec = round(imp / cant, 4)
+        elif cant is None and imp is not None and prec:
+            cant = round(imp / prec, 3)
+        if not desc and cant is None and imp is None:
+            continue
+        lineas.append({
+            "clave":            clave,
+            "numero_po":        numero,
+            "nombre_proveedor": prov,
+            "n_linea":          i + 1,
+            "descripcion":      desc,
+            "cantidad":         cant,
+            "unidad":           str(ln.get("unidad") or "").strip(),
+            "precio_unitario":  prec,
+            "importe":          imp,
+        })
+
+    importe = _safe_float(datos.get("importe_aprobado"))
+    if importe is None:
+        importe = _safe_float(datos.get("total_pedido") or datos.get("total"))
+    if importe is None and lineas:
+        _sum = [l["importe"] for l in lineas if l["importe"] is not None]
+        importe = round(sum(_sum), 2) if _sum else None
+
+    # tri-estado a proposito: True / False / None ("no se sabe")
+    _iva = datos.get("iva_incluido")
+    iva_incluido = bool(_iva) if isinstance(_iva, bool) else None
+
+    cabecera = {
+        "clave":            clave,
+        "archivo":          nombre,
+        "numero_po":        numero,
+        "nombre_proveedor": prov,
+        "NIF_proveedor":    str(datos.get("NIF_proveedor") or "").strip(),
+        "fecha_pedido":     str(datos.get("fecha_pedido") or datos.get("fecha") or "").strip(),
+        "departamento":     str(datos.get("departamento") or "").strip(),
+        "importe_aprobado": importe,
+        "iva_incluido":     iva_incluido,
+        "moneda":           str(datos.get("moneda") or "EUR").strip(),
+        "estado":           str(datos.get("estado") or "").strip().upper(),
+        "n_lineas":         len(lineas),
+    }
+    return cabecera, lineas
+
+
+def po_tiene_datos(cabecera, lineas):
+    """True si del pedido ha salido algo con lo que se pueda cruzar despues.
+
+    Misma regla de producto que `albaran_tiene_datos` y `_ap_tiene_datos`: si no
+    hay nada aprovechable NO se dice "✓ Orden de compra". Un pedido sirve para
+    cruzar con **numero + proveedor + importe**; las lineas son un extra.
+    """
+    if _txt_alb(cabecera.get("numero_po")) and cabecera.get("importe_aprobado") is not None:
+        return True
+    if _txt_alb(cabecera.get("nombre_proveedor")) and cabecera.get("importe_aprobado") is not None:
+        return True
+    return any((l.get("cantidad") is not None or l.get("importe") is not None)
+               and (l.get("descripcion") or l.get("importe") is not None) for l in lineas)
 
 
 def albaran_de_respuesta(datos, nombre):

@@ -74,11 +74,26 @@ _ETAPAS_FAC_LIN = [
     ("facturas_ap_*.xlsx", "procesadas"),
 ]
 
+# Ordenes de compra (Fase 4a). Hoy solo hay una etapa: lo que entra por el
+# pipeline. Cuando exista el informe del cruce PO-factura ira DELANTE y ganara,
+# igual que matching_albaran_* gana sobre albaranes_*. Su hoja se llama
+# "Ordenes" a proposito para que las dos etapas se lean con la misma hoja.
+_ETAPAS_PO = [
+    ("ordenes_compra_*.xlsx", "procesadas"),
+]
+
+# Las LINEAS del pedido, en su propia lista de etapas por el mismo motivo que
+# _ETAPAS_ALB_LIN y _ETAPAS_FAC_LIN.
+_ETAPAS_PO_LIN = [
+    ("ordenes_compra_*.xlsx", "procesadas"),
+]
+
 # Campos que identifican un documento. El PRIMERO es obligatorio: si viene
 # vacio, la fila NO se deduplica (ver _clave_doc).
 _ID_AR = ("numero_factura", "nombre_ota", "periodo_inicio")
 _ID_AP = ("numero_factura", "nombre_proveedor")
 _ID_ALB = ("numero_albaran", "nombre_proveedor")
+_ID_PO = ("numero_po", "nombre_proveedor")
 
 _VACIOS = ("", "nan", "none", "nat", "<na>", "no_encontrado", "null")
 
@@ -252,6 +267,54 @@ def lineas_factura(procesadas_dir=None, reportes_dir=None):
     # un concepto suelto— `_leer_etapas` cae a leer su PRIMERA hoja, o sea las
     # FACTURAS, y volvian disfrazadas de linea. `n_linea` es la columna que solo
     # tiene una linea de verdad: sin ella, esto no son lineas.
+    if "n_linea" not in df.columns:
+        return df.iloc[0:0]
+    df = df[df["n_linea"].notna()]
+    if df.empty:
+        return df
+    cols = [c for c in df.columns if c != "_etapa"]
+    return df.drop_duplicates(subset=cols, keep="last").reset_index(drop=True)
+
+
+def ordenes_compra(procesadas_dir=None, reportes_dir=None):
+    """Ordenes de compra del tenant, de TODOS los dias, deduplicadas (Fase 4a).
+
+    Punto UNICO de lectura de POs, decision del usuario: el dia que haya
+    persistencia solo se toca este fichero. Va por aqui desde el primer dia por
+    el mismo motivo que los albaranes: **el pedido es ANTERIOR a la factura**,
+    asi que el caso normal sera cruzar una factura de hoy con un pedido de hace
+    semanas. Con el "coge el mas reciente" de siempre, la mitad de los cruces no
+    encontraria nada.
+    """
+    p, r = _dirs(procesadas_dir, reportes_dir)
+    df, _rutas = _leer_etapas(_ETAPAS_PO, p, r, hoja="Ordenes")
+    if df.empty:
+        return df
+    # Un fichero sin hoja "Ordenes" haria que _leer_etapas cayera a su primera
+    # hoja; aqui la primera ES Ordenes, pero se comprueba igual para no repetir
+    # el bug que reproduje en lineas_factura.
+    if "numero_po" not in df.columns and "clave" not in df.columns:
+        return df.iloc[0:0]
+    return _consolidar(df, _ID_PO)
+
+
+def lineas_po(procesadas_dir=None, reportes_dir=None):
+    """Lineas de TODAS las ordenes de compra, de todos los dias.
+
+    Igual que `lineas_albaran` y `lineas_factura`: NO se deduplican por identidad
+    de documento —un pedido puede repetir el mismo producto en dos lineas— solo
+    se quitan los duplicados EXACTOS.
+
+    **El cruce por totales NO usa estas lineas.** Se guardan para el dia que se
+    compare articulo por articulo.
+    """
+    p, r = _dirs(procesadas_dir, reportes_dir)
+    df, _rutas = _leer_etapas(_ETAPAS_PO_LIN, p, r, hoja="Lineas")
+    if df.empty:
+        return df
+    # La guarda que hizo falta en lineas_factura: si el fichero no tiene hoja
+    # "Lineas", _leer_etapas cae a la PRIMERA hoja y los pedidos volverian
+    # disfrazados de linea. `n_linea` es la columna que solo tiene una linea.
     if "n_linea" not in df.columns:
         return df.iloc[0:0]
     df = df[df["n_linea"].notna()]

@@ -661,8 +661,15 @@ _CAB_TIPOS = {
             {'total', 'importe', 'venta', 'ventas', 'revenue', 'precio',
              'unidades', 'cantidad', 'qty', 'units'},
         ],
+        # numero_po / importe_aprobado / orden_compra: una orden de compra NO es
+        # una hoja de ventas. Un fichero llamado "POs_julio.csv" propone F&B
+        # porque "POs" contiene "pos", y sin esto pasaba el guard y metia el
+        # pedido en ventas de restaurante (medido). Ojo: 'orden' y 'pedido' a
+        # secas NO se pueden excluir — una comanda de restaurante las lleva.
         'excluye': {'saldo', 'concepto', 'stock_actual', 'stock_inicial',
-                    'existencias', 'merma', 'habitacion'},
+                    'existencias', 'merma', 'habitacion',
+                    'numero_po', 'importe_aprobado', 'orden_compra',
+                    'purchase_order', 'num_po', 'n_po'},
     },
     'INVENTARIO': {
         'requiere': [
@@ -985,6 +992,63 @@ def _guardar_albaran(cabecera, lineas):
     return len(lineas)
 
 
+_COLS_LINEA_PO = ('clave', 'numero_po', 'nombre_proveedor', 'n_linea',
+                  'descripcion', 'cantidad', 'unidad', 'precio_unitario', 'importe')
+
+
+def _guardar_orden_compra(cabecera, lineas):
+    """Guarda un PO en ordenes_compra_YYYYMMDD.xlsx, en DOS hojas.
+
+    Clonado de `_guardar_albaran` a proposito: mismo problema (una cabecera con
+    N lineas en un Excel plano), misma solucion probada (hojas `Ordenes` y
+    `Lineas` unidas por `clave`, auditables a ojo desde Excel).
+
+    Reprocesar el mismo pedido lo ACTUALIZA y se lleva sus lineas viejas. Si
+    solo se sustituyera la cabecera quedarian lineas huerfanas de una version
+    anterior y el cruce sumaria un compromiso que ya no existe.
+    """
+    ruta = os.path.join(_pdir(), f'ordenes_compra_{date.today().strftime("%Y%m%d")}.xlsx')
+    df_cab = pd.DataFrame([cabecera])
+    df_lin = pd.DataFrame(lineas) if lineas else pd.DataFrame(columns=list(_COLS_LINEA_PO))
+    if os.path.exists(ruta):
+        try:
+            _cab_old = pd.read_excel(ruta, sheet_name='Ordenes')
+        except Exception:
+            _cab_old = pd.DataFrame()
+        try:
+            _lin_old = pd.read_excel(ruta, sheet_name='Lineas')
+        except Exception:
+            _lin_old = pd.DataFrame()
+        _cl = str(cabecera.get('clave', ''))
+        if not _cab_old.empty and 'clave' in _cab_old.columns:
+            _cab_old = _cab_old[_cab_old['clave'].astype(str) != _cl]
+        if not _lin_old.empty and 'clave' in _lin_old.columns:
+            _lin_old = _lin_old[_lin_old['clave'].astype(str) != _cl]
+        if not _cab_old.empty:
+            df_cab = pd.concat([_cab_old, df_cab], ignore_index=True)
+        if not _lin_old.empty:
+            df_lin = pd.concat([_lin_old, df_lin], ignore_index=True)
+    with pd.ExcelWriter(ruta, engine='openpyxl') as _w:
+        df_cab.to_excel(_w, sheet_name='Ordenes', index=False)
+        df_lin.to_excel(_w, sheet_name='Lineas', index=False)
+    return len(lineas)
+
+
+def _resumen_po(cabecera, lineas):
+    """Texto honesto de lo guardado. No promete pantalla: todavia no hay."""
+    num = str(cabecera.get('numero_po') or '').strip() or 's/n'
+    prov = str(cabecera.get('nombre_proveedor') or '').strip() or 'proveedor sin identificar'
+    imp = cabecera.get('importe_aprobado')
+    eur = f' — €{imp:,.2f}' if isinstance(imp, (int, float)) else ''
+    dep = str(cabecera.get('departamento') or '').strip()
+    # el IVA se dice SOLO cuando se sabe: adivinarlo es lo que hace falsos
+    _iva = cabecera.get('iva_incluido')
+    iva = ' (IVA incluido)' if _iva is True else ''
+    extra = f' · {dep}' if dep else ''
+    lin = f' · {len(lineas)} línea(s)' if lineas else ''
+    return f'{num} · {prov}{extra}{lin}{eur}{iva}'
+
+
 def _resumen_albaran(cabecera, lineas):
     """Texto honesto de lo guardado. No promete pantalla: todavia no hay."""
     num = str(cabecera.get('numero_albaran') or '').strip() or 's/n'
@@ -1187,6 +1251,24 @@ def _enrutar_tipo_doc(reg, fname, fpath=None):
             _marca = 'AP_OK'
             _flags['has_ap'] = True
             _flags['ap_n'] = len(_filas)
+    elif _tipo_doc == 'ORDEN_COMPRA':
+        # Un PEDIDO no es una factura por pagar, y esta es la fuga que esta rama
+        # tapa: sin tipo ORDEN_COMPRA lo mas parecido que encontraba el prompt
+        # era FACTURA, asi que el pedido entraba en facturas_ap, se le asignaba
+        # cuenta y acababa esperando aprobacion de PAGO. Se pagaria el pedido Y
+        # luego su factura. Es el mismo agujero que tenia el albaran.
+        # NO marca has_ap, NO lanza el asignador, NO escribe en facturas_ap.
+        from lector_facturas_ap import orden_compra_de_respuesta, po_tiene_datos
+        _cab_po, _lin_po = orden_compra_de_respuesta(reg, fname)
+        if not po_tiene_datos(_cab_po, _lin_po):
+            _msg = (f'⚠ {fname}: parece una orden de compra, pero no se ha podido '
+                    f'extraer ni proveedor ni importe — revisar manualmente')
+            _marca = 'SKIP'
+        else:
+            _guardar_orden_compra(_cab_po, _lin_po)
+            _msg = f'✓ Orden de compra {_resumen_po(_cab_po, _lin_po)}'
+            _marca = 'PO_OK'
+            _flags['orden_compra'] = True
     elif _tipo_doc == 'ALBARAN':
         # Una nota de entrega NO es una factura por pagar. Antes el prompt no
         # sabia que existia el albaran, asi que el mas parecido que encontraba
@@ -1987,6 +2069,7 @@ def api_procesar_batch_stream():
             inv_n = sum(1 for v in lote.values() if v.get('resultado') == 'INV_OK')
             rooming_n = sum(1 for v in lote.values() if v.get('resultado') == 'ROOMING')
             alb_n = sum(1 for v in lote.values() if v.get('resultado') == 'ALBARAN_OK')
+            po_n = sum(1 for v in lote.values() if v.get('resultado') == 'PO_OK')
             skip_n = sum(1 for v in lote.values() if 'SKIP' in str(v.get('resultado','')))
             err_n = sum(1 for v in lote.values() if 'ERR' in str(v.get('resultado','')) or 'CRASH' in str(v.get('resultado','')))
             parts = []
@@ -2001,6 +2084,7 @@ def api_procesar_batch_stream():
             if fb_n: parts.append(f'{fb_n} F&B')
             if inv_n: parts.append(f'{inv_n} inventario/mermas')
             if alb_n: parts.append(f'{alb_n} albaranes')
+            if po_n: parts.append(f'{po_n} órdenes de compra')
             rooming_nl_n = sum(1 for v in lote.values() if v.get('resultado') == 'ROOMING_NO_LEIDO')
             if rooming_n: parts.append(f'{rooming_n} rooming')
             if rooming_nl_n: parts.append(f'{rooming_nl_n} rooming sin leer')
@@ -2024,7 +2108,7 @@ def api_procesar_batch_stream():
             # Rooming y documentos de evento se guardan, pero NO hay pantalla
             # donde consultarlos. Antes salian en "Consulta:" mandando a
             # pestañas que no existen; ahora se dice lo que hay.
-            _sin_pantalla = rooming_n + beo_n + alb_n
+            _sin_pantalla = rooming_n + beo_n + alb_n + po_n
             if _sin_pantalla:
                 yield (f'data: ℹ {_sin_pantalla} documento(s) guardado(s) para cruces internos — '
                        f'todavia no hay pantalla donde consultarlos\n\n')
@@ -2230,7 +2314,7 @@ def api_scan_documento():
             json.dump(rooming_data, open(rooming_path, 'w'), indent=2, ensure_ascii=False)
             mensaje = f'{grupo} — {habs} hab. ({checkin}→{checkout})'
             
-        elif tipo in ('COMISIONES_OTA', 'CONTRATO_OTA', 'ALBARAN'):
+        elif tipo in ('COMISIONES_OTA', 'CONTRATO_OTA', 'ALBARAN', 'ORDEN_COMPRA'):
             # Reutiliza el enrutado del pipeline: asi una foto de una factura de
             # comisiones, de un contrato con tarifas pactadas o de un ALBARAN
             # aterriza en el mismo sitio que su equivalente en PDF (y GUARDA,
@@ -2245,11 +2329,13 @@ def api_scan_documento():
             mensaje = _m.split(': ', 1)[-1] if ': ' in _m else _m
             items_count = len(datos.get('facturas', datos.get('tarifas',
                                         datos.get('lineas', []))))
-            if tipo == 'ALBARAN':
+            if tipo in ('ALBARAN', 'ORDEN_COMPRA'):
                 # Misma honestidad que en el camino de archivos: un albaran del
                 # que no se ha podido leer una sola linea NO puede cantar
                 # "✓ Albaran". El frontend solo miraba 'ok', asi que pintaba
                 # verde igualmente; ahora se le dice si se guardo algo.
+                # Igual con el pedido: una foto de una orden de compra sin
+                # proveedor ni importe no puede salir en verde.
                 guardado = (_mk != 'SKIP')
             
         else:
@@ -2563,6 +2649,7 @@ def api_historial_procesado():
         # una pestaña que no existe es mandar al usuario a buscar algo que no
         # esta: se dice lo que hay.
         elif resultado in ('ALBARAN_OK',): tab = 'Albarán (sin pantalla)'
+        elif resultado in ('PO_OK',): tab = 'Orden de compra (sin pantalla)'
         elif resultado in ('ROOMING',): tab = 'Rooming (sin pantalla)'
         elif resultado in ('ROOMING_NO_LEIDO',): tab = 'Rooming (no leído)'
         elif resultado in ('BEO_OK',): tab = 'Evento BEO (sin pantalla)'
