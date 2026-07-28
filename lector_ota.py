@@ -225,7 +225,11 @@ def guardar_excel(registros: list, ruta_salida: str):
     ]
     # Solo incluir columnas que existan
     columnas_orden = [c for c in columnas_orden if c in df.columns]
-    df = df[columnas_orden]
+    # Y las que NO estan en la lista, DETRAS en vez de tirarlas. Esta linea se
+    # comia `hotel_id` en silencio: el registro lo llevaba, el Excel no. Una
+    # lista blanca de columnas es una trampa cada vez que se añade un campo.
+    extras = [c for c in df.columns if c not in columnas_orden]
+    df = df[columnas_orden + extras]
 
     with pd.ExcelWriter(ruta_salida, engine="openpyxl") as writer:
         df.to_excel(writer, index=False, sheet_name="Facturas_OTA")
