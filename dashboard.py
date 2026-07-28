@@ -1660,7 +1660,12 @@ def api_procesar_batch_stream():
                     from lector_contratos_grupo import procesar_contrato_grupo as _pcg
                     _cpaths = [os.path.join(_edir(), a) for a in imgs if os.path.exists(os.path.join(_edir(), a))]
                     _contrato_res = _pcg(_cpaths)
-                    if not _contrato_res.get('ok') and 'no parecen un contrato' in str(_contrato_res.get('error', '')):
+                    # Se mira la MARCA, no el texto del error: fiarse de una
+                    # frase concreta deja fuera cualquier motivo nuevo (paso con
+                    # el contrato del que no se lee ningun dato aprovechable).
+                    if not _contrato_res.get('ok') and (
+                            _contrato_res.get('reprocesar')
+                            or 'no parecen un contrato' in str(_contrato_res.get('error', ''))):
                         yield 'data: >> No es un contrato — proceso las fotos como documentos individuales\n\n'
                         docs = docs + imgs
                         _contrato_res = None

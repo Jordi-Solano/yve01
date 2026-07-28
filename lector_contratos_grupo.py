@@ -388,9 +388,30 @@ def procesar_contrato_grupo(image_paths, datos_dir=None, guardar_datos=True):
         return {"ok": False, "needs_review": True, "error": datos.get("_error", ""),
                 "message": "No se pudo extraer automáticamente; guardado para revisión manual."}
     if datos.get("es_contrato_grupo") is False:
-        return {"ok": False, "needs_review": True, "error": "las fotos no parecen un contrato de grupo",
+        return {"ok": False, "needs_review": True, "reprocesar": True,
+                "error": "las fotos no parecen un contrato de grupo",
                 "message": "Las imágenes no parecen un contrato de grupo/BEO."}
+    # `is False` solo caza el NO explicito: si la IA no devuelve el campo, `None
+    # is False` es falso y pasaba de largo. Y aunque diga que si, un contrato de
+    # grupo SON sus habitaciones, sus servicios y sus importes: sin nada de eso
+    # se cantaba "✓ Contrato · 0,00 €", que es un exito con las manos vacias.
+    # Misma regla de producto que `albaran_tiene_datos` y `po_tiene_datos`.
     t = transformar(datos)
+    _r = t.get("resumen", {}) or {}
+    _hay_dinero = any(_f(_r.get(k)) for k in ("total_receivable", "habitaciones", "fb", "salas"))
+    _aloj = datos.get("alojamiento", {}) or {}
+    _hay_estancia = bool(_f(_aloj.get("habitaciones")) or _f(_aloj.get("noches")))
+    _hay_nombre = bool(str(_r.get("contrato") or "").strip()
+                       or str(_r.get("evento") or "").strip()
+                       or (str(_r.get("cliente") or "").strip() not in ("", "Cliente grupo")))
+    if not (_hay_dinero or _hay_estancia) and not _hay_nombre:
+        # `reprocesar`: si no es un contrato aprovechable, que las fotos tengan una
+        # segunda oportunidad como documentos sueltos — pueden ser un albaran o
+        # una factura. Es lo que ya hacia el caso "no parecen un contrato".
+        return {"ok": False, "needs_review": True, "reprocesar": True,
+                "error": "no se ha podido leer ni importe, ni habitaciones, ni el nombre del contrato",
+                "message": "Parece un contrato de grupo, pero no se ha extraído ningún dato "
+                           "aprovechable — revisar manualmente."}
     beo = generar_beo(datos, t)
     r_dist = {}
     if guardar_datos:
