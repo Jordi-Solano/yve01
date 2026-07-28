@@ -4270,9 +4270,9 @@ body::before{
 .nav-mid{flex:1}
 .nav-right{display:flex;align-items:center;gap:10px;flex-shrink:0}
 .pill{font-size:11px;color:var(--mut);background:rgba(255,255,255,.04);border:1px solid rgba(255,255,255,.07);padding:4px 12px;border-radius:20px;white-space:nowrap;letter-spacing:.2px}
-.btn-ref{background:none;border:1px solid var(--s2);color:var(--mut);padding:6px 12px;border-radius:8px;font-size:12px;cursor:pointer;transition:.15s;white-space:nowrap}
+.btn-ref{background:none;border:1px solid var(--s2);color:var(--mut);padding:6px 12px;border-radius:8px;font-size:12px;cursor:pointer;transition:background-color .15s,border-color .15s,color .15s,box-shadow .15s,transform .15s,opacity .15s;white-space:nowrap}
 .btn-ref:hover{border-color:var(--acc);color:var(--acc2)}
-.btn-run{background:linear-gradient(135deg,rgba(var(--acc-r,59),var(--acc-g,130),var(--acc-b,246),.18),rgba(var(--acc-r,59),var(--acc-g,130),var(--acc-b,246),.10));color:var(--acc2);border:1px solid rgba(var(--acc-r,59),var(--acc-g,130),var(--acc-b,246),.4);padding:9px 18px;border-radius:9px;font-size:13px;font-weight:700;cursor:pointer;display:flex;align-items:center;gap:8px;white-space:nowrap;transition:.15s}
+.btn-run{background:linear-gradient(135deg,rgba(var(--acc-r,59),var(--acc-g,130),var(--acc-b,246),.18),rgba(var(--acc-r,59),var(--acc-g,130),var(--acc-b,246),.10));color:var(--acc2);border:1px solid rgba(var(--acc-r,59),var(--acc-g,130),var(--acc-b,246),.4);padding:9px 18px;border-radius:9px;font-size:13px;font-weight:700;cursor:pointer;display:flex;align-items:center;gap:8px;white-space:nowrap;transition:background-color .15s,border-color .15s,color .15s,box-shadow .15s,transform .15s,opacity .15s}
 .btn-run:hover{background:linear-gradient(135deg,rgba(var(--acc-r,59),var(--acc-g,130),var(--acc-b,246),.30),rgba(var(--acc-r,59),var(--acc-g,130),var(--acc-b,246),.18));border-color:rgba(var(--acc-r,59),var(--acc-g,130),var(--acc-b,246),.7)}
 .btn-run:disabled{opacity:.5;cursor:not-allowed;transform:none;box-shadow:none}
 @media(max-width:640px){
@@ -4393,7 +4393,7 @@ body::before{
   .tab-btn span{display:none}
   .tab-btn{font-size:16px;padding:8px}
 }
-.sc{background:var(--s1);border:1px solid var(--s2);border-radius:14px;padding:18px 16px;transition:.2s}
+.sc{background:var(--s1);border:1px solid var(--s2);border-radius:14px;padding:18px 16px;transition:background-color .2s,border-color .2s,color .2s,box-shadow .2s,transform .2s,opacity .2s}
 .sc:hover{border-color:var(--s3);transform:translateY(-1px)}
 .sc.hl{border-color:rgba(var(--acc-r,59),var(--acc-g,130),var(--acc-b,246),.4);background:rgba(var(--acc-r,59),var(--acc-g,130),var(--acc-b,246),.05)}
 .sc-lbl{font-size:10px;color:var(--mut);text-transform:uppercase;letter-spacing:.6px;margin-bottom:10px}
@@ -4471,7 +4471,7 @@ tr:hover td{background:rgba(255,255,255,.025)}
 .log p{margin:0}
 .l-ok{color:#4ade80}@keyframes pulse-green{0%,100%{box-shadow:0 0 4px rgba(34,197,94,.4)}50%{box-shadow:0 0 12px rgba(34,197,94,.8)}}.l-err{color:#f87171}.l-info{color:var(--acc2);font-weight:700}.l-warn{color:#facc15}.l-dim{color:#475569}
 .modal-f{margin-top:16px;display:flex;justify-content:flex-end;gap:10px}
-.btn-cl{background:var(--s2);color:var(--tx);border:none;padding:9px 20px;border-radius:9px;font-size:13px;font-weight:600;cursor:pointer;transition:.15s}
+.btn-cl{background:var(--s2);color:var(--tx);border:none;padding:9px 20px;border-radius:9px;font-size:13px;font-weight:600;cursor:pointer;transition:background-color .15s,border-color .15s,color .15s,box-shadow .15s,transform .15s,opacity .15s}
 .btn-cl:hover:not(:disabled){background:var(--s3)}
 .btn-cl:disabled{opacity:.35;cursor:not-allowed}
 
@@ -4493,7 +4493,7 @@ tr:hover td{background:rgba(255,255,255,.025)}
 .tabs{display:flex;gap:2px;margin-bottom:24px;border-bottom:1px solid var(--s2);padding-bottom:0;overflow-x:auto}
 .tabs::-webkit-scrollbar{height:3px}
 .tabs::-webkit-scrollbar-thumb{background:var(--s3);border-radius:2px}
-.tab{padding:10px 18px;background:none;border:none;color:var(--mut);cursor:pointer;font-size:.85rem;font-weight:600;border-bottom:2px solid transparent;transition:.18s;white-space:nowrap}
+.tab{padding:10px 18px;background:none;border:none;color:var(--mut);cursor:pointer;font-size:.85rem;font-weight:600;border-bottom:2px solid transparent;transition:background-color .18s,border-color .18s,color .18s,box-shadow .18s,transform .18s,opacity .18s;white-space:nowrap}
 .tab:hover{color:var(--tx)}
 .tab.active{color:var(--acc2);border-bottom-color:var(--acc)}
 .panel{display:none}.panel.active{display:block;animation:fadeIn .18s ease}
@@ -4519,7 +4519,7 @@ tr:hover td{background:rgba(255,255,255,.025)}
   color:#fff;border:none;border-radius:50px;
   padding:13px 20px 13px 16px;cursor:pointer;
   font-size:.9rem;font-weight:700;
-  box-shadow:0 4px 20px rgba(124,58,237,.5);transition:.2s;
+  box-shadow:0 4px 20px rgba(124,58,237,.5);transition:background-color .2s,border-color .2s,color .2s,box-shadow .2s,transform .2s,opacity .2s;
 }
 #chat-fab:hover{transform:translateY(-2px);box-shadow:0 8px 32px rgba(124,58,237,.6)}
 #chat-fab .fab-dot{
@@ -4562,7 +4562,7 @@ tr:hover td{background:rgba(255,255,255,.025)}
   background:rgba(255,255,255,.06);border:1px solid rgba(255,255,255,.1);
   color:#94a3b8;width:34px;height:34px;border-radius:50%;
   cursor:pointer;font-size:1.1rem;display:flex;align-items:center;justify-content:center;
-  transition:.15s;flex-shrink:0;
+  transition:background-color .15s,border-color .15s,color .15s,box-shadow .15s,transform .15s,opacity .15s;flex-shrink:0;
 }
 #chat-close:hover{background:rgba(239,68,68,.15);border-color:rgba(239,68,68,.3);color:#f87171}
 
@@ -4589,7 +4589,7 @@ tr:hover td{background:rgba(255,255,255,.025)}
 .sug{
   background:rgba(var(--acc-r,59),var(--acc-g,130),var(--acc-b,246),.1);border:1px solid rgba(var(--acc-r,59),var(--acc-g,130),var(--acc-b,246),.2);
   color:var(--acc3);border-radius:20px;padding:7px 13px;font-size:.78rem;
-  cursor:pointer;transition:.15s;white-space:nowrap;font-weight:500;
+  cursor:pointer;transition:background-color .15s,border-color .15s,color .15s,box-shadow .15s,transform .15s,opacity .15s;white-space:nowrap;font-weight:500;
 }
 .sug:hover{background:rgba(var(--acc-r,59),var(--acc-g,130),var(--acc-b,246),.2);border-color:rgba(var(--acc-r,59),var(--acc-g,130),var(--acc-b,246),.4)}
 
@@ -4601,7 +4601,7 @@ tr:hover td{background:rgba(255,255,255,.025)}
 #chat-input{
   flex:1;background:var(--s1);border:1px solid var(--s2);color:#f1f5f9;
   border-radius:20px;padding:11px 16px;font-size:.9rem;outline:none;
-  resize:none;font-family:inherit;transition:.15s;max-height:120px;
+  resize:none;font-family:inherit;transition:background-color .15s,border-color .15s,color .15s,box-shadow .15s,transform .15s,opacity .15s;max-height:120px;
   line-height:1.5;
 }
 #chat-input:focus{border-color:var(--acc2);box-shadow:0 0 0 2px rgba(var(--acc-r,96),var(--acc-g,165),var(--acc-b,250),.12)}
@@ -4609,7 +4609,7 @@ tr:hover td{background:rgba(255,255,255,.025)}
 #chat-send{
   background:linear-gradient(135deg,#7c3aed,var(--acc));border:none;
   color:#fff;border-radius:50%;width:42px;height:42px;cursor:pointer;
-  font-size:1.1rem;flex-shrink:0;transition:.15s;
+  font-size:1.1rem;flex-shrink:0;transition:background-color .15s,border-color .15s,color .15s,box-shadow .15s,transform .15s,opacity .15s;
   display:flex;align-items:center;justify-content:center;
 }
 #chat-send:hover{transform:scale(1.08)}
@@ -4625,7 +4625,7 @@ tr:hover td{background:rgba(255,255,255,.025)}
 .drr-mc .mc-row{display:flex;justify-content:space-between;font-size:.8rem;padding:3px 0}
 .drr-mc .mc-row .mc-k{color:var(--dim)}.drr-mc .mc-row .mc-v{color:var(--tx);font-weight:700}
 .drr-upload{display:flex;align-items:center;gap:14px;margin-bottom:22px;flex-wrap:wrap}
-.drr-upload label{margin:0;padding:10px 18px;background:linear-gradient(135deg,var(--acc),var(--acc-dark));color:#fff;border-radius:9px;font-size:13px;font-weight:700;cursor:pointer;transition:.15s;white-space:nowrap}
+.drr-upload label{margin:0;padding:10px 18px;background:linear-gradient(135deg,var(--acc),var(--acc-dark));color:#fff;border-radius:9px;font-size:13px;font-weight:700;cursor:pointer;transition:background-color .15s,border-color .15s,color .15s,box-shadow .15s,transform .15s,opacity .15s;white-space:nowrap}
 .drr-upload label:hover{box-shadow:0 0 20px rgba(var(--acc-r,59),var(--acc-g,130),var(--acc-b,246),.4)}
 .drr-upload .drr-status{font-size:.8rem;color:var(--dim)}
 .drr-days{display:grid;grid-template-columns:repeat(auto-fill,minmax(80px,1fr));gap:6px;margin-bottom:22px}
@@ -4679,7 +4679,7 @@ tr:hover td{background:rgba(255,255,255,.025)}
 }
 
 /* ── F&B Sub-tabs ─────────────────────────────────── */
-.fb-sub{background:none;border:none;color:var(--mut);padding:7px 14px;border-radius:7px;cursor:pointer;font-size:13px;font-weight:500;font-family:inherit;transition:.15s;white-space:nowrap}
+.fb-sub{background:none;border:none;color:var(--mut);padding:7px 14px;border-radius:7px;cursor:pointer;font-size:13px;font-weight:500;font-family:inherit;transition:background-color .15s,border-color .15s,color .15s,box-shadow .15s,transform .15s,opacity .15s;white-space:nowrap}
 .fb-sub:hover{color:var(--tx)}
 .fb-sub.active{background:var(--s2);color:var(--tx);font-weight:600}
 .stock-bar{height:8px;border-radius:4px;background:var(--s2);overflow:hidden;margin-top:4px}
@@ -5174,7 +5174,7 @@ svg.yvi{width:1em;height:1em;vertical-align:-0.125em;flex-shrink:0;display:inlin
     <!-- KPI Metrics -->
     <div class="drr-metrics" id="drr-metrics" style="display:grid;grid-template-columns:repeat(auto-fit,minmax(140px,1fr));gap:10px;margin-bottom:12px">
       <div class="empty" id="drr-drop-zone" 
-    style="border:2px dashed var(--s3);border-radius:12px;padding:32px;cursor:pointer;transition:.2s"
+    style="border:2px dashed var(--s3);border-radius:12px;padding:32px;cursor:pointer;transition:background-color .2s,border-color .2s,color .2s,box-shadow .2s,transform .2s,opacity .2s"
     ondragover="event.preventDefault();this.style.borderColor='var(--acc)';this.style.background='rgba(var(--acc-r,59),var(--acc-g,130),var(--acc-b,246),.05)'"
     ondragleave="this.style.borderColor='var(--s3)';this.style.background=''"
     ondrop="event.preventDefault();this.style.borderColor='var(--s3)';this.style.background='';uploadDRR({files:event.dataTransfer.files})"
@@ -5458,8 +5458,8 @@ svg.yvi{width:1em;height:1em;vertical-align:-0.125em;flex-shrink:0;display:inlin
       </div>
         <!-- Perspectiva toggle -->
         <div style="display:inline-flex;background:var(--s1);border:1px solid var(--s2);border-radius:9px;padding:3px;gap:2px">
-          <button id="mh-view-cards" onclick="setMHView('cards')" style="background:var(--acc2);color:#fff;border:none;padding:6px 13px;border-radius:6px;font-size:12px;cursor:pointer;font-weight:500;transition:.15s">📊 Resumen</button>
-          <button id="mh-view-ranking" onclick="setMHView('ranking')" style="background:transparent;color:var(--mut);border:none;padding:6px 13px;border-radius:6px;font-size:12px;cursor:pointer;font-weight:500;transition:.15s">🏆 Ranking</button>
+          <button id="mh-view-cards" onclick="setMHView('cards')" style="background:var(--acc2);color:#fff;border:none;padding:6px 13px;border-radius:6px;font-size:12px;cursor:pointer;font-weight:500;transition:background-color .15s,border-color .15s,color .15s,box-shadow .15s,transform .15s,opacity .15s">📊 Resumen</button>
+          <button id="mh-view-ranking" onclick="setMHView('ranking')" style="background:transparent;color:var(--mut);border:none;padding:6px 13px;border-radius:6px;font-size:12px;cursor:pointer;font-weight:500;transition:background-color .15s,border-color .15s,color .15s,box-shadow .15s,transform .15s,opacity .15s">🏆 Ranking</button>
         </div>
         <a href="/api/exportar/multihotel" class="btn-ref" style="text-decoration:none;font-size:12px">⬇️ Excel</a>
       </div>
@@ -5555,7 +5555,7 @@ Gestoría Nord: Hotel Pirineus, Hotel Vall" style="width:100%;background:var(--b
          ondragover="event.preventDefault();this.style.borderColor='var(--acc)';this.style.background='rgba(var(--acc-r,59),var(--acc-g,130),var(--acc-b,246),.08)'"
          ondragleave="this.style.borderColor='var(--s3)';this.style.background=''"
          ondrop="handleUploadDrop(event)"
-         style="border:2px dashed var(--s3);border-radius:14px;padding:32px;text-align:center;cursor:pointer;transition:.2s;margin-bottom:16px">
+         style="border:2px dashed var(--s3);border-radius:14px;padding:32px;text-align:center;cursor:pointer;transition:background-color .2s,border-color .2s,color .2s,box-shadow .2s,transform .2s,opacity .2s;margin-bottom:16px">
       <div style="font-size:36px;margin-bottom:10px">📂</div>
       <div style="font-size:15px;font-weight:600;color:var(--tx);margin-bottom:6px">Arrastra archivos aquí o haz clic</div>
       <div style="font-size:12px;color:var(--dim);margin-bottom:14px">PDF · Excel · CSV · Fotos — clasificación automática</div>
@@ -5588,7 +5588,7 @@ Gestoría Nord: Hotel Pirineus, Hotel Vall" style="width:100%;background:var(--b
       <div style="display:flex;gap:10px;margin-left:auto">
         <button onclick="closeUploadModal()" class="btn-ref">Cancelar</button>
         <button id="btn-upload-procesar" onclick="uploadAndProcess()" disabled
-                style="background:var(--acc);border:none;color:#fff;padding:10px 22px;border-radius:10px;font-size:14px;font-weight:700;cursor:not-allowed;opacity:.4;transition:.2s">
+                style="background:var(--acc);border:none;color:#fff;padding:10px 22px;border-radius:10px;font-size:14px;font-weight:700;cursor:not-allowed;opacity:.4;transition:background-color .2s,border-color .2s,color .2s,box-shadow .2s,transform .2s,opacity .2s">
           ⚡ Procesar archivos nuevos
         </button>
       </div>
@@ -8805,7 +8805,7 @@ function _cpSwatch(id, c, cur) {
   var sel = cur === c;
   // Usamos data attributes en vez de onclick inline para evitar conflictos de comillas
   return '<div class="cp-swatch" data-cpid="' + id + '" data-cpc="' + c + '" ' +
-    'style="width:24px;height:24px;border-radius:50%;background:' + c + ';cursor:pointer;flex-shrink:0;transition:.12s;' +
+    'style="width:24px;height:24px;border-radius:50%;background:' + c + ';cursor:pointer;flex-shrink:0;transition:background-color .12s,border-color .12s,color .12s,box-shadow .12s,transform .12s,opacity .12s;' +
     'box-shadow:0 0 0 ' + (sel ? '3px' : '0px') + ' #0f172a, 0 0 0 ' + (sel ? '5px' : '0px') + ' #fff' +
     (sel ? ', 0 0 8px 2px ' + c : '') + '"></div>';
 }
@@ -8897,9 +8897,9 @@ function _openColorPicker() {
         '<label style="display:flex;align-items:center;gap:10px;cursor:pointer;user-select:none">' +
           '<div onclick="_toggleHlAll()" id="cp-hlall-track" style="position:relative;width:40px;height:22px;' +
             'background:'+ (_customColors.hlAll ? 'var(--acc)' : 'var(--s3)') +';' +
-            'border-radius:11px;transition:.2s;flex-shrink:0">' +
+            'border-radius:11px;transition:background-color .2s,border-color .2s,color .2s,box-shadow .2s,transform .2s,opacity .2s;flex-shrink:0">' +
             '<div id="cp-hlall-thumb" style="position:absolute;top:3px;left:'+ (_customColors.hlAll ? '21px' : '3px') +';' +
-              'width:16px;height:16px;background:#fff;border-radius:50%;transition:.2s"></div>' +
+              'width:16px;height:16px;background:#fff;border-radius:50%;transition:background-color .2s,border-color .2s,color .2s,box-shadow .2s,transform .2s,opacity .2s"></div>' +
           '</div>' +
           '<div>' +
             '<div style="font-size:12px;font-weight:600">Acento en todos los contenedores</div>' +
@@ -9415,7 +9415,7 @@ function showNotification(msg, type = 'info') {
   if (!toast) {
     toast = document.createElement('div');
     toast.id = 'yve-toast';
-    toast.style.cssText = 'position:fixed;bottom:24px;left:50%;transform:translateX(-50%) translateY(20px);opacity:0;max-width:420px;width:calc(100% - 40px);padding:12px 18px;border-radius:12px;font-size:13px;font-weight:500;z-index:9999;transition:all .25s ease;pointer-events:none;text-align:center;box-shadow:0 4px 20px rgba(0,0,0,.4)';
+    toast.style.cssText = 'position:fixed;bottom:24px;left:50%;transform:translateX(-50%) translateY(20px);opacity:0;max-width:420px;width:calc(100% - 40px);padding:12px 18px;border-radius:12px;font-size:13px;font-weight:500;z-index:9999;transition:background-color .25s ease,border-color .25s ease,color .25s ease,box-shadow .25s ease,transform .25s ease,opacity .25s ease;pointer-events:none;text-align:center;box-shadow:0 4px 20px rgba(0,0,0,.4)';
     document.body.appendChild(toast);
   }
   clearTimeout(_toastTimeout);
@@ -9646,7 +9646,7 @@ function _renderTourBox(step) {
     // Header row: drag grip + close
     '<div style="display:flex;align-items:center;justify-content:flex-end;margin-bottom:8px">' +
       '<button onclick="endTour()" style="background:none;border:none;color:#475569;font-size:20px;' +
-        'cursor:pointer;padding:0 2px;line-height:1;transition:.15s" ' +
+        'cursor:pointer;padding:0 2px;line-height:1;transition:background-color .15s,border-color .15s,color .15s,box-shadow .15s,transform .15s,opacity .15s" ' +
         'onmouseover="this.style.color=\'#94a3b8\'" onmouseout="this.style.color=\'#475569\'">×</button>' +
     '</div>' +
     // Title
@@ -9660,7 +9660,7 @@ function _renderTourBox(step) {
       '<div style="display:flex;gap:5px;align-items:center">' +
         _tourSteps.map(function(_,i) {
           var active = i === _tourStep;
-          return '<div style="transition:.25s;border-radius:' + (active ? '4px' : '50%') + ';' +
+          return '<div style="transition:background-color .25s,border-color .25s,color .25s,box-shadow .25s,transform .25s,opacity .25s;border-radius:' + (active ? '4px' : '50%') + ';' +
             'background:' + (active ? 'var(--acc,#3b82f6)' : 'rgba(var(--acc-r,59),var(--acc-g,130),var(--acc-b,246),.25)') + ';' +
             'width:' + (active ? '18px' : '7px') + ';height:7px"></div>';
         }).join('') +
@@ -10216,7 +10216,7 @@ async function openUploadModal() {
         var btnX = document.createElement('button');
         btnX.textContent = '✕';
         btnX.title = 'Eliminar archivo';
-        btnX.style.cssText = 'background:transparent;border:1px solid rgba(239,68,68,.3);color:#e05252;width:22px;height:22px;border-radius:50%;cursor:pointer;font-size:11px;line-height:1;padding:0;flex-shrink:0;transition:all .15s';
+        btnX.style.cssText = 'background:transparent;border:1px solid rgba(239,68,68,.3);color:#e05252;width:22px;height:22px;border-radius:50%;cursor:pointer;font-size:11px;line-height:1;padding:0;flex-shrink:0;transition:background-color .15s,border-color .15s,color .15s,box-shadow .15s,transform .15s,opacity .15s';
         btnX.onmouseover = function(){ this.style.background='rgba(239,68,68,.15)'; };
         btnX.onmouseout = function(){ this.style.background='transparent'; };
         btnX.onclick = function() { eliminarArchivoServidor(f.nombre, row); };
@@ -11014,7 +11014,7 @@ window.addEventListener('resize', function() {
   if (!IS_MOBILE) return;
   var startY = 0, pulling = false;
   var indicator = document.createElement('div');
-  indicator.style.cssText = 'position:fixed;top:0;left:50%;transform:translateX(-50%);background:var(--acc);color:#fff;padding:6px 16px;border-radius:0 0 12px 12px;font-size:12px;font-weight:600;z-index:9999;display:none;transition:.2s';
+  indicator.style.cssText = 'position:fixed;top:0;left:50%;transform:translateX(-50%);background:var(--acc);color:#fff;padding:6px 16px;border-radius:0 0 12px 12px;font-size:12px;font-weight:600;z-index:9999;display:none;transition:background-color .2s,border-color .2s,color .2s,box-shadow .2s,transform .2s,opacity .2s';
   indicator.textContent = '↓ Suelta para actualizar';
   document.body.appendChild(indicator);
 
@@ -12475,7 +12475,7 @@ function renderNotifConfig() {
       const on = c.canales && c.canales[ch.key];
       return '<div onclick="toggleNotifCanal(\'' + ch.key + '\')" style="cursor:pointer;background:' +
         (on ? 'rgba(var(--acc-r,59),var(--acc-g,130),var(--acc-b,246),.1)' : 'var(--s2)') + ';border:1px solid ' +
-        (on ? 'var(--acc)' : 'var(--s2)') + ';border-radius:12px;padding:14px;text-align:center;transition:.15s">' +
+        (on ? 'var(--acc)' : 'var(--s2)') + ';border-radius:12px;padding:14px;text-align:center;transition:background-color .15s,border-color .15s,color .15s,box-shadow .15s,transform .15s,opacity .15s">' +
         '<div style="font-size:22px;margin-bottom:6px">' + ch.icon + '</div>' +
         '<div style="font-size:13px;font-weight:600;color:' + (on ? 'var(--acc2)' : 'var(--mut)') + '">' + ch.name + '</div>' +
         '<div style="font-size:10px;color:' + (on ? 'var(--grn)' : 'var(--dim)') + ';margin-top:4px">' + (on ? '● Activo' : '○ Inactivo') + '</div>' +
@@ -12747,7 +12747,7 @@ function renderMHGrupos(grupos) {
   host.innerHTML = chips.map(function(g) {
     var sel = (g || '') === (_mhGrupoActivo || '');
     var label = g ? '🏨 ' + g : t('mh.todasCadenas', 'Todas las cadenas');
-    return '<button onclick="filtrarMHGrupo(this.dataset.g)" data-g="' + g.replace(/"/g, '&quot;') + '" style="padding:6px 14px;border-radius:18px;font-size:12px;cursor:pointer;font-weight:600;transition:.15s;' +
+    return '<button onclick="filtrarMHGrupo(this.dataset.g)" data-g="' + g.replace(/"/g, '&quot;') + '" style="padding:6px 14px;border-radius:18px;font-size:12px;cursor:pointer;font-weight:600;transition:background-color .15s,border-color .15s,color .15s,box-shadow .15s,transform .15s,opacity .15s;' +
       (sel ? 'background:var(--acc,#3b82f6);border:1px solid var(--acc,#3b82f6);color:#fff' : 'background:rgba(255,255,255,.05);border:1px solid var(--s2);color:var(--mut)') + '">' + label + '</button>';
   }).join('');
 }
@@ -12980,7 +12980,7 @@ async function loadMultiHotel() {
         var d  = h.rev_delta_pct || 0;
         var spark = _calSparkline(h.gop_trend || [], '#22c55e');
         var _hn = String(h.nombre || '').replace(/'/g, "\\'");
-        return '<div class="card" style="padding:20px;position:relative;cursor:pointer;transition:.15s" ' +
+        return '<div class="card" style="padding:20px;position:relative;cursor:pointer;transition:background-color .15s,border-color .15s,color .15s,box-shadow .15s,transform .15s,opacity .15s" ' +
           'onmouseover="this.style.borderColor=\'var(--acc,#3b82f6)\'" onmouseout="this.style.borderColor=\'\'" ' +
           'title="' + t('mh.verHotel', 'Ver solo este hotel') + '" onclick="seleccionarHotelActivo(\'' + _hn + '\', true)">' +
           // Hotel header
@@ -13301,7 +13301,7 @@ async function cargarARRealData() {
           const uso = c.uso_credito_pct || 0;
           const usoPct = Math.min(100, uso);
           const usoColor = uso >= 90 ? 'var(--red)' : uso >= 70 ? 'var(--ora)' : 'var(--grn)';
-          return '<div class="card" style="padding:12px;cursor:pointer;transition:.15s" ' +
+          return '<div class="card" style="padding:12px;cursor:pointer;transition:background-color .15s,border-color .15s,color .15s,box-shadow .15s,transform .15s,opacity .15s" ' +
             'onclick="filtrarClienteAR(\'' + c.nombre.replace(/'/g,"\\'") + '\')" ' +
             'onmouseover="this.style.borderColor=\'var(--acc)\'" onmouseout="this.style.borderColor=\'\'"><div style="display:flex;justify-content:space-between;align-items:flex-start">' +
             '<div style="flex:1;min-width:0"><div style="font-weight:600;font-size:13px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">' + c.nombre.split(' ').slice(0,3).join(' ') + '</div>' +
@@ -13635,7 +13635,7 @@ if (window.innerWidth <= 768) {
 </script>
 
 <button id="back-top" onclick="window.scrollTo({top:0,behavior:'smooth'})" 
-  style="display:none;position:fixed;bottom:88px;right:20px;background:var(--s1);border:1px solid var(--s2);color:var(--mut);width:36px;height:36px;border-radius:50%;font-size:16px;cursor:pointer;z-index:500;transition:.2s;box-shadow:0 2px 8px rgba(0,0,0,.3)"
+  style="display:none;position:fixed;bottom:88px;right:20px;background:var(--s1);border:1px solid var(--s2);color:var(--mut);width:36px;height:36px;border-radius:50%;font-size:16px;cursor:pointer;z-index:500;transition:background-color .2s,border-color .2s,color .2s,box-shadow .2s,transform .2s,opacity .2s;box-shadow:0 2px 8px rgba(0,0,0,.3)"
   onmouseover="this.style.borderColor='var(--acc)';this.style.color='var(--acc)'"
   onmouseout="this.style.borderColor='var(--s2)';this.style.color='var(--mut)'">↑</button>
 <script>

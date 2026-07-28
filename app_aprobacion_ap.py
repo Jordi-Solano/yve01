@@ -349,7 +349,7 @@ body::before{content:'';position:fixed;inset:0;z-index:0;pointer-events:none;
 .main{position:relative;z-index:1;padding:22px;max-width:860px;margin:0 auto}
 .stats{display:grid;grid-template-columns:repeat(3,1fr);gap:12px;margin-bottom:20px}
 .sc{background:var(--s1);border:1px solid var(--s2);border-radius:14px;padding:18px 16px;
-  transition:.2s}
+  transition:background-color .2s,border-color .2s,color .2s,box-shadow .2s,transform .2s,opacity .2s}
 .sc-lbl{font-size:10px;color:var(--mut);text-transform:uppercase;letter-spacing:.6px;
   margin-bottom:10px}
 .sc-v{font-size:28px;font-weight:800;line-height:1;letter-spacing:-1px;

@@ -140,7 +140,7 @@ HTML_BASE = """<!DOCTYPE html>
   .tabs { display: flex; background: white; border-bottom: 1px solid #e2e8f0; }
   .tab  { flex: 1; padding: 12px 8px; text-align: center; font-size: 13px; font-weight: 500;
            color: var(--gris); border: none; background: none; cursor: pointer;
-           border-bottom: 2px solid transparent; transition: .2s; }
+           border-bottom: 2px solid transparent; transition:background-color .2s,border-color .2s,color .2s,box-shadow .2s,transform .2s,opacity .2s; }
   .tab.active { color: #0f172a; border-bottom-color: #0f172a; }
 
   /* Main */
@@ -186,7 +186,7 @@ HTML_BASE = """<!DOCTYPE html>
   .comentario-wrap textarea:focus { outline: none; border-color: #0f172a; }
   .btn-row { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
   .btn { border: none; border-radius: 10px; padding: 14px; font-size: 15px; font-weight: 700;
-          cursor: pointer; transition: .15s; display: flex; align-items: center;
+          cursor: pointer; transition:background-color .15s,border-color .15s,color .15s,box-shadow .15s,transform .15s,opacity .15s; display: flex; align-items: center;
           justify-content: center; gap: 6px; }
   .btn:active { transform: scale(.97); }
   .btn-aprobar { background: var(--verde); color: white; }

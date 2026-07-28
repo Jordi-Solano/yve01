@@ -171,7 +171,7 @@ h1{font-size:20px;font-weight:800;margin-bottom:6px}
 /* Misma burbuja que el dashboard (.sc): fondo plano, mismo borde y radio.
    Antes tenia degradado y una barra azul a la izquierda y se notaba que era
    otra pantalla. */
-.kc{background:var(--s1);border:1px solid var(--s2);border-radius:14px;padding:18px 16px;position:relative;overflow:hidden;transition:.2s}
+.kc{background:var(--s1);border:1px solid var(--s2);border-radius:14px;padding:18px 16px;position:relative;overflow:hidden;transition:background-color .2s,border-color .2s,color .2s,box-shadow .2s,transform .2s,opacity .2s}
 .kc:hover{border-color:rgba(var(--acc-r,59),var(--acc-g,130),var(--acc-b,246),.4);transform:translateY(-1px)}
 
 .kl{font-size:10px;color:var(--mut);text-transform:uppercase;letter-spacing:.6px;margin-bottom:10px}
@@ -186,7 +186,7 @@ h1{font-size:20px;font-weight:800;margin-bottom:6px}
 .brand-dot{width:11px;height:11px;border-radius:50%;background:var(--acc);box-shadow:0 0 14px var(--acc);flex-shrink:0}
 label{display:block;font-size:11px;color:var(--mut);text-transform:uppercase;letter-spacing:.4px;margin-bottom:5px;margin-top:12px;font-weight:600}
 label:first-child{margin-top:0}
-input,select,textarea{width:100%;background:var(--bg);border:1px solid var(--s2);color:var(--tx);border-radius:10px;padding:11px 14px;font-size:16px;font-family:inherit;outline:none;transition:.15s}
+input,select,textarea{width:100%;background:var(--bg);border:1px solid var(--s2);color:var(--tx);border-radius:10px;padding:11px 14px;font-size:16px;font-family:inherit;outline:none;transition:background-color .15s,border-color .15s,color .15s,box-shadow .15s,transform .15s,opacity .15s}
 input:focus,select:focus,textarea:focus{border-color:var(--acc);box-shadow:0 0 0 3px rgba(var(--acc-r,59),var(--acc-g,130),var(--acc-b,246),.15)}
 .btn{padding:9px 18px;border:none;border-radius:9px;font-size:13px;font-weight:700;cursor:pointer;font-family:inherit}
 .bp{background:linear-gradient(135deg,var(--acc),var(--acc-dark,#2563eb));color:#fff;box-shadow:0 4px 14px rgba(var(--acc-r,59),var(--acc-g,130),var(--acc-b,246),.3)}
@@ -285,7 +285,7 @@ input:focus,select:focus,textarea:focus{border-color:var(--acc);box-shadow:0 0 0
       <div id="leads-list" style="max-height:300px;overflow-y:auto"><div style="color:#64748b;font-size:13px;padding:12px">Cargando...</div></div>
     </div>
     <div class="card" style="border-color:rgba(var(--acc-r,59),var(--acc-g,130),var(--acc-b,246),.2)">
-      <div class="ct" style="color:#60a5fa">Conexiones</div>
+      <div class="ct" style="color:var(--acc2)">Conexiones</div>
       <div style="display:flex;flex-direction:column;gap:8px">
         <div style="display:flex;align-items:center;gap:8px">
           <button class="btn bsm" onclick="testConn('smtp')" style="min-width:120px;font-size:11px">📧 Test SMTP</button>
@@ -315,7 +315,7 @@ input:focus,select:focus,textarea:focus{border-color:var(--acc);box-shadow:0 0 0
 </div>
 <script>
 async function ls(){const r=await fetch('/admin/api/stats'),d=await r.json();['u','a','h','r','up','v'].forEach((k,i)=>{const el=document.getElementById('s'+k);if(el)el.textContent=[d.usuarios,d.usuarios_activos,d.hoteles,d.reportes_generados,d.uptime,d.version][i];});}
-async function lu(){const r=await fetch('/admin/api/usuarios'),us=await r.json();document.getElementById('utb').innerHTML=us.map(u=>'<tr><td><b>'+u.username+'</b></td><td>'+(u.nombre||'-')+'</td><td style="color:#60a5fa">'+u.rol+'</td><td><span class="'+(u.activo!==false?'ok':'off')+'">'+(u.activo!==false?'Activo':'Inactivo')+'</span></td><td><button class="btn bd bsm" onclick="tU(\''+u.username+'\')">Toggle</button></td></tr>').join('');}
+async function lu(){const r=await fetch('/admin/api/usuarios'),us=await r.json();document.getElementById('utb').innerHTML=us.map(u=>'<tr><td><b>'+u.username+'</b></td><td>'+(u.nombre||'-')+'</td><td style="color:var(--acc2)">'+u.rol+'</td><td><span class="'+(u.activo!==false?'ok':'off')+'">'+(u.activo!==false?'Activo':'Inactivo')+'</span></td><td><button class="btn bd bsm" onclick="tU(\''+u.username+'\')">Toggle</button></td></tr>').join('');}
 async function lh(){const r=await fetch('/admin/api/hoteles'),d=await r.json();if(!d.ok)return;document.getElementById('htb').innerHTML=d.hoteles.map(h=>'<tr><td><b>'+h.nombre+'</b></td><td style="color:#94a3b8">'+(h.ciudad||'-')+'</td><td>'+(h.habitaciones||'-')+'</td><td style="color:#94a3b8">'+(h.categoria||'-')+'</td><td><button class="btn bd bsm" onclick="dH(\''+h.id+'\')">×</button></td></tr>').join('');}
 async function loadLeads() {
   const el = document.getElementById('leads-list');
@@ -335,7 +335,7 @@ async function loadLeads() {
           '<span style="background:'+planColor+'22;color:'+planColor+';padding:2px 8px;border-radius:10px;font-size:10px;font-weight:700;text-transform:uppercase">'+l.plan_sugerido+'</span>' +
         '</div>' +
         '<div style="color:#94a3b8;line-height:1.6">' +
-          '👤 '+l.nombre+' · <a href="mailto:'+l.email+'" style="color:#60a5fa">'+l.email+'</a>'+(l.telefono?' · 📞 '+l.telefono:'')+'<br>' +
+          '👤 '+l.nombre+' · <a href="mailto:'+l.email+'" style="color:var(--acc2)">'+l.email+'</a>'+(l.telefono?' · 📞 '+l.telefono:'')+'<br>' +
           '📍 '+(l.ciudad||'—')+' · 🏨 '+(l.habitaciones||0)+' hab'+(l.grupo?' · Grupo: '+l.grupo:'')+'<br>' +
           (l.notas?'<span style="color:#64748b">📝 '+l.notas+'</span><br>':'') +
           '<span style="color:#475569;font-size:11px">'+fecha+'</span>' +
@@ -358,7 +358,7 @@ async function loadAudit() {
     el.innerHTML = entries.slice().reverse().map(e =>
       '<div style="padding:3px 0;border-bottom:1px solid #1e293b">' +
       '<span style="color:#475569">' + e.ts + '</span> ' +
-      '<span style="color:#60a5fa">' + e.accion + '</span> ' +
+      '<span style="color:var(--acc2)">' + e.accion + '</span> ' +
       '<span>' + e.detalle + '</span>' +
       ' <span style="color:#334155">— ' + e.usuario + '</span>' +
       '</div>'
