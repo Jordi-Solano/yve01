@@ -253,10 +253,15 @@ def _mismo_hotel(nombre_doc, nombre_asignado):
 
 
 def _aviso_otro_hotel(nombre_doc):
-    """La coletilla de aviso si el papel nombra un hotel distinto del elegido.
+    """El aviso, PELADO, si el papel nombra un hotel distinto del elegido.
 
-    Devuelve '' cuando todo cuadra o cuando no hay nada que comparar, para
-    poder pegarla al mensaje sin condicionales por todas partes.
+    Devuelve '' cuando todo cuadra o cuando no hay nada que comparar.
+
+    Sin adornos a proposito: cada sitio lo presenta como le toca. En el lote
+    tiene que ser su PROPIA linea empezando por ⚠ — pegado al final del "✓ AR
+    fichero: OK" se pintaba de verde, se iba al final de una linea larga y en
+    un log que va scrolleando no lo veia nadie. Se dio por hecho que con que
+    el texto estuviera bastaba; no basta.
 
     Se le pregunta al CENSO con que hotel encaja el nombre del documento en vez
     de compararlo solo con el asignado: "Hotel Sol Mar" contiene "Hotel Sol",
@@ -271,8 +276,8 @@ def _aviso_otro_hotel(nombre_doc):
     asignado = censo_hoteles.nombre_de(hid)
     otro = censo_hoteles.encaje(nombre_doc)
     if (otro and otro != hid) or (not otro and not _mismo_hotel(nombre_doc, asignado)):
-        return (f' · ⚠ ojo: el documento nombra otro hotel '
-                f'({nombre_doc}) y se ha guardado en {asignado}')
+        return (f'ojo: el documento nombra otro hotel ({nombre_doc}) '
+                f'y se ha guardado en {asignado}')
     return ''
 
 
@@ -1525,7 +1530,9 @@ def _enrutar_tipo_doc(reg, fname, fpath=None):
             _nom_doc = ''
             if 'nombre_hotel' in _df_ota.columns and len(_df_ota):
                 _nom_doc = str(_df_ota['nombre_hotel'].iloc[0] or '')
-            _msg += _aviso_otro_hotel(_nom_doc)
+            _av = _aviso_otro_hotel(_nom_doc)
+            if _av:
+                _msg += ' · ⚠ ' + _av
             _marca = 'AR_OK'
             _flags['has_ar'] = True
         except Exception as _eota:
@@ -2035,14 +2042,19 @@ def api_procesar_batch_stream():
                         # —el hotel lo decide la sesion, no el papel—, avisa.
                         _aviso_hotel = _aviso_otro_hotel(_hotel_doc)
                         if r.returncode == 0:
-                            yield f'data: ✓ AR {fname}: OK{_aviso_hotel}\n\n'
+                            yield f'data: ✓ AR {fname}: OK\n\n'
                             _mark(fname, 'AR_OK')
                             has_ar = True
                         elif r.returncode == 2:
                             _det = f' (faltan: {_faltan})' if _faltan else ''
-                            yield f'data: ⚠ AR {fname}: guardado con campos incompletos{_det} — revisar manualmente{_aviso_hotel}\n\n'
+                            yield f'data: ⚠ AR {fname}: guardado con campos incompletos{_det} — revisar manualmente\n\n'
                             _mark(fname, 'AR_PARCIAL')
                             has_ar = True
+                        # Linea propia y empezando por ⚠, para que el log la
+                        # pinte de aviso en vez de esconderla al final de una
+                        # linea verde de exito.
+                        if _aviso_hotel:
+                            yield f'data: ⚠ {fname}: {_aviso_hotel}\n\n'
                         elif r.returncode == 3:
                             yield f'data: ⚠ {fname}: no se pudo extraer ningún dato de factura OTA — revisar manualmente\n\n'
                             _mark(fname, 'SKIP')
@@ -6075,8 +6087,14 @@ function renderStats(s) {
 }
 
 function renderChart(ch) {
-  if (!ch || !ch.labels || !ch.labels.length) return;
   if (typeof Chart === 'undefined') { console.warn('Chart.js aún no cargado'); return; }
+  // Mismo fallo que en las reclamaciones: sin datos se salia sin tocar nada y
+  // el grafico del hotel ANTERIOR se quedaba pintado. Al cambiar a un hotel
+  // sin facturas seguias viendo la barra de Booking del otro.
+  if (!ch || !ch.labels || !ch.labels.length) {
+    if (otaChart) { otaChart.destroy(); otaChart = null; }
+    return;
+  }
   const ctx = document.getElementById('ota-chart').getContext('2d');
   const palette = ['#3b82f6','#8b5cf6','#06b6d4','#10b981','#f59e0b','#ef4444','#ec4899'];
   const cols = ch.labels.map((_, i) => palette[i % palette.length]);
@@ -9316,9 +9334,26 @@ async function cargarReclamacionesOTA(){
     var d = await r.json();
     _reclItems = (d && d.items) || [];
     if (resumen) resumen.textContent = (d && d.n_pendientes) ? (d.n_pendientes + ' pendiente(s) · ' + _reclMoney(d.total_reclamable) + ' reclamable') : '';
-    if (!_reclItems.length) return; // deja el mensaje por defecto
+    // Sin datos hay que BORRAR lo que hubiera, no marcharse.
+    //
+    // Antes esto era `if (!_reclItems.length) return;` con un comentario que
+    // decia "deja el mensaje por defecto". El mensaje por defecto solo esta
+    // ahi la primera vez: en cuanto se pintan tarjetas, el hueco ya no lo
+    // tiene. Al cambiar de hotel el servidor devolvia 0 correctamente y esta
+    // funcion se iba sin tocar nada, asi que las tarjetas del hotel ANTERIOR
+    // se quedaban en pantalla. Desde fuera parecia que el filtro por hotel no
+    // filtraba — y no habia forma de verlo comprobando la API, porque la API
+    // contestaba bien; solo se veia mirando la pantalla sin recargar.
+    if (!_reclItems.length) { wrap.innerHTML = _reclVacio(); return; }
     wrap.innerHTML = _reclItems.map(function(it,i){ return _reclCard(it,i); }).join('');
   } catch(e) {}
+}
+function _vacioCard(texto){
+  return '<div class="empty card" style="padding:20px;text-align:center;color:var(--dim);' +
+         'font-size:12px;border-style:dashed;border-radius:12px">' + texto + '</div>';
+}
+function _reclVacio(){
+  return _vacioCard(t('recl.vacio', 'Cuando Yve detecte comisiones cobradas por encima del contrato, aparecerán aquí para reclamar.'));
 }
 function _reclCard(it, i){
   var badge, bg, col;
@@ -13535,7 +13570,11 @@ async function cargarBeosAR() {
     var d = await r.json();
     var beos = (d && d.beos) || [];
     if (cnt) cnt.textContent = beos.length ? '(' + beos.length + ')' : '';
-    if (!beos.length) return;
+    // Igual que en reclamaciones y en el grafico: sin datos, limpiar.
+    if (!beos.length) {
+      wrap.innerHTML = _vacioCard(t('beos.vacio', 'Procesa un contrato de grupo en <b>Procesar Archivos</b> y aquí verás su BEO con el cotejo de la factura.'));
+      return;
+    }
     var eur = function(v){ return '€' + (Number(v)||0).toLocaleString('es-ES',{minimumFractionDigits:2}); };
     wrap.innerHTML = beos.map(function(b){
       var c = b.cotejo || {};
