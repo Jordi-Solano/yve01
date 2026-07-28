@@ -8056,6 +8056,12 @@ function applyI18n(data) {
     // y ese retraso es justo lo que se veia al cambiar de idioma.
     _applyStrMap(_i18nLang);
     if (typeof _applyPlaceholders === 'function') _applyPlaceholders(_i18nLang);
+  } else {
+    // Volver a español tambien es traducir: hay que DESHACER lo anterior.
+    // _applyI18nBase solo restaura los elementos con data-i18n; el texto que
+    // cambio la tabla de cadenas se quedaba en el idioma anterior (medido:
+    // aleman -> español dejaba el panel de reclamaciones en aleman).
+    _applyStrMap('es');
   }
   // Y los iconos AQUI MISMO. Traducir escribe textContent, o sea que borra los
   // SVG y devuelve el emoji del .json en su sitio. Confiar en el observador no
