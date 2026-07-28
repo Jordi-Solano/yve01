@@ -9,6 +9,7 @@ from datetime import date, datetime
 import pandas as pd
 from flask import Blueprint, jsonify, request, Response
 from flask_login import login_required
+from version_estaticos import SELLO as SELLO_ESTATICOS
 
 BASE_DIR         = os.path.dirname(os.path.abspath(__file__))
 PROCESADAS_DIR   = os.path.join(BASE_DIR, "facturas-procesadas")
@@ -281,7 +282,7 @@ def api_accion():
 
 @bp.route("/")
 def index():
-    return HTML
+    return HTML.replace("__ASSETS_V__", SELLO_ESTATICOS)
 
 HTML = """<!DOCTYPE html>
 <html lang="es">
@@ -742,6 +743,6 @@ function showToast(msg, color) {
 loadData();
 cargarHist();
 </script>
-<script src="/static/yve-icons.js?v=2"></script>
+<script src="/static/yve-icons.js?v=__ASSETS_V__"></script>
 </body>
 </html>"""

@@ -150,6 +150,7 @@ inicializar_usuarios()
 from login import bp as auth_bp
 from onboarding import onboarding_bp as config_bp
 from panel_admin import bp as admin_bp
+from version_estaticos import SELLO as SELLO_ESTATICOS
 from app_aprobacion import bp as aprob_ar_bp
 from app_aprobacion_ap import bp as aprob_ap_bp
 from app_conciliacion import bp as concil_bp
@@ -4180,6 +4181,9 @@ def index():
     admin_display = "inline" if user_rol in ("admin", "financial_controller") else "none"
     out = out.replace("__USER_NAME__", user_name).replace("__USER_ROL__", user_rol)
     out = out.replace("__ADMIN_DISPLAY__", admin_display)
+    # Sello de los estaticos: sin el, el navegador sirve de su cache un i18n
+    # viejo y una traduccion arreglada tarda dias en llegar (medido).
+    out = out.replace("__ASSETS_V__", SELLO_ESTATICOS)
     return out
 
 @app.route("/app")
@@ -4852,7 +4856,7 @@ svg.yvi{width:1em;height:1em;vertical-align:-0.125em;flex-shrink:0;display:inlin
   if(shown){ if(sp.parentNode) sp.parentNode.removeChild(sp); return; }
   try{ sessionStorage.setItem('yve_splash_shown','1'); }catch(e){}
   // Precargar la traducción del idioma guardado mientras se ve el splash
-  try{ var lang=localStorage.getItem('yve_lang'); if(lang && lang!=='es'){ fetch('/static/i18n/'+lang+'.json').catch(function(){}); } }catch(e){}
+  try{ var lang=localStorage.getItem('yve_lang'); if(lang && lang!=='es'){ fetch('/static/i18n/'+lang+'.json?v=__ASSETS_V__').catch(function(){}); } }catch(e){}
   var start=Date.now(), MIN=1500, MAX=6000, done=false;
   // El servidor manda el HTML SIEMPRE en español (no sabe tu idioma), asi que
   // al entrar con otro idioma se veia español antes de traducir. El splash ya
@@ -8004,7 +8008,7 @@ async function loadI18n(lang) {
     applyI18n(_i18nData); localStorage.setItem('yve_lang', lang); return;
   }
   try {
-    const r = await fetch('/static/i18n/' + lang + '.json');
+    const r = await fetch('/static/i18n/' + lang + '.json?v=__ASSETS_V__');
     const data = await r.json();
     _i18nCache[lang] = data; _i18nData = data; _i18nLang = lang;
     applyI18n(data); localStorage.setItem('yve_lang', lang);
@@ -13640,7 +13644,7 @@ window.addEventListener('scroll', () => {
 
 <!-- Modal Escanear Documento -->
 
-<script src="/static/yve-icons.js?v=2"></script>
+<script src="/static/yve-icons.js?v=__ASSETS_V__"></script>
 </body>
 </html>"""
 
