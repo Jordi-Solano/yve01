@@ -67,19 +67,69 @@ def _cuenta_str(v):
     return str(int(f)) if f == int(f) else s
 
 
+# Estados del cruce agrupados por lo que significan PARA QUIEN APRUEBA.
+# Se quedaron sin actualizar desde la Fase 3b y por eso los tiles decian 0.
+# Decision del usuario: "factura sin PO" es informativo, NO una incidencia —
+# muchas compras de hotel no llevan PO y marcarlas todas seria ruido.
+_ESTADOS_OK = ("MATCH_3WAY_OK", "MATCH_CORRECTO", "MATCH_ALBARAN_OK", "MATCH_PO_OK")
+_ESTADOS_INCIDENCIA = ("DISCREPANCIA", "DISCREPANCIA_PO", "DIFERENCIA_IMPORTE",
+                       "DIFERENCIA_LINEA", "DIFERENCIA_PO_IMPORTE",
+                       "FACTURA_SIN_ALBARAN", "ALERTA_CONSUMO")
+
+
+def clave_factura(fila):
+    """Identidad de una factura en el panel. NUNCA vacia.
+
+    El numero de factura no vale por si solo: una factura sin numero vuelve de
+    Excel como NaN y `groupby` tira las claves NaN, asi que su aprobacion
+    desaparecia. `archivo` es la columna con la que el propio Excel de facturas
+    deduplica, o sea que ya es unica por factura — incluso cuando un documento
+    trae varias ("hoja.csv#FP-2026-101").
+
+    Asi, aprobar una factura sin numero no afecta a las demas sin numero.
+    """
+    num = safe_str(fila.get("numero_factura"))
+    return num or safe_str(fila.get("archivo"))
+
+
+def _acciones_por_clave():
+    """{clave: accion} con la ULTIMA accion de cada factura.
+
+    Se ordena por `fecha_hora` y gana la ultima, EXACTAMENTE igual que
+    `oracle_lector_facturas.cargar_aprobaciones_ap()`. `fecha_hora` es texto
+    dd/mm/aaaa y ordenarlo es incorrecto en cuanto cruzas meses, pero los dos se
+    equivocarian IGUAL: es lo que hoy los mantiene de acuerdo. Arreglarlo hay
+    que hacerlo en los dos a la vez, y eso es tocar Oracle.
+
+    En Python plano, sin groupby: es justo el groupby el que tiraba las claves
+    vacias (regla 3, la familia de los NaN).
+    """
+    df = cargar_aprobaciones()
+    if df.empty or "accion" not in df.columns:
+        return {}
+    filas = df.to_dict("records")
+    if "fecha_hora" in df.columns:
+        filas.sort(key=lambda r: safe_str(r.get("fecha_hora")))
+    mapa = {}
+    for r in filas:
+        # las filas viejas no tienen clave_factura: siguen valiendo por numero
+        k = safe_str(r.get("clave_factura")) or safe_str(r.get("numero_factura"))
+        if k:
+            mapa[k] = safe_str(r.get("accion")).upper()
+    return mapa
+
+
 def facturas_a_lista(df):
     if df.empty:
         return []
-    df_apro = cargar_aprobaciones()
-    apro_map = {}
-    if not df_apro.empty and "numero_factura" in df_apro.columns:
-        ultimas = df_apro.sort_values("fecha_hora").groupby("numero_factura").last()
-        apro_map = ultimas["accion"].to_dict() if "accion" in ultimas.columns else {}
+    apro_map = _acciones_por_clave()
 
     filas = []
     for _, r in df.iterrows():
         num = safe_str(r.get("numero_factura", ""))
+        _clave = clave_factura(r)
         filas.append({
+            "clave":             _clave,
             "archivo":           safe_str(r.get("archivo")),
             "numero_factura":    num,
             "nombre_proveedor":  safe_str(r.get("nombre_proveedor")),
@@ -94,56 +144,125 @@ def facturas_a_lista(df):
             "estado_matching":   safe_str(r.get("estado_matching","")),
             "alerta_detalle":    safe_str(r.get("detalle_matching",r.get("alerta_detalle",""))),
             "departamento_po":   safe_str(r.get("departamento_po","General")),
-            "accion":            apro_map.get(num, ""),
+            "accion":            apro_map.get(_clave, ""),
         })
     return filas
 
 @login_required
 @bp.route("/api/facturas")
 def api_facturas():
+    """Por defecto SOLO las pendientes.
+
+    Una factura aprobada o rechazada ya no es trabajo por hacer: su sitio es el
+    historial. Antes se devolvian todas y la vista solo les quitaba los botones,
+    asi que una aprobada seguia ocupando sitio en "por aprobar".
+    `?estado=resueltas` o `?estado=todas` para lo demas.
+    """
     df   = cargar_facturas_ap()
     dept = request.args.get("departamento","").strip().lower()
+    estado = request.args.get("estado","pendientes").strip().lower()
     rows = facturas_a_lista(df)
     if dept:
         rows = [r for r in rows if dept in r.get("departamento_po","").lower()
                 or dept == "todos"]
+    if estado == "pendientes":
+        rows = [r for r in rows if not r.get("accion")]
+    elif estado == "resueltas":
+        rows = [r for r in rows if r.get("accion")]
     return jsonify(rows)
+
+
+@bp.route("/api/historial")
+def api_historial():
+    """Lo aprobado y lo rechazado, del SERVIDOR.
+
+    Antes el historial era un array en memoria del navegador: al recargar se
+    vaciaba y la factura solo aparecia en "por aprobar". El dato siempre estuvo
+    en aprobaciones_ap.xlsx; lo que faltaba era poder leerlo.
+
+    SOLO LECTURA. No escribe en el fichero que lee el gate de Oracle.
+    """
+    df = cargar_aprobaciones()
+    if df.empty or "accion" not in df.columns:
+        return jsonify([])
+    vigentes = _acciones_por_clave()
+    filas = df.to_dict("records")
+    if "fecha_hora" in df.columns:
+        filas.sort(key=lambda r: safe_str(r.get("fecha_hora")), reverse=True)
+    out = []
+    for r in filas:
+        k = safe_str(r.get("clave_factura")) or safe_str(r.get("numero_factura"))
+        accion = safe_str(r.get("accion")).upper()
+        out.append({
+            "clave":          k,
+            "numero_factura": safe_str(r.get("numero_factura")) or k,
+            "accion":         accion,
+            "fecha_hora":     safe_str(r.get("fecha_hora")),
+            "comentario":     safe_str(r.get("comentario")),
+            "departamento":   safe_str(r.get("departamento")),
+            "aprobador":      safe_str(r.get("aprobador")),
+            # si despues se rectifico, esta entrada ya no es la que manda
+            "vigente":        vigentes.get(k, "") == accion,
+        })
+    return jsonify(out)
 
 @bp.route("/api/stats")
 def api_stats():
+    """Los contadores cuentan TRABAJO PENDIENTE.
+
+    Antes `total` incluia lo ya aprobado, asi que el tile seguia contando
+    trabajo hecho; y `match_ok`/`discrepancias` se quedaron en los estados de
+    antes de la Fase 3b, o sea que MATCH_ALBARAN_OK, DIFERENCIA_IMPORTE,
+    DIFERENCIA_LINEA y FACTURA_SIN_ALBARAN no los contaba nadie. Medido en
+    produccion: una factura que cuadraba con su albaran y el tile en 0.
+    """
     df   = cargar_facturas_ap()
     rows = facturas_a_lista(df)
-    total  = len(rows)
-    def cnt(key, val): return sum(1 for r in rows if r.get(key,"") == val)
+    pend = [r for r in rows if not r.get("accion")]
+    def cnt(key, val, sobre=None):
+        return sum(1 for r in (pend if sobre is None else sobre) if r.get(key,"") == val)
+    def cnt_en(estados, sobre):
+        return sum(1 for r in sobre if r.get("estado_matching","") in estados)
     return jsonify({
-        "total":         total,
-        "match_ok":      cnt("estado_matching","MATCH_3WAY_OK") + cnt("estado_matching","MATCH_CORRECTO"),
-        "discrepancias": cnt("estado_matching","DISCREPANCIA") + cnt("estado_matching","DISCREPANCIA_PO"),
+        # lo que hay por hacer
+        "pendientes":    len(pend),
+        "match_ok":      cnt_en(_ESTADOS_OK, pend),
+        "discrepancias": cnt_en(_ESTADOS_INCIDENCIA, pend),
         "alertas":       cnt("estado_matching","ALERTA_CONSUMO"),
         "sin_po":        cnt("estado_matching","SIN_PO"),
         "manuales":      cnt("estado_asignacion","SIN_REGLA"),
-        "aprobadas":     cnt("accion","APROBADA"),
-        "rechazadas":    cnt("accion","RECHAZADA"),
-        "pendientes":    sum(1 for r in rows if not r.get("accion","")),
+        # y lo ya resuelto, para el historial
+        "aprobadas":     cnt("accion","APROBADA", rows),
+        "rechazadas":    cnt("accion","RECHAZADA", rows),
+        "total":         len(rows),
     })
 
 @login_required
 @bp.route("/api/accion", methods=["POST"])
 def api_accion():
     data = request.get_json(force=True)
-    num_fac     = data.get("numero_factura","")
+    num_fac     = safe_str(data.get("numero_factura",""))
+    clave       = safe_str(data.get("clave","")) or num_fac
     accion      = data.get("accion","")
     comentario  = data.get("comentario","")
     departamento= data.get("departamento","")
     aprobador   = data.get("aprobador","Jefe de Departamento")
 
-    if not num_fac or not accion or not comentario or not departamento:
+    # Se exige la CLAVE, no el numero: una factura sin numero tambien se aprueba,
+    # y antes daba 400. La clave nunca esta vacia (ver clave_factura).
+    if not clave or not accion or not comentario or not departamento:
         return jsonify({"ok": False, "error": "Faltan campos obligatorios"}), 400
 
     now_str = datetime.now().strftime("%d/%m/%Y %H:%M:%S")
     nueva = pd.DataFrame([{
         "fecha_hora":    now_str,
-        "numero_factura":num_fac,
+        # ORACLE lee ESTA columna. Si la factura tiene numero se escribe tal
+        # cual, como siempre. Si no lo tiene se escribe la clave (el nombre del
+        # documento): Oracle no encontrara correspondencia y NO contabilizara.
+        # Falla en cerrado a proposito — una factura sin numero no tiene
+        # referencia con la que hacer el asiento.
+        "numero_factura":num_fac or clave,
+        "clave_factura": clave,
         "accion":        accion,
         "comentario":    comentario,
         "departamento":  departamento,
@@ -331,6 +450,9 @@ textarea:focus{border-color:var(--acc);outline:none;
 .hist-info .d{font-size:11px;color:var(--dim);margin-top:1px}
 .hist-accion{margin-left:auto;font-size:9.5px;font-weight:700;padding:4px 9px;border-radius:6px;
   letter-spacing:.4px}
+.hist-item.pasada{opacity:.55}
+.hist-old{font-size:9px;font-weight:700;color:var(--mut);border:1px solid var(--s2);
+  border-radius:5px;padding:1px 5px;margin-left:6px;text-transform:uppercase}
 .hist-accion.a{background:rgba(34,197,94,.15);color:#4ade80}
 .hist-accion.r{background:rgba(239,68,68,.15);color:#fca5a5}
 
@@ -377,9 +499,9 @@ textarea:focus{border-color:var(--acc);outline:none;
 
 <div class="main">
   <div class="stats" id="stats-bar">
-    <div class="sc"><div class="sc-lbl">Total</div><div class="sc-v c-b" id="s-tot">—</div></div>
-    <div class="sc"><div class="sc-lbl">Match OK</div><div class="sc-v c-g" id="s-ok">—</div></div>
-    <div class="sc"><div class="sc-lbl">Pendientes</div><div class="sc-v c-o" id="s-pend">—</div></div>
+    <div class="sc"><div class="sc-lbl">Por aprobar</div><div class="sc-v c-b" id="s-pend">—</div></div>
+    <div class="sc"><div class="sc-lbl">Cuadran</div><div class="sc-v c-g" id="s-ok">—</div></div>
+    <div class="sc"><div class="sc-lbl">Con incidencia</div><div class="sc-v c-o" id="s-tot">—</div></div>
   </div>
 
   <div id="tab-facturas">
@@ -456,6 +578,7 @@ function txt(v) {
 }
 
 function showTab(tab, el) {
+  if (tab === 'historial') cargarHist();
   document.getElementById('tab-facturas').style.display = tab==='facturas'?'':'none';
   document.getElementById('tab-historial').style.display = tab==='historial'?'':'none';
   document.querySelectorAll('.tab').forEach(t=>t.classList.remove('on'));
@@ -490,26 +613,28 @@ function alertClass(m) {
 
 async function loadData() {
   const dept = document.getElementById('dept-filter').value;
-  const url  = '/aprobaciones-ap/api/facturas' + (dept ? '?departamento='+encodeURIComponent(dept) : '');
+  // solo las PENDIENTES: una aprobada ya no es trabajo por hacer, su sitio es
+  // el historial. Antes venian todas y solo se les quitaban los botones.
+  const url  = '/aprobaciones-ap/api/facturas?estado=pendientes' + (dept ? '&departamento='+encodeURIComponent(dept) : '');
   const [fr, sr] = await Promise.all([fetch(url), fetch('/aprobaciones-ap/api/stats')]);
   const rows = await fr.json();
   const stats= await sr.json();
 
-  document.getElementById('s-tot').textContent  = stats.total??'—';
-  document.getElementById('s-ok').textContent   = stats.match_ok??'—';
   document.getElementById('s-pend').textContent = stats.pendientes??'—';
+  document.getElementById('s-ok').textContent   = stats.match_ok??'—';
+  document.getElementById('s-tot').textContent  = stats.discrepancias??'—';
 
   const lista = document.getElementById('lista');
   if(!rows.length){lista.innerHTML='<div class="empty"><span class="emo">📭</span>'
-    +'<div class="tit">No hay facturas para este departamento</div>'
-    +'Sube facturas desde el panel principal y aparecerán aquí para aprobar.</div>';return;}
+    +'<div class="tit">No queda nada por aprobar</div>'
+    +'Lo aprobado y lo rechazado está en la solapa Historial.</div>';return;}
 
   lista.innerHTML = rows.map((r,i) => {
     const needsAlert = r.estado_matching && r.estado_matching !== 'MATCH_3WAY_OK' && r.estado_matching !== 'MATCH_CORRECTO' && r.alerta_detalle;
     const alertHtml  = needsAlert ? '<div class="alerta-box '+alertClass(r.estado_matching)+'">'+r.alerta_detalle+'</div>' : '';
     const _num = txt(r.numero_factura);
     const _ab = _abiertas.has(_num);
-    return '<div class="card" id="card-'+i+'" data-num="'+_num+'">' +
+    return '<div class="card" id="card-'+i+'" data-num="'+_num+'" data-clave="'+txt(r.clave).replace(/"/g,'&quot;')+'">' +
       '<div class="card-top">' +
         '<div><div class="prov-name">'+txt(r.nombre_proveedor)+'</div><div class="prov-num">'+_num+'</div></div>' +
         '<div class="card-acc">' +
@@ -562,8 +687,11 @@ async function accion(i, tipo, numFac) {
   const c    = document.getElementById('c-'+i).value.trim();
   const dept = document.getElementById('dept-'+i)?.value;
   if(!c || !dept) return;
+  // la CLAVE identifica la factura aunque no tenga numero; el numero se manda
+  // igual porque es lo que lee el gate de Oracle
+  const clave = (document.getElementById('card-'+i)||{dataset:{}}).dataset.clave || numFac;
   const res = await fetch('/aprobaciones-ap/api/accion',{method:'POST',headers:{'Content-Type':'application/json'},
-    body: JSON.stringify({numero_factura:numFac,accion:tipo,comentario:c,departamento:dept})});
+    body: JSON.stringify({clave:clave,numero_factura:numFac,accion:tipo,comentario:c,departamento:dept})});
   const d = await res.json();
   if(d.ok) {
     const card = document.getElementById('card-'+i);
@@ -571,8 +699,7 @@ async function accion(i, tipo, numFac) {
     card.style.opacity='0';
     card.style.transform='translateX('+(tipo==='APROBADA'?'20px':'-20px')+')';
     setTimeout(()=>{card.style.display='none'},300);
-    historial.unshift({prov:numFac,tipo,ts:new Date().toLocaleTimeString('es-ES',{hour:'2-digit',minute:'2-digit'})});
-    renderHist();
+    cargarHist();
     showToast(tipo==='APROBADA'?'✓ Aprobada y guardada':'✗ Rechazada y guardada', tipo==='APROBADA'?'#16a34a':'#dc2626');
     loadData();
   } else {
@@ -580,14 +707,29 @@ async function accion(i, tipo, numFac) {
   }
 }
 
+async function cargarHist() {
+  // del SERVIDOR, no de memoria: antes era un array del navegador y al recargar
+  // la pagina el historial se vaciaba aunque el dato estuviera guardado.
+  let h = [];
+  try { h = await (await fetch('/aprobaciones-ap/api/historial')).json(); } catch(e) {}
+  historial.length = 0; h.forEach(x=>historial.push(x));
+  renderHist();
+}
+
 function renderHist() {
   const el=document.getElementById('hist-list');
   document.getElementById('hist-empty').style.display=historial.length?'none':'';
-  el.innerHTML=historial.map(h=>'<div class="hist-item">' +
-    '<div class="hist-icon '+(h.tipo==='APROBADA'?'a':'r')+'">'+(h.tipo==='APROBADA'?'✓':'✗')+'</div>' +
-    '<div class="hist-info"><div class="n">'+h.prov+'</div><div class="d">'+h.ts+'</div></div>' +
-    '<span class="hist-accion '+(h.tipo==='APROBADA'?'a':'r')+'">'+h.tipo+'</span></div>'
-  ).join('');
+  el.innerHTML=historial.map(h=>{
+    const ap = h.accion==='APROBADA';
+    // una entrada rectificada despues deja de ser la que manda: se dice
+    const viejo = (h.vigente===false) ? ' <span class="hist-old">rectificada</span>' : '';
+    return '<div class="hist-item'+(h.vigente===false?' pasada':'')+'">' +
+      '<div class="hist-icon '+(ap?'a':'r')+'">'+(ap?'✓':'✗')+'</div>' +
+      '<div class="hist-info"><div class="n">'+txt(h.numero_factura)+viejo+'</div>' +
+        '<div class="d">'+txt(h.fecha_hora)+(h.departamento?' · '+txt(h.departamento):'')+
+        (h.comentario?' · '+txt(h.comentario):'')+'</div></div>' +
+      '<span class="hist-accion '+(ap?'a':'r')+'">'+txt(h.accion)+'</span></div>';
+  }).join('');
 }
 
 function showToast(msg, color) {
@@ -597,6 +739,7 @@ function showToast(msg, color) {
 }
 
 loadData();
+cargarHist();
 </script>
 </body>
 </html>"""
