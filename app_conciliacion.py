@@ -13,6 +13,7 @@ import subprocess
 BASE_DIR     = Path(__file__).parent
 from tenant_dirs import reportes_dir as _t_rdir, datos_dir as _t_ddir, tenant_id as _t_tid
 from pathlib import Path as _P
+from version_estaticos import SELLO as SELLO_ESTATICOS
 
 class _TDir:
     def __init__(self, fn): self._fn = fn
@@ -229,7 +230,7 @@ def api_asignar():
 
 @bp.route("/")
 def index():
-    return HTML
+    return HTML.replace("__ASSETS_V__", SELLO_ESTATICOS)
 
 
 HTML = r"""<!DOCTYPE html>
@@ -282,6 +283,7 @@ tr:hover td{background:rgba(255,255,255,.02)}
 .b-manual{background:rgba(139,92,246,.12);color:#c4b5fd;border:1px solid rgba(139,92,246,.2)}
 .status-msg{font-size:.8rem;color:var(--dim);margin-bottom:16px}
 </style>
+<script src="/static/yve-tema.js?v=__ASSETS_V__"></script>
 </head>
 <body>
 <nav class="nav">

@@ -7,6 +7,7 @@ from flask_login import login_required, current_user
 from auth import (init_login, inicializar_usuarios, listar_usuarios,
                   crear_usuario, cambiar_password, toggle_activo, ROLES_VALIDOS)
 from pathlib import Path
+from version_estaticos import SELLO as SELLO_ESTATICOS
 
 bp = Blueprint("admin", __name__, url_prefix="/admin")
 BASE_DIR = Path(__file__).parent
@@ -28,7 +29,7 @@ def _admin_required(f):
 def index():
     if current_user.rol != "admin":
         return "<h3>Acceso denegado</h3>", 403
-    return HTML
+    return HTML.replace("__ASSETS_V__", SELLO_ESTATICOS)
 
 
 @bp.route("/api/usuarios")
@@ -162,31 +163,34 @@ HTML = r"""<!DOCTYPE html>
 :root{--bg:#0f172a;--s1:#1e293b;--s2:#334155;--acc:#3b82f6;--acc2:#60a5fa;--tx:#f1f5f9;--mut:#94a3b8;--dim:#64748b;--grn:#22c55e;--red:#ef4444}
 *{box-sizing:border-box;margin:0;padding:0}
 body{background:var(--bg);color:var(--tx);font-family:'Inter',-apple-system,BlinkMacSystemFont,sans-serif;padding:calc(28px + env(safe-area-inset-top)) 28px 40px;-webkit-font-smoothing:antialiased;position:relative;min-height:100vh}
-body::before{content:'';position:fixed;inset:0;z-index:0;pointer-events:none;background:radial-gradient(900px 500px at 90% -5%,rgba(59,130,246,.10),transparent 60%),radial-gradient(700px 400px at -5% 105%,rgba(139,92,246,.08),transparent 55%)}
+body::before{content:'';position:fixed;inset:0;z-index:0;pointer-events:none;background:radial-gradient(900px 500px at 90% -5%,rgba(var(--acc-r,59),var(--acc-g,130),var(--acc-b,246),.10),transparent 60%),radial-gradient(700px 400px at -5% 105%,rgba(139,92,246,.08),transparent 55%)}
 body>*{position:relative;z-index:1}
 h1{font-size:20px;font-weight:800;margin-bottom:6px}
 .sub{font-size:13px;color:var(--mut);margin-bottom:24px}
 .sg{display:grid;grid-template-columns:repeat(auto-fit,minmax(130px,1fr));gap:12px;margin-bottom:24px}
-.kc{background:linear-gradient(160deg,rgba(30,41,59,.92),rgba(15,23,42,.55));border:1px solid var(--s2);border-radius:14px;padding:18px 18px 20px 22px;position:relative;overflow:hidden;transition:.15s}
-.kc:hover{border-color:rgba(59,130,246,.4);transform:translateY(-1px)}
-.kc::after{content:'';position:absolute;left:0;top:0;bottom:0;width:3px;background:linear-gradient(var(--acc),var(--acc2))}
-.kl{font-size:10px;color:var(--mut);text-transform:uppercase;letter-spacing:.5px;margin-bottom:8px;font-weight:600}
-.kv{font-size:26px;font-weight:800;color:var(--acc2);letter-spacing:-1px;line-height:1}
+/* Misma burbuja que el dashboard (.sc): fondo plano, mismo borde y radio.
+   Antes tenia degradado y una barra azul a la izquierda y se notaba que era
+   otra pantalla. */
+.kc{background:var(--s1);border:1px solid var(--s2);border-radius:14px;padding:18px 16px;position:relative;overflow:hidden;transition:.2s}
+.kc:hover{border-color:rgba(var(--acc-r,59),var(--acc-g,130),var(--acc-b,246),.4);transform:translateY(-1px)}
+
+.kl{font-size:10px;color:var(--mut);text-transform:uppercase;letter-spacing:.6px;margin-bottom:10px}
+.kv{font-size:28px;font-weight:800;color:var(--acc2);letter-spacing:-1px;line-height:1}
 .card{background:linear-gradient(170deg,rgba(30,41,59,.92),rgba(20,28,45,.82));border:1px solid var(--s2);border-radius:16px;padding:22px;margin-bottom:18px;box-shadow:0 4px 20px rgba(0,0,0,.18)}
 .ct{font-size:15px;font-weight:700;margin-bottom:16px;display:flex;align-items:center;gap:8px}
 .g2{display:grid;grid-template-columns:1fr 1fr;gap:18px}
 @media(max-width:768px){.g2{grid-template-columns:1fr}body{padding:calc(16px + env(safe-area-inset-top)) 14px 32px}.card{padding:16px;overflow-x:auto;min-width:0}.g2>div{min-width:0}.sg{grid-template-columns:repeat(2,1fr)}[style*="grid-template-columns:1fr 1fr"]{grid-template-columns:1fr!important}.ut{font-size:12px}h1{font-size:18px}input,select,textarea{font-size:16px!important}}
 .admin-top{display:flex;align-items:center;gap:12px;margin-bottom:16px;flex-wrap:wrap}
-.admin-back{display:inline-flex;align-items:center;gap:6px;background:var(--s1);border:1px solid var(--s2);color:var(--tx);padding:9px 15px;border-radius:10px;font-size:13px;font-weight:600;text-decoration:none;-webkit-tap-highlight-color:rgba(59,130,246,.2)}
+.admin-back{display:inline-flex;align-items:center;gap:6px;background:var(--s1);border:1px solid var(--s2);color:var(--tx);padding:9px 15px;border-radius:10px;font-size:13px;font-weight:600;text-decoration:none;-webkit-tap-highlight-color:rgba(var(--acc-r,59),var(--acc-g,130),var(--acc-b,246),.2)}
 .admin-back:active,.admin-back:hover{border-color:var(--acc);color:var(--acc2)}
 .brand-dot{width:11px;height:11px;border-radius:50%;background:var(--acc);box-shadow:0 0 14px var(--acc);flex-shrink:0}
 label{display:block;font-size:11px;color:var(--mut);text-transform:uppercase;letter-spacing:.4px;margin-bottom:5px;margin-top:12px;font-weight:600}
 label:first-child{margin-top:0}
 input,select,textarea{width:100%;background:var(--bg);border:1px solid var(--s2);color:var(--tx);border-radius:10px;padding:11px 14px;font-size:16px;font-family:inherit;outline:none;transition:.15s}
-input:focus,select:focus,textarea:focus{border-color:var(--acc);box-shadow:0 0 0 3px rgba(59,130,246,.15)}
+input:focus,select:focus,textarea:focus{border-color:var(--acc);box-shadow:0 0 0 3px rgba(var(--acc-r,59),var(--acc-g,130),var(--acc-b,246),.15)}
 .btn{padding:9px 18px;border:none;border-radius:9px;font-size:13px;font-weight:700;cursor:pointer;font-family:inherit}
-.bp{background:linear-gradient(135deg,#3b82f6,#2563eb);color:#fff;box-shadow:0 4px 14px rgba(59,130,246,.3)}
-.bp:hover{transform:translateY(-1px);box-shadow:0 6px 20px rgba(59,130,246,.45)}
+.bp{background:linear-gradient(135deg,var(--acc),var(--acc-dark,#2563eb));color:#fff;box-shadow:0 4px 14px rgba(var(--acc-r,59),var(--acc-g,130),var(--acc-b,246),.3)}
+.bp:hover{transform:translateY(-1px);box-shadow:0 6px 20px rgba(var(--acc-r,59),var(--acc-g,130),var(--acc-b,246),.45)}
 .bd{background:rgba(239,68,68,.1);border:1px solid rgba(239,68,68,.3);color:#ef4444}
 .bsm{padding:5px 12px;font-size:11px;border-radius:7px}
 .ut{width:100%;border-collapse:collapse;font-size:13px}
@@ -196,6 +200,7 @@ input:focus,select:focus,textarea:focus{border-color:var(--acc);box-shadow:0 0 0
 .ok{background:rgba(34,197,94,.1);color:#22c55e;padding:3px 9px;border-radius:20px;font-size:10px;font-weight:700;display:inline-block}
 .off{background:rgba(100,116,139,.1);color:#64748b;padding:3px 9px;border-radius:20px;font-size:10px;font-weight:700;display:inline-block}
 </style>
+<script src="/static/yve-tema.js?v=__ASSETS_V__"></script>
 </head>
 <body>
 <div class="admin-top">
@@ -279,7 +284,7 @@ input:focus,select:focus,textarea:focus{border-color:var(--acc);box-shadow:0 0 0
       </div>
       <div id="leads-list" style="max-height:300px;overflow-y:auto"><div style="color:#64748b;font-size:13px;padding:12px">Cargando...</div></div>
     </div>
-    <div class="card" style="border-color:rgba(59,130,246,.2)">
+    <div class="card" style="border-color:rgba(var(--acc-r,59),var(--acc-g,130),var(--acc-b,246),.2)">
       <div class="ct" style="color:#60a5fa">Conexiones</div>
       <div style="display:flex;flex-direction:column;gap:8px">
         <div style="display:flex;align-items:center;gap:8px">
@@ -287,7 +292,7 @@ input:focus,select:focus,textarea:focus{border-color:var(--acc);box-shadow:0 0 0
           <span id="smtp-status" style="font-size:11px;color:#64748b"></span>
         </div>
         <div style="display:flex;align-items:center;gap:8px;margin-top:8px">
-          <button class="btn bsm" onclick="checkSystemHealth()" style="min-width:120px;font-size:11px;background:rgba(59,130,246,.1);border-color:rgba(59,130,246,.3);color:var(--acc2)">🔍 Estado sistema</button>
+          <button class="btn bsm" onclick="checkSystemHealth()" style="min-width:120px;font-size:11px;background:rgba(var(--acc-r,59),var(--acc-g,130),var(--acc-b,246),.1);border-color:rgba(var(--acc-r,59),var(--acc-g,130),var(--acc-b,246),.3);color:var(--acc2)">🔍 Estado sistema</button>
           <div id="health-summary" style="font-size:11px;color:#64748b"></div>
         </div>
         <div style="display:flex;align-items:center;gap:8px">

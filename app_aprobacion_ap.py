@@ -473,6 +473,7 @@ textarea:focus{border-color:var(--acc);outline:none;
 }
 svg.yvi{width:1em;height:1em;vertical-align:-0.125em;flex-shrink:0;display:inline-block}
 </style>
+<script src="/static/yve-tema.js?v=__ASSETS_V__"></script>
 </head>
 <body>
 <nav class="nav">
@@ -521,34 +522,6 @@ svg.yvi{width:1em;height:1em;vertical-align:-0.125em;flex-shrink:0;display:inlin
 <div class="toast" id="toast"></div>
 
 <script>
-// ── Paleta personalizada: mismas claves de localStorage que el dashboard ──
-(function(){
-  try {
-    var acc = localStorage.getItem('yve_accent');
-    var bg  = localStorage.getItem('yve_bg');
-    var r   = document.documentElement;
-    function hx(v){ v=Math.max(0,Math.min(255,Math.round(v))); return ('0'+v.toString(16)).slice(-2); }
-    if (bg && /^#[0-9a-f]{6}$/i.test(bg)) {
-      var bH=bg.replace('#','');
-      r.style.setProperty('--bg', bg);
-      r.style.setProperty('--bg-r', String(parseInt(bH.substr(0,2),16)));
-      r.style.setProperty('--bg-g', String(parseInt(bH.substr(2,2),16)));
-      r.style.setProperty('--bg-b', String(parseInt(bH.substr(4,2),16)));
-    }
-    if (acc && /^#[0-9a-f]{6}$/i.test(acc)) {
-      var aH=acc.replace('#','');
-      var aR=parseInt(aH.substr(0,2),16), aG=parseInt(aH.substr(2,2),16), aB=parseInt(aH.substr(4,2),16);
-      function bw(v,t){ return Math.round(v+(255-v)*t); }
-      r.style.setProperty('--acc', acc);
-      r.style.setProperty('--acc2', '#'+hx(bw(aR,.25))+hx(bw(aG,.25))+hx(bw(aB,.25)));
-      r.style.setProperty('--acc3', '#'+hx(bw(aR,.5))+hx(bw(aG,.5))+hx(bw(aB,.5)));
-      r.style.setProperty('--acc-r', String(aR));
-      r.style.setProperty('--acc-g', String(aG));
-      r.style.setProperty('--acc-b', String(aB));
-    }
-  } catch(e) {}
-})();
-
 const historial = [];
 // Que tarjetas estan desplegadas, por NUMERO DE FACTURA y no por indice: la
 // lista se repinta entera tras aprobar, y con indices se quedaria abierta la

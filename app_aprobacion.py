@@ -16,6 +16,7 @@ from pathlib import Path
 import pandas as pd
 from flask import Blueprint, request, redirect, url_for, jsonify
 from flask_login import login_required
+from version_estaticos import SELLO as SELLO_ESTATICOS
 
 # ── Config ─────────────────────────────────────────────────────────────────
 BASE_DIR       = Path(__file__).parent
@@ -221,6 +222,7 @@ HTML_BASE = """<!DOCTYPE html>
               border-top-color: white; border-radius: 50%; animation: spin .6s linear infinite; }
   @keyframes spin { to { transform: rotate(360deg); } }
 </style>
+<script src="/static/yve-tema.js?v=__ASSETS_V__"></script>
 </head>
 <body>
 
@@ -456,7 +458,7 @@ init();
 
 @bp.route("/")
 def index():
-    return HTML_BASE
+    return HTML_BASE.replace("__ASSETS_V__", SELLO_ESTATICOS)
 
 
 @bp.route("/api/facturas")

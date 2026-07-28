@@ -4501,10 +4501,10 @@ tr:hover td{background:rgba(255,255,255,.025)}
 /* ── AP Cards ─────────────────────────────────────────── */
 .ap-badge{display:inline-block;padding:2px 8px;border-radius:4px;font-size:.75rem;font-weight:700;letter-spacing:.04em}
 .ap-badge.fb{background:rgba(139,92,246,.2);color:#c4b5fd}
-.ap-badge.otras{background:rgba(var(--acc-r,59),var(--acc-g,130),var(--acc-b,246),.2);color:#93c5fd}
+.ap-badge.otras{background:rgba(var(--acc-r,59),var(--acc-g,130),var(--acc-b,246),.2);color:var(--acc3)}
 .ap-badge.ok{background:rgba(34,197,94,.2);color:#86efac}
 .ap-badge.disc{background:rgba(239,68,68,.2);color:#fca5a5}
-.ap-badge.alerta{background:rgba(var(--acc-r,59),var(--acc-g,130),var(--acc-b,246),.15);color:#93c5fd}
+.ap-badge.alerta{background:rgba(var(--acc-r,59),var(--acc-g,130),var(--acc-b,246),.15);color:var(--acc3)}
 .ap-badge.sinpo{background:rgba(234,179,8,.2);color:#fde047}
 .ap-badge.manual{background:rgba(249,115,22,.2);color:#fed7aa}
 .alerta-box{background:rgba(var(--acc-r,59),var(--acc-g,130),var(--acc-b,246),.1);border:1px solid rgba(var(--acc-r,59),var(--acc-g,130),var(--acc-b,246),.3);border-radius:6px;padding:8px 12px;margin-top:8px;font-size:.8rem;color:var(--acc3)}
@@ -4588,7 +4588,7 @@ tr:hover td{background:rgba(255,255,255,.025)}
 }
 .sug{
   background:rgba(var(--acc-r,59),var(--acc-g,130),var(--acc-b,246),.1);border:1px solid rgba(var(--acc-r,59),var(--acc-g,130),var(--acc-b,246),.2);
-  color:#93c5fd;border-radius:20px;padding:7px 13px;font-size:.78rem;
+  color:var(--acc3);border-radius:20px;padding:7px 13px;font-size:.78rem;
   cursor:pointer;transition:.15s;white-space:nowrap;font-weight:500;
 }
 .sug:hover{background:rgba(var(--acc-r,59),var(--acc-g,130),var(--acc-b,246),.2);border-color:rgba(var(--acc-r,59),var(--acc-g,130),var(--acc-b,246),.4)}
@@ -4604,7 +4604,7 @@ tr:hover td{background:rgba(255,255,255,.025)}
   resize:none;font-family:inherit;transition:.15s;max-height:120px;
   line-height:1.5;
 }
-#chat-input:focus{border-color:var(--acc2);box-shadow:0 0 0 2px rgba(96,165,250,.12)}
+#chat-input:focus{border-color:var(--acc2);box-shadow:0 0 0 2px rgba(var(--acc-r,96),var(--acc-g,165),var(--acc-b,250),.12)}
 #chat-input::placeholder{color:#475569}
 #chat-send{
   background:linear-gradient(135deg,#7c3aed,var(--acc));border:none;
@@ -4823,9 +4823,9 @@ svg.yvi{width:1em;height:1em;vertical-align:-0.125em;flex-shrink:0;display:inlin
 #yve-splash.hide{opacity:0;visibility:hidden;pointer-events:none}
 #yve-splash .sp-logo{width:110px;height:110px;border-radius:27px;box-shadow:0 22px 60px rgba(0,0,0,.55);animation:spPop .6s cubic-bezier(.2,.8,.2,1)}
 #yve-splash .sp-brand{font-family:'Space Grotesk','Inter',sans-serif;margin-top:24px;font-size:31px;font-weight:700;letter-spacing:-.4px;color:#fff;animation:spFade .6s ease .12s both}
-#yve-splash .sp-brand span{color:#60a5fa}
+#yve-splash .sp-brand span{color:var(--acc2,#60a5fa)}
 #yve-splash .sp-sub{margin-top:9px;font-size:13px;color:#94a3b8;animation:spFade .6s ease .22s both}
-#yve-splash .sp-loader{margin-top:30px;width:32px;height:32px;border-radius:50%;border:3px solid rgba(148,163,184,.22);border-top-color:#3b82f6;animation:spSpin .8s linear infinite}
+#yve-splash .sp-loader{margin-top:30px;width:32px;height:32px;border-radius:50%;border:3px solid rgba(148,163,184,.22);border-top-color:var(--acc,#3b82f6);animation:spSpin .8s linear infinite}
 @keyframes spPop{from{opacity:0;transform:scale(.82)}to{opacity:1;transform:scale(1)}}
 @keyframes spFade{from{opacity:0;transform:translateY(8px)}to{opacity:1;transform:none}}
 @keyframes spSpin{to{transform:rotate(360deg)}}
@@ -4963,7 +4963,7 @@ svg.yvi{width:1em;height:1em;vertical-align:-0.125em;flex-shrink:0;display:inlin
   </div>
 
   <!-- Top loading bar -->
-  <div id="top-bar" style="position:fixed;top:0;left:0;height:2px;background:linear-gradient(90deg,#3b82f6,#a78bfa);z-index:9999;transition:width .3s ease;width:0"></div>
+  <div id="top-bar" style="position:fixed;top:0;left:0;height:2px;background:linear-gradient(90deg,var(--acc,#3b82f6),#a78bfa);z-index:9999;transition:width .3s ease;width:0"></div>
 
   <!-- Barra estado -->
   <div class="status-bar">
@@ -5008,7 +5008,7 @@ svg.yvi{width:1em;height:1em;vertical-align:-0.125em;flex-shrink:0;display:inlin
   </div>
 
   <!-- Executive summary bar (dynamic) -->
-  <div id="exec-summary" style="display:none;padding:8px 16px;background:rgba(59,130,246,.05);border-bottom:1px solid rgba(59,130,246,.1);font-size:12px;color:var(--mut);text-align:center">
+  <div id="exec-summary" style="display:none;padding:8px 16px;background:rgba(var(--acc-r,59),var(--acc-g,130),var(--acc-b,246),.05);border-bottom:1px solid rgba(var(--acc-r,59),var(--acc-g,130),var(--acc-b,246),.1);font-size:12px;color:var(--mut);text-align:center">
     <span id="exec-txt"></span>
   </div>
 
@@ -5116,7 +5116,7 @@ svg.yvi{width:1em;height:1em;vertical-align:-0.125em;flex-shrink:0;display:inlin
         <div id="ar-recl-resumen" style="font-size:12px;color:var(--mut)"></div>
       </div>
       <div id="ar-recl-list" style="display:flex;flex-direction:column;gap:12px">
-        <div class="empty" style="padding:20px;text-align:center;color:var(--dim);font-size:12px;border:1px dashed var(--s2);border-radius:12px">
+        <div class="empty card" style="padding:20px;text-align:center;color:var(--dim);font-size:12px;border-style:dashed;border-radius:12px">
           Cuando Yve detecte comisiones cobradas por encima del contrato, aparecer&aacute;n aqu&iacute; para reclamar.
         </div>
       </div>
@@ -5126,7 +5126,7 @@ svg.yvi{width:1em;height:1em;vertical-align:-0.125em;flex-shrink:0;display:inlin
 
   <!-- PANEL AP -->
   <div id="panel-ap" class="panel">
-  <div style="display:flex;justify-content:flex-end;gap:12px;margin-bottom:14px"><a href="/api/exportar/ap" style="background:#1a73e8;color:white;padding:8px 16px;border-radius:8px;text-decoration:none;font-weight:600;font-size:13px" data-i18n="btn.downloadExcel" data-i18n="btn.downloadExcel">⬇️ Descargar Excel</a><a href="/aprobaciones-ap/" class="btn-ref" style="text-decoration:none" title="Abrir panel de aprobaciones AP" data-i18n="btn.aprobarAP">📲 Aprobar facturas AP</a>
+  <div style="display:flex;justify-content:flex-end;gap:12px;margin-bottom:14px"><a href="/api/exportar/ap" style="background:var(--acc);color:white;padding:8px 16px;border-radius:8px;text-decoration:none;font-weight:600;font-size:13px" data-i18n="btn.downloadExcel" data-i18n="btn.downloadExcel">⬇️ Descargar Excel</a><a href="/aprobaciones-ap/" class="btn-ref" style="text-decoration:none" title="Abrir panel de aprobaciones AP" data-i18n="btn.aprobarAP">📲 Aprobar facturas AP</a>
         <button class="btn-ref" onclick="aprobarMatchOK()" style="font-size:12px" title="Aprueba automáticamente todas las facturas con 3-way match correcto">✅ Aprobar Match OK</button>
         <button class="btn-ref" onclick="filtrarAPPorEstado()" id="btn-filter-ap" style="font-size:12px">🔍 Filtrar</button>
         <select id="ap-estado-filter" onchange="filtrarAPPorEstado(this.value)" style="background:var(--s1);border:1px solid var(--s2);color:var(--tx);padding:6px 10px;border-radius:8px;font-size:12px;cursor:pointer">
@@ -5175,7 +5175,7 @@ svg.yvi{width:1em;height:1em;vertical-align:-0.125em;flex-shrink:0;display:inlin
     <div class="drr-metrics" id="drr-metrics" style="display:grid;grid-template-columns:repeat(auto-fit,minmax(140px,1fr));gap:10px;margin-bottom:12px">
       <div class="empty" id="drr-drop-zone" 
     style="border:2px dashed var(--s3);border-radius:12px;padding:32px;cursor:pointer;transition:.2s"
-    ondragover="event.preventDefault();this.style.borderColor='var(--acc)';this.style.background='rgba(59,130,246,.05)'"
+    ondragover="event.preventDefault();this.style.borderColor='var(--acc)';this.style.background='rgba(var(--acc-r,59),var(--acc-g,130),var(--acc-b,246),.05)'"
     ondragleave="this.style.borderColor='var(--s3)';this.style.background=''"
     ondrop="event.preventDefault();this.style.borderColor='var(--s3)';this.style.background='';uploadDRR({files:event.dataTransfer.files})"
     onclick="document.getElementById('drr-file-input').click()">
@@ -5429,7 +5429,7 @@ svg.yvi{width:1em;height:1em;vertical-align:-0.125em;flex-shrink:0;display:inlin
         <span data-tip="Yve crea el BEO (partidas e importes) desde el contrato de grupo y coteja la factura contra él." style="cursor:help;color:var(--dim);font-size:12px">&#9432;</span>
       </div>
       <div id="ar-beos-list" style="display:flex;flex-direction:column;gap:10px">
-        <div class="empty" style="padding:20px;text-align:center;color:var(--dim);font-size:12px;border:1px dashed var(--s2);border-radius:12px">
+        <div class="empty card" style="padding:20px;text-align:center;color:var(--dim);font-size:12px;border-style:dashed;border-radius:12px">
           Procesa un contrato de grupo en <b>Procesar Archivos</b> y aquí ver&aacute;s su BEO con el cotejo de la factura.
         </div>
       </div>
@@ -5552,7 +5552,7 @@ Gestoría Nord: Hotel Pirineus, Hotel Vall" style="width:100%;background:var(--b
     </div>
     <div id="upload-drop-zone"
          onclick="document.getElementById('upload-file-input').click()"
-         ondragover="event.preventDefault();this.style.borderColor='#3b82f6';this.style.background='rgba(59,130,246,.08)'"
+         ondragover="event.preventDefault();this.style.borderColor='var(--acc)';this.style.background='rgba(var(--acc-r,59),var(--acc-g,130),var(--acc-b,246),.08)'"
          ondragleave="this.style.borderColor='var(--s3)';this.style.background=''"
          ondrop="handleUploadDrop(event)"
          style="border:2px dashed var(--s3);border-radius:14px;padding:32px;text-align:center;cursor:pointer;transition:.2s;margin-bottom:16px">
@@ -9036,11 +9036,11 @@ function _reclCard(it, i){
       ' · a devolver <b style="color:#f87171">' + _reclMoney(it.importe_reclamable) + '</b></div></div>' +
     '<span style="font-size:11px;font-weight:700;padding:3px 10px;border-radius:20px;background:'+bg+';color:'+col+'">'+badge+'</span></div>';
   if (it.estado==='ENVIADA'){
-    return '<div style="border:1px solid var(--s2);border-radius:12px;padding:12px;background:var(--s1);opacity:.85">' + head +
+    return '<div class="card" style="padding:12px;border-radius:12px;opacity:.85">' + head +
       '<div style="font-size:12px;color:var(--mut)">Enviada a ' + _reclEsc(it.destinatario) + ' · ' + _reclEsc(it.fecha_enviada) + '</div></div>';
   }
   if (it.estado==='DESCARTADA'){
-    return '<div style="border:1px solid var(--s2);border-radius:12px;padding:12px;background:var(--s1);opacity:.55">' + head + '</div>';
+    return '<div class="card" style="padding:12px;border-radius:12px;opacity:.55">' + head + '</div>';
   }
   var body;
   if (!it.tiene_borrador){
@@ -9057,7 +9057,7 @@ function _reclCard(it, i){
         '<button onclick="_reclDescartar('+i+')" class="btn-ref" style="font-size:12px">🗑 Descartar</button>' +
       '</div></div>';
   }
-  return '<div style="border:1px solid var(--s2);border-radius:12px;padding:12px;background:var(--s1)">' + head + body + '</div>';
+  return '<div class="card" style="padding:12px;border-radius:12px">' + head + body + '</div>';
 }
 async function _reclGenerar(i, btn){
   var it=_reclItems[i]; if(!it) return;
@@ -9126,7 +9126,7 @@ async function cambiarIdioma(lang) {
   document.querySelectorAll('.lang-btn').forEach(b => {
     var active = b.dataset.lang === lang;
     b.style.fontWeight = active ? '700' : '400';
-    b.style.background = active ? 'rgba(59,130,246,.15)' : 'transparent';
+    b.style.background = active ? 'rgba(var(--acc-r,59),var(--acc-g,130),var(--acc-b,246),.15)' : 'transparent';
     b.style.borderRadius = active ? '6px' : '';
     b.style.color = active ? 'var(--acc2)' : 'var(--tx)';
   });
@@ -9219,7 +9219,7 @@ if (localStorage.getItem('tour_done') !== _TOUR_VER && !localStorage.getItem('to
     var n = document.createElement('div');
     n.id = 'tour-banner';
     n.style.cssText = 'position:fixed;bottom:24px;left:50%;transform:translateX(-50%);' +
-      'background:#1e293b;border:1px solid rgba(59,130,246,.4);border-radius:16px;' +
+      'background:var(--s1);border:1px solid rgba(var(--acc-r,59),var(--acc-g,130),var(--acc-b,246),.4);border-radius:16px;' +
       'padding:16px 20px;z-index:9000;display:flex;align-items:center;gap:16px;' +
       'box-shadow:0 8px 32px rgba(0,0,0,.5);max-width:420px;width:calc(100% - 32px)';
     n.innerHTML =
@@ -9230,7 +9230,7 @@ if (localStorage.getItem('tour_done') !== _TOUR_VER && !localStorage.getItem('to
         '<button onclick="_tourBannerSkip()" ' +
           'style="background:transparent;border:1px solid #334155;color:#64748b;padding:7px 13px;border-radius:8px;font-size:12px;cursor:pointer">Ahora no</button>' +
         '<button onclick="_tourBannerStart()" ' +
-          'style="background:linear-gradient(135deg,#3b82f6,#7c3aed);border:none;color:#fff;padding:7px 13px;border-radius:8px;font-size:12px;cursor:pointer;font-weight:600">Empezar →</button>' +
+          'style="background:linear-gradient(135deg,var(--acc,#3b82f6),#7c3aed);border:none;color:#fff;padding:7px 13px;border-radius:8px;font-size:12px;cursor:pointer;font-weight:600">Empezar →</button>' +
       '</div>';
     document.body.appendChild(n);
     // Auto-dismiss after 12s
@@ -10634,7 +10634,7 @@ async function mostrarHistorialProcesado() {
       }
     });
     var tabSummary = Object.entries(tabCounts).map(function(e) {
-      return '<span style="display:inline-block;padding:3px 10px;border-radius:12px;font-size:11px;font-weight:600;background:rgba(59,130,246,.12);color:var(--acc2);margin:2px 3px">' + e[1] + ' ' + e[0] + '</span>';
+      return '<span style="display:inline-block;padding:3px 10px;border-radius:12px;font-size:11px;font-weight:600;background:rgba(var(--acc-r,59),var(--acc-g,130),var(--acc-b,246),.12);color:var(--acc2);margin:2px 3px">' + e[1] + ' ' + e[0] + '</span>';
     }).join('');
     
     var modal = document.createElement('div');
@@ -11869,7 +11869,7 @@ async function loadAP() {
       const tr = document.createElement('tr');
       tr.setAttribute('data-estado', f.estado || '');
       tr.style.cursor = 'pointer';
-      tr.addEventListener('mouseover', function(){ this.style.background='rgba(59,130,246,.04)'; });
+      tr.addEventListener('mouseover', function(){ this.style.background='rgba(var(--acc-r,59),var(--acc-g,130),var(--acc-b,246),.04)'; });
       tr.addEventListener('mouseout',  function(){ this.style.background=''; });
       tr.addEventListener('click', function(){ showAPDetail({
         numero_factura: f.numero_factura, proveedor: f.proveedor,
@@ -12474,7 +12474,7 @@ function renderNotifConfig() {
     cont.innerHTML = NOTIF_CHANNELS.filter(ch => ch.key !== 'push' || yvePushSupported()).map(ch => {
       const on = c.canales && c.canales[ch.key];
       return '<div onclick="toggleNotifCanal(\'' + ch.key + '\')" style="cursor:pointer;background:' +
-        (on ? 'rgba(59,130,246,.1)' : 'var(--s2)') + ';border:1px solid ' +
+        (on ? 'rgba(var(--acc-r,59),var(--acc-g,130),var(--acc-b,246),.1)' : 'var(--s2)') + ';border:1px solid ' +
         (on ? 'var(--acc)' : 'var(--s2)') + ';border-radius:12px;padding:14px;text-align:center;transition:.15s">' +
         '<div style="font-size:22px;margin-bottom:6px">' + ch.icon + '</div>' +
         '<div style="font-size:13px;font-weight:600;color:' + (on ? 'var(--acc2)' : 'var(--mut)') + '">' + ch.name + '</div>' +
@@ -12923,10 +12923,10 @@ async function loadMultiHotel() {
           '<div style="font-size:14px;font-weight:700;color:var(--tx);margin-bottom:4px">' + best.nombre.split(' ').slice(-1)[0] + '</div>' +
           '<div style="font-size:24px;font-weight:900;color:#22c55e">' + best.gop_pct + '%</div>' +
         '</div>' +
-        '<div class="card" style="border-left:3px solid #60a5fa;padding:14px 16px">' +
-          '<div style="font-size:9px;font-weight:700;letter-spacing:.6px;color:#60a5fa;text-transform:uppercase;margin-bottom:6px">REVENUE</div>' +
+        '<div class="card" style="border-left:3px solid var(--acc2);padding:14px 16px">' +
+          '<div style="font-size:9px;font-weight:700;letter-spacing:.6px;color:var(--acc2);text-transform:uppercase;margin-bottom:6px">REVENUE</div>' +
           '<div style="font-size:14px;font-weight:700;color:var(--tx);margin-bottom:4px">Junio grupo</div>' +
-          '<div style="font-size:24px;font-weight:900;color:#60a5fa">€' + Math.round((k.total_revenue||0)/1000) + 'K</div>' +
+          '<div style="font-size:24px;font-weight:900;color:var(--acc2)">€' + Math.round((k.total_revenue||0)/1000) + 'K</div>' +
         '</div>' +
         '<div class="card" style="border-left:3px solid #a78bfa;padding:14px 16px">' +
           '<div style="font-size:9px;font-weight:700;letter-spacing:.6px;color:#a78bfa;text-transform:uppercase;margin-bottom:6px">GOP% MEDIO</div>' +
@@ -13556,7 +13556,7 @@ document.addEventListener('keydown', e => {
     </div>
     <div style="display:flex;flex-direction:column;gap:16px;font-size:13px">
       <div>
-        <div style="color:#60a5fa;font-weight:700;font-size:11px;text-transform:uppercase;letter-spacing:.4px;margin-bottom:8px">Junio 2026 — v1.5</div>
+        <div style="color:var(--acc2);font-weight:700;font-size:11px;text-transform:uppercase;letter-spacing:.4px;margin-bottom:8px">Junio 2026 — v1.5</div>
         <ul style="color:#94a3b8;padding-left:16px;line-height:1.8">
           <li>🔐 Protección CSRF en todas las rutas API autenticadas</li>
           <li>💳 Billing Stripe — checkout real con plan automático por habitaciones</li>
