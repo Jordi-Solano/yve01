@@ -470,6 +470,7 @@ textarea:focus{border-color:var(--acc);outline:none;
   .card{padding:16px}
   .info-grid{gap:12px}
 }
+svg.yvi{width:1em;height:1em;vertical-align:-0.125em;flex-shrink:0;display:inline-block}
 </style>
 </head>
 <body>
@@ -741,5 +742,6 @@ function showToast(msg, color) {
 loadData();
 cargarHist();
 </script>
+<script src="/static/yve-icons.js?v=2"></script>
 </body>
 </html>"""

@@ -68,7 +68,7 @@ def get_html_tabs(role):
         "fb": "🍽️ F&B Cost",
         "ar_real": "🏢 AR Real",
         "multi_hotel": "🏨 Multi-Hotel",
-        "calipolis": "🏩 Calipolis"
+        "calipolis": "🏨 Calipolis"
     }
     
     html = ""
