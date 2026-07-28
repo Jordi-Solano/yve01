@@ -369,13 +369,42 @@ def exportar_excel(asientos, mes_filtro=None):
     return output
 
 
+def _en_demo():
+    """¿Ha pedido esta sesion el modo demo, explicitamente?
+
+    Hay dos interruptores de demo en la casa y cuentan los dos: el de la
+    sesion (`tab_demo.py`, que es el que mira el simulador) y el global de
+    `dashboard`, que encienden `/api/demo/generar` y `/api/demo/toggle`.
+
+    `dashboard` se mira por `sys.modules` en vez de importarlo: el import
+    seria circular, porque dashboard.py lo primero que hace es importar este
+    modulo. Si no estuviera cargado, la respuesta es NO — ante la duda, un
+    libro diario vacio es infinitamente menos peligroso que uno con asientos
+    inventados.
+    """
+    try:
+        from flask import session, has_request_context
+        if has_request_context() and session.get("demo_mode"):
+            return True
+    except Exception:
+        pass
+    import sys as _sys
+    return bool(getattr(_sys.modules.get("dashboard"), "DEMO_MODE", False))
+
+
 @asientos_bp.route('/api/exportar/asientos')
 def exportar_asientos():
     mes = request.args.get('mes', '')  # formato YYYY-MM
     try:
         asientos = generar_libro_diario(mes_filtro=mes or None)
-        if not asientos:
-            # Generar asientos de demo si no hay datos reales
+        # Sin datos reales, este boton se descargaba NUEVE asientos de demo
+        # —MAKRO-2024-001, comision de Booking— fechados HOY, sin decir en
+        # ningun sitio que eran inventados. Un libro diario es un documento
+        # contable: si parece real y no lo es, es peor que no tenerlo. Ahora
+        # los asientos de demo salen solo si alguien ha encendido el demo a
+        # proposito, que es el mecanismo que ya usa el resto de la app.
+        # Sin demo y sin datos: un libro diario vacio, que es la verdad.
+        if not asientos and _en_demo():
             asientos = _demo_asientos()
         output = exportar_excel(asientos, mes_filtro=mes or None)
         nombre = f"Yve_LibroDiario_{mes or datetime.now().strftime('%Y%m')}.xlsx"

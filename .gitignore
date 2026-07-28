@@ -221,3 +221,28 @@ __marimo__/
 datos-referencia/push_subscriptions.json
 vapid_keys.json
 *.vapid
+
+# ── Datos de trabajo: se generan usando la app, NUNCA se commitean ─────────
+# Varios de estos salieron commiteados sin querer y volvian en CADA deploy,
+# asi que cualquier prueba con datos reales empezaba sucia: una factura de
+# demo en AP, dos aprobaciones falsas dadas por buenas y quince asientos
+# contables inventados en el Libro Diario. Ya estan fuera del repo; esto es
+# para que no vuelvan de un `git add -A` distraido.
+#
+# Y hay algo mas serio que el demo: `facturas-entrada/` es donde caen las
+# facturas que sube el usuario. En un repo publico eso son facturas de
+# clientes de verdad. Que no entren ni por accidente.
+facturas-entrada/*
+facturas-procesadas/*
+aprobaciones/*.xlsx
+reportes/*.xlsx
+reportes/*.pdf
+reportes/emails_pendientes/*
+reportes/emails_pendientes_ap/*
+datos-referencia/facturas_ota_demo.xlsx
+tenants/
+
+# Excepcion: los PDF del clasificador SI van al repo. No son datos de nadie,
+# son fixtures de prueba, y hace falta negar tambien la carpeta — si no, la
+# linea de arriba la excluye entera y lo de dentro ya no se puede recuperar.
+!facturas-entrada/test_clasificador/

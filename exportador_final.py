@@ -12,15 +12,36 @@ from reportlab.platypus import SimpleDocTemplate, Table, TableStyle, Paragraph, 
 from reportlab.lib import colors
 import os
 
+def _dir_reportes():
+    """La carpeta de reportes del tenant que esta pidiendo el informe.
+
+    Antes esto era la cadena 'reportes' a secas, con dos fallos en una linea:
+    era relativa al directorio desde el que se arranco el proceso, y era
+    ciega al tenant. O sea que el consolidado de un cliente caia en la
+    carpeta raiz — la misma que ve el tenant `default` listada en
+    /api/debug y contada en /api/health.
+
+    Se resuelve en CADA llamada y no en __init__ a proposito: el tenant sale
+    de la sesion, y la instancia de esta clase es unica y global, creada al
+    importar el modulo, cuando todavia no hay ninguna peticion.
+    """
+    try:
+        from tenant_dirs import reportes_dir
+        d = reportes_dir()
+    except Exception:
+        d = os.path.join(os.path.dirname(os.path.abspath(__file__)), "reportes")
+    os.makedirs(d, exist_ok=True)
+    return d
+
+
 class ExportadorReportes:
     def __init__(self):
         self.styles = getSampleStyleSheet()
-        os.makedirs('reportes', exist_ok=True)
-    
+
     def pdf_ejecutivo(self, data):
         """Reporte ejecutivo en PDF para dirección"""
         timestamp = datetime.now().strftime('%Y%m%d_%H%M%S')
-        path = f'reportes/Reporte_Ejecutivo_{timestamp}.pdf'
+        path = os.path.join(_dir_reportes(), f'Reporte_Ejecutivo_{timestamp}.pdf')
         
         story = []
         
@@ -62,7 +83,7 @@ class ExportadorReportes:
     def excel_consolidado(self, data):
         """Excel consolidado con múltiples hojas"""
         timestamp = datetime.now().strftime('%Y%m%d_%H%M%S')
-        path = f'reportes/Consolidado_{timestamp}.xlsx'
+        path = os.path.join(_dir_reportes(), f'Consolidado_{timestamp}.xlsx')
         
         wb = Workbook()
         
