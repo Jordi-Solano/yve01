@@ -1493,7 +1493,13 @@ def _enrutar_tipo_doc(reg, fname, fpath=None):
                     if _c in _df_ota.columns and len(_df_ota):
                         _nom_doc = str(_df_ota[_c].iloc[0] or '')
                         break
-                if not _mismo_hotel(_nom_doc, _nom_asignado):
+                # Se pregunta al CENSO con que hotel encaja el nombre del
+                # documento. Comparar solo con el asignado se quedaba callado
+                # entre hermanos: "Hotel Sol Mar" contiene "Hotel Sol", asi que
+                # subir la liquidacion del uno teniendo elegido el otro pasaba
+                # sin aviso — el error que esto existe para cazar.
+                _otro = censo_hoteles.encaje(_nom_doc)
+                if (_otro and _otro != _hid) or (not _otro and not _mismo_hotel(_nom_doc, _nom_asignado)):
                     _msg += (f' · ⚠ ojo: el documento nombra otro hotel '
                              f'({_nom_doc.strip()}) y se ha guardado en {_nom_asignado}')
             _marca = 'AR_OK'

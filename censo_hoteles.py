@@ -130,6 +130,46 @@ def para_guardar():
     return ""
 
 
+def _plegar(t):
+    import unicodedata
+    t = unicodedata.normalize("NFKD", str(t or ""))
+    t = "".join(c for c in t if not unicodedata.combining(c))
+    return " ".join(t.lower().split())
+
+
+def encaje(nombre):
+    """El hotel del censo que mejor encaja con un nombre suelto. '' si ninguno.
+
+    Gana el nombre MAS LARGO que encaje. Sin eso, "Hotel Sol Mar" se lo llevaba
+    "Hotel Sol" por ser prefijo suyo — y dos hoteles hermanos de un grupo es
+    justo el caso en el que hace falta acertar.
+    """
+    n = _plegar(nombre)
+    if not n or n in ("no_encontrado", "nan", "none"):
+        return ""
+    censo = [(str(h["id"]), _plegar(h.get("nombre"))) for h in hoteles(solo_activos=False)]
+    censo = [(i, c) for i, c in censo if c]
+
+    # 1. Igual clavado: no hay nada que pensar.
+    for i, c in censo:
+        if c == n:
+            return i
+
+    # 2. El censo dentro del documento: "Hotel Sol Mar S.L." trae el nombre y
+    #    una coletilla. Gana el MAS LARGO, para que "Hotel Sol Mar" no se lo
+    #    lleve "Hotel Sol" por ser prefijo suyo.
+    dentro = sorted([(len(c), i) for i, c in censo if c in n], reverse=True)
+    if dentro:
+        return dentro[0][1]
+
+    # 3. El documento dentro del censo: el papel dice menos de lo que sabemos.
+    #    Si encaja con UNO solo, ese. Si encaja con varios ("Sol" vale para
+    #    "Hotel Sol" y para "Hotel Sol Mar"), no se sabe: mejor no decir nada
+    #    que señalar al hotel equivocado.
+    fuera = [i for i, c in censo if n in c]
+    return fuera[0] if len(fuera) == 1 else ""
+
+
 def para_selector():
     """[{id, nombre}] de los hoteles activos, para el desplegable."""
     return [{"id": str(h["id"]), "nombre": str(h["nombre"])} for h in hoteles()]
