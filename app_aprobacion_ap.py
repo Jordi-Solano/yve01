@@ -614,7 +614,8 @@ async function loadData() {
         '<div><div class="prov-name">'+txt(r.nombre_proveedor)+'</div><div class="prov-num">'+_num+'</div></div>' +
         '<div class="card-acc">' +
           '<span class="badge '+(r.tipo_proveedor==='FB'?'b-fb':'b-otras')+'">'+txt(r.tipo_proveedor)+'</span>' +
-          '<button class="chev'+(_ab?' abierta':'')+'" id="chev-'+i+'" onclick="toggleDet('+i+')" title="Ver la factura completa">▼</button>' +
+          (r.accion ? '' :
+            '<button class="chev'+(_ab?' abierta':'')+'" id="chev-'+i+'" onclick="toggleDet('+i+')" title="Ver la factura completa">▼</button>') +
         '</div>' +
       '</div>' +
       '<div class="info-grid">' +
@@ -623,6 +624,7 @@ async function loadData() {
         '<div class="ii"><div class="lbl">Matching</div><div class="val">'+bMatch(r.estado_matching)+'</div></div>' +
         '<div class="ii"><div class="lbl">Departamento</div><div class="val">'+txt(r.departamento_po)+'</div></div>' +
       '</div>' +
+      (r.accion ? '' :
       '<div class="detalle'+(_ab?' abierta':'')+'" id="det-'+i+'">' +
         '<div class="info-grid">' +
           '<div class="ii"><div class="lbl">Base imponible</div><div class="val">'+eur(r.base_imponible)+'</div></div>' +
@@ -630,7 +632,7 @@ async function loadData() {
           '<div class="ii det-full"><div class="lbl">Concepto</div><div class="val">'+txt(r.descripcion)+'</div></div>' +
           '<div class="ii det-full"><div class="lbl">Documento de origen</div><div class="val det-arch">'+txt(r.archivo)+'</div></div>' +
         '</div>' +
-      '</div>' +
+      '</div>') +
       (r.cuenta_debe ? '<div class="cuenta-tag">📒 Cuenta ' + r.cuenta_debe + ' — ' + txt(r.estado_asignacion) + '</div>' : '') +
       alertHtml +
       (r.accion ? '<div class="estado-row"><span class="badge '+(r.accion==='APROBADA'?'b-apr':'b-rec')+'">'+(r.accion==='APROBADA'?'✓ ':'✗ ')+r.accion+'</span></div>' : '') +

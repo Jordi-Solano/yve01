@@ -6676,7 +6676,18 @@ var _i18nStrMap = {
     'Sin datos F&B.': 'No F&B data.',
     'Reportes': 'Reports',
     'Administrador': 'Administrator',
-    '👤 Administrador': '👤 Administrator',},
+    '👤 Administrador': '👤 Administrator',
+    "🔁 Reclamaciones OTA pendientes de aprobar": "🔁 OTA claims awaiting approval",
+    "Cuando Yve detecte comisiones cobradas por encima del contrato, aparecerán aquí para reclamar.": "When Yve finds commissions charged above the contract, they will show up here to claim.",
+    "✍️ Redactar con IA": "✍️ Draft with AI",
+    "✅ Aprobar y enviar": "✅ Approve and send",
+    "🔄 Regenerar": "🔄 Regenerate",
+    "🗑 Descartar": "🗑 Discard",
+    "Enviar a": "Send to",
+    "Descartada": "Discarded",
+    "✓ Enviada": "✓ Sent",
+    "email de la OTA": "OTA email",
+  },
   ca: {
     "🎭 Modo Demo personalizado": "🎭 Mode Demo personalitzat",
     "Escribe tu hotel, tu cadena o varias cadenas y genero datos de ejemplo realistas con esos nombres: facturas, banco, F&B y Multi-Hotel. Ideal para enseñar el producto a clientes y gestorías.": "Escriu el teu hotel, la teva cadena o diverses cadenes i genero dades d'exemple realistes amb aquests noms: factures, banc, F&B i Multi-Hotel. Ideal per ensenyar el producte a clients i gestories.",
@@ -6906,7 +6917,18 @@ var _i18nStrMap = {
     'Receta': 'Recepta',
     '▶ Ejecutar Análisis': '▶ Executar Anàlisi',
     'Sin datos F&B.': 'Sense dades F&B.',
-    'Reportes': 'Informes',},
+    'Reportes': 'Informes',
+    "🔁 Reclamaciones OTA pendientes de aprobar": "🔁 Reclamacions OTA pendents d'aprovar",
+    "Cuando Yve detecte comisiones cobradas por encima del contrato, aparecerán aquí para reclamar.": "Quan Yve detecti comissions cobrades per sobre del contracte, apareixeran aquí per reclamar.",
+    "✍️ Redactar con IA": "✍️ Redactar amb IA",
+    "✅ Aprobar y enviar": "✅ Aprovar i enviar",
+    "🔄 Regenerar": "🔄 Regenerar",
+    "🗑 Descartar": "🗑 Descartar",
+    "Enviar a": "Enviar a",
+    "Descartada": "Descartada",
+    "✓ Enviada": "✓ Enviada",
+    "email de la OTA": "correu de l'OTA",
+  },
   fr: {
     "🎭 Modo Demo personalizado": "🎭 Mode Démo personnalisé",
     "Escribe tu hotel, tu cadena o varias cadenas y genero datos de ejemplo realistas con esos nombres: facturas, banco, F&B y Multi-Hotel. Ideal para enseñar el producto a clientes y gestorías.": "Saisissez votre hôtel, votre chaîne ou plusieurs chaînes et je génère des données d'exemple réalistes avec ces noms : factures, banque, F&B et Multi-Hôtel. Idéal pour présenter le produit aux clients et cabinets comptables.",
@@ -7147,7 +7169,18 @@ var _i18nStrMap = {
     'Sin datos F&B.': 'Pas de données F&B.',
     'Reportes': 'Rapports',
     'Administrador': 'Administrateur',
-    '👤 Administrador': '👤 Administrateur',},
+    '👤 Administrador': '👤 Administrateur',
+    "🔁 Reclamaciones OTA pendientes de aprobar": "🔁 Réclamations OTA en attente d'approbation",
+    "Cuando Yve detecte comisiones cobradas por encima del contrato, aparecerán aquí para reclamar.": "Lorsque Yve détectera des commissions facturées au-dessus du contrat, elles apparaîtront ici pour réclamation.",
+    "✍️ Redactar con IA": "✍️ Rédiger avec l'IA",
+    "✅ Aprobar y enviar": "✅ Approuver et envoyer",
+    "🔄 Regenerar": "🔄 Régénérer",
+    "🗑 Descartar": "🗑 Écarter",
+    "Enviar a": "Envoyer à",
+    "Descartada": "Écartée",
+    "✓ Enviada": "✓ Envoyée",
+    "email de la OTA": "e-mail de l'OTA",
+  },
   de: {
     "🎭 Modo Demo personalizado": "🎭 Individueller Demo-Modus",
     "Escribe tu hotel, tu cadena o varias cadenas y genero datos de ejemplo realistas con esos nombres: facturas, banco, F&B y Multi-Hotel. Ideal para enseñar el producto a clientes y gestorías.": "Gib dein Hotel, deine Kette oder mehrere Ketten ein und ich erzeuge realistische Beispieldaten mit diesen Namen: Rechnungen, Bank, F&B und Multi-Hotel. Ideal, um das Produkt Kunden und Steuerbüros zu zeigen.",
@@ -7392,7 +7425,18 @@ var _i18nStrMap = {
     'Sin datos F&B.': 'Keine F&B-Daten.',
     'Reportes': 'Berichte',
     'Administrador': 'Administrator',
-    '👤 Administrador': '👤 Administrator',},
+    '👤 Administrador': '👤 Administrator',
+    "🔁 Reclamaciones OTA pendientes de aprobar": "🔁 OTA-Reklamationen zur Freigabe",
+    "Cuando Yve detecte comisiones cobradas por encima del contrato, aparecerán aquí para reclamar.": "Sobald Yve über dem Vertrag berechnete Provisionen erkennt, erscheinen sie hier zur Reklamation.",
+    "✍️ Redactar con IA": "✍️ Mit KI verfassen",
+    "✅ Aprobar y enviar": "✅ Freigeben und senden",
+    "🔄 Regenerar": "🔄 Neu erzeugen",
+    "🗑 Descartar": "🗑 Verwerfen",
+    "Enviar a": "Senden an",
+    "Descartada": "Verworfen",
+    "✓ Enviada": "✓ Gesendet",
+    "email de la OTA": "E-Mail der OTA",
+  },
   it: {
     "🎭 Modo Demo personalizado": "🎭 Modalità Demo personalizzata",
     "Escribe tu hotel, tu cadena o varias cadenas y genero datos de ejemplo realistas con esos nombres: facturas, banco, F&B y Multi-Hotel. Ideal para enseñar el producto a clientes y gestorías.": "Scrivi il tuo hotel, la tua catena o più catene e genero dati di esempio realistici con quei nomi: fatture, banca, F&B e Multi-Hotel. Ideale per mostrare il prodotto a clienti e studi contabili.",
@@ -7627,7 +7671,18 @@ var _i18nStrMap = {
     'Sin datos F&B.': 'Nessun dato F&B.',
     'Reportes': 'Report',
     'Administrador': 'Amministratore',
-    '👤 Administrador': '👤 Amministratore',},
+    '👤 Administrador': '👤 Amministratore',
+    "🔁 Reclamaciones OTA pendientes de aprobar": "🔁 Reclami OTA in attesa di approvazione",
+    "Cuando Yve detecte comisiones cobradas por encima del contrato, aparecerán aquí para reclamar.": "Quando Yve rileverà commissioni addebitate oltre il contratto, appariranno qui per il reclamo.",
+    "✍️ Redactar con IA": "✍️ Redigi con l'IA",
+    "✅ Aprobar y enviar": "✅ Approva e invia",
+    "🔄 Regenerar": "🔄 Rigenera",
+    "🗑 Descartar": "🗑 Scarta",
+    "Enviar a": "Invia a",
+    "Descartada": "Scartata",
+    "✓ Enviada": "✓ Inviata",
+    "email de la OTA": "email dell'OTA",
+  },
   pt: {
     "🎭 Modo Demo personalizado": "🎭 Modo Demo personalizado",
     "Escribe tu hotel, tu cadena o varias cadenas y genero datos de ejemplo realistas con esos nombres: facturas, banco, F&B y Multi-Hotel. Ideal para enseñar el producto a clientes y gestorías.": "Escreva seu hotel, sua rede ou várias redes e eu gero dados de exemplo realistas com esses nomes: faturas, banco, F&B e Multi-Hotel. Ideal para mostrar o produto a clientes e escritórios contábeis.",
@@ -7841,7 +7896,18 @@ var _i18nStrMap = {
     'Receta': 'Receita',
     '▶ Ejecutar Análisis': '▶ Executar Análise',
     'Sin datos F&B.': 'Sem dados F&B.',
-    'Reportes': 'Relatórios',},
+    'Reportes': 'Relatórios',
+    "🔁 Reclamaciones OTA pendientes de aprobar": "🔁 Reclamações OTA pendentes de aprovação",
+    "Cuando Yve detecte comisiones cobradas por encima del contrato, aparecerán aquí para reclamar.": "Quando o Yve detetar comissões cobradas acima do contrato, aparecerão aqui para reclamar.",
+    "✍️ Redactar con IA": "✍️ Redigir com IA",
+    "✅ Aprobar y enviar": "✅ Aprovar e enviar",
+    "🔄 Regenerar": "🔄 Regenerar",
+    "🗑 Descartar": "🗑 Descartar",
+    "Enviar a": "Enviar para",
+    "Descartada": "Descartada",
+    "✓ Enviada": "✓ Enviada",
+    "email de la OTA": "email da OTA",
+  },
 };
 
 
@@ -7861,6 +7927,42 @@ function _traeIconoDelante(n) {
             && p.classList && p.classList.contains('yvi'));
 }
 
+// ── Indice inverso: de cualquier idioma de vuelta al español ────────────
+// La tabla esta indexada por el español, asi que sin esto, pasar de ingles a
+// catalan no encuentra nada y el texto se queda en ingles.
+var _idxEsp = null;
+function _aEspanol() {
+  if (_idxEsp) return _idxEsp;
+  var idx = {}, choque = {};
+  for (var lg in _i18nStrMap) {
+    var m = _i18nStrMap[lg];
+    if (!m) continue;
+    for (var k in m) {
+      var v = m[k];
+      if (!v || v === k) continue;
+      if (idx[v] !== undefined && idx[v] !== k) { choque[v] = 1; continue; }
+      idx[v] = k;
+    }
+  }
+  // Si dos idiomas traducen cosas DISTINTAS con la misma palabra, no se puede
+  // saber de cual venia: fuera del indice. Es mejor dejar el texto como esta
+  // que cambiarlo por lo que no era.
+  for (var c in choque) delete idx[c];
+  _idxEsp = idx;
+  return idx;
+}
+var _idxEspSin = null;
+function _aEspanolSinIcono() {
+  if (_idxEspSin) return _idxEspSin;
+  var base = _aEspanol(), out = {};
+  for (var v in base) {
+    var s = _sinIcono(v);
+    if (s && out[s] === undefined) out[s] = _sinIcono(base[v]);
+  }
+  _idxEspSin = out;
+  return out;
+}
+
 // {español sin icono: traduccion sin icono}, una vez por idioma.
 var _cacheSinIcono = {};
 function _mapaSinIcono(lang, map) {
@@ -7875,9 +7977,11 @@ function _mapaSinIcono(lang, map) {
 }
 
 function _applyStrMap(lang, root) {
-  if (!lang || lang === 'es') return;
-  var map = _i18nStrMap[lang];
-  if (!map) return;
+  if (!lang) return;
+  // 'es' ya no se sale: hay que poder DESHACER una traduccion anterior. Sin
+  // esto, volver a español dejaba el texto en el idioma en el que estuviera.
+  var map = (lang === 'es') ? null : _i18nStrMap[lang];
+  if (lang !== 'es' && !map) return;
 
   // `root` acota el recorrido al trozo recien pintado. Sin el, se recorren
   // TODOS los nodos de texto de la pagina cada vez, y con ocho paneles
@@ -7912,19 +8016,25 @@ function _applyStrMap(lang, root) {
     var text = n.textContent;
     if (!text || !text.trim()) continue;
     var trimmed = text.trim();
-    if (map[trimmed] && map[trimmed] !== trimmed) {
+    // El texto puede estar en cualquier idioma: primero se lleva al español,
+    // que es como esta indexada la tabla, y desde ahi al idioma que toca.
+    var desdeOtro = _aEspanol()[trimmed];
+    var clave = desdeOtro || trimmed;
+    var destino = (lang === 'es') ? (desdeOtro || null) : map[clave];
+    if (destino && destino !== trimmed) {
       // Preserve leading/trailing whitespace
       var leading  = text.match(/^\s*/)[0];
       var trailing = text.match(/\s*$/)[0];
-      replacements.push([n, leading + map[trimmed] + trailing]);
+      replacements.push([n, leading + destino + trailing]);
     } else if (_traeIconoDelante(n)) {
       // El iconizador ya se llevo el emoji de este nodo: la clave del mapa
       // sigue siendo "📊 Semanal" y aqui solo queda " Semanal", asi que la
       // comparacion de arriba falla y el texto se queda en español. Se busca
       // tambien por el texto SIN icono, y se escribe la traduccion SIN el
       // suyo: el icono ya esta al lado como hermano, repetirlo lo duplicaria.
-      var alt = _mapaSinIcono(lang, map);
-      var v = alt[trimmed];
+      var desdeOtroSin = _aEspanolSinIcono()[trimmed];
+      var claveSin = desdeOtroSin || trimmed;
+      var v = (lang === 'es') ? (desdeOtroSin || null) : _mapaSinIcono(lang, map)[claveSin];
       if (v && v !== trimmed) {
         var l2 = text.match(/^\s*/)[0], t2 = text.match(/\s*$/)[0];
         replacements.push([n, l2 + v + t2]);
