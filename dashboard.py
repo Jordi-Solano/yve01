@@ -4854,7 +4854,14 @@ svg.yvi{width:1em;height:1em;vertical-align:-0.125em;flex-shrink:0;display:inlin
   // Precargar la traducción del idioma guardado mientras se ve el splash
   try{ var lang=localStorage.getItem('yve_lang'); if(lang && lang!=='es'){ fetch('/static/i18n/'+lang+'.json').catch(function(){}); } }catch(e){}
   var start=Date.now(), MIN=1500, MAX=6000, done=false;
-  function ocultar(){ if(done) return; done=true; sp.classList.add('hide'); setTimeout(function(){ if(sp.parentNode) sp.parentNode.removeChild(sp); }, 600); }
+  // El servidor manda el HTML SIEMPRE en español (no sabe tu idioma), asi que
+  // al entrar con otro idioma se veia español antes de traducir. El splash ya
+  // dura 1,5 s: se aprovecha para traducir DEBAJO y no se suelta hasta que la
+  // primera pasada ha terminado.
+  function ocultar(){
+    if(done) return; done=true;
+    try{ if(window._pintarYa) window._pintarYa(document.body); }catch(e){}
+    sp.classList.add('hide'); setTimeout(function(){ if(sp.parentNode) sp.parentNode.removeChild(sp); }, 600); }
   function tryHide(){ var el=Date.now()-start; if(el>=MIN) ocultar(); else setTimeout(ocultar, MIN-el); }
   if(document.readyState==='complete') tryHide(); else window.addEventListener('load', tryHide);
   setTimeout(ocultar, MAX);
@@ -6042,6 +6049,11 @@ function runPipeline() {
     log.scrollTop = log.scrollHeight;
 
     if (txt === 'PIPELINE_COMPLETO' || txt === 'PIPELINE_CON_ERRORES') {
+      // Han entrado documentos: lo precargado ya no vale. Sin esto, "no
+      // repintar al volver" dejaria Banco, DRR o Multi-Hotel con los numeros
+      // de antes de procesar — un parpadeo cosmetico cambiado por datos
+      // viejos, que es peor.
+      try { if (typeof _invalidarPaneles === 'function') _invalidarPaneles(); } catch(e){}
       src.close();
       const ok = txt === 'PIPELINE_COMPLETO';
       icon.textContent  = ok ? '✅' : '⚠️';
@@ -7832,14 +7844,22 @@ var _i18nStrMap = {
 // ── DOM text-node replacement engine ──────────────────────────────────────
 // After applyI18n() translates data-i18n elements, this walks ALL text nodes
 // and replaces known Spanish strings — covers JS-rendered content too.
-function _applyStrMap(lang) {
+function _applyStrMap(lang, root) {
   if (!lang || lang === 'es') return;
   var map = _i18nStrMap[lang];
   if (!map) return;
 
+  // `root` acota el recorrido al trozo recien pintado. Sin el, se recorren
+  // TODOS los nodos de texto de la pagina cada vez, y con ocho paneles
+  // poblados eso se hace dos veces por cada cambio (observer + segunda
+  // pasada). Por defecto sigue siendo document.body: los 5 llamantes que ya
+  // existian no cambian de comportamiento.
+  var _raiz = root || document.body;
+  if (!_raiz || !_raiz.nodeType) _raiz = document.body;
+
   // Walk all visible text nodes in the page
   var walker = document.createTreeWalker(
-    document.body,
+    _raiz,
     NodeFilter.SHOW_TEXT,
     {
       acceptNode: function(node) {
@@ -7880,8 +7900,11 @@ function applyI18n(data) {
   _applyI18nBase(data);
   // After translating data-i18n elements, also walk text nodes
   if (_i18nLang && _i18nLang !== 'es') {
-    // Small delay to let any pending renders finish
-    setTimeout(function() { _applyStrMap(_i18nLang); if (typeof _applyPlaceholders === 'function') _applyPlaceholders(_i18nLang); }, 120);
+    // SINCRONO. Antes esperaba 120 ms "por si quedaba algun render pendiente",
+    // y ese retraso es justo lo que se veia al cambiar de idioma. Si algo pinta
+    // despues, el observer lo recoge igual.
+    _applyStrMap(_i18nLang);
+    if (typeof _applyPlaceholders === 'function') _applyPlaceholders(_i18nLang);
   }
 }
 
@@ -7891,6 +7914,35 @@ function _i18nAfterRender() {
     _applyStrMap(_i18nLang);
   }
 }
+
+// ── Pintar YA: traducir e iconizar en el mismo instante en que se inyecta ──
+// Antes esto lo hacian dos MutationObserver con 100/120 ms de espera y una
+// segunda pasada a los 150. Se veia el español y los emojis en crudo durante
+// un cuarto de segundo largo cada vez que se pintaba algo. Ahora se hace de
+// forma SINCRONA sobre el trozo nuevo; los observers siguen ahi por si algo
+// pinta por un camino que no pase por aqui.
+function _pintarYa(root) {
+  var r = (root && root.nodeType) ? root : document.body;
+  try {
+    if (_i18nLang && _i18nLang !== 'es') {
+      _applyStrMap(_i18nLang, r);
+      if (typeof _applyPlaceholders === 'function') _applyPlaceholders(_i18nLang);
+    }
+  } catch (e) {}
+  try { if (typeof iconizeIn === 'function') iconizeIn(r); } catch (e) {}
+}
+window._pintarYa = _pintarYa;
+
+// Que apartados ya estan poblados. Sin esto, `switchTab` vuelve a llamar al
+// cargador CADA VEZ que entras y el panel se repinta desde cero — que es el
+// mismo parpadeo, pero al volver.
+var _panelCargado = {};
+// Lista de apartados MIGRADOS al sistema nuevo (los que pintan ya traducido y
+// no necesitan la red de seguridad). Se va llenando segun se migran; el script
+// de cobertura lee esta lista, asi que la cuenta sale del codigo y no puede
+// quedarse vieja.
+var _PANELES_MIGRADOS = [];
+window._PANELES_MIGRADOS = _PANELES_MIGRADOS;
 // ──────────────────────────────────────────────────────────────────────────
 var _i18nData = {};
 var _i18nLang = localStorage.getItem('yve_lang') || 'es';
@@ -10471,6 +10523,7 @@ function _runBatchPipeline(fileNames, keepLog) {
     evtSrc.onmessage = function(ev) {
       var txt = ev.data;
       if (txt === 'PIPELINE_COMPLETO' || txt === 'PIPELINE_CON_ERRORES') {
+        try { if (typeof _invalidarPaneles === 'function') _invalidarPaneles(); } catch(e){}
         clearTimeout(timer);
         evtSrc.close();
         if (txt === 'PIPELINE_CON_ERRORES') hadError = true;
@@ -11198,13 +11251,62 @@ function switchTab(tab, el) {
   if (IS_MOBILE && el) {
     setTimeout(function(){ el.scrollIntoView({behavior:'smooth',block:'nearest',inline:'center'}); }, 50);
   }
-  if (tab === 'fb') loadFBTab();
-  if (tab === 'ar_real') cargarARRealData();
-  if (tab === 'drr') loadDRR();
-  if (tab === 'banco') loadBanco();
-  if (tab === 'notif') loadNotifConfig();
-  if (tab === 'multi_hotel') loadMultiHotel();
+  // Lo que ya estuviera pintado se traduce YA, sin esperar al observer.
+  if (panel) _pintarYa(panel);
+  _cargarPanel(tab, panel, false);
 }
+
+// Cargadores por apartado, en un solo sitio. Antes estaban sueltos dentro de
+// switchTab y se llamaban CADA VEZ que entrabas, repintando el panel entero.
+var _CARGADORES = {
+  fb:          function(){ return loadFBTab(); },
+  ar_real:     function(){ return cargarARRealData(); },
+  drr:         function(){ return loadDRR(); },
+  banco:       function(){ return loadBanco(); },
+  notif:       function(){ return loadNotifConfig(); },
+  multi_hotel: function(){ return loadMultiHotel(); }
+};
+
+function _cargarPanel(tab, panel, forzar) {
+  var fn = _CARGADORES[tab];
+  if (!fn) return Promise.resolve();
+  if (_panelCargado[tab] && !forzar) return Promise.resolve();
+  _panelCargado[tab] = true;
+  var p;
+  try { p = fn(); } catch (e) { _panelCargado[tab] = false; return Promise.resolve(); }
+  var el = panel || document.getElementById('panel-' + tab);
+  // los seis cargadores son `async`, asi que devuelven promesa: se traduce
+  // JUSTO cuando termina de pintar, no 250 ms despues
+  return Promise.resolve(p).then(function(){ _pintarYa(el); })
+                           .catch(function(){ _panelCargado[tab] = false; });
+}
+
+// Al entrar documentos nuevos hay que volver a poblar: se marca todo como no
+// cargado y se repuebla el que este a la vista. El resto, la proxima vez.
+function _invalidarPaneles() {
+  _panelCargado = {};
+  var act = document.querySelector('.panel.active');
+  if (act && act.id && act.id.indexOf('panel-') === 0) {
+    var t = act.id.slice(6);
+    if (_CARGADORES[t]) _cargarPanel(t, act, true);
+  }
+}
+window._invalidarPaneles = _invalidarPaneles;
+
+// Precarga: al arrancar, poblar los seis apartados escalonados y ya traducidos,
+// para que al pulsar no haya nada que pintar. Son las MISMAS 9 llamadas que hoy
+// se hacen al entrar en cada uno; solo se adelantan. Escalonadas para no
+// competir con el arranque en un Render frio.
+function _precargarPaneles() {
+  var tabs = ['banco', 'drr', 'multi_hotel', 'notif', 'ar_real', 'fb'];
+  tabs.forEach(function(t, i) {
+    setTimeout(function(){
+      try { _cargarPanel(t, document.getElementById('panel-' + t), false); } catch(e){}
+    }, 400 + i * 350);
+  });
+}
+if (window.requestIdleCallback) requestIdleCallback(function(){ _precargarPaneles(); }, {timeout: 3000});
+else setTimeout(_precargarPaneles, 800);
 // ══ F&B COST CONTROL ══════════════════════════════════
 function loadFB() { if (typeof cargarFB === 'function') cargarFB(); else if (typeof loadFBCost === 'function') loadFBCost(); }
 
@@ -11797,6 +11899,11 @@ function procesarAP() {
     log.scrollTop = log.scrollHeight;
 
     if (txt === 'PIPELINE_COMPLETO' || txt === 'PIPELINE_CON_ERRORES') {
+      // Han entrado documentos: lo precargado ya no vale. Sin esto, "no
+      // repintar al volver" dejaria Banco, DRR o Multi-Hotel con los numeros
+      // de antes de procesar — un parpadeo cosmetico cambiado por datos
+      // viejos, que es peor.
+      try { if (typeof _invalidarPaneles === 'function') _invalidarPaneles(); } catch(e){}
       src.close();
       const ok = txt === 'PIPELINE_COMPLETO';
       icon.textContent  = ok ? '✅' : '⚠️';
@@ -11865,6 +11972,11 @@ function procesarOracle() {
     log.scrollTop = log.scrollHeight;
 
     if (txt === 'PIPELINE_COMPLETO' || txt === 'PIPELINE_CON_ERRORES') {
+      // Han entrado documentos: lo precargado ya no vale. Sin esto, "no
+      // repintar al volver" dejaria Banco, DRR o Multi-Hotel con los numeros
+      // de antes de procesar — un parpadeo cosmetico cambiado por datos
+      // viejos, que es peor.
+      try { if (typeof _invalidarPaneles === 'function') _invalidarPaneles(); } catch(e){}
       src.close();
       const ok = txt === 'PIPELINE_COMPLETO';
       icon.textContent  = ok ? '✅' : '⚠️';
