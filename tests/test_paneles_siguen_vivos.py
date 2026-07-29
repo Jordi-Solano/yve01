@@ -96,6 +96,27 @@ CASOS = [
      lambda d: d.get("ok") and d["cuadra"] and d["n_hoteles"] == 1),
 ]
 
+# El Excel de Multi-Hotel ya no devuelve seis hoteles escritos a mano: sale del
+# agregador. Se comprueba aparte porque no es JSON.
+def _comprobar_excel(c):
+    import io
+    import pandas as _pd
+    r = c.get("/api/exportar/multihotel")
+    if r.status_code != 200:
+        return f"status {r.status_code}"
+    df = _pd.read_excel(io.BytesIO(r.data), sheet_name="Multi-Hotel")
+    nombres = df["Hotel"].astype(str).tolist()
+    if "Premier London Mayfair" in nombres:
+        return "sigue devolviendo los hoteles inventados"
+    if "Hotel Uno" not in nombres:
+        return f"no sale el hotel real; sale {nombres}"
+    if "Grupo" not in nombres:
+        return "falta la fila del grupo"
+    fila = df[df["Hotel"] == "Hotel Uno"].iloc[0]
+    if float(fila["Importe AP (EUR)"]) != 100.0:
+        return f"importe AP {fila['Importe AP (EUR)']} != 100.0"
+    return None
+
 
 def _sesion_de_prueba():
     """Un usuario de mentira para flask-login, SIN tocar el fichero de usuarios.
@@ -137,6 +158,12 @@ def main():
                 print(f"  MAL {ruta:<32} EXCEPCION")
                 fallos.append(f"{ruta} -> {type(e).__name__}: {e}")
 
+        err = _comprobar_excel(c)
+        print(f"  {'OK ' if not err else 'MAL'} {'/api/exportar/multihotel':<32} "
+              f"{'excel del agregador' if not err else err}")
+        if err:
+            fallos.append(f"/api/exportar/multihotel -> {err}")
+
     shutil.rmtree(base, ignore_errors=True)
 
     if fallos:
@@ -144,7 +171,7 @@ def main():
         for f in fallos:
             print("   ·", f)
         return 1
-    print("\n OK · los seis contestan y con los datos correctos\n")
+    print("\n OK · los paneles contestan, y el Excel sale del agregador\n")
     return 0
 
 

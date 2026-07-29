@@ -63,6 +63,52 @@ def api_exportar(tipo):
             _df.to_excel(_buf2, index=False)
             _buf2.seek(0)
             result = (_buf2, f'ar_real_facturas_{_dt.now().strftime("%Y%m%d")}.xlsx')
+        elif tipo == 'multihotel':
+            # FASE B: sale del agregador, igual que la pantalla.
+            #
+            # Lo que habia aqui devolvia seis hoteles escritos a mano en
+            # `exportador_reportes.py` ("Premier London Mayfair"...) con el
+            # titulo fijo "Junio 2025". Lo que veias y lo que te descargabas no
+            # tenian nada que ver, y un Excel que sale de la app y se manda por
+            # correo es la peor forma de enterarse.
+            from io import BytesIO as _BIO3
+            from datetime import datetime as _dt3
+            import pandas as _pd3
+            from agregador_grupo import agregado as _agregado
+            _ag = _agregado()
+            _filas = []
+            for _f in _ag['hoteles'] + [_ag['sin_asignar'], _ag['desconocido'], _ag['grupo']]:
+                # Las cajas vacias de "sin asignar" y "desconocido" no se
+                # escriben: en pantalla tampoco salen, y una fila a cero en un
+                # Excel se lee como un hotel que no factura.
+                _vacia = not (_f['ap']['facturas'] or _f['ar_ota']['facturas']
+                              or _f['ar_real']['facturas'] or _f['fb']['ventas'])
+                if _vacia and _f['hotel_id'] in ('sin_asignar', 'desconocido'):
+                    continue
+                _filas.append({
+                    'Hotel': _f['nombre'],
+                    'Facturas AP': _f['ap']['facturas'],
+                    'Importe AP (EUR)': _f['ap']['importe'],
+                    'AP con incidencia': _f['ap']['discrepancias'],
+                    'Facturas OTA': _f['ar_ota']['facturas'],
+                    'Bruto OTA (EUR)': _f['ar_ota']['importe_bruto'],
+                    'Reclamable OTA (EUR)': _f['ar_ota']['importe_reclamable'],
+                    'DI pendientes': _f['ar_ota']['di_pendientes'],
+                    'Facturas AR Real': _f['ar_real']['facturas'],
+                    'Por cobrar (EUR)': _f['ar_real']['pendiente'],
+                    'Vencido (EUR)': _f['ar_real']['vencido'],
+                    'Ventas F&B (EUR)': _f['fb']['ventas'],
+                    'Food cost %': _f['fb']['food_cost_pct'],
+                    'Coste mermas (EUR)': _f['fb']['coste_mermas'],
+                })
+            _buf3 = _BIO3()
+            with _pd3.ExcelWriter(_buf3, engine='openpyxl') as _w:
+                _pd3.DataFrame(_filas).to_excel(_w, index=False, sheet_name='Multi-Hotel')
+                # El cuadre viaja CON el Excel. Si un dia no cuadra, quien abra
+                # el fichero tiene que poder verlo sin volver a la aplicacion.
+                _pd3.DataFrame(_ag['cuadre']).to_excel(_w, index=False, sheet_name='Cuadre')
+            _buf3.seek(0)
+            result = (_buf3, f'multihotel_{_dt3.now().strftime("%Y%m%d")}.xlsx')
         elif tipo == 'fb':
             import os as _os
             ruta = __import__('tenant_dirs').datos_dir() + '/ventas_fb_diarias.xlsx'
