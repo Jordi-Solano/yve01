@@ -19,6 +19,15 @@ DOS COMPROBACIONES, y hacen falta las dos:
      porque lo que se prueba NO es que la IA acierte el tipo (eso solo se
      comprueba en produccion) sino que el lote reaccione cuando lo dice.
 
+     OJO — esta comprobacion se ACTUALIZO al sacar el cierre del stream. El
+     cruce ya no corre dentro del lote: el lote pide `CIERRE_PENDIENTE:albaran`
+     y el cruce corre en `/api/cerrar_pipeline_stream`. Se conducen los DOS,
+     porque lo que importa sigue siendo lo mismo —que un albaran en PDF acabe
+     cruzando— y solo ha cambiado por donde pasa. Comprobar unicamente que el
+     lote pide el cierre dejaria pasar un cierre que no cruza; comprobar solo el
+     cierre dejaria pasar un lote que se come la bandera otra vez.
+     Ver `tests/test_paso_de_cierre.py` para el porque del cambio de sitio.
+
   2. el INVARIANTE, con AST: cada llamada a `_enrutar_tipo_doc` dentro del lote
      tiene que leer las cuatro banderas que se usan. Esta es la que habria
      cazado el bug el dia que se escribio, y la que lo caza si mañana se añade
@@ -176,10 +185,22 @@ def test_un_albaran_en_pdf_relanza_el_cruce():
     log = [l[5:].strip() for l in r.get_data(as_text=True).splitlines() if l.startswith("data:")]
 
     assert any("Albar" in l for l in log), f"el albaran no se ha guardado: {log}"
-    assert any("Cruzando facturas con albaranes" in l for l in log), (
-        "el albaran se ha guardado pero el cruce NO se ha relanzado. Es el bug: "
-        f"la bandera `albaran` se pierde en el camino del PDF. Log: {log}")
-    print("  ✔ un albaran en PDF relanza el cruce (endpoint SSE de verdad)")
+
+    # PASO 1 · el lote tiene que PEDIR el cierre con la bandera dentro. Si se
+    # come `albaran`, aqui no aparece y el cruce no correra nunca.
+    pend = next((l for l in log if l.startswith("CIERRE_PENDIENTE")), None)
+    assert pend and "albaran" in pend, (
+        "el albaran se ha guardado y el lote NO pide cerrar con `albaran`. Es el "
+        f"bug: la bandera se pierde en el camino del PDF. Log: {log}")
+
+    # PASO 2 · y el cierre tiene que cruzar de verdad. Que el lote lo pida no
+    # sirve de nada si al otro lado no pasa nada.
+    r2 = c.get("/api/cerrar_pipeline_stream?pasos=" + pend.split(":", 1)[1])
+    log2 = [l[5:].strip() for l in r2.get_data(as_text=True).splitlines()
+            if l.startswith("data:")]
+    assert any("Cruzando facturas con albaranes" in l for l in log2), (
+        f"el lote pide el cierre pero el cierre no cruza. Log del cierre: {log2}")
+    print("  ✔ un albaran en PDF pide el cierre y el cierre cruza (endpoints de verdad)")
 
     for d in (entrada_dir(), procesadas_dir(), reportes_dir()):
         if os.path.isdir(d):

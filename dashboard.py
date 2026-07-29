@@ -2276,82 +2276,19 @@ def api_procesar_batch_stream():
                     yield f"data: ✗ Contrato de grupo: {str(_contrato_res.get('error','error'))[:80]}\n\n"
                     for _a in imgs: _mark(_a, 'ERR:CONTRATO')
 
-            if has_ar:
-                yield 'data: >> Verificando comisiones OTA...\n\n'
-                try:
-                    import subprocess as _sp2
-                    _sp2.run(['python3','verificador_comisiones.py'], cwd=BASE_DIR, timeout=30, capture_output=True, env=_env_tenant())
-                    _sp2.run(['python3','detector_doble_imposicion.py'], cwd=BASE_DIR, timeout=30, capture_output=True)
-                    yield 'data: ✓ Verificación completada\n\n'
-                except: pass
-
-            if has_ap or has_albaran:
-                # ORDEN: el cruce va ANTES que el asignador porque el asignador
-                # une su informe al generar facturas_contabilizadas. Al reves,
-                # el estado llegaria al panel un lote tarde.
-                # Tambien corre si SOLO han entrado albaranes: una entrega nueva
-                # puede completar una factura que ayer no cuadraba.
-                yield 'data: >> Cruzando facturas con albaranes...\n\n'
-                yield ': ping\n\n'
-                try:
-                    import subprocess as _sp4
-                    _r_alb = _sp4.run(['python3', 'matching_ap_albaran.py'], cwd=BASE_DIR,
-                                      timeout=180, capture_output=True, text=True,
-                                      env=_env_tenant())
-                    # el modulo lo dice el mismo: contar lineas de su consola
-                    # se comia tambien la fila del resumen y salian 2 donde habia 1
-                    _n_fac = _n_alb = 0
-                    for _ln in (_r_alb.stdout or '').splitlines():
-                        if _ln.startswith('INCIDENCIAS:'):
-                            try:
-                                _a, _b = _ln.split(':', 1)[1].strip().split('|')
-                                _n_fac, _n_alb = int(_a), int(_b)
-                            except Exception:
-                                pass
-                    if _r_alb.returncode == 0:
-                        _partes = []
-                        if _n_fac:
-                            _partes.append(f'{_n_fac} factura(s) sin entrega que las respalde '
-                                           f'o con diferencia de importe')
-                        if _n_alb:
-                            _partes.append(f'{_n_alb} albarán(es) entregado(s) sin facturar')
-                        if _partes:
-                            yield f'data: ⚠ Cruce con albaranes: {" · ".join(_partes)}\n\n'
-                        else:
-                            yield 'data: ✓ Cruce con albaranes: sin incidencias\n\n'
-                    else:
-                        _e_alb = (_r_alb.stderr or _r_alb.stdout or 'error').strip().splitlines()
-                        _e_alb = (_e_alb[-1] if _e_alb else 'error')[:90]
-                        yield f'data: ⚠ No se ha podido cruzar con los albaranes — {_e_alb}\n\n'
-                except Exception as _ea2:
-                    yield f'data: ⚠ No se ha podido cruzar con los albaranes — {str(_ea2)[:80]}\n\n'
-
-            if has_ap:
-                # Las facturas ya estan guardadas; ahora se les pone cuenta y
-                # asiento. Es lo que alimenta /aprobaciones-ap, que hasta ahora
-                # solo se llenaba pulsando el boton del pipeline a mano.
-                #
-                # NO se lanzan matching_ap_otras ni matching_ap_fb: revientan
-                # con KeyError 'proveedor' y necesitan el concepto de PO, que
-                # va en su fase. Y NADA de Oracle: aqui solo se genera el
-                # informe, no se contabiliza nada en el libro mayor.
-                yield 'data: >> Asignando cuentas contables...\n\n'
-                yield ': ping\n\n'
-                try:
-                    import subprocess as _sp3
-                    _r_asig = _sp3.run(['python3', 'asignador_cuentas.py'], cwd=BASE_DIR,
-                                       timeout=180, capture_output=True, text=True,
-                                       env=_env_tenant())
-                    if _r_asig.returncode == 0:
-                        yield 'data: ✓ Cuentas y asientos asignados — pendientes de aprobar en Aprobaciones AP\n\n'
-                    else:
-                        # Honestidad: las facturas SI estan guardadas. Lo que ha
-                        # fallado es la contabilizacion, y hay que decirlo.
-                        _e_asig = (_r_asig.stderr or _r_asig.stdout or 'error').strip().splitlines()
-                        _e_asig = (_e_asig[-1] if _e_asig else 'error')[:90]
-                        yield f'data: ⚠ Facturas guardadas, pero no se han podido asignar las cuentas — {_e_asig}\n\n'
-                except Exception as _ea:
-                    yield f'data: ⚠ Facturas guardadas, pero no se han podido asignar las cuentas — {str(_ea)[:80]}\n\n'
+            # ── Lo que queda por cerrar ──
+            # El cruce y el asignador ya NO van aqui. Iban al final de CADA
+            # lote y se quedaban a medias: el frontend parte los archivos en
+            # lotes de 4 y cierra el EventSource a los 60 s, asi que los dos
+            # subprocesos del cierre no llegaban a arrancar en el ultimo lote.
+            # Ahora el lote solo DICE lo que hay pendiente, y el frontend llama
+            # UNA vez a /api/cerrar_pipeline_stream cuando ha acabado todo.
+            _pend = []
+            if has_ap: _pend.append('ap')
+            if has_albaran: _pend.append('albaran')
+            if has_ar: _pend.append('ar')
+            if _pend:
+                yield f'data: CIERRE_PENDIENTE:{",".join(_pend)}\n\n'
 
             # ── Resumen de procesado ──
             ap_n = sum(1 for v in lote.values() if v.get('resultado') == 'AP_OK') + ap_extra
@@ -2415,6 +2352,147 @@ def api_procesar_batch_stream():
     return Response(stream_with_context(generar()), mimetype='text/event-stream',
                     headers={'Cache-Control':'no-cache','X-Accel-Buffering':'no','Connection':'keep-alive'})
 
+
+
+# ══ El paso de cierre del pipeline ═══════════════════════════════════════
+# Vivia al final de CADA lote, y de ahi salian dos agujeros:
+#
+#   1. el frontend parte los archivos en lotes de 4 y cierra el EventSource a
+#      los 60 s (`setTimeout`). El cruce y el asignador son dos subprocesos con
+#      180 s de margen cada uno: en el ultimo lote la conexion moria antes de
+#      que arrancaran, y el generador se quedaba cortado ahi.
+#   2. la FOTO no pasa por el lote —va a `/api/scan_documento`, un POST por
+#      imagen— y ahi no habia paso de cierre NINGUNO. Una foto de un albaran se
+#      guardaba y no relanzaba el cruce; y peor, una foto de una FACTURA se
+#      guardaba y no llegaba nunca a Aprobaciones AP, porque nadie le asignaba
+#      cuenta ni asiento. Se veia el ✓ verde y el documento no existia para
+#      quien tiene que aprobarlo.
+#
+# Ahora es UN paso con su propio endpoint, que el frontend llama UNA vez
+# cuando ha terminado todo: vengan los documentos por lote, por foto o
+# mezclados. Y al ser su propia conexion, tiene su propio reloj.
+_PASOS_CIERRE = ('ap', 'albaran', 'ar')
+
+
+def _generar_cierre(pasos):
+    """Las lineas SSE del cierre. `pasos` es un conjunto de `_PASOS_CIERRE`.
+
+    NADA de Oracle aqui, igual que antes: esto genera informes, no contabiliza.
+    """
+    global _pipeline_running
+    with _pipeline_lock:
+        if _pipeline_running:
+            yield 'data: ℹ Ya hay un proceso activo — espera\n\n'
+            yield 'data: CIERRE_CON_ERRORES\n\n'
+            return
+        _pipeline_running = True
+    try:
+        if not pasos:
+            yield 'data: CIERRE_COMPLETO\n\n'
+            return
+        if 'ar' in pasos:
+            yield 'data: >> Verificando comisiones OTA...\n\n'
+            try:
+                import subprocess as _sp2
+                _sp2.run(['python3','verificador_comisiones.py'], cwd=BASE_DIR, timeout=30, capture_output=True, env=_env_tenant())
+                _sp2.run(['python3','detector_doble_imposicion.py'], cwd=BASE_DIR, timeout=30, capture_output=True)
+                yield 'data: ✓ Verificación completada\n\n'
+            except: pass
+
+        if 'ap' in pasos or 'albaran' in pasos:
+            # ORDEN: el cruce va ANTES que el asignador porque el asignador
+            # une su informe al generar facturas_contabilizadas. Al reves,
+            # el estado llegaria al panel un lote tarde.
+            # Tambien corre si SOLO han entrado albaranes: una entrega nueva
+            # puede completar una factura que ayer no cuadraba.
+            yield 'data: >> Cruzando facturas con albaranes...\n\n'
+            yield ': ping\n\n'
+            try:
+                import subprocess as _sp4
+                _r_alb = _sp4.run(['python3', 'matching_ap_albaran.py'], cwd=BASE_DIR,
+                                  timeout=180, capture_output=True, text=True,
+                                  env=_env_tenant())
+                # el modulo lo dice el mismo: contar lineas de su consola
+                # se comia tambien la fila del resumen y salian 2 donde habia 1
+                _n_fac = _n_alb = 0
+                for _ln in (_r_alb.stdout or '').splitlines():
+                    if _ln.startswith('INCIDENCIAS:'):
+                        try:
+                            _a, _b = _ln.split(':', 1)[1].strip().split('|')
+                            _n_fac, _n_alb = int(_a), int(_b)
+                        except Exception:
+                            pass
+                if _r_alb.returncode == 0:
+                    _partes = []
+                    if _n_fac:
+                        _partes.append(f'{_n_fac} factura(s) sin entrega que las respalde '
+                                       f'o con diferencia de importe')
+                    if _n_alb:
+                        _partes.append(f'{_n_alb} albarán(es) entregado(s) sin facturar')
+                    if _partes:
+                        yield f'data: ⚠ Cruce con albaranes: {" · ".join(_partes)}\n\n'
+                    else:
+                        yield 'data: ✓ Cruce con albaranes: sin incidencias\n\n'
+                else:
+                    _e_alb = (_r_alb.stderr or _r_alb.stdout or 'error').strip().splitlines()
+                    _e_alb = (_e_alb[-1] if _e_alb else 'error')[:90]
+                    yield f'data: ⚠ No se ha podido cruzar con los albaranes — {_e_alb}\n\n'
+            except Exception as _ea2:
+                yield f'data: ⚠ No se ha podido cruzar con los albaranes — {str(_ea2)[:80]}\n\n'
+
+        if 'ap' in pasos or 'albaran' in pasos:
+            # Las facturas ya estan guardadas; ahora se les pone cuenta y
+            # asiento. Es lo que alimenta /aprobaciones-ap, que hasta ahora
+            # solo se llenaba pulsando el boton del pipeline a mano.
+            #
+            # NO se lanzan matching_ap_otras ni matching_ap_fb: revientan
+            # con KeyError 'proveedor' y necesitan el concepto de PO, que
+            # va en su fase. Y NADA de Oracle: aqui solo se genera el
+            # informe, no se contabiliza nada en el libro mayor.
+            yield 'data: >> Asignando cuentas contables...\n\n'
+            yield ': ping\n\n'
+            try:
+                import subprocess as _sp3
+                _r_asig = _sp3.run(['python3', 'asignador_cuentas.py'], cwd=BASE_DIR,
+                                   timeout=180, capture_output=True, text=True,
+                                   env=_env_tenant())
+                if _r_asig.returncode == 0:
+                    yield 'data: ✓ Cuentas y asientos asignados — pendientes de aprobar en Aprobaciones AP\n\n'
+                else:
+                    # Honestidad: las facturas SI estan guardadas. Lo que ha
+                    # fallado es la contabilizacion, y hay que decirlo.
+                    _e_asig = (_r_asig.stderr or _r_asig.stdout or 'error').strip().splitlines()
+                    _e_asig = (_e_asig[-1] if _e_asig else 'error')[:90]
+                    yield f'data: ⚠ Facturas guardadas, pero no se han podido asignar las cuentas — {_e_asig}\n\n'
+            except Exception as _ea:
+                yield f'data: ⚠ Facturas guardadas, pero no se han podido asignar las cuentas — {str(_ea)[:80]}\n\n'
+
+        yield 'data: CIERRE_COMPLETO\n\n'
+    except Exception as _ec:
+        yield f'data: ⚠ El cierre del pipeline ha fallado — {str(_ec)[:120]}\n\n'
+        yield 'data: CIERRE_CON_ERRORES\n\n'
+    finally:
+        _pipeline_running = False
+
+
+@app.route('/api/cerrar_pipeline_stream')
+@login_required
+def api_cerrar_pipeline_stream():
+    """El cruce y el asignador, una vez, cuando ya esta todo guardado.
+
+    Se llama con `?pasos=ap,albaran,ar` — lo que el frontend haya visto entrar.
+    Un paso que no se pide no corre: no tiene sentido cruzar albaranes cuando
+    solo han entrado extractos de banco.
+    """
+    _bloqueo = _falta_hotel()
+    if _bloqueo:
+        return _bloqueo
+    pedidos = (request.args.get('pasos') or '').split(',')
+    pasos = {p.strip().lower() for p in pedidos if p.strip().lower() in _PASOS_CIERRE}
+    return Response(stream_with_context(_generar_cierre(pasos)),
+                    mimetype='text/event-stream',
+                    headers={'Cache-Control': 'no-cache', 'X-Accel-Buffering': 'no',
+                             'Connection': 'keep-alive'})
 
 
 @app.route('/demo')
@@ -2661,9 +2739,23 @@ def api_scan_documento():
             mensaje = desc
             guardado = False
         
+        # Lo que esta foto deja pendiente de cerrar. Es la mitad del bug que
+        # no se arreglaba con banderas: este endpoint guarda el documento y
+        # ahi se acababa todo. Una foto de una factura no llegaba a
+        # Aprobaciones AP, y una foto de un albaran no relanzaba el cruce.
+        # El frontend junta estos pasos de todas las fotos y llama UNA vez a
+        # /api/cerrar_pipeline_stream.
+        _cierre = []
+        if guardado is not False:
+            if tipo == 'FACTURA':
+                _cierre.append('ap')
+            elif tipo == 'ALBARAN':
+                _cierre.append('albaran')
+            elif tipo in ('COMISIONES_OTA', 'CONTRATO_OTA'):
+                _cierre.append('ar')
         return jsonify({'ok': True, 'tipo': tipo, 'mensaje': mensaje,
                         'items': str(items_count) if items_count else None,
-                        'guardado': guardado, 'datos': datos})
+                        'guardado': guardado, 'cierre': _cierre, 'datos': datos})
     except Exception as e:
         return jsonify({'ok': False, 'error': str(e)[:200]}), 500
 
@@ -11077,6 +11169,7 @@ async function uploadAndProcess() {
       log.scrollTop = log.scrollHeight;
     };
     var errs = 0;
+    var _cierreFotos = {};
     if (imgs.length >= 2) {
       // Varias fotos = páginas de UN documento (contrato/BEO). Se procesan TODAS
       // juntas en UNA sola llamada para poder detectar el contrato de grupo -> AR Real.
@@ -11099,7 +11192,7 @@ async function uploadAndProcess() {
           if (_dc.requiere_certificado_di) addLine('⚠ Certificado de doble imposición pendiente', 'l-warn');
         } else if (_dc && /no parecen un contrato/i.test(_dc.error || '')) {
           addLine('Las fotos no son un contrato — proceso cada una como documento suelto', 'l-info');
-          errs += await _procesarImagenes(imgs, addLine);
+          errs += await _procesarImagenes(imgs, addLine, _cierreFotos);
         } else {
           addLine('⚠ No se pudo leer el contrato: ' + ((_dc && _dc.error) || 'error') + '. Revisa que las fotos sean nítidas.', 'l-warn');
           errs++;
@@ -11110,11 +11203,19 @@ async function uploadAndProcess() {
       }
     } else {
       // 1 foto: documento suelto (factura, extracto, ticket...)
-      errs = await _procesarImagenes(imgs, addLine);
+      errs = await _procesarImagenes(imgs, addLine, _cierreFotos);
     }
     if (docs.length) {
-      _runBatchPipeline(docs.map(function(f){ return f.name; }), true);
+      // tanda mezclada: las fotos le pasan su pendiente al lote y se cierra
+      // UNA vez al final, no dos.
+      _runBatchPipeline(docs.map(function(f){ return f.name; }), true, _cierreFotos);
     } else {
+      // Solo fotos. Aqui estaba el agujero: se acababa el proceso sin cruce y
+      // sin asignador, asi que una foto de una factura se guardaba y no
+      // llegaba NUNCA a Aprobaciones AP — nadie le ponia cuenta ni asiento.
+      if (title) title.textContent = _tSSE('Cerrando el pipeline...');
+      var _avCierre = await _correrCierre(_cierreFotos, addLine);
+      if (_avCierre) errs++;
       if (icon) icon.textContent = errs ? '⚠️' : '✅';
       if (title) title.textContent = _tSSE(errs ? 'Procesado finalizado con avisos' : 'Procesado completado');
       if (spin) spin.style.display = 'none';
@@ -11129,7 +11230,54 @@ async function uploadAndProcess() {
   _runBatchPipeline(docs.map(function(f){ return f.name; }));
 }
 
-function _runBatchPipeline(fileNames, keepLog) {
+// ── El paso de cierre, en su propia conexion ─────────────────────────
+// El cruce factura<->albaran y el asignador de cuentas ya NO van al final de
+// cada lote. Iban dentro del EventSource del lote, que este mismo fichero
+// cierra a los 60 s, asi que en el ultimo lote no llegaban a arrancar: los dos
+// son subprocesos con 180 s de margen cada uno. Ahora se llaman UNA vez, aqui,
+// cuando ya esta todo guardado — venga de lotes, de fotos o de las dos cosas.
+function _correrCierre(pasos, addLine) {
+  return new Promise(function(resolve) {
+    var lista = Object.keys(pasos || {}).filter(function(k){ return pasos[k]; });
+    if (!lista.length) { resolve(false); return; }
+    var es = new EventSource('/api/cerrar_pipeline_stream?pasos=' + encodeURIComponent(lista.join(',')));
+    var aviso = false, hecho = false;
+    function _acabar(malo) {
+      if (hecho) return;
+      hecho = true;
+      clearTimeout(reloj);
+      try { es.close(); } catch(e) {}
+      resolve(malo);
+    }
+    // 7 min. El cierre son dos subprocesos con 180 s de margen cada uno, asi
+    // que este reloj no tiene que cortar nada en un caso normal: esta para que
+    // la pantalla no se quede colgada para siempre si algo se atasca.
+    var reloj = setTimeout(function() {
+      addLine('\u26a0 El cierre del pipeline tarda demasiado — vuelve a pulsar Procesar para reintentarlo', 'l-warn');
+      _acabar(true);
+    }, 420000);
+    es.onmessage = function(ev) {
+      var txt = ev.data;
+      if (txt === 'CIERRE_COMPLETO') { _acabar(aviso); return; }
+      if (txt === 'CIERRE_CON_ERRORES') { _acabar(true); return; }
+      if (!txt) return;
+      var c0 = txt.charAt(0), cls = 'l-dim';
+      if (c0 === '\u2713' || c0 === '\u2705') cls = 'l-ok';
+      else if (c0 === '\u2717') { cls = 'l-err'; aviso = true; }
+      else if (c0 === '\u26a0') { cls = 'l-warn'; aviso = true; }
+      else if (c0 === '\u2139') cls = 'l-info';
+      else if (txt.indexOf('>>') === 0) cls = 'l-info';
+      addLine(txt, cls);
+    };
+    es.onerror = function() {
+      if (hecho) return;   // el servidor ha cerrado bien y EventSource reintenta
+      addLine('\u26a0 Se ha cortado la conexion durante el cierre del pipeline', 'l-warn');
+      _acabar(true);
+    };
+  });
+}
+
+function _runBatchPipeline(fileNames, keepLog, cierreInicial) {
   // Guardia para CUALQUIER camino que llegue hasta aqui. Importa porque el
   // lote va por EventSource, y un EventSource NO sabe leer un 409: la petición
   // falla y salta `onerror`, o sea que el usuario veria "⚡ Reconectando..."
@@ -11156,6 +11304,9 @@ function _runBatchPipeline(fileNames, keepLog) {
 
   var total = fileNames.length;
   var hadError = false;
+  // Lo que hay que cerrar cuando acabe TODO. Puede venir sembrado desde las
+  // fotos: una tanda mezclada de fotos y PDF cierra una sola vez, al final.
+  var _cierrePend = cierreInicial || {};
 
   function _log(txt, cls) {
     if (!log) return;
@@ -11166,7 +11317,7 @@ function _runBatchPipeline(fileNames, keepLog) {
     log.scrollTop = log.scrollHeight;
   }
 
-  function _finish(ok) {
+  function _finishReal(ok) {
     if (icon) icon.textContent = ok ? '✅' : '⚠️';
     if (title) title.textContent = _tSSE(ok ? 'Procesado completado' : 'Procesado finalizado con avisos');
     // Mostrar badges verdes en los tabs que se actualizaron
@@ -11178,6 +11329,17 @@ function _runBatchPipeline(fileNames, keepLog) {
     var retryBtn = document.getElementById('btn-retry');
     if (retryBtn) retryBtn.style.display = 'none';
     setTimeout(function(){ loadAll(); if (typeof cargarARRealData === 'function') { try { cargarARRealData(); } catch(e){} } }, 800);
+  }
+
+  // El cierre corre SIEMPRE antes de dar el proceso por acabado, y por
+  // cualquier camino: lotes agotados, error de conexion o timeout. Antes iba
+  // dentro del stream del ultimo lote, asi que un timeout justo ahi se llevaba
+  // por delante el cruce y el asignador de TODA la tanda.
+  function _finish(ok) {
+    if (title) title.textContent = _tSSE('Cerrando el pipeline...');
+    _correrCierre(_cierrePend, _log).then(function(aviso) {
+      _finishReal(ok && !aviso);
+    });
   }
 
   // Dividir en lotes de 4 para evitar timeout de Render (30s por conexión SSE)
@@ -11206,6 +11368,12 @@ function _runBatchPipeline(fileNames, keepLog) {
 
     evtSrc.onmessage = function(ev) {
       var txt = ev.data;
+      // Lo que este lote deja pendiente de cerrar. No se pinta: es para la
+      // maquina, no para el usuario.
+      if (txt && txt.indexOf('CIERRE_PENDIENTE:') === 0) {
+        txt.slice(17).split(',').forEach(function(p){ if (p) _cierrePend[p] = true; });
+        return;
+      }
       if (txt === 'PIPELINE_COMPLETO' || txt === 'PIPELINE_CON_ERRORES') {
         try { if (typeof _invalidarPaneles === 'function') _invalidarPaneles(); } catch(e){}
         clearTimeout(timer);
@@ -11484,7 +11652,7 @@ async function _comprimirImagen(file) {
 // ── Procesado de fotos de documentos, integrado en Procesar Archivos ──
 function _mb(n) { return n > 950000 ? (n/1048576).toFixed(1) + 'MB' : Math.round(n/1024) + 'KB'; }
 
-async function _procesarImagenes(imgs, addLine) {
+async function _procesarImagenes(imgs, addLine, acc) {
   var errors = 0;
   for (var fi = 0; fi < imgs.length; fi++) {
     var original = imgs[fi];
@@ -11501,6 +11669,9 @@ async function _procesarImagenes(imgs, addLine) {
         var data = await r.json();
         if (data.ok) {
           var _ok = (data.guardado !== false);
+          // lo que esta foto deja pendiente (cruce / asignador). Este era el
+          // agujero: scan_documento guardaba el documento y ahi se acababa.
+          if (acc && data.cierre) { data.cierre.forEach(function(p){ if (p) acc[p] = true; }); }
           addLine((_ok ? '✓ ' : '⚠ ') + (file.name || 'foto') + ': ' + (data.tipo || '—') + (data.mensaje ? ' — ' + data.mensaje : ''), _ok ? 'l-ok' : 'l-warn');
         } else {
           addLine('✗ ' + (file.name || 'foto') + ': ' + (data.error || 'error'), 'l-err');
