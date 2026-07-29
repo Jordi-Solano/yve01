@@ -340,7 +340,18 @@ def api_emitir_factura():
     try:
         df = _get_reservas()
         year = datetime.now().year
-        last_num = len(df) + 1
+        # El contador va sobre el fichero ENTERO, no sobre el df filtrado.
+        #
+        # Al poner el filtro por hotel, `_get_reservas()` paso a devolver solo
+        # las del hotel activo y este `len(df)+1` empezo a contar desde 1 en
+        # cada hotel: emitir en dos hoteles daba DOS facturas distintas con el
+        # mismo numero. Visto en produccion, no leyendo el codigo.
+        #
+        # Se deja la serie del grupo, continua, que es como estaba antes de
+        # tocar nada: un numero de factura repetido es un problema contable, y
+        # cambiar a una serie por hotel es una decision de producto, no algo
+        # que deba caerse por un efecto colateral.
+        last_num = len(_get_reservas_todas()) + 1
         numero = f'FAC-{year}-CORP-{last_num:04d}'
         noches = max(1, (pd.to_datetime(fecha_salida) - pd.to_datetime(fecha_entrada)).days)
         importe_h = round(habitaciones * noches * precio_noche, 2)
