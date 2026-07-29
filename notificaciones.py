@@ -618,6 +618,14 @@ def escanear_alertas():
         rc = REFERENCIA_DIR / "reservas_credito.xlsx"
         if rc.exists():
             df = pd.read_excel(rc)
+            # Del hotel activo (fase 5): este fichero lo lee por su cuenta, sin
+            # pasar por `_get_reservas`, asi que se saltaba el filtro y avisaba
+            # del certificado DI de otro hotel como si fuera del tuyo.
+            try:
+                from almacen_datos import solo_del_hotel_activo as _solo
+                df = _solo(df)
+            except Exception:
+                pass
             if "requiere_certificado_di" in df.columns:
                 for _, r in df.iterrows():
                     val = str(r.get("requiere_certificado_di", "")).strip().lower()

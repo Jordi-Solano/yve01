@@ -10,6 +10,22 @@ from flask import Blueprint, send_file, Response
 pdf_bp = Blueprint('pdf', __name__)
 BASE_DIR = Path(__file__).parent
 
+
+def _solo_hotel(df):
+    """Deja solo las filas del hotel activo. A nivel de MODULO a proposito.
+
+    La primera version la definio anidada dentro del informe de F&B, asi que
+    el informe de AR Real —que esta en otra funcion de este mismo fichero— no
+    la veia. Un helper de filtrado que no alcanza a todos los que filtran es
+    exactamente como se queda un camino sin tapar.
+    """
+    try:
+        from almacen_datos import solo_del_hotel_activo as _s
+        return _s(df)
+    except Exception:
+        return df
+
+
 try:
     from reportlab.lib.pagesizes import A4
     from reportlab.lib.units import cm
@@ -191,12 +207,6 @@ def export_fb_pdf():
         # xlsx por su cuenta sin pasar por `tab_fb_dashboard`. En AR el fallo
         # fue exactamente este: se filtro un camino y quedaron cuatro sueltos.
         # Ventas, mermas e inventario van por hotel; el recetario es del grupo.
-        def _solo_hotel(df):
-            try:
-                from almacen_datos import solo_del_hotel_activo as _s
-                return _s(df)
-            except Exception:
-                return df
         datos = BASE_DIR / 'datos-referencia'
         df_ven = _solo_hotel(pd.read_excel(datos / 'ventas_fb_diarias.xlsx'))
         df_mer = _solo_hotel(pd.read_excel(datos / 'mermas.xlsx'))
@@ -327,7 +337,10 @@ def export_invoice_pdf(numero_factura):
     ruta = _os.path.join(_os.path.dirname(__file__), 'datos-referencia', 'reservas_credito.xlsx')
     ruta_c = _os.path.join(_os.path.dirname(__file__), 'datos-referencia', 'clientes_credito.xlsx')
     
-    df_r = pd.read_excel(ruta)
+    # Las reservas van por hotel (fase 5); los clientes son del grupo, igual
+    # que proveedores y el recetario. Este informe es otro camino de lectura
+    # que leia el fichero entero.
+    df_r = _solo_hotel(pd.read_excel(ruta))
     df_c = pd.read_excel(ruta_c)
     
     row = df_r[df_r['numero_reserva'].astype(str) == str(numero_factura)]

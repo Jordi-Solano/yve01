@@ -47,9 +47,22 @@ def api_exportar(tipo):
             ruta = __import__('tenant_dirs').datos_dir() + '/reservas_credito.xlsx'
             if not _os.path.exists(ruta): return jsonify({'error': 'Sin datos AR Real'}), 404
             from io import BytesIO as _BIO
-            with open(ruta,'rb') as fh: data = fh.read()
             from datetime import datetime as _dt
-            result = (_BIO(data), f'ar_real_facturas_{_dt.now().strftime("%Y%m%d")}.xlsx')
+            # Se reconstruye filtrado en vez de mandar el fichero crudo (fase
+            # 5). Mandandolo tal cual, con un hotel elegido te descargabas las
+            # facturas de TODOS: un Excel que sale de la app y se manda por
+            # correo es la peor forma de que se escape lo de otro hotel.
+            import pandas as _pd
+            _df = _pd.read_excel(ruta)
+            try:
+                from almacen_datos import solo_del_hotel_activo as _solo
+                _df = _solo(_df)
+            except Exception:
+                pass
+            _buf2 = _BIO()
+            _df.to_excel(_buf2, index=False)
+            _buf2.seek(0)
+            result = (_buf2, f'ar_real_facturas_{_dt.now().strftime("%Y%m%d")}.xlsx')
         elif tipo == 'fb':
             import os as _os
             ruta = __import__('tenant_dirs').datos_dir() + '/ventas_fb_diarias.xlsx'
