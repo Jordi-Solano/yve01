@@ -2154,8 +2154,32 @@ def api_procesar_batch_stream():
                                 _msg, _marca, _flags = _enrutar_tipo_doc(reg, fname, fpath)
                                 yield f'data: {_msg}\n\n'
                                 _mark(fname, _marca)
+                                # TODAS las banderas que devuelve el enrutador,
+                                # no solo has_ar.
+                                #
+                                # Este es el camino de los PDF y las fotos, o sea
+                                # el mas usado, y aqui se perdian `albaran`,
+                                # `has_ap` y `ap_n`. Consecuencia medida: un
+                                # albaran en PDF se guardaba perfectamente y
+                                # despues el cruce NO se relanzaba, porque
+                                # has_albaran seguia en False — asi que una
+                                # entrega nueva no volvia a evaluar la factura
+                                # que ayer no cuadraba, que es justo lo que la
+                                # fase 3b·2 existe para conseguir.
+                                #
+                                # El camino de hojas de calculo (~linea 2075) SI
+                                # las leia, y de ahi venia lo desconcertante: el
+                                # mismo albaran funcionaba en Excel y no en PDF.
+                                # `ap_n` tambien se perdia, y por eso el resumen
+                                # del lote contaba menos facturas de las que
+                                # entraron cuando un documento traia varias.
                                 if _flags.get('has_ar'):
                                     has_ar = True
+                                if _flags.get('has_ap'):
+                                    has_ap = True
+                                    ap_extra += max(0, int(_flags.get('ap_n', 1)) - 1)
+                                if _flags.get('albaran'):
+                                    has_albaran = True
                             elif reg and not reg.get('error') and not _ap_tiene_datos(reg):
                                 # La extraccion no saco NI proveedor NI numero NI
                                 # importe: guardar la fila solo ensucia el Excel y
