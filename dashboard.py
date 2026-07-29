@@ -6133,6 +6133,12 @@ async function loadAll() {
       var pid = activePanel.id || '';
       if (pid === 'panel-drr' && typeof cargarDRR === 'function') cargarDRR();
       if (pid === 'panel-banco' && typeof cargarBanco === 'function') cargarBanco();
+      // F&B no estaba en esta lista, y desde la fase 4b sus datos son POR
+      // HOTEL: al cambiar de hotel con la pestaña de F&B abierta se quedaban
+      // los numeros del hotel anterior. Mismo fallo que el de las tarjetas de
+      // reclamacion, en otro panel. `_refrescarFB` marca los cuatro subtabs
+      // como no cargados y repinta el que se este mirando.
+      if (pid === 'panel-fb' && typeof _refrescarFB === 'function') _refrescarFB();
       if (pid === 'panel-multi_hotel') {
         window._mhGrupo = null;
         window._mhGrupoLabel = null;
@@ -11955,6 +11961,18 @@ async function loadFBTab() {
   setTimeout(function() {
     if (!_fbLoaded.recetas) loadFBRecetas();
   }, 1500);
+}
+
+function _refrescarFB() {
+  // Tira las cuatro banderas de "ya cargado" y vuelve a pintar el subtab
+  // visible. Sin esto, cambiar de hotel dejaba los numeros del anterior: los
+  // subtabs se cargan una vez y no se vuelven a pedir.
+  ['resumen','inventario','mermas','recetas'].forEach(function(s){ _fbLoaded[s] = false; });
+  var sub = (typeof _fbActive !== 'undefined' && _fbActive) ? _fbActive : 'resumen';
+  if (sub === 'inventario' && typeof loadFBInventario === 'function') loadFBInventario();
+  else if (sub === 'mermas' && typeof loadFBMermas === 'function') loadFBMermas();
+  else if (sub === 'recetas' && typeof loadFBRecetas === 'function') loadFBRecetas();
+  else if (typeof loadFBResumen === 'function') loadFBResumen();
 }
 
 function runFB() {
