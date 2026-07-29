@@ -45,6 +45,33 @@ def _env_tenant():
         e["YVE_HOTEL"] = ""
     return e
 
+
+def _falta_hotel():
+    """El candado del servidor: la respuesta 409 si falta elegir hotel, o None.
+
+    Se pone en los endpoints que ESTAMPAN el hotel, no en los que solo dejan un
+    fichero en `facturas-entrada/`: subir un PDF no crea nada sin hotel, lo crea
+    procesarlo.
+
+    Por que en el servidor y no solo en el modal: el modal es la experiencia, no
+    la garantia. Se puede llamar a la API a pelo, se puede tener una pestaña
+    vieja abierta, y la foto del movil entra por otra puerta. La invariante
+    —"no existe documento nuevo sin hotel"— solo es verdad si la sostiene el
+    servidor.
+
+    Quien decide es `censo_hoteles.exige_hotel()`, en un sitio y nada mas. En AR
+    ya se aprendio lo que pasa cuando la misma regla vive en cinco.
+    """
+    try:
+        motivo = censo_hoteles.exige_hotel()
+    except Exception:
+        return None          # ante la duda, no bloquear a nadie
+    if not motivo:
+        return None
+    return jsonify({'ok': False, 'error': motivo, 'hotel_requerido': True,
+                    'hoteles': censo_hoteles.para_selector()}), 409
+
+
 REPORTES_DIR_LEGACY     = os.path.join(BASE_DIR, "reportes")
 PROCESADAS_DIR_LEGACY   = os.path.join(BASE_DIR, "facturas-procesadas")
 APROBACIONES_DIR_LEGACY = os.path.join(BASE_DIR, "aprobaciones")
@@ -1750,6 +1777,11 @@ def _enrutar_tipo_doc(reg, fname, fpath=None):
 @login_required
 def api_procesar_batch_stream():
     """SSE stream — procesa archivos en serie, timeout 60s por archivo."""
+    # ANTES de abrir el stream: una vez empieza el SSE ya no se puede devolver
+    # un 409, iria dentro del cuerpo y el cliente lo leeria como una linea mas.
+    _bloqueo = _falta_hotel()
+    if _bloqueo:
+        return _bloqueo
     import json as _json
     archivos_str = request.args.get('archivos', '[]')
     try:
@@ -2342,6 +2374,10 @@ def demo_view():
 def api_scan_documento():
     """Procesa una imagen de documento físico con Claude Vision."""
     import base64
+    # La foto del movil es otra puerta a lo mismo: tambien estampa hotel.
+    _bloqueo = _falta_hotel()
+    if _bloqueo:
+        return _bloqueo
     if 'image' not in request.files:
         return jsonify({'ok': False, 'error': 'No se recibió imagen'}), 400
     
@@ -2954,6 +2990,9 @@ def api_upload_facturas():
 def api_procesar_batch():
     """Process only new (unprocessed) files from facturas-entrada/."""
     global _pipeline_running
+    _bloqueo = _falta_hotel()
+    if _bloqueo:
+        return _bloqueo
     data = request.get_json(force=True, silent=True) or {}
     solo_nuevos = data.get('solo_nuevos', True)  # default: skip already processed
     tipos = data.get('tipos', ['AR', 'AP', 'DRR', 'AR_o_AP'])  # which types to process
@@ -3081,6 +3120,10 @@ def api_procesar_batch():
 @app.route("/api/procesar")
 def api_procesar():
     global _pipeline_running
+    # Igual que el lote: antes de abrir el stream.
+    _bloqueo = _falta_hotel()
+    if _bloqueo:
+        return _bloqueo
     scripts = [
         ("lector_ota.py",               "Leyendo facturas PDF"),
         ("verificador_comisiones.py",   "Verificando comisiones OTA"),
@@ -3325,6 +3368,9 @@ def api_facturas_ap():
 @app.route("/api/procesar_ap")
 def api_procesar_ap():
     global _pipeline_ap_running
+    _bloqueo = _falta_hotel()
+    if _bloqueo:
+        return _bloqueo
     scripts = [
         ("lector_facturas_ap.py",  "Leyendo facturas PDF proveedores"),
         ("matching_ap_otras.py",   "Matching facturas OTRAS vs POs"),
@@ -5741,6 +5787,16 @@ Gestoría Nord: Hotel Pirineus, Hotel Vall" style="width:100%;background:var(--b
         <div style="font-size:12px;color:var(--mut);margin-top:4px">Facturas · Extractos bancarios · Ventas POS · Inventario · Mermas · Comisiones OTA · Rooming — clasificación automática por IA</div>
       </div>
       <button onclick="closeUploadModal()" style="background:none;border:none;color:var(--mut);font-size:24px;cursor:pointer">×</button>
+    </div>
+    <!-- Hotel de destino. Solo se ve con 2+ hoteles: con 0 o 1 no hay nada que
+         elegir y meter una pregunta ahi seria fricción por nada. -->
+    <div id="upload-hotel-row" style="display:none;margin-bottom:16px;padding:12px 14px;border-radius:12px;border:1px solid var(--s3);background:var(--bg)">
+      <div style="display:flex;align-items:center;gap:12px;flex-wrap:wrap">
+        <div style="font-size:12px;font-weight:700;color:var(--tx)">🏨 <span data-i18n="upload.hotelDestino">Hotel al que pertenece</span></div>
+        <select id="upload-hotel-sel" onchange="_elegirHotelSubida(this.value)"
+                style="flex:1;min-width:180px;background:var(--s1);border:1px solid var(--s3);color:var(--tx);padding:7px 10px;border-radius:9px;font-size:13px;cursor:pointer;outline:none"></select>
+      </div>
+      <div id="upload-hotel-aviso" style="display:none;font-size:11px;color:var(--ora);margin-top:8px;line-height:1.45"></div>
     </div>
     <div id="upload-drop-zone"
          onclick="document.getElementById('upload-file-input').click()"
@@ -10493,6 +10549,65 @@ function showAPDetail(row) {
 var _uploadFiles = [];        // File objects selected by user
 var _processedNames = new Set(); // Names already processed (from server)
 
+// ── El hotel de destino ──────────────────────────────────────────────────
+// El servidor ya no deja procesar sin hotel cuando hay 2 o mas (devuelve 409).
+// Esto es para que no llegues al 409 de sorpresa despues de elegir 20 ficheros:
+// se pregunta antes, y el boton no se enciende hasta que esta contestado.
+// La garantia la sigue dando el servidor; esto es la experiencia.
+var _uploadCenso = { hoteles: [], hotel: '' };
+
+function _hotelObligatorio(){ return _uploadCenso.hoteles.length >= 2; }
+function _hotelResuelto(){ return !_hotelObligatorio() || !!_uploadCenso.hotel; }
+
+async function _cargarCensoSubida(){
+  try {
+    var d = await fetch('/api/hotel_activo').then(function(r){ return r.json(); });
+    _uploadCenso = { hoteles: (d && d.hoteles) || [], hotel: (d && d.hotel) || '' };
+  } catch(e) { _uploadCenso = { hoteles: [], hotel: '' }; }
+
+  var row = document.getElementById('upload-hotel-row');
+  var sel = document.getElementById('upload-hotel-sel');
+  if (!row || !sel) return;
+  if (!_hotelObligatorio()) { row.style.display = 'none'; return; }
+
+  row.style.display = '';
+  sel.innerHTML = '<option value="">' + t('upload.eligeHotel', '— Elige un hotel —') + '</option>' +
+    _uploadCenso.hoteles.map(function(h){
+      var id = String(h.id || ''), nom = String(h.nombre || '');
+      return '<option value="' + id.replace(/"/g,'&quot;') + '"' +
+             (_uploadCenso.hotel === id ? ' selected' : '') + '>🏨 ' +
+             nom.replace(/</g,'&lt;') + '</option>';
+    }).join('');
+  _pintarAvisoHotel();
+}
+
+function _pintarAvisoHotel(){
+  var av = document.getElementById('upload-hotel-aviso');
+  if (!av) return;
+  if (_hotelResuelto()) { av.style.display = 'none'; return; }
+  av.style.display = '';
+  av.textContent = t('upload.hotelPendiente',
+    'Elige el hotel antes de procesar. Un documento sin hotel no es «del hotel principal», es un documento del que no sabemos el hotel.');
+}
+
+async function _elegirHotelSubida(id){
+  // Reusa el mismo endpoint que el selector de la cabecera: un solo concepto
+  // de "hotel activo", no dos que puedan desincronizarse.
+  try { await _postJson('/api/hotel_activo', {hotel: id || ''}); } catch(e){}
+  _uploadCenso.hotel = id || '';
+  if (typeof _initHotelActivo === 'function') { try { _initHotelActivo(); } catch(e){} }
+  _pintarAvisoHotel();
+  _renderFileList();
+}
+
+// Si alguien llega igualmente al 409 (pestaña vieja, API a pelo), que lo vea.
+function _avisar409(d){
+  var msg = (d && d.error) || t('upload.hotelPendiente', 'Elige el hotel antes de procesar.');
+  showNotification('🏨 ' + msg, 'error');
+  _cargarCensoSubida();
+  return false;
+}
+
 async function openUploadModal() {
   // Reset state
   _uploadFiles = [];
@@ -10502,6 +10617,8 @@ async function openUploadModal() {
   document.getElementById('upload-count-dup').textContent = '0 ya procesados (se saltarán)';
   var procBtn = document.getElementById('btn-upload-procesar');
   procBtn.disabled = true; procBtn.style.opacity = '.4'; procBtn.style.cursor = 'not-allowed';
+
+  await _cargarCensoSubida();
 
   // Load already-processed file names from server
   try {
@@ -10582,6 +10699,9 @@ function procesarPendientesServidor() {
     .then(function(d) {
       var pendientes = (d.files || []).filter(function(f){ return !f.procesado; }).map(function(f){ return f.nombre; });
       if (!pendientes.length) { showNotification('No hay archivos pendientes en el servidor', 'info'); return; }
+      // Este boton es la otra forma de disparar el lote, y se saltaba el
+      // candado del modal. Misma regla para los dos caminos.
+      if (!_hotelResuelto()) { _pintarAvisoHotel(); return _avisar409(null); }
       closeUploadModal();
       showNotification('⏳ Procesando ' + pendientes.length + ' archivo(s) del servidor...', 'info');
       _runBatchPipeline(pendientes);
@@ -10719,10 +10839,15 @@ function _renderFileList() {
   document.getElementById('upload-count-dup').textContent = dupCount + ' ya procesado' + (dupCount !== 1 ? 's' : '') + ' (se saltarán)';
   
   var procBtn = document.getElementById('btn-upload-procesar');
-  procBtn.textContent = '⚡ Procesar ' + (newCount > 0 ? newCount + ' archivo' + (newCount !== 1 ? 's' : '') + ' nuevo' + (newCount !== 1 ? 's' : '') : 'seleccionados');
-  procBtn.disabled = newCount === 0;
-  procBtn.style.opacity = newCount > 0 ? '1' : '.4';
-  procBtn.style.cursor = newCount > 0 ? 'pointer' : 'not-allowed';
+  // Hacen falta las dos cosas: ficheros nuevos Y hotel resuelto.
+  var puede = newCount > 0 && _hotelResuelto();
+  procBtn.textContent = !_hotelResuelto()
+    ? t('upload.eligeHotelBoton', '🏨 Elige un hotel para continuar')
+    : '⚡ Procesar ' + (newCount > 0 ? newCount + ' archivo' + (newCount !== 1 ? 's' : '') + ' nuevo' + (newCount !== 1 ? 's' : '') : 'seleccionados');
+  procBtn.disabled = !puede;
+  procBtn.style.opacity = puede ? '1' : '.4';
+  procBtn.style.cursor = puede ? 'pointer' : 'not-allowed';
+  _pintarAvisoHotel();
 }
 
 function _removeUploadFile(idx) {
@@ -10733,6 +10858,10 @@ function _removeUploadFile(idx) {
 async function uploadAndProcess() {
   var newFiles = _uploadFiles.filter(function(f) { return !_processedNames.has(f.name); });
   if (!newFiles.length) { showNotification(_tSSE('No hay archivos nuevos que procesar'), 'info'); return; }
+  // Ultima red antes de subir nada: si el censo cambio en otra pestaña
+  // mientras este modal estaba abierto, el boton podria estar encendido.
+  await _cargarCensoSubida();
+  if (!_hotelResuelto()) { _renderFileList(); return _avisar409(null); }
 
   var isImg = function(f) { return /\.(jpe?g|png|webp|heic)$/i.test(f.name) || (f.type || '').indexOf('image/') === 0; };
   var imgs = newFiles.filter(isImg);
@@ -10836,6 +10965,12 @@ async function uploadAndProcess() {
 }
 
 function _runBatchPipeline(fileNames, keepLog) {
+  // Guardia para CUALQUIER camino que llegue hasta aqui. Importa porque el
+  // lote va por EventSource, y un EventSource NO sabe leer un 409: la petición
+  // falla y salta `onerror`, o sea que el usuario veria "⚡ Reconectando..."
+  // en vez del motivo. El candado del servidor sigue siendo el que manda —
+  // esto solo evita que el mensaje se pierda por el camino.
+  if (!_hotelResuelto()) { _avisar409(null); return; }
   var overlay = document.getElementById('overlay');
   var log = document.getElementById('log');
   var btn = document.getElementById('btn-run');

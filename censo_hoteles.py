@@ -137,6 +137,45 @@ def para_guardar():
     return ""
 
 
+def exige_hotel():
+    """¿Hace falta elegir hotel para poder guardar algo AHORA?
+
+    Devuelve el MOTIVO (texto para enseñar) o None si se puede seguir.
+
+    Relacion con `para_guardar()`, que va en UNA direccion y no en las dos:
+
+        si esto da motivo  ->  para_guardar() daria ''   (siempre)
+        si para_guardar() da ''  ->  esto NO tiene por que dar motivo
+
+    La asimetria es el caso de **0 hoteles**: ahi `para_guardar()` devuelve ''
+    y hay que dejar pasar, porque no hay nada que elegir y es el estado de
+    cualquier tenant recien creado. O sea: '' significa dos cosas distintas
+    —"no hay censo" y "hay censo pero no has elegido"— y solo la segunda se
+    bloquea. Escrito aqui porque al implementarlo di por hecha la equivalencia
+    en los dos sentidos y el propio test la tumbo.
+
+    Lo que si tiene que cumplirse SIEMPRE: no se bloquea nunca cuando el hotel
+    se habria podido asignar solo.
+
+    La regla es la pactada:
+
+      0 hoteles -> None   no hay nada que elegir, todo sigue como siempre
+      1 hotel   -> None   no hay ambiguedad, se etiqueta solo
+      2 o mas   -> hace falta uno activo
+
+    Los casos de 0 y 1 son los que NO se pueden romper: son el tenant recien
+    creado y el hotel suelto, o sea la mayoria.
+    """
+    if activo():
+        return None
+    lista = hoteles()
+    if len(lista) < 2:
+        return None
+    return (f"Hay {len(lista)} hoteles y ninguno elegido. Elige el hotel antes de "
+            f"procesar: un documento sin hotel no es «del hotel principal», es un "
+            f"documento del que no sabemos el hotel.")
+
+
 def _plegar(t):
     import unicodedata
     t = unicodedata.normalize("NFKD", str(t or ""))
