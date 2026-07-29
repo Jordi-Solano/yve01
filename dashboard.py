@@ -5603,7 +5603,9 @@ svg.yvi{width:1em;height:1em;vertical-align:-0.125em;flex-shrink:0;display:inlin
       <div class="sc hl c-ora"><div class="sc-lbl" data-tip="Facturas emitidas aún no cobradas">PENDIENTE COBRO</div><div class="sc-val" id="arp-pendiente">—</div></div>
       <div class="sc c-red"><div class="sc-lbl" data-tip="Facturas con más de 60 días sin cobrar">VENCIDO >60d</div><div class="sc-val" id="arp-vencido">—</div></div>
       <div class="sc c-grn"><div class="sc-lbl" data-tip="Cobrado este mes">COBRADO MES</div><div class="sc-val" id="arp-cobrado">—</div></div>
-      <div class="sc"><div class="sc-lbl">CLIENTES ACTIVOS</div><div class="sc-val" id="arp-nclientes">—</div></div>
+      <!-- Cuenta las altas de clientes_credito.xlsx, no los clientes que salen
+           en las facturas: por eso la etiqueta dice de credito y no activos. -->
+      <div class="sc"><div class="sc-lbl">CLIENTES DE CRÉDITO</div><div class="sc-val" id="arp-nclientes">—</div></div>
     </div>
 
     <!-- Two-column layout: clients + invoices -->
@@ -6846,7 +6848,7 @@ var _i18nStrMap = {
     'Bajo': 'Low',
     'Búsqueda global': 'Global search',
     'CATEGORÍA CON MÁS MERMA': 'CATEGORY WITH MOST WASTE',
-    'CLIENTES ACTIVOS': 'ACTIVE CLIENTS',
+    'CLIENTES DE CRÉDITO': 'CREDIT CLIENTS',
     'COBRADO MES': 'COLLECTED MONTH',
     'COSTE TOTAL MERMAS': 'TOTAL WASTE COST',
     'Calcular': 'Calculate',
@@ -7093,7 +7095,7 @@ var _i18nStrMap = {
     'Budget': 'Pressupost',
     'Búsqueda global': 'Cerca global',
     'CATEGORÍA CON MÁS MERMA': 'CATEGORIA AMB MÉS MALBÉ',
-    'CLIENTES ACTIVOS': 'CLIENTS ACTIUS',
+    'CLIENTES DE CRÉDITO': 'CLIENTS DE CRÈDIT',
     'COBRADO MES': 'COBRAT MES',
     'COSTE TOTAL MERMAS': 'COST TOTAL MALBÉ',
     'Cambiar de pestaña': 'Canviar pestanya',
@@ -7334,7 +7336,7 @@ var _i18nStrMap = {
     'Bajo': 'Faible',
     'Búsqueda global': 'Recherche globale',
     'CATEGORÍA CON MÁS MERMA': 'CATÉGORIE AVEC PLUS DE PERTES',
-    'CLIENTES ACTIVOS': 'CLIENTS ACTIFS',
+    'CLIENTES DE CRÉDITO': 'CLIENTS À CRÉDIT',
     'COBRADO MES': 'ENCAISSÉ CE MOIS',
     'COSTE TOTAL MERMAS': 'COÛT TOTAL PERTES',
     'Calcular': 'Calculer',
@@ -7587,7 +7589,7 @@ var _i18nStrMap = {
     'Bajo': 'Niedrig',
     'Búsqueda global': 'Globale Suche',
     'CATEGORÍA CON MÁS MERMA': 'KATEGORIE MIT DEN MEISTEN VERLUSTEN',
-    'CLIENTES ACTIVOS': 'AKTIVE KUNDEN',
+    'CLIENTES DE CRÉDITO': 'KREDITKUNDEN',
     'COBRADO MES': 'EINGEZOGEN MONAT',
     'COSTE TOTAL MERMAS': 'GESAMTKOSTEN VERLUSTE',
     'Calcular': 'Berechnen',
@@ -7843,7 +7845,7 @@ var _i18nStrMap = {
     'Bajo': 'Basso',
     'Búsqueda global': 'Ricerca globale',
     'CATEGORÍA CON MÁS MERMA': 'CATEGORIA CON PIÙ SPRECHI',
-    'CLIENTES ACTIVOS': 'CLIENTI ATTIVI',
+    'CLIENTES DE CRÉDITO': 'CLIENTI A CREDITO',
     'COBRADO MES': 'INCASSATO MESE',
     'COSTE TOTAL MERMAS': 'COSTO TOTALE SPRECHI',
     'Calcular': 'Calcola',
@@ -8085,7 +8087,7 @@ var _i18nStrMap = {
     'Budget': 'Orçamento',
     'Búsqueda global': 'Pesquisa global',
     'CATEGORÍA CON MÁS MERMA': 'CATEGORIA COM MAIS PERDA',
-    'CLIENTES ACTIVOS': 'CLIENTES ATIVOS',
+    'CLIENTES DE CRÉDITO': 'CLIENTES DE CRÉDITO',
     'COBRADO MES': 'COBRADO MÊS',
     'COSTE TOTAL MERMAS': 'CUSTO TOTAL PERDAS',
     'Cambiar de pestaña': 'Mudar aba',
@@ -13824,7 +13826,7 @@ async function cargarARRealData() {
       _setText('arp-pendiente', fmt(s.pendiente));
       _setText('arp-vencido',   fmt(s.vencido));
       _setText('arp-cobrado',   fmt(s.cobrado_mes));
-      _setText('arp-nclientes', dc.ok ? dc.clientes.length + ' ' + tt('ar.activos', 'activos') : '—');
+      _setText('arp-nclientes', dc.ok ? dc.clientes.length + ' ' + tt('ar.registrados', 'registrados') : '—');
       _skelOff(['arp-pendiente','arp-vencido','arp-cobrado','arp-nclientes']);
 
       // Aging bar

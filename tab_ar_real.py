@@ -129,6 +129,41 @@ def _aging_bucket(fecha_emision):
     if days <= 90:  return '61-90 días'
     return '>90 días (VENCIDA)'
 
+def _campo_cliente(fila, *nombres):
+    """El primer campo que exista de una lista de nombres posibles.
+
+    Hacia falta porque el codigo leia claves que NO estan en el fichero:
+    `limite_credito` cuando la columna es `credito_limite`, y `NIF` cuando es
+    `nif`. Resultado: el limite de credito salia SIEMPRE 0 —y con el 0, el
+    porcentaje de uso tambien— y el NIF vacio. Estaba latente solo porque
+    nadie habia dado de alta un cliente todavia.
+
+    Se aceptan las dos grafias en vez de cambiar por la buena y ya: si alguien
+    tiene el fichero con la otra, sigue funcionando. Un lector tolerante no
+    cuesta nada; un fichero que deja de leerse, si.
+    """
+    for n in nombres:
+        if n in fila and fila.get(n) is not None:
+            v = fila.get(n)
+            if not (isinstance(v, float) and v != v):      # descarta NaN
+                return v
+    return None
+
+
+def _txt_cliente(fila, *nombres):
+    v = _campo_cliente(fila, *nombres)
+    s = "" if v is None else str(v).strip()
+    return "" if s.lower() in ("nan", "none", "nat") else s
+
+
+def _num_cliente(fila, *nombres):
+    v = _campo_cliente(fila, *nombres)
+    try:
+        return float(v)
+    except (TypeError, ValueError):
+        return 0.0
+
+
 @ar_real_bp.route('/api/ar_real/clientes')
 def api_clientes():
     """Lista de clientes corporativos con estado de crédito."""
@@ -148,13 +183,13 @@ def api_clientes():
                     if pd.notna(row.get('fecha_emision')):
                         days = (date.today() - pd.Timestamp(row['fecha_emision']).date()).days
                         if days > 60: has_overdue = True; break
-            limit = float(c.get('limite_credito', 0) or 0)
+            limit = _num_cliente(c, 'credito_limite', 'limite_credito')
             uso_pct = round(total_pend / limit * 100, 1) if limit > 0 else 0
             clientes.append({
                 'nombre':    nombre,
-                'NIF':       str(c.get('NIF','')),
-                'email':     str(c.get('email','')),
-                'telefono':  str(c.get('telefono','')),
+                'NIF':       _txt_cliente(c, 'nif', 'NIF', 'cif'),
+                'email':     _txt_cliente(c, 'email', 'correo'),
+                'telefono':  _txt_cliente(c, 'telefono', 'teléfono', 'tel'),
                 'dias_pago': int(c.get('dias_pago', 30) or 30),
                 'limite_credito':   round(limit, 2),
                 'saldo_pendiente':  round(total_pend, 2),
