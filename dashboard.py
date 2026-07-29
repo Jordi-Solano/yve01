@@ -360,12 +360,18 @@ def api_hotel_activo():
                     "hoteles": censo_hoteles.para_selector()})
 
 
-def cargar_datos():
-    """
-    Carga los datos AR de TODOS los dias, ya consolidados.
+def cargar_datos_ar_sin_filtrar():
+    """Lo mismo que `cargar_datos()` pero SIN acotar al hotel elegido.
 
-    La lectura y el deduplicado viven en almacen_datos (punto unico a cambiar
-    el dia de la migracion a persistencia). Aqui solo queda el enriquecimiento.
+    Es el cuerpo de toda la vida; lo unico que se ha sacado fuera es la ultima
+    linea, el filtro. Existe para el agregador del grupo, que necesita las
+    filas de TODOS los hoteles para partirlas el mismo (fase A).
+
+    El orden importa y por eso el corte esta justo aqui: el enriquecimiento con
+    las aprobaciones va ANTES del filtro. Si el agregador se leyera el almacen
+    por su cuenta se dejaria fuera las columnas `accion` y `comentario`, y sus
+    contadores de aprobadas/rechazadas no cuadrarian con los del panel — que es
+    justo lo que la fase A viene a demostrar que si cuadra.
     """
     from almacen_datos import facturas_ar as _facturas_ar, resumen_fuentes as _fuentes
     df = _facturas_ar(_pdir(), _rdir())
@@ -391,12 +397,21 @@ def cargar_datos():
         if col not in df.columns:
             df[col] = None
 
+    return df, {"ruta": ruta}
+
+
+def cargar_datos():
+    """
+    Carga los datos AR de TODOS los dias, ya consolidados.
+
+    La lectura y el deduplicado viven en almacen_datos (punto unico a cambiar
+    el dia de la migracion a persistencia). Aqui solo queda el enriquecimiento.
+    """
     # FASE 3: AR filtra por `hotel_id`, igual que AP, y no por el nombre que
     # venia del PDF. `_filtrar_hotel_activo` se queda solo para AR Real, que
     # todavia no lleva etiqueta.
-    df = _solo_hotel_activo(df)
-    meta = {"ruta": ruta}
-    return df, meta
+    df, meta = cargar_datos_ar_sin_filtrar()
+    return _solo_hotel_activo(df), meta
 
 def calcular_stats(df):
     if df.empty:
@@ -3230,12 +3245,12 @@ def _solo_hotel_activo(df):
     return _solo(df)
 
 
-def cargar_datos_ap():
-    """Carga facturas AP de TODOS los dias, ya consolidadas.
+def cargar_datos_ap_sin_filtrar():
+    """Lo mismo que `cargar_datos_ap()` pero SIN acotar al hotel elegido.
 
-    La lectura y el deduplicado viven en almacen_datos: ese es el UNICO sitio
-    que habra que tocar cuando migremos a persistencia con almacen por hotel.
-    Aqui solo queda el enriquecimiento (aprobaciones, hotel activo).
+    Mismo corte que en AR y por lo mismo: el agregador del grupo necesita las
+    filas de todos los hoteles, y las necesita YA enriquecidas con las
+    aprobaciones, porque si no sus contadores no cuadrarian con los del panel.
     """
     from almacen_datos import facturas_ap as _facturas_ap
     df = _facturas_ap(_pdir(), _rdir())
@@ -3252,7 +3267,17 @@ def cargar_datos_ap():
                 df = df.merge(ultimas[["numero_factura","accion","comentario"]], on="numero_factura", how="left")
         except Exception:
             pass
-    return _solo_hotel_activo(df)
+    return df
+
+
+def cargar_datos_ap():
+    """Carga facturas AP de TODOS los dias, ya consolidadas.
+
+    La lectura y el deduplicado viven en almacen_datos: ese es el UNICO sitio
+    que habra que tocar cuando migremos a persistencia con almacen por hotel.
+    Aqui solo queda el enriquecimiento (aprobaciones, hotel activo).
+    """
+    return _solo_hotel_activo(cargar_datos_ap_sin_filtrar())
 
 
 def calcular_stats_ap(df):
@@ -3912,6 +3937,59 @@ def api_run_conciliacion():
     except Exception as e:
         return jsonify({"ok": False, "error": str(e)[:300]}), 500
 
+def stats_banco(df):
+    """KPIs de banco a partir de los movimientos ya juntados por el almacen.
+
+    Funcion PURA: entra un df, sale un dict. Ni lee ficheros ni mira la sesion.
+    La sacamos del endpoint para que el agregador del grupo (fase A) cuente lo
+    mismo que el panel en vez de tener su propio criterio de "conciliado".
+
+    Ojo con una cosa al usarla desde el grupo: el banco NO se parte por hotel.
+    El extracto es de la cuenta de la sociedad, y `movimientos_banco()` es la
+    unica funcion del almacen sin argumento `hotel` justamente por eso.
+    Repartirlo entre hoteles seria inventar.
+    """
+    movs = df.to_dict("records")
+
+    def _estado(m):
+        e = str(m.get("estado", "") or "").strip().upper()
+        return e if e else "PENDIENTE"
+
+    total = len(movs)
+    conc = sum(1 for m in movs if _estado(m) == "CONCILIADO")
+    pend = sum(1 for m in movs if _estado(m) == "PENDIENTE")
+    diff = sum(1 for m in movs if _estado(m) == "DIFERENCIA")
+
+    importes = [safe_float(m.get("importe", 0)) for m in movs]
+    cargos = abs(sum(x for x in importes if x < 0))
+    abonos = sum(x for x in importes if x > 0)
+    imp_pend = sum(abs(safe_float(m.get("importe", 0)))
+                   for m in movs if _estado(m) == "PENDIENTE")
+
+    # Alertas: pendientes de mas de 7 dias
+    alertas = []
+    from datetime import datetime as _dtb
+    hoy = _dtb.now()
+    for m in movs:
+        if _estado(m) != "PENDIENTE":
+            continue
+        try:
+            f = pd.to_datetime(m.get("fecha"), dayfirst=True)
+            dias = (hoy - f).days
+            if dias > 7:
+                alertas.append({"concepto": str(m.get("concepto", ""))[:50],
+                                "importe": safe_float(m.get("importe", 0)),
+                                "dias": dias})
+        except Exception:
+            pass
+    alertas.sort(key=lambda a: a["dias"], reverse=True)
+
+    return {"total": total, "conciliados": conc, "pendientes": pend,
+            "diferencias": diff, "importe_pendiente": round(imp_pend, 2),
+            "cargos": round(cargos, 2), "abonos": round(abonos, 2),
+            "alertas": alertas[:10]}
+
+
 @app.route("/api/stats_banco")
 def api_stats_banco():
     """Resumen de conciliacion bancaria para el dashboard.
@@ -3929,48 +4007,10 @@ def api_stats_banco():
         if df is None or df.empty:
             return jsonify(None)
 
-        movs = df.to_dict("records")
-
-        def _estado(m):
-            e = str(m.get("estado", "") or "").strip().upper()
-            return e if e else "PENDIENTE"
-
-        total = len(movs)
-        conc = sum(1 for m in movs if _estado(m) == "CONCILIADO")
-        pend = sum(1 for m in movs if _estado(m) == "PENDIENTE")
-        diff = sum(1 for m in movs if _estado(m) == "DIFERENCIA")
-
-        importes = [safe_float(m.get("importe", 0)) for m in movs]
-        cargos = abs(sum(x for x in importes if x < 0))
-        abonos = sum(x for x in importes if x > 0)
-        imp_pend = sum(abs(safe_float(m.get("importe", 0)))
-                       for m in movs if _estado(m) == "PENDIENTE")
-
-        # Alertas: pendientes de mas de 7 dias
-        alertas = []
-        from datetime import datetime as _dtb
-        hoy = _dtb.now()
-        for m in movs:
-            if _estado(m) != "PENDIENTE":
-                continue
-            try:
-                f = pd.to_datetime(m.get("fecha"), dayfirst=True)
-                dias = (hoy - f).days
-                if dias > 7:
-                    alertas.append({"concepto": str(m.get("concepto", ""))[:50],
-                                    "importe": safe_float(m.get("importe", 0)),
-                                    "dias": dias})
-            except Exception:
-                pass
-        alertas.sort(key=lambda a: a["dias"], reverse=True)
-
-        return jsonify({"total": total, "conciliados": conc, "pendientes": pend,
-                        "diferencias": diff, "importe_pendiente": round(imp_pend, 2),
-                        "cargos": round(cargos, 2), "abonos": round(abonos, 2),
-                        "alertas": alertas[:10],
-                        "sin_conciliar": info.get("informe") is None,
-                        "archivo": info.get("informe"),
-                        "extracto": info.get("extracto")})
+        return jsonify(dict(stats_banco(df),
+                            sin_conciliar=info.get("informe") is None,
+                            archivo=info.get("informe"),
+                            extracto=info.get("extracto")))
     except Exception as e:
         return jsonify({"error": str(e)}), 500
 

@@ -46,24 +46,34 @@ def _get_reservas_todas():
     return pd.read_excel(ruta)
 
 
+def reservas_normalizadas():
+    """El fichero entero con las fechas ya convertidas, SIN filtrar por hotel.
+
+    Se separa del filtro para que el agregador del grupo (fase A) parta ESTO y
+    no el fichero crudo: `facturas_y_stats` compara fechas, y si a un lado le
+    llegan Timestamps y al otro textos, el aging del grupo no cuadraria con el
+    del panel por una razon que no tiene nada que ver con los hoteles.
+    """
+    df = _get_reservas_todas()
+    for col in ['fecha_entrada', 'fecha_salida', 'fecha_emision']:
+        if col in df.columns:
+            df[col] = pd.to_datetime(df[col], errors='coerce')
+    return df
+
+
 def _get_reservas():
-    ruta = _os.path.join(DATOS, 'reservas_credito.xlsx')
-    if not _os.path.exists(ruta): return pd.DataFrame()
-    df = pd.read_excel(ruta)
     # FASE 5: se cruza por `hotel_id`, no por el NOMBRE.
     #
     # Lo que habia era un `contains` contra la columna `hotel` con el nombre
     # del censo. Es el fallo que la fase 0 vino a matar y que aqui se habia
     # quedado vivo: con "Hotel Sol" y "Hotel Sol Mar" en el mismo grupo, el
     # primero se llevaba las reservas del segundo.
+    df = reservas_normalizadas()
     try:
         from almacen_datos import solo_del_hotel_activo as _solo
         df = _solo(df)
     except Exception:
         pass
-    for col in ['fecha_entrada','fecha_salida','fecha_emision']:
-        if col in df.columns:
-            df[col] = pd.to_datetime(df[col], errors='coerce')
     return df
 
 def _save_reservas(df):
@@ -202,18 +212,23 @@ def api_clientes():
         return jsonify({'ok': False, 'error': str(e)}), 500
 
 
-@ar_real_bp.route('/api/ar_real/facturas')
-def api_facturas():
-    """Lista de facturas con aging y estado."""
-    try:
-        df_r = _get_reservas()
-        if df_r.empty:
-            return jsonify({'ok': True, 'facturas': [], 'stats': {}})
-        
-        facturas = []
-        total_pend = total_venc = total_cobr = 0
-        aging = {'0-30 días': 0, '31-60 días': 0, '61-90 días': 0, '>90 días (VENCIDA)': 0}
-        
+def facturas_y_stats(df_r):
+    """Facturas y KPIs de AR Real a partir de un df de reservas YA acotado.
+
+    Funcion PURA: entra el df que sea, sale (lista, stats). No lee ficheros ni
+    mira la sesion — quien decide QUE reservas entran es el que llama.
+
+    La usan dos: el panel, que le pasa `_get_reservas()` (el hotel de la
+    sesion), y el agregador del grupo, que le pasa la caja de cada hotel. Ese
+    es el punto: un solo criterio de "vencido" para los dos. Con dos copias del
+    bucle, el dia que cambie el corte de los 60 dias cambia en una y no en la
+    otra, y el grupo deja de cuadrar con el panel sin que nadie lo note.
+    """
+    facturas = []
+    total_pend = total_venc = total_cobr = 0
+    aging = {'0-30 días': 0, '31-60 días': 0, '61-90 días': 0, '>90 días (VENCIDA)': 0}
+
+    if not df_r.empty:
         for _, row in df_r.iterrows():
             total = float(row.get('total', 0) or 0)
             estado = str(row.get('estado', ''))
@@ -245,13 +260,26 @@ def api_facturas():
                 'days_pending':  days_pending,
             })
         
-        stats = {
-            'total_facturas': len(facturas),
-            'pendiente':   round(total_pend, 2),
-            'vencido':     round(total_venc, 2),
-            'cobrado_mes': round(total_cobr, 2),
-            'aging':       aging,
-        }
+    stats = {
+        'total_facturas': len(facturas),
+        'pendiente':   round(total_pend, 2),
+        'vencido':     round(total_venc, 2),
+        'cobrado_mes': round(total_cobr, 2),
+        'aging':       aging,
+    }
+    return facturas, stats
+
+
+@ar_real_bp.route('/api/ar_real/facturas')
+def api_facturas():
+    """Lista de facturas con aging y estado."""
+    try:
+        df_r = _get_reservas()
+        if df_r.empty:
+            # Se conserva el `stats: {}` de siempre en vez de mandar el dict de
+            # ceros: el panel ya sabe leer esto y no toca cambiarselo hoy.
+            return jsonify({'ok': True, 'facturas': [], 'stats': {}})
+        facturas, stats = facturas_y_stats(df_r)
         return jsonify({'ok': True, 'facturas': facturas, 'stats': stats})
     except Exception as e:
         return jsonify({'ok': False, 'error': str(e)}), 500

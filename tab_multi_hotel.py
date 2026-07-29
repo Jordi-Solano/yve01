@@ -169,6 +169,27 @@ def api_multi_alertas():
     
     return jsonify({'ok': True, 'alertas': alertas, 'total': len(alertas)})
 
+@multi_hotel_bp.route('/api/multi_hotel/agregado')
+def api_multi_agregado():
+    """FASE A · La ficha real de cada hotel, leyendo los documentos.
+
+    Todavia no la pinta nadie: el panel sigue leyendo `kpis_hoteles.xlsx`. Esto
+    esta para poder COMPARAR, que es como se verifica la fase A — el agregador
+    tiene que dar los mismos numeros que los paneles de cada hotel, que ya
+    estan comprobados uno a uno. Si coinciden por otro camino, esta bien; si no,
+    uno de los dos miente y hay que saber cual antes de enseñar nada.
+
+    Solo lee. Ver `agregador_grupo` y su test.
+    """
+    try:
+        from agregador_grupo import agregado
+        return jsonify(agregado())
+    except Exception as e:
+        import traceback
+        return jsonify({'ok': False, 'error': str(e),
+                        'traza': traceback.format_exc()[-1500:]}), 500
+
+
 @multi_hotel_bp.route('/api/multi_hotel/hotel/<hotel_id>')
 def api_hotel_detail(hotel_id):
     """Detail for a specific hotel: 6-month trend."""

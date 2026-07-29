@@ -325,6 +325,66 @@ def _ventas_con_receta(df_ven, recipes):
     return df, cobertura
 
 
+def resumen_fb(df_rec, df_inv, df_ven, df_mer):
+    """Ventas, food cost, mermas y cobertura a partir de tablas YA acotadas.
+
+    Funcion PURA: entran cuatro df, salen (df_ven enriquecido, recipe_map,
+    resumen). No lee ficheros ni mira la sesion — quien decide que filas entran
+    es el que llama. La usan el panel (con `_xlsx_hotel`, o sea el hotel de la
+    sesion) y el agregador del grupo (con la caja de cada hotel).
+
+    Ojo con el recetario: `df_rec` es del GRUPO, no del hotel. Una cadena
+    comparte carta. Lo que SI es del hotel es `df_inv`, y de ahi sale que el
+    mismo plato tenga food cost distinto en dos hoteles — no es un fallo, es el
+    dato interesante.
+
+    Y se mantiene el criterio de siempre: el food cost se divide entre las
+    ventas que CRUZAN con receta, no entre todas. Dividir entre todas daria un
+    numero mas bajo y tranquilizador justo cuando falta escandallo.
+    """
+    df_mer = df_mer.copy()   # no tocar el df de quien llama (ni la cache)
+    recipes = _calc_recipe_costs(df_rec, df_inv)
+    recipe_map = {r['id']: r for r in recipes}
+    df_ven, cobertura = _ventas_con_receta(df_ven, recipes)
+
+    total_ventas   = float(pd.to_numeric(df_ven['total_venta'], errors='coerce').fillna(0).sum())
+    coste_real_sum = 0.0
+    for sale in df_ven.to_dict('records'):
+        rec = recipe_map.get(sale.get('id_receta'))
+        if not rec:
+            continue
+        try:
+            uds = float(sale.get('unidades_vendidas') or 0)
+        except (TypeError, ValueError):
+            uds = 0.0
+        coste_real_sum += rec['coste_teorico'] * uds
+
+    base_fc = cobertura['ventas_con_receta']
+    # fc_teorico y fc_real salen identicos por construccion (misma suma
+    # calculada de dos formas); esta en el cajon de pendientes.
+    fc_teorico_global = round(coste_real_sum / base_fc * 100, 2) if base_fc > 0 else 0
+    fc_real_global    = fc_teorico_global
+
+    # Mermas — normalizar columnas
+    if 'coste_merma' not in df_mer.columns and 'coste' in df_mer.columns:
+        df_mer = df_mer.rename(columns={'coste': 'coste_merma'})
+    if 'coste_merma' not in df_mer.columns:
+        df_mer['coste_merma'] = 0
+    df_mer['coste_merma'] = pd.to_numeric(df_mer['coste_merma'], errors='coerce').fillna(0)
+    coste_mermas = float(df_mer['coste_merma'].sum())
+
+    resumen = {
+        'total_ventas':    round(total_ventas, 2),
+        'coste_escandallo': round(coste_real_sum, 2),
+        'fc_teorico_pct':  fc_teorico_global,
+        'fc_real_pct':     fc_real_global,
+        'coste_mermas':    round(coste_mermas, 2),
+        'alerta':          fc_real_global > fc_teorico_global + 3,
+        'cobertura':       cobertura,
+    }
+    return df_ven, recipe_map, resumen
+
+
 # ── Resultados consolidados ────────────────────────────────────────────────
 @fb_bp.route("/api/resultados")
 def api_resultados():
@@ -347,44 +407,14 @@ def api_resultados():
         df_mer = _xlsx_hotel("mermas.xlsx")
         df_ven = _xlsx_hotel("ventas_fb_diarias.xlsx")
 
-        recipes = _calc_recipe_costs(df_rec, df_inv)
-        recipe_map = {r['id']: r for r in recipes}
-
-        # id_receta garantizado: sin esto el tab entero se caia con KeyError
-        # cuando las ventas venian del TPV (ver _ventas_con_receta).
-        df_ven, cobertura = _ventas_con_receta(df_ven, recipes)
-
-        # Ventas: total facturado y coste de lo que SI tiene escandallo
-        total_ventas   = float(pd.to_numeric(df_ven['total_venta'], errors='coerce').fillna(0).sum())
-        coste_real_sum = 0.0
-        for sale in df_ven.to_dict('records'):
-            rec = recipe_map.get(sale.get('id_receta'))
-            if not rec:
-                continue
-            try:
-                uds = float(sale.get('unidades_vendidas') or 0)
-            except (TypeError, ValueError):
-                uds = 0.0
-            coste_real_sum += rec['coste_teorico'] * uds
-
-        # El food cost se calcula SOLO sobre las ventas que cruzan con receta.
-        # Dividir entre TODAS las ventas daria un numero mas bajo y tranquilizador
-        # justamente cuando falta escandallo: parecerian margenes buenos cuando en
-        # realidad no se sabe. La cobertura va al lado para que se vea sobre que
-        # parte de la facturacion esta calculado.
-        base_fc = cobertura['ventas_con_receta']
-        # fc_teorico y fc_real salen identicos por construccion (misma suma
-        # calculada de dos formas); esta en el cajon de pendientes.
-        fc_teorico_global = round(coste_real_sum / base_fc * 100, 2) if base_fc > 0 else 0
-        fc_real_global    = fc_teorico_global
-
-        # Mermas — normalizar columnas
-        if 'coste_merma' not in df_mer.columns and 'coste' in df_mer.columns:
-            df_mer = df_mer.rename(columns={'coste': 'coste_merma'})
-        if 'coste_merma' not in df_mer.columns:
-            df_mer['coste_merma'] = 0
-        df_mer['coste_merma'] = pd.to_numeric(df_mer['coste_merma'], errors='coerce').fillna(0)
-        coste_mermas = float(df_mer['coste_merma'].sum())
+        # El calculo vive en `resumen_fb`, que es pura y la comparte el
+        # agregador del grupo. Aqui queda lo que solo necesita el panel:
+        # categorias, ranking y la serie diaria.
+        #
+        # `df_ven` vuelve con id_receta y nombre_plato garantizados: sin eso el
+        # tab entero se caia con KeyError cuando las ventas venian del TPV.
+        df_ven, recipe_map, resumen = resumen_fb(df_rec, df_inv, df_ven, df_mer)
+        cobertura = resumen['cobertura']
 
         # Categorías
         cats_summary = {}
@@ -438,14 +468,7 @@ def api_resultados():
 
         return jsonify({
             'ok': True,
-            'resumen': {
-                'total_ventas':    round(total_ventas, 2),
-                'fc_teorico_pct':  fc_teorico_global,
-                'fc_real_pct':     fc_real_global,
-                'coste_mermas':    round(coste_mermas, 2),
-                'alerta':          fc_real_global > fc_teorico_global + 3,
-                'cobertura':       cobertura,
-            },
+            'resumen': resumen,
             'cobertura': cobertura,
             'categorias': categorias,
             'ranking_top': ranking_top,
