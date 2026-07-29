@@ -27,6 +27,88 @@ def _ruta():
     return os.path.join(datos_dir(), "hoteles.json")
 
 
+def sembrar_desde_entorno():
+    """Recrea el censo desde `YVE_HOTELES_SEED` si esta vacio. Apaño temporal.
+
+    POR QUE HACE FALTA
+    Render (plan gratuito) no tiene disco: cada despliegue levanta un sistema de
+    ficheros nuevo DESDE EL REPO, asi que todo lo que la aplicacion escribe en
+    runtime muere. `hoteles.json` esta commiteado como `[]`, de modo que cada
+    despliegue restaura un censo vacio y hay que dar de alta los hoteles otra
+    vez para poder verificar nada.
+
+    Ojo con la conclusion facil: sacar el fichero del repo NO arregla esto.
+    Pasaria de "restaurado a []" a "no existe", y `hoteles()` devuelve [] en los
+    dos casos. El disco efimero es la causa; el fichero commiteado solo hace que
+    la perdida sea silenciosa.
+
+    POR QUE POR VARIABLE DE ENTORNO Y NO COMMITEANDO LOS HOTELES
+    Decision del usuario, y es la buena: las variables de Render sobreviven a
+    los despliegues igual que el repo, pero no meten un fixture en el codigo
+    justo despues de haberlo limpiado (fase C), y se quitan de un clic el dia
+    que haya persistencia de verdad. El apaño y el producto quedan separados.
+
+    LAS DOS PROPIEDADES QUE LO HACEN SEGURO
+      1. Solo siembra si el censo esta VACIO o no existe. Con hoteles dentro no
+         toca nada — nunca puede pisar los de un cliente.
+      2. Si algo falla (variable mal escrita, JSON roto, disco de solo lectura)
+         avisa por consola y sigue. Un apaño de conveniencia no puede tumbar el
+         arranque de la aplicacion.
+
+    Se llama UNA vez al arrancar, sin peticion, asi que el tenant que resuelve
+    `datos_dir()` es el de `YVE_TENANT` o `default` — el de desarrollo. Los
+    tenants de cliente no pasan por aqui.
+    """
+    crudo = os.environ.get("YVE_HOTELES_SEED", "").strip()
+    if not crudo:
+        return None
+
+    if hoteles(solo_activos=False):
+        return None                      # ya hay censo: no se toca
+
+    try:
+        datos = json.loads(crudo)
+    except Exception as e:
+        print(f"[censo] YVE_HOTELES_SEED no es JSON valido, se ignora: {e}")
+        return None
+    if not isinstance(datos, list) or not datos:
+        print("[censo] YVE_HOTELES_SEED tiene que ser una lista de hoteles; se ignora")
+        return None
+
+    limpios = []
+    for h in datos:
+        if not isinstance(h, dict):
+            continue
+        hid = str(h.get("id") or "").strip()
+        nom = str(h.get("nombre") or "").strip()
+        if not hid or not nom:
+            continue                     # un hotel a medias no es identidad de nada
+        limpios.append({
+            "id": hid, "nombre": nom,
+            "ciudad":       str(h.get("ciudad") or ""),
+            "categoria":    str(h.get("categoria") or "4★"),
+            "habitaciones": int(h.get("habitaciones") or 0),
+            "grupo":        str(h.get("grupo") or "Principal"),
+            "activo":       bool(h.get("activo", True)),
+            "modulos":      h.get("modulos") or ["ar", "ap", "drr", "banco", "fb"],
+            "creado":       str(h.get("creado") or ""),
+        })
+    if not limpios:
+        print("[censo] YVE_HOTELES_SEED no traia ningun hotel con id y nombre; se ignora")
+        return None
+
+    try:
+        with open(_ruta(), "w", encoding="utf-8") as fh:
+            json.dump(limpios, fh, ensure_ascii=False, indent=2)
+    except Exception as e:
+        print(f"[censo] no se pudo escribir el censo sembrado: {e}")
+        return None
+
+    print(f"[censo] sembrados {len(limpios)} hoteles desde YVE_HOTELES_SEED: "
+          + ", ".join(h["nombre"] for h in limpios))
+    return limpios
+
+
 def hoteles(solo_activos=True):
     """Los hoteles del tenant. Lista vacia si no hay censo o esta corrupto.
 

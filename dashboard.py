@@ -216,6 +216,17 @@ from exportador_pdf import pdf_bp
 for _bp in (auth_bp, config_bp, admin_bp, aprob_ar_bp, aprob_ap_bp, concil_bp, fb_bp, ar_real_bp, recl_ota_bp, multi_hotel_bp, self_service_bp, exportador_bp, demo_bp, demo_sim_bp, reportes_pdf_bp, blog_bp, billing_bp, asientos_bp, signup_bp, about_bp, pdf_bp, legal_bp):
     app.register_blueprint(_bp)
 
+
+# Apaño temporal mientras no haya persistencia: si el censo esta vacio (cada
+# despliegue lo deja asi, porque Render no tiene disco) y hay una variable de
+# entorno con los hoteles, se recrean. No siembra nada si ya hay hoteles.
+# El porque completo esta en `censo_hoteles.sembrar_desde_entorno`.
+try:
+    import censo_hoteles as _censo_arranque
+    _censo_arranque.sembrar_desde_entorno()
+except Exception as _e:
+    print(f"[censo] siembra desde entorno omitida: {_e}")
+
 _pipeline_running = False
 _pipeline_lock    = threading.Lock()
 
