@@ -718,7 +718,15 @@ def main():
 
     # ── 4. GENERAR EXCEL ──
     print("\n  [4/4] Generando Excel de salida...")
-    nombre_salida = f"drr_procesado_{HOY}.xlsx"
+    # El hotel va en el NOMBRE (fase 5): el DRR es un informe por subida y
+    # quien lo lee coge "el ultimo", asi que con una columna no bastaria — el
+    # ultimo fichero seria el del hotel que subio mas tarde.
+    try:
+        import censo_hoteles as _censo
+        _suf = _censo.sufijo_fichero()
+    except Exception:
+        _suf = ("_" + os.environ["YVE_HOTEL"]) if os.environ.get("YVE_HOTEL") else ""
+    nombre_salida = f"drr_procesado{_suf}_{HOY}.xlsx"
     ruta_salida   = str(REPORTES_DIR / nombre_salida)
 
     wb_out = openpyxl.Workbook()

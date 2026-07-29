@@ -30,18 +30,35 @@ def _get_clientes():
     if not _os.path.exists(ruta): return pd.DataFrame()
     return pd.read_excel(ruta)
 
+def _hotel_activo():
+    try:
+        import censo_hoteles as _censo
+        return _censo.activo()
+    except Exception:
+        return ""
+
+
+def _get_reservas_todas():
+    """El fichero ENTERO, sin filtrar. Para quien vaya a reescribirlo."""
+    ruta = _os.path.join(DATOS, 'reservas_credito.xlsx')
+    if not _os.path.exists(ruta):
+        return pd.DataFrame()
+    return pd.read_excel(ruta)
+
+
 def _get_reservas():
     ruta = _os.path.join(DATOS, 'reservas_credito.xlsx')
     if not _os.path.exists(ruta): return pd.DataFrame()
     df = pd.read_excel(ruta)
-    # filtro por hotel activo de la sesión (si el df tiene columna hotel)
-    # FASE 0: la sesión guarda el ID; el nombre sale del censo. Se sigue
-    # cruzando por nombre, igual que antes, para no mover nada en esta fase.
+    # FASE 5: se cruza por `hotel_id`, no por el NOMBRE.
+    #
+    # Lo que habia era un `contains` contra la columna `hotel` con el nombre
+    # del censo. Es el fallo que la fase 0 vino a matar y que aqui se habia
+    # quedado vivo: con "Hotel Sol" y "Hotel Sol Mar" en el mismo grupo, el
+    # primero se llevaba las reservas del segundo.
     try:
-        import censo_hoteles as _censo
-        _nom = _censo.nombre_de(_censo.activo())
-        if _nom and 'hotel' in df.columns:
-            df = df[df['hotel'].astype(str).str.contains(_nom, case=False, na=False, regex=False)].copy()
+        from almacen_datos import solo_del_hotel_activo as _solo
+        df = _solo(df)
     except Exception:
         pass
     for col in ['fecha_entrada','fecha_salida','fecha_emision']:
@@ -50,7 +67,31 @@ def _get_reservas():
     return df
 
 def _save_reservas(df):
+    """Guarda `df` COMO las reservas del hotel activo, sin tocar las de los demas.
+
+    Ojo, que aqui habia una mina: todos los que llaman a esto parten de
+    `_get_reservas()`, que devuelve solo las del hotel activo. Con un
+    `df.to_excel()` a pelo, guardar despues de cobrar una factura reescribia
+    el fichero entero con SOLO las filas de ese hotel — o sea, borraba las
+    reservas de los otros. Estaba latente porque el filtro por nombre no
+    llegaba a filtrar casi nunca; al ponerlo por id se habria activado.
+
+    Asi que se recompone: del fichero completo se quitan las filas del hotel
+    activo y se pegan las que llegan. Sin hotel activo (0 hoteles o vista de
+    grupo) se guarda tal cual, que es el comportamiento de siempre.
+    """
     ruta = _os.path.join(DATOS, 'reservas_credito.xlsx')
+    hid = _hotel_activo()
+    if hid:
+        try:
+            from almacen_datos import COL_HOTEL as _COLH
+            completo = _get_reservas_todas()
+            if not completo.empty and _COLH in completo.columns:
+                _col = completo[_COLH].map(lambda v: "" if v is None else str(v).strip())
+                otros = completo[_col != str(hid)]
+                df = pd.concat([otros, df], ignore_index=True)
+        except Exception:
+            pass
     df.to_excel(ruta, index=False)
 
 def _cotejar_beo(beo, df_r):
@@ -315,6 +356,7 @@ def api_emitir_factura():
             'total':          round(total, 2),
             'estado':         'FACTURADO',
             'fecha_emision':  datetime.now().strftime('%Y-%m-%d'),
+            'hotel_id':       _hotel_activo(),      # fase 5
         }
         df = pd.concat([df, pd.DataFrame([new_row])], ignore_index=True)
         _save_reservas(df)
@@ -328,6 +370,12 @@ def api_ar_real_beos():
     try:
         ruta = _os.path.join(DATOS, 'beos_generados.json')
         beos = _json.load(open(ruta, encoding='utf-8')) if _os.path.exists(ruta) else []
+        # Un BEO es el catering de un evento en UN hotel (fase 5). Los que no
+        # llevan etiqueta son de antes: se ven en la vista de grupo, como el
+        # resto de "sin asignar", pero no se le cuelgan a ningun hotel.
+        _hid = _hotel_activo()
+        if _hid:
+            beos = [b for b in beos if str(b.get('hotel_id') or '') == str(_hid)]
         df_r = _get_reservas()
         for b in beos:
             b['cotejo'] = _cotejar_beo(b, df_r)

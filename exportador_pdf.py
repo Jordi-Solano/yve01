@@ -283,7 +283,14 @@ def export_drr_pdf():
 
         # Try to read DRR processed file
         reportes = BASE_DIR / 'reportes'
-        drr_files = sorted(glob.glob(str(reportes / 'drr_procesado_*.xlsx')))
+        # El DRR del hotel activo (fase 5). Cuarto camino de lectura: el PDF
+        # tambien leia el ultimo de todos, fuera de quien fuera.
+        try:
+            from dashboard import drr_del_hotel as _drr_hotel
+            _drr = _drr_hotel(str(reportes))
+            drr_files = [_drr] if _drr else []
+        except Exception:
+            drr_files = sorted(glob.glob(str(reportes / 'drr_procesado_*.xlsx')))
         if drr_files:
             df = pd.read_excel(drr_files[-1], sheet_name='Resumen', header=None)
             elements.append(Paragraph('Métricas del período', styles['section']))

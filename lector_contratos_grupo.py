@@ -256,8 +256,18 @@ def guardar_beo(beo, datos_dir=None):
         beos = json.load(open(beos_path, encoding="utf-8")) if os.path.exists(beos_path) else []
     except Exception:
         beos = []
+    # El hotel del evento (fase 5). Se estampa aqui, despues de leer el
+    # contrato: lo decide la sesion, no el papel.
+    try:
+        import censo_hoteles as _censo
+        beo["hotel_id"] = _censo.para_guardar()
+    except Exception:
+        beo["hotel_id"] = os.environ.get("YVE_HOTEL", "")
+    # La identidad del BEO incluye el hotel: dos hoteles del grupo pueden tener
+    # el mismo evento con el mismo numero de contrato y no son el mismo BEO.
     beos = [b for b in beos if not (b.get("evento", "").lower().strip()[:50] == evento_key
-                                    and str(b.get("contrato")) == str(beo.get("contrato")))]
+                                    and str(b.get("contrato")) == str(beo.get("contrato"))
+                                    and str(b.get("hotel_id") or "") == str(beo.get("hotel_id") or ""))]
     beos.append(beo)
     json.dump(beos, open(beos_path, "w", encoding="utf-8"), indent=2, ensure_ascii=False)
     return {"referencia": ref_path, "beos": beos_path}

@@ -2784,7 +2784,9 @@ def api_health():
         'components': {}
     }
     # Data files
-    has_drr = bool(_g.glob(os.path.join(_rdir(), 'drr_procesado_*.xlsx')))
+    # Del hotel activo: si no, con un hotel sin DRR salia "ya hay DRR" y el
+    # panel de al lado, vacio.
+    has_drr = bool(drr_del_hotel())
     has_ar  = bool(_g.glob(os.path.join(_rdir(), 'doble_imposicion_*.xlsx')) or
                    _g.glob(os.path.join(_rdir(), 'verificacion_*.xlsx')))
     has_ap  = bool(_g.glob(os.path.join(_rdir(), 'matching_*.xlsx')))
@@ -3628,13 +3630,38 @@ _pipeline_oracle_lock    = threading.Lock()
 FACTURAS_ENTRADA_DIR = os.path.join(BASE_DIR, "facturas-entrada")
 DRR_UPLOAD_DIR_LEGACY       = os.path.join(BASE_DIR, "facturas-entrada")
 
-def _cargar_drr_procesado():
-    """Carga el último drr_procesado_*.xlsx de reportes/."""
-    hits = glob.glob(os.path.join(_rdir(), "drr_procesado_*.xlsx"))
+def drr_del_hotel(reportes_dir=None, hotel=None):
+    """El ultimo informe de DRR del hotel elegido, o None.
+
+    UNICO sitio que decide que DRR le toca a quien. Lo usan el panel, el aviso
+    de "hay DRR", las notificaciones y el informe en PDF: en AR el fallo fue
+    justamente tener el criterio repartido y filtrar solo un camino.
+
+    El hotel viaja en el NOMBRE del fichero, no en una columna, porque el DRR
+    es un informe por subida y todo el mundo coge "el ultimo": con una columna,
+    el ultimo seria el del hotel que subio mas tarde.
+
+    Sin hotel elegido devuelve el mas reciente de todos, que es el
+    comportamiento de siempre y el que mantiene intacto el caso de 0 hoteles.
+    """
+    import censo_hoteles as _censo
+    rdir = reportes_dir or _rdir()
+    hits = glob.glob(os.path.join(rdir, "drr_procesado_*.xlsx"))
     if not hits:
         return None
+    hid = hotel if hotel is not None else _censo.activo()
+    if hid:
+        hits = [p for p in hits
+                if _censo.fichero_es_de(os.path.basename(p), hid)]
+        if not hits:
+            return None
     hits.sort(key=lambda p: os.path.getmtime(p), reverse=True)
     return hits[0]
+
+
+def _cargar_drr_procesado():
+    """El DRR del hotel activo. El criterio vive en `drr_del_hotel`."""
+    return drr_del_hotel()
 
 def _leer_drr_stats(ruta):
     """Lee el Excel procesado del DRR y devuelve stats para el frontend."""

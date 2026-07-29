@@ -540,7 +540,13 @@ def escanear_alertas():
             break
 
     # ── DRR: Out of Balance ──
-    ruta = _ultimo_excel("drr_procesado_*.xlsx", REPORTES_DIR)
+    # El DRR del hotel activo (fase 5): avisar del Out of Balance de otro hotel
+    # como si fuera del tuyo es peor que no avisar.
+    try:
+        from dashboard import drr_del_hotel as _drr_hotel
+        ruta = _drr_hotel(str(REPORTES_DIR))
+    except Exception:
+        ruta = _ultimo_excel("drr_procesado_*.xlsx", REPORTES_DIR)
     if ruta:
         try:
             df = pd.read_excel(ruta, sheet_name="Alertas", header=None)

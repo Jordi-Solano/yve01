@@ -176,6 +176,35 @@ def exige_hotel():
             f"documento del que no sabemos el hotel.")
 
 
+def sufijo_fichero():
+    """`_<HOTEL>` para meter en el nombre de un fichero, o '' si no hay hotel.
+
+    El DRR no es una tabla de filas: es UN informe por subida, y quien lo lee
+    coge "el ultimo". Etiquetar por columna no sirve de nada ahi — el ultimo
+    fichero seria el del hotel que subio mas tarde, y el otro hotel se comeria
+    sus numeros. Asi que el hotel va en el NOMBRE y cada hotel tiene su ultimo.
+
+    Sin hotel el sufijo es vacio y el nombre queda exactamente como siempre,
+    que es lo que mantiene intacto el caso de 0 hoteles.
+    """
+    h = para_guardar()
+    return f"_{h}" if h else ""
+
+
+def fichero_es_de(nombre, hid):
+    """Si el nombre de fichero lleva la marca del hotel `hid`.
+
+    Se busca el id CONCRETO que interesa en vez de intentar sacar "el id que
+    sea" con una expresion regular. La primera version adivinaba la forma del
+    id (una H y seis de hex) y fallaba con cualquier id que no encajara: es
+    dar por hecho un formato que puede cambiar. Aqui no se adivina nada.
+    """
+    if not hid:
+        return False
+    n = str(nombre or "")
+    return (f"_{hid}_" in n) or n.endswith(f"_{hid}") or (f"_{hid}." in n)
+
+
 def _plegar(t):
     import unicodedata
     t = unicodedata.normalize("NFKD", str(t or ""))
