@@ -3728,45 +3728,77 @@ def _leer_drr_stats(ruta):
                     "forecast": _fmt(row.iloc[3] if pd.notna(row.iloc[3]) else None, name in PCT_KEYS, name in EUR_KEYS),
                     "budget":   _fmt(row.iloc[4] if len(row) > 4 and pd.notna(row.iloc[4]) else None, name in PCT_KEYS, name in EUR_KEYS),
                 }
-        # GOP fallback: estimate from Revenue × GOP% when formula cells return None
-        for period in ("today", "mtd", "forecast"):
-            gop_val  = metricas.get("GOP",   {}).get(period, "N/D")
-            gpct_val = metricas.get("GOP %", {}).get(period, "N/D")
-            rev_val  = _num(metricas.get("Total Revenue", {}).get(period, "N/D"))
-            if gop_val == "N/D" and gpct_val != "N/D" and rev_val:
-                pct = _num(gpct_val)
-                if pct:
-                    p = pct / 100 if pct > 1 else pct
-                    metricas.setdefault("GOP", {})[period] = f"€{rev_val*p:,.0f} ~"
-            if gpct_val == "N/D" and gop_val != "N/D" and rev_val and rev_val > 0:
-                g = _num(gop_val)
-                if g: metricas.setdefault("GOP %", {})[period] = f"{g/rev_val*100:.1f}% ~"
+        # ── FASE D · De donde sale el GOP, dicho ────────────────────────────
+        #
+        # Antes habia TRES formas de rellenar un GOP que el DRR no traia, y las
+        # tres terminaban poniendo un " ~" al final del texto. O sea: el
+        # marcador existia pero no distinguia. Un GOP calculado con el
+        # porcentaje real del hotel y un GOP inventado con la media del sector
+        # llegaban a la pantalla exactamente iguales.
+        #
+        # Ahora cada periodo lleva su PROCEDENCIA, en un campo aparte del valor:
+        #
+        #   medido    el DRR trae el numero. Se enseña y se agrega.
+        #   derivado  aritmetica sobre datos DEL PROPIO HOTEL (sus ingresos por
+        #             su GOP%, o por el GOP% de su presupuesto). Se enseña
+        #             marcado, y el grupo dice cuantos son derivados.
+        #   inventado no se enseña y NO entra en ninguna suma.
+        #
+        # Y la rama del 22% se ha ido. No se marca: se borra. `ingresos × 0,22`
+        # no dice nada del hotel que no dijeran ya los ingresos — es un numero
+        # decorativo con pinta de medido, y un `~` es una nota al pie que no
+        # sobrevive a un copiar y pegar a un correo o a un consejo. Un hueco es
+        # informacion ("el DRR no trae el GOP, pidelo"); un numero falso, no.
+        #
+        # `inventado` se queda en el vocabulario aunque hoy no lo produzca
+        # nadie: si mañana alguien añade otra estimacion de la nada, la regla de
+        # no enseñarla ya esta puesta y escrita, no hay que acordarse de ella.
+        procedencia = {}
 
-        # GOP fallback 2: si sigue N/D, intentar leer columna Budget del mismo archivo
-        # y si tampoco, estimar con GOP% del budget o con media histórica de 22%
         for period in ("today", "mtd", "forecast"):
             gop_val  = metricas.get("GOP",   {}).get(period, "N/D")
             gpct_val = metricas.get("GOP %", {}).get(period, "N/D")
             rev_val  = _num(metricas.get("Total Revenue", {}).get(period, "N/D"))
-            if gop_val != "N/D" or not rev_val:
+
+            if gop_val != "N/D":
+                procedencia[period] = "medido"
+                # Falta solo el porcentaje: se saca del euro medido y los
+                # ingresos medidos. Sigue siendo del hotel.
+                if gpct_val == "N/D" and rev_val and rev_val > 0:
+                    g = _num(gop_val)
+                    if g:
+                        metricas.setdefault("GOP %", {})[period] = f"{g/rev_val*100:.1f}%"
                 continue
-            # Intentar con GOP% Budget si está disponible
-            gop_bgt_pct = _num(metricas.get("GOP %", {}).get("budget", "N/D"))
-            gop_bgt_eur = _num(metricas.get("GOP",   {}).get("budget", "N/D"))
-            if gop_bgt_pct:
-                p = gop_bgt_pct / 100 if gop_bgt_pct > 1 else gop_bgt_pct
-                metricas.setdefault("GOP", {})[period]   = f"€{rev_val*p:,.0f} ~"
-                metricas.setdefault("GOP %", {})[period] = f"{p*100:.1f}% ~"
-            elif gop_bgt_eur:
+
+            if not rev_val:
+                procedencia[period] = "sin_datos"
+                continue
+
+            # 1) Su propio GOP% del periodo.
+            pct = _num(gpct_val) if gpct_val != "N/D" else 0
+            origen = "su GOP% del periodo"
+            # 2) Si no, el GOP% de su presupuesto.
+            if not pct:
+                pct = _num(metricas.get("GOP %", {}).get("budget", "N/D"))
+                origen = "el GOP% de su presupuesto"
+            # 3) Si no, el que se deduce del presupuesto en euros.
+            if not pct:
+                bgt_eur = _num(metricas.get("GOP", {}).get("budget", "N/D"))
                 bgt_rev = _num(metricas.get("Total Revenue", {}).get("budget", "N/D"))
-                if bgt_rev and bgt_rev > 0:
-                    p = gop_bgt_eur / bgt_rev
-                    metricas.setdefault("GOP", {})[period]   = f"€{rev_val*p:,.0f} ~"
-                    metricas.setdefault("GOP %", {})[period] = f"{p*100:.1f}% ~"
-            else:
-                # Estimación final: 22% GOP (media industria hotelera España)
-                metricas.setdefault("GOP", {})[period]   = f"€{rev_val*0.22:,.0f} ~"
-                metricas.setdefault("GOP %", {})[period] = "22.0% ~"
+                if bgt_eur and bgt_rev and bgt_rev > 0:
+                    pct = bgt_eur / bgt_rev * 100
+                    origen = "su presupuesto"
+
+            if not pct:
+                # Aqui es donde estaba el 22%. Ahora se queda en N/D.
+                procedencia[period] = "sin_datos"
+                continue
+
+            p = pct / 100 if pct > 1 else pct
+            metricas.setdefault("GOP", {})[period]   = f"€{rev_val*p:,.0f} ~"
+            metricas.setdefault("GOP %", {})[period] = f"{p*100:.1f}% ~"
+            procedencia[period] = "derivado"
+            procedencia[period + "_origen"] = origen
 
         # Hoja Alertas — días y su estado
         dias = []
@@ -3808,6 +3840,11 @@ def _leer_drr_stats(ruta):
 
         return {
             "metricas": metricas,
+            # FASE D: de donde sale el GOP de cada periodo — medido, derivado,
+            # inventado o sin_datos. Viaja al lado del valor, no dentro: un
+            # marcador metido en el texto ("22.0% ~") se pierde en cuanto
+            # alguien copia la cifra.
+            "gop_procedencia": procedencia,
             "dias": dias,
             "alertas": alertas[:3],
             "archivo": os.path.basename(ruta),
@@ -6661,60 +6698,10 @@ async function renderDRRChart() {
   } catch(e) { console.warn('DRR chart error:', e); }
 }
 
-// ══════════════════════════════════════════════════════════════
-// MULTI-HOTEL MAP
-// ══════════════════════════════════════════════════════════════
+// FASE C: `renderMHMap` (el mapa de puntos por ciudad) se va con
+// `openHotelDetail`. No lo llamaba nadie desde hacia tiempo y pintaba sobre
+// `#mh-dots`, que ya no existe en el panel.
 
-// Coordenadas aproximadas en el viewBox 700x400 para Europa
-const CITY_COORDS = {
-  'Sitges':    { x: 155, y: 268 },
-  'Barcelona': { x: 160, y: 262 },
-  'Madrid':    { x: 110, y: 285 },
-  'Paris':     { x: 200, y: 205 },
-  'London':    { x: 162, y: 165 },
-  'Berlin':    { x: 288, y: 162 },
-  'Amsterdam': { x: 227, y: 168 },
-  'Roma':      { x: 272, y: 280 },
-  'Lisboa':    { x: 66,  y: 295 },
-  'Lisbon':    { x: 66,  y: 295 },
-};
-
-function renderMHMap(hoteles) {
-  const g = document.getElementById('mh-dots');
-  if (!g) return;
-  g.innerHTML = '';
-  // Group hotels by city to avoid overlap
-  const byCity = {};
-  hoteles.forEach(h => {
-    const key = h.ciudad;
-    if (!byCity[key]) byCity[key] = [];
-    byCity[key].push(h);
-  });
-  Object.entries(byCity).forEach(([ciudad, hs]) => {
-    const coords = CITY_COORDS[ciudad];
-    if (!coords) return;
-    const { x, y } = coords;
-    const status = hs.some(h=>h.status==='critical') ? 'critical'
-                 : hs.some(h=>h.status==='warning')  ? 'warning' : 'ok';
-    const color = status==='critical' ? '#ef4444' : status==='warning' ? '#f97316' : '#22c55e';
-    const count = hs.length;
-    const label = ciudad + (count > 1 ? ' (' + count + ')' : '');
-    const dotEl = document.createElementNS('http://www.w3.org/2000/svg', 'g');
-    dotEl.setAttribute('class', 'hotel-dot');
-    dotEl.setAttribute('transform', 'translate(' + x + ',' + y + ')');
-    dotEl.innerHTML =
-      '<circle r="7" fill="' + color + '" fill-opacity="0.2" stroke="' + color + '" stroke-width="1.5"/>' +
-      '<circle r="3.5" fill="' + color + '"/>' +
-      '<circle r="12" fill="' + color + '" fill-opacity="0" class="hit-area"/>' +
-      '<text x="12" y="4" fill="#f1f5f9" font-size="9.5" font-family="Inter,sans-serif" font-weight="600">' + label + '</text>';
-    dotEl.addEventListener('click', () => {
-      if (hs.length === 1) openHotelDetail(hs[0].id);
-      else openHotelDetail(hs[0].id);
-    });
-    dotEl.title = label;
-    g.appendChild(dotEl);
-  });
-}
 
 
 // ══════════════════════════════════════════════════════════════
@@ -12861,6 +12848,30 @@ function renderDRR(s) {
     {key:'GOP', label:'GOP', color:'var(--ora)', tip:'Gross Operating Profit — beneficio bruto antes de deuda e impuestos'},
     {key:'GOP %', label:'GOP %', color:'var(--pur)', tip:'GOP como porcentaje del Revenue Total. 30-45% es saludable en hoteles 4-5★'},
   ];
+  // FASE D · el GOP dice de donde sale.
+  //
+  // Antes, un GOP medido y uno estimado con la media del sector llegaban aqui
+  // con la misma pinta: los dos con un " ~" pegado al numero. Ahora la
+  // procedencia viene aparte, y el pie de la tarjeta la escribe con palabras.
+  // La rama del 22% ya no existe: si no hay de donde sacarlo, sale N/D.
+  const _proc = s.gop_procedencia || {};
+  const _PIE = {
+    medido:    {txt:'Medido — lo trae el DRR',                       color:'#22c55e'},
+    derivado:  {txt:'Derivado de los datos de este hotel',           color:'#f59e0b'},
+    inventado: {txt:'Estimado sin datos de este hotel — no se usa',  color:'#ef4444'},
+    sin_datos: {txt:'El DRR no trae el GOP. No se estima.',          color:'var(--dim)'},
+  };
+  function _pieGop(clave) {
+    if (clave !== 'GOP' && clave !== 'GOP %') return '';
+    // MTD manda: es el numero del que se habla. Si no hay, el de hoy.
+    const p = _proc.mtd || _proc.today || _proc.forecast || 'sin_datos';
+    const info = _PIE[p]; if (!info) return '';
+    const origen = (p === 'derivado' && _proc.mtd_origen) ? ' (' + _proc.mtd_origen + ')' : '';
+    return '<div class="mc-row" style="border:none;padding-top:6px">'
+         + '<span style="font-size:10px;color:' + info.color + ';line-height:1.3">'
+         + info.txt + origen + '</span></div>';
+  }
+
   const metricsEl = document.getElementById('drr-metrics');
   metricsEl.innerHTML = SHOW.map(m => {
     const d = s.metricas[m.key] || {};
@@ -12871,6 +12882,7 @@ function renderDRR(s) {
       + '<div class="mc-row"><span class="mc-k">Forecast</span><span class="mc-v">' + (d.forecast || 'N/D') + '</span></div>'
       + '<div class="mc-row"><span class="mc-k">Budget</span><span class="mc-v" style="color:var(--dim)">'
       + (d.budget || 'N/D') + '</span></div>'
+      + _pieGop(m.key)
       + '</div>';
   }).join('');
 
@@ -14174,86 +14186,10 @@ async function procesarARReal() {
 }
 
 
-async function openHotelDetail(hotelId) {
-  try {
-    const res = await fetch('/api/multi_hotel/hotel/' + hotelId);
-    const h = await res.json();
-    if (h.error) { showNotification('Hotel no encontrado', 'error'); return; }
-    const statusColor = h.status === 'ok' ? '#1db954' : h.status === 'warning' ? '#ff9800' : '#e05252';
-    const statusLabel = h.status === 'ok' ? 'OK' : h.status === 'warning' ? 'WARNING' : 'CRITICO';
-    let alertasHtml = '';
-    if (h.alertas && h.alertas.length > 0) {
-      alertasHtml = h.alertas.map(a => '<div style="padding:8px 12px;background:rgba(224,82,82,0.1);border-left:3px solid ' + statusColor + ';margin-bottom:6px;border-radius:4px;font-size:13px">! ' + a + '</div>').join('');
-    } else {
-      alertasHtml = '<div style="color:#1db954;padding:8px">Sin alertas activas</div>';
-    }
-    const gopColor = h.gop_pct >= 40 ? '#1db954' : h.gop_pct >= 35 ? '#ff9800' : '#e05252';
-    const fbColor = h.fb_pct <= 18 ? '#1db954' : h.fb_pct <= 20 ? '#ff9800' : '#e05252';
-    
-    const modal = document.createElement('div');
-    modal.id = 'hotel-modal';
-    modal.style.cssText = 'position:fixed;inset:0;background:rgba(0,0,0,0.8);z-index:9999;display:flex;align-items:center;justify-content:center;padding:20px;overflow-y:auto';
-    modal.addEventListener('click', (e) => { if (e.target === modal) closeHotelModal(); });
-    
-    const inner = document.createElement('div');
-    inner.style.cssText = 'background:#0f1117;border:1px solid #2e3248;border-radius:16px;max-width:1000px;width:100%;max-height:90vh;overflow-y:auto;padding:32px;position:relative';
-    
-    const closeBtn = document.createElement('button');
-    closeBtn.textContent = 'X';
-    closeBtn.style.cssText = 'position:absolute;top:16px;right:16px;background:transparent;color:#8892a4;border:none;font-size:24px;cursor:pointer;width:32px;height:32px';
-    closeBtn.addEventListener('click', closeHotelModal);
-    inner.appendChild(closeBtn);
-    
-    const otasFacts = Math.floor(h.facturas_pendientes * 0.4);
-    const grupoFacts = Math.floor(h.facturas_pendientes * 0.35);
-    const directosFacts = Math.floor(h.facturas_pendientes * 0.25);
-    
-    const detailDiv = document.createElement('div');
-    detailDiv.innerHTML = 
-      '<div style="display:flex;align-items:center;gap:16px;margin-bottom:8px">' +
-        '<h2 style="margin:0;font-size:24px">' + h.nombre + '</h2>' +
-        '<span style="background:' + statusColor + ';color:white;padding:4px 12px;border-radius:6px;font-size:11px;font-weight:700">' + statusLabel + '</span>' +
-      '</div>' +
-      '<div style="color:#8892a4;margin-bottom:24px">' + h.tier + ' &bull; ' + h.ciudad + ', ' + h.pais + ' &bull; ' + h.grupo + '</div>' +
-      '<h3 style="font-size:14px;color:#8892a4;margin:24px 0 12px 0">KPIs Operativos</h3>' +
-      '<div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(140px,1fr));gap:12px;margin-bottom:24px">' +
-        '<div style="background:#1c1f2e;border:1px solid #2e3248;border-radius:10px;padding:14px"><div style="font-size:11px;color:#8892a4">Habitaciones</div><div style="font-size:22px;font-weight:700">' + h.habitaciones + '</div></div>' +
-        '<div style="background:#1c1f2e;border:1px solid #2e3248;border-radius:10px;padding:14px"><div style="font-size:11px;color:#8892a4">Ocupacion</div><div style="font-size:22px;font-weight:700;color:#1a73e8">' + h.ocupacion_pct + '%</div></div>' +
-        '<div style="background:#1c1f2e;border:1px solid #2e3248;border-radius:10px;padding:14px"><div style="font-size:11px;color:#8892a4">ADR</div><div style="font-size:22px;font-weight:700">€' + h.adr.toFixed(0) + '</div></div>' +
-        '<div style="background:#1c1f2e;border:1px solid #2e3248;border-radius:10px;padding:14px"><div style="font-size:11px;color:#8892a4">RevPAR</div><div style="font-size:22px;font-weight:700">€' + h.revpar.toFixed(0) + '</div></div>' +
-      '</div>' +
-      '<h3 style="font-size:14px;color:#8892a4;margin:24px 0 12px 0">Performance Financiero</h3>' +
-      '<div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(160px,1fr));gap:12px;margin-bottom:24px">' +
-        '<div style="background:var(--s1);border:1px solid rgba(34,197,94,.3);border-radius:10px;padding:16px"><div style="font-size:11px;color:var(--mut)">Revenue MTD</div><div style="font-size:26px;font-weight:700;color:#22c55e">€' + (h.revenue_mtd/1000000).toFixed(2) + 'M</div></div>' +
-        '<div style="background:#1c1f2e;border:1px solid #2e3248;border-radius:10px;padding:16px"><div style="font-size:11px;color:#8892a4">GOP%</div><div style="font-size:26px;font-weight:700;color:' + gopColor + '">' + h.gop_pct + '%</div></div>' +
-        '<div style="background:#1c1f2e;border:1px solid #2e3248;border-radius:10px;padding:16px"><div style="font-size:11px;color:#8892a4">F&B Cost %</div><div style="font-size:26px;font-weight:700;color:' + fbColor + '">' + h.fb_pct + '%</div></div>' +
-      '</div>' +
-      '<h3 style="font-size:14px;color:#8892a4;margin:24px 0 12px 0">AR Dashboard - Facturas Pendientes</h3>' +
-      '<div style="background:#1c1f2e;border:1px solid #2e3248;border-radius:10px;padding:20px;margin-bottom:24px">' +
-        '<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:16px">' +
-          '<div>' +
-            '<div style="font-size:11px;color:#8892a4">Total pendiente de cobro</div>' +
-            '<div style="font-size:32px;font-weight:700;color:#ff9800">€' + h.facturas_importe.toLocaleString('es-ES') + '</div>' +
-            '<div style="font-size:13px;color:#8892a4;margin-top:4px">' + h.facturas_pendientes + ' facturas activas</div>' +
-          '</div>' +
-        '</div>' +
-        '<div class="fb-kpi-grid" style="display:grid;grid-template-columns:repeat(3,1fr);gap:12px;margin-top:16px;padding-top:16px;border-top:1px solid #2e3248">' +
-          '<div><div style="font-size:11px;color:#8892a4">OTAs (Booking, Expedia)</div><div style="font-size:18px;font-weight:600;color:#1a73e8">' + otasFacts + ' facts</div></div>' +
-          '<div><div style="font-size:11px;color:#8892a4">Grupos Corporativos</div><div style="font-size:18px;font-weight:600;color:#1a73e8">' + grupoFacts + ' facts</div></div>' +
-          '<div><div style="font-size:11px;color:#8892a4">Clientes Directos</div><div style="font-size:18px;font-weight:600;color:#1a73e8">' + directosFacts + ' facts</div></div>' +
-        '</div>' +
-      '</div>' +
-      '<h3 style="font-size:14px;color:#8892a4;margin:24px 0 12px 0">Alertas' + (h.alertas && h.alertas.length > 0 ? ' (' + h.alertas.length + ')' : '') + '</h3>' +
-      '<div>' + alertasHtml + '</div>';
-    
-    inner.appendChild(detailDiv);
-    modal.appendChild(inner);
-    document.body.appendChild(modal);
-  } catch(e) {
-    console.error('Error abriendo detalle:', e);
-    showNotification('✗ Hotel: ' + e.message, 'error');
-  }
-}
+// FASE C: aqui estaban `openHotelDetail` y su modal. Llamaban a
+// /api/multi_hotel/hotel/<id>, uno de los cuatro endpoints del demo que la
+// fase C ha borrado. Su unico llamador era `renderMHMap`, que tampoco llamaba
+// nadie: codigo muerto encadenado a un fichero de simulacion.
 
 
 // ═══════════════════════════════════════════════════════════════════

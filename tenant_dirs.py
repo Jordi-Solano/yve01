@@ -15,9 +15,14 @@ SUBDIRS = ["datos-referencia", "reportes", "facturas-entrada", "facturas-procesa
            "aprobaciones", "reportes/emails_pendientes", "reportes/emails_pendientes_ap"]
 
 # Plantillas: xlsx/json de referencia que cada tenant nuevo recibe vacíos (solo cabeceras)
+#
+# FASE C: `kpis_hoteles.xlsx` ya no está en la lista. Era el fichero del demo —
+# lo escribía `demo_generator` y lo leía Multi-Hotel, y desde la fase B el panel
+# lee los documentos de verdad. Un tenant nuevo no tiene por qué nacer con un
+# artefacto de simulación dentro.
 _SEED_FILES = ["extracto_banco.xlsx", "ventas_fb_diarias.xlsx", "inventario.xlsx",
                "mermas.xlsx", "recetas.xlsx", "clientes_credito.xlsx",
-               "reservas_credito.xlsx", "kpis_hoteles.xlsx", "comisiones_pactadas.xlsx",
+               "reservas_credito.xlsx", "comisiones_pactadas.xlsx",
                "proveedores.xlsx", "plan_cuentas.xlsx"]
 
 

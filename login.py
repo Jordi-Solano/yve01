@@ -43,21 +43,27 @@ def do_login():
             _aj.dump(_ae[-500:], open(_apath, "w"), ensure_ascii=False)
         except Exception:
             pass
-        # Cuentas de ejemplo: si su tenant está vacío, generar datos demo con sus nombres
-        _DEMOS = {
-            "solmar":   [{"nombre": "Cadena Sol", "hoteles": ["Hotel Sol Mar", "Hotel Sol Playa"]}],
-            "gestoria": [{"nombre": "Gestoría Nord", "hoteles": ["Hotel Pirineus", "Hotel Vall d'Aran"]}],
-        }
-        if username in _DEMOS:
-            try:
-                import os as _os, pandas as _pd
-                from tenant_dirs import datos_dir as _t_ddir
-                _kpis = _os.path.join(_t_ddir(), "kpis_hoteles.xlsx")
-                if not _os.path.exists(_kpis) or _pd.read_excel(_kpis).empty:
-                    from demo_generator import generar_demo
-                    generar_demo(_DEMOS[username])
-            except Exception as _e:
-                print(f"[login] demo seed warning: {_e}")
+        # FASE C: aqui se resembraba el demo. Ya no.
+        #
+        # Al entrar `solmar` o `gestoria`, si `kpis_hoteles.xlsx` faltaba o
+        # estaba vacio, se llamaba a `generar_demo()`. Ese fichero era el unico
+        # que alimentaba Multi-Hotel, y su unico escritor era el generador de
+        # demo: el panel no enseñaba datos, enseñaba una simulacion.
+        #
+        # Desde la fase B, Multi-Hotel lee los documentos de verdad, asi que la
+        # resiembra ya no rellena nada — solo podria pisar datos reales.
+        #
+        # Decision del usuario: las dos cuentas se quedan VACIAS. No se repunta
+        # el generador a documentos; quien quiera datos, que los suba.
+        #
+        # El demo manual (el interruptor de la interfaz, /api/demo) se queda:
+        # eso lo pide una persona a proposito, que es muy distinto de que se
+        # regenere solo al entrar.
+        #
+        # OJO AL ORDEN si algun dia se vuelve a tocar esto: quitar
+        # `kpis_hoteles.xlsx` de `_SEED_FILES` ANTES que este bloque habria
+        # hecho que `not exists` fuese siempre cierto, y el demo se habria
+        # regenerado EN CADA LOGIN, recreando el fichero recien borrado.
         return jsonify({"ok": True, "nombre": user.nombre, "rol": user.rol, "tenant": session["tenant_id"]})
     return jsonify({"ok": False, "error": "Usuario o contraseña incorrectos"}), 401
 

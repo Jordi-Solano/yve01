@@ -64,6 +64,37 @@ CAJA_SIN_ASIGNAR = "sin_asignar"
 CAJA_DESCONOCIDO = "desconocido"
 
 
+# ── Que procedencias pueden entrar en un numero de grupo (fase D) ─────────
+#
+# El GOP de un hotel puede venir de tres sitios, y NO valen lo mismo:
+#
+#   medido     el DRR lo trae. Es el dato.
+#   derivado   aritmetica sobre datos del propio hotel (sus ingresos por su
+#              GOP%, o por el de su presupuesto). Es suyo, aunque calculado.
+#   inventado  sacado de la nada — la media del sector y compañia.
+#
+# Esto vive AQUI, en el agregador, y no solo en el lector del DRR, porque el
+# daño de mezclarlas es de grupo: con tres hoteles y uno inventado, el GOP del
+# grupo es medio inventado y NADIE puede saber cual es cual mirando la
+# pantalla. Peor todavia, la mezcla parece medida.
+#
+# Hoy ningun camino produce `inventado` (la rama del 22% se borro en la fase D),
+# asi que este filtro no quita nada. Esta puesto igual: si mañana alguien añade
+# otra estimacion de la nada, la regla ya esta escrita y no depende de que se
+# acuerde. La fila hotelera de la fase E entra por aqui.
+PROCEDENCIAS_AGREGABLES = frozenset({"medido", "derivado"})
+
+
+def agregable(procedencia):
+    """True si un valor con esa procedencia puede entrar en un numero de grupo.
+
+    Falla en CERRADO: lo desconocido no se agrega. Si mañana aparece una
+    procedencia nueva sin que nadie decida que hacer con ella, se queda fuera
+    del total en vez de colarse dentro — que es el fallo que no se ve.
+    """
+    return str(procedencia or "").strip().lower() in PROCEDENCIAS_AGREGABLES
+
+
 # ── La particion ──────────────────────────────────────────────────────────
 
 def partir_por_hotel(df, ids):
