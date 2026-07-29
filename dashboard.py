@@ -13578,7 +13578,13 @@ function _mhTarjeta(f, tipo) {
   } else if (tipo === 'desconocido') {
     sub = 'Etiquetados con un hotel que ya no esta en el censo';
   } else {
-    sub = 'Datos reales · sin DRR';
+    // FASE E: antes ponia "sin DRR" fijo, y desde que la fila hotelera existe
+    // eso era mentira en las tarjetas que SI lo tienen. El subtitulo dice el
+    // estado de verdad.
+    var e = (f.drr || {}).estado;
+    sub = e === 'con_drr'   ? 'Datos reales · con DRR'
+        : e === 'drr_viejo' ? 'Datos reales · DRR de hace ' + ((f.drr || {}).dias_drr || 0) + ' días'
+        :                     'Datos reales · sin DRR';
   }
   var fc = Number(f.fb.food_cost_pct) || 0;
   var fcColor = fc === 0 ? 'var(--dim)' : fc > 35 ? '#ef4444' : fc > 30 ? '#f59e0b' : '#22c55e';
