@@ -10606,9 +10606,23 @@ var _processedNames = new Set(); // Names already processed (from server)
 // se pregunta antes, y el boton no se enciende hasta que esta contestado.
 // La garantia la sigue dando el servidor; esto es la experiencia.
 var _uploadCenso = { hoteles: [], hotel: '' };
+// Una vez enseñada la fila en esta apertura del modal, se queda. Si no,
+// desapareceria justo al elegir hotel —porque elegir pone hotel activo— y el
+// selector se esfumaria en la cara del que lo esta usando.
+var _uploadFilaVista = false;
 
-function _hotelObligatorio(){ return _uploadCenso.hoteles.length >= 2; }
-function _hotelResuelto(){ return !_hotelObligatorio() || !!_uploadCenso.hotel; }
+function _hayVariosHoteles(){ return _uploadCenso.hoteles.length >= 2; }
+function _dentroDeUnHotel(){ return !!_uploadCenso.hotel; }
+
+// La fila del hotel SOLO se enseña en la vista de grupo con 2+ hoteles, que es
+// el unico caso en el que hay algo que decidir. Dentro de un hotel no se
+// pregunta: el documento va a ese y punto, igual que no se pregunta cuando
+// solo hay uno.
+function _hotelObligatorio(){ return _hayVariosHoteles() && !_dentroDeUnHotel(); }
+
+// Se puede procesar si: no hay ambiguedad (0 o 1 hotel), o ya hay uno elegido
+// —venga del selector de la cabecera o del propio modal—.
+function _hotelResuelto(){ return !_hayVariosHoteles() || _dentroDeUnHotel(); }
 
 async function _cargarCensoSubida(){
   try {
@@ -10619,7 +10633,8 @@ async function _cargarCensoSubida(){
   var row = document.getElementById('upload-hotel-row');
   var sel = document.getElementById('upload-hotel-sel');
   if (!row || !sel) return;
-  if (!_hotelObligatorio()) { row.style.display = 'none'; return; }
+  if (_hotelObligatorio()) _uploadFilaVista = true;
+  if (!_uploadFilaVista) { row.style.display = 'none'; return; }
 
   row.style.display = '';
   sel.innerHTML = '<option value="">' + t('upload.eligeHotel', '— Elige un hotel —') + '</option>' +
@@ -10669,6 +10684,7 @@ async function openUploadModal() {
   var procBtn = document.getElementById('btn-upload-procesar');
   procBtn.disabled = true; procBtn.style.opacity = '.4'; procBtn.style.cursor = 'not-allowed';
 
+  _uploadFilaVista = false;      // cada apertura decide de cero
   await _cargarCensoSubida();
 
   // Load already-processed file names from server
