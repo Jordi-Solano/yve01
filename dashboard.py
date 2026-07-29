@@ -11672,6 +11672,18 @@ async function seleccionarHotelActivo(h, irATab) {
     var _nom = (_d && _d.nombre) || '';
     showNotification(_nom ? '🏨 ' + _nom : '🌍 ' + t('mh.vistaGrupo', 'Vista de grupo (todos los hoteles)'), 'info');
     _initHotelActivo();
+    // Lo cacheado es del hotel ANTERIOR. Esto va antes de repintar nada.
+    //
+    // Sin esto solo se refrescaba lo que estuviera a la vista, y los paneles
+    // con cargador propio (F&B, DRR, Multi-Hotel) se quedaban con los numeros
+    // del hotel de antes hasta que los abrias... y ni asi, porque al abrirlos
+    // `_cargarPanel` los daba por cargados y no volvia a pedir nada.
+    //
+    // AR Real no lo sufria por casualidad: se le llama a pelo aqui abajo,
+    // saltandose `_cargarPanel`. Casualidad, no diseño — y por eso el arreglo
+    // va en `_invalidarPaneles` y no en un `_refrescarFB()` suelto: asi cubre
+    // tambien DRR y Multi-Hotel, que es el que manda a partir de la fase B.
+    try { if (typeof _invalidarPaneles === 'function') _invalidarPaneles(); } catch(e){}
     loadAll(); loadAP(); loadBanco();
     if (typeof cargarARRealData === 'function') { try { cargarARRealData(); } catch(e) {} }
     if (h && irATab) {
@@ -11923,8 +11935,25 @@ function _cargarPanel(tab, panel, forzar) {
 
 // Al entrar documentos nuevos hay que volver a poblar: se marca todo como no
 // cargado y se repuebla el que este a la vista. El resto, la proxima vez.
+//
+// Tambien al CAMBIAR DE HOTEL, que tiene exactamente la misma consecuencia:
+// todo lo que hay cacheado es de otro hotel.
 function _invalidarPaneles() {
   _panelCargado = {};
+  // Y las guardas de DENTRO. `_panelCargado` es la de fuera, pero F&B y
+  // Multi-Hotel llevan ademas la suya propia. Con la de fuera limpia y la de
+  // dentro puesta, el panel se vuelve a "cargar" sin volver a pedir nada: el
+  // sintoma es que ensena los numeros del hotel anterior y parece que no pasa
+  // nada. Medido en produccion antes de arreglarlo: hasta 40 s con las ventas
+  // del otro hotel en pantalla, porque lo unico que lo corregia era el
+  // setInterval(loadAll, 60000) — y solo si daba la casualidad de que F&B
+  // estaba a la vista en ese tick.
+  //
+  // Van en try/catch por separado a proposito: si una peta, la otra tiene que
+  // limpiarse igual. Juntas, un fallo en F&B dejaria Multi-Hotel sucio.
+  try { ['resumen','inventario','mermas','recetas']
+          .forEach(function(s){ _fbLoaded[s] = false; }); } catch(e){}
+  try { _mh_loaded = false; _mhClasicaLoaded = false; } catch(e){}
   var act = document.querySelector('.panel.active');
   if (act && act.id && act.id.indexOf('panel-') === 0) {
     var t = act.id.slice(6);
