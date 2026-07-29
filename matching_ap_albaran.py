@@ -15,6 +15,22 @@ DOS NIVELES DE CONFIANZA, en este orden:
      cae dentro de la ventana anterior a la fecha de factura. Una factura
      mensual agrupa VARIOS albaranes, asi que el emparejamiento es 1↔N.
 
+EL HOTEL MANDA POR ENCIMA DE LOS DOS NIVELES (ver `_mismo_hotel`):
+  Antes este modulo no miraba el hotel, y con dos hoteles en el mismo tenant
+  cruzaba la factura de uno con el albaran del otro y la daba por buena. Un
+  numero equivocado presentado como correcto, que es la peor forma de fallar.
+  Reproducido en el banco de pruebas antes de arreglarlo.
+
+  El modulo NO filtra la carga y NO lee `YVE_HOTEL`: sigue corriendo en lote
+  sobre todo lo que hay, y la regla del hotel vive DENTRO del emparejamiento.
+  Es a proposito, por dos motivos medidos:
+    - el informe se reescribe ENTERO en cada pasada, asi que una carga filtrada
+      por el hotel A borraria del informe de hoy las filas del B — y esa hoja
+      `Albaranes` es la etapa que GANA en `almacen_datos.albaranes()`;
+    - `asignador_cuentas` abre el nombre EXACTO `matching_albaran_<HOY>.xlsx`,
+      asi que un informe por hotel desconectaria el cruce del panel en silencio.
+  Ademas asi el resultado no depende de la sesion, igual que `agregador_grupo`.
+
 QUE SE COMPARA (y una trampa que costaria caro):
   Un albaran NO lleva IVA y una factura SI. Comparar `total_factura` contra
   `total_albaran` daria una falsa discrepancia del ~21% en TODOS los cruces
@@ -136,6 +152,62 @@ def _clave_prov(nombre):
     return " ".join(p for p in s.split() if p not in fuera)
 
 
+def _hotel(fila):
+    """El hotel de un documento, comparable. '' = sin asignar.
+
+    Pasa por `_txt` A PROPOSITO: la columna vuelve de Excel como NaN cuando se
+    guardo vacia, y `str(float('nan'))` es la cadena 'nan', que NO es un vacio
+    para Python. Sin esto, "sin asignar" seria unas veces '' y otras 'nan', y
+    dos documentos igual de huerfanos no cruzarian entre ellos. No es teorico:
+    el informe del banco de pruebas imprimia literalmente `hotel=nan`.
+    """
+    return _txt(fila.get("hotel_id"))
+
+
+def _mismo_hotel(fila_f, alb):
+    """La regla del hotel, decidida con el usuario: IGUALDAD ESTRICTA.
+
+    Una factura solo cruza con un albaran del MISMO hotel, y lo que esta sin
+    asignar solo cruza con lo que esta sin asignar. **El vacio NO es comodin.**
+
+    Las dos propiedades que la hacen segura, y que hay que conservar al tocarla:
+      - con 0 hoteles en el censo TODO esta sin asignar, asi que todo cruza con
+        todo: exactamente el comportamiento de siempre. Es el tenant recien
+        creado, o sea la mayoria.
+      - con 1 hotel todo lleva la misma etiqueta, asi que tambien sale igual.
+    Solo con 2 o mas cambia algo, y lo unico que cambia es que dejan de cruzarse
+    documentos de hoteles DISTINTOS.
+
+    NO se consulta el censo a proposito: se comparan las etiquetas entre si. Un
+    hotel dado de baja, o un id que ya no este en el censo, sigue cruzando
+    consigo mismo en vez de desaparecer del cruce sin avisar.
+    """
+    return _hotel(fila_f) == _hotel(alb)
+
+
+_NOMBRES_HOTEL = {}
+
+
+def _nombre_hotel(hid):
+    """El nombre del hotel para ENSEÑARLO. Cae al id si no se puede resolver.
+
+    Es el UNICO sitio del modulo que toca el censo, y solo para escribir un
+    texto: la regla del cruce compara etiquetas entre si y no depende de esto
+    (ver `_mismo_hotel`). Asi un censo vacio —que en Render pasa despues de cada
+    despliegue— empeora el mensaje pero NO cambia ni un estado.
+    """
+    hid = _txt(hid)
+    if not hid:
+        return "sin hotel asignado"
+    if hid not in _NOMBRES_HOTEL:
+        try:
+            import censo_hoteles
+            _NOMBRES_HOTEL[hid] = censo_hoteles.nombre_de(hid) or hid
+        except Exception:
+            _NOMBRES_HOTEL[hid] = hid
+    return _NOMBRES_HOTEL[hid]
+
+
 def _mismo_proveedor(a, b):
     """Coincidencia parcial en los dos sentidos, como hace buscar_po."""
     ca, cb = _clave_prov(a), _clave_prov(b)
@@ -213,8 +285,49 @@ def _cita_explicita(fila_f, alb):
     return ""
 
 
+def _encaja_nivel2(fila_f, alb):
+    """El motivo por el que este albaran encaja por proveedor y ventana, o ''.
+
+    NO mira el hotel: eso lo decide quien llama.
+
+    Vive en su propia funcion para que el EMPAREJAMIENTO y la EXPLICACION de por
+    que algo NO ha emparejado salgan de la MISMA comprobacion. Con dos copias
+    acabarian diciendo cosas distintas — ya paso en F&B, donde el aviso
+    normalizaba los nombres por su cuenta y contradecia al calculo que tenia al
+    lado.
+    """
+    if not _mismo_proveedor(fila_f.get("nombre_proveedor"),
+                            alb.get("nombre_proveedor")):
+        return ""
+    f_fact = _fecha(fila_f.get("fecha"))
+    f_ent = _fecha(alb.get("fecha_entrega"))
+    if f_fact and f_ent:
+        # la entrega tiene que ser ANTERIOR a la factura (o del mismo dia) y
+        # caer dentro de la ventana
+        if not (f_fact - timedelta(days=VENTANA_DIAS) <= f_ent <= f_fact):
+            return ""
+        return f"mismo proveedor, entrega del {f_ent.strftime('%d/%m/%Y')}"
+    if f_fact or f_ent:
+        # falta una de las dos fechas: se acepta por proveedor, pero se deja
+        # dicho, porque la ventana no se ha podido comprobar
+        return "mismo proveedor (sin fecha para comprobar la ventana)"
+    return "mismo proveedor (sin fechas)"
+
+
 def emparejar(df_fact, df_alb):
-    """Empareja facturas y albaranes. Devuelve {indice_factura: [indices_alb]}.
+    """Empareja facturas y albaranes. Devuelve (empare, porque, bloqueados).
+
+    `empare` es {indice_factura: [indices_alb]}. `bloqueados` es
+    {indice_factura: {"citan": [...], "encajan": [...]}}: los albaranes que
+    habrian cruzado con esa factura si no fuera por el HOTEL.
+
+    POR QUE HACE FALTA `bloqueados`, y no es un adorno:
+    sin el, arreglar el cruce entre hoteles cambia un falso positivo (cuadra y
+    esta mal) por un **falso negativo mudo**: la factura sale como "no se ha
+    encontrado ninguna entrega", el AP Manager va a reclamarle al proveedor una
+    mercancia que si llego, y la informacion para verlo —la entrega esta
+    registrada en el hotel de al lado— existe y se la estamos escondiendo.
+    Un hueco explicado y un hueco no son lo mismo.
 
     Un albaran solo puede consumirse UNA vez: si dos facturas se lo repartieran,
     la misma entrega estaria justificando dos cobros, que es justo lo que este
@@ -227,57 +340,87 @@ def emparejar(df_fact, df_alb):
     asignados = {}          # indice de albaran -> indice de factura
     porque = {}             # (indice factura, indice albaran) -> motivo
     empare = {i: [] for i in df_fact.index}
+    bloqueados = {i: {"citan": [], "encajan": []} for i in df_fact.index}
+
+    def _apuntar(i_f, alb, donde):
+        num = _txt(alb.get("numero_albaran")) or "s/n"
+        bloqueados[i_f][donde].append((num, _hotel(alb)))
 
     # ── nivel 1 · referencia explicita ────────────────────────────────────
     for i_f, fila_f in df_fact.iterrows():
         for i_a, alb in df_alb.iterrows():
-            if i_a in asignados:
-                continue
             motivo = _cita_explicita(fila_f, alb)
-            if motivo:
-                asignados[i_a] = i_f
-                empare[i_f].append(i_a)
-                porque[(i_f, i_a)] = motivo
-
-    # ── nivel 2 · proveedor + ventana ─────────────────────────────────────
-    for i_f, fila_f in df_fact.iterrows():
-        f_fact = _fecha(fila_f.get("fecha"))
-        for i_a, alb in df_alb.iterrows():
+            if not motivo:
+                continue
+            if not _mismo_hotel(fila_f, alb):
+                # Se citan por su numero y estan en hoteles distintos. La regla
+                # del hotel manda igual, pero una referencia EXACTA que no cruza
+                # huele a etiqueta mal puesta y es lo mas accionable que hay.
+                _apuntar(i_f, alb, "citan")
+                continue
             if i_a in asignados:
                 continue
-            if not _mismo_proveedor(fila_f.get("nombre_proveedor"),
-                                    alb.get("nombre_proveedor")):
-                continue
-            f_ent = _fecha(alb.get("fecha_entrega"))
-            if f_fact and f_ent:
-                # la entrega tiene que ser ANTERIOR a la factura (o del mismo
-                # dia) y caer dentro de la ventana
-                if not (f_fact - timedelta(days=VENTANA_DIAS) <= f_ent <= f_fact):
-                    continue
-                motivo = f"mismo proveedor, entrega del {f_ent.strftime('%d/%m/%Y')}"
-            elif f_fact or f_ent:
-                # falta una de las dos fechas: se acepta por proveedor, pero se
-                # deja dicho, porque la ventana no se ha podido comprobar
-                motivo = "mismo proveedor (sin fecha para comprobar la ventana)"
-            else:
-                motivo = "mismo proveedor (sin fechas)"
             asignados[i_a] = i_f
             empare[i_f].append(i_a)
             porque[(i_f, i_a)] = motivo
-    return empare, porque
+
+    # ── nivel 2 · proveedor + ventana ─────────────────────────────────────
+    for i_f, fila_f in df_fact.iterrows():
+        for i_a, alb in df_alb.iterrows():
+            motivo = _encaja_nivel2(fila_f, alb)
+            if not motivo:
+                continue
+            if not _mismo_hotel(fila_f, alb):
+                _apuntar(i_f, alb, "encajan")
+                continue
+            if i_a in asignados:
+                continue
+            asignados[i_a] = i_f
+            empare[i_f].append(i_a)
+            porque[(i_f, i_a)] = motivo
+    return empare, porque, bloqueados
 
 
-def fecha_corte(df_alb):
-    """La entrega mas antigua registrada. Antes de esa fecha no habia albaranes.
+def registro_por_hotel(df_alb):
+    """Desde cuando registra albaranes cada hotel. Devuelve (cortes, con_albaran).
 
-    Una factura anterior a ese dia NO puede tener albaran, asi que marcarla como
-    "sin albaran" es una alerta que nadie puede accionar. Y una pantalla que
-    grita en todo lo que mira consigue que se deje de mirar: entonces se pierde
-    la alerta de verdad. Solo se alerta de facturas que DEBERIAN tener albaran
-    porque, cuando entraron, ya se estaban registrando.
+    EL CORTE: la entrega mas antigua registrada. Una factura anterior a ese dia
+    NO puede tener albaran, asi que marcarla como "sin albaran" es una alerta que
+    nadie puede accionar. Y una pantalla que grita en todo lo que mira consigue
+    que se deje de mirar: entonces se pierde la alerta de verdad.
+
+    POR QUE POR HOTEL Y NO UNO GLOBAL. El corte era la entrega mas antigua de
+    TODOS los hoteles juntos. Con eso, un hotel que empezo a registrar en julio
+    recibia alertas por sus facturas de marzo — porque OTRO hotel llevaba
+    registrando desde enero. Medido en el banco: de 5 incidencias, 2 no eran
+    accionables; con el corte por hotel se quedan en 3, y las 3 son reales.
+
+    LAS DOS COSAS QUE DEVUELVE SON DISTINTAS Y NO SE PUEDEN DEDUCIR UNA DE OTRA:
+      cortes[h]    la entrega mas antigua CON FECHA LEGIBLE de ese hotel
+      con_albaran  los hoteles que han registrado ALGUN albaran, con fecha o sin
+
+    Si "este hotel no registra albaranes" se dedujera de "no tiene corte", un
+    tenant cuyos albaranes no traen fecha legible pasaria de alertar de todo a
+    no alertar de NADA, en silencio — y ese tenant es justo el caso de 0 hoteles,
+    que es el que no se puede mover. Por eso van separadas.
+
+    Un hotel que no esta en `con_albaran` no ha registrado ni un albaran, y sus
+    facturas no generan incidencia (ver `analizar_factura`). Sin esa excepcion el
+    cambio seria PEOR que el corte global: con el corte a None, las facturas de
+    ese hotel pasaban de ANTERIOR_AL_REGISTRO a FACTURA_SIN_ALBARAN. Es el caso
+    del hotel que entra nuevo, que es el que mas veces va a pasar.
+
+    Degenera solo: con 0 hoteles todo cae en la caja '' y con 1 hotel en la suya,
+    asi que en los dos casos el corte vuelve a ser exactamente el de siempre.
     """
-    fechas = [f for f in (_fecha(a.get("fecha_entrega")) for _, a in df_alb.iterrows()) if f]
-    return min(fechas) if fechas else None
+    cortes, con_albaran = {}, set()
+    for _, a in df_alb.iterrows():
+        h = _hotel(a)
+        con_albaran.add(h)
+        f = _fecha(a.get("fecha_entrega"))
+        if f and (h not in cortes or f < cortes[h]):
+            cortes[h] = f
+    return cortes, con_albaran
 
 
 def _clave_desc(v):
@@ -294,14 +437,27 @@ def _clave_desc(v):
     return " ".join(s.split())
 
 
-def _lineas_de(df_lin, columna, valores):
-    """Las lineas cuyo `columna` esta en `valores`. Sin .str (pandas 3)."""
+def _lineas_de(df_lin, columna, valores, hotel=None):
+    """Las lineas cuyo `columna` esta en `valores`. Sin .str (pandas 3).
+
+    `hotel` acota ademas por hotel, y hace falta de verdad: las lineas de la
+    factura se buscan por `archivo`, o sea **por el nombre del fichero**, y dos
+    hoteles del mismo grupo pueden subir cada uno su `factura_julio.pdf`. Sin
+    acotar, las lineas de un hotel se comparan contra el albaran del otro y sale
+    una diferencia de precio inventada sobre una factura que esta bien.
+
+    Medido en el banco antes de arreglarlo: DOS facturas correctas, una de cada
+    hotel, salian las dos como DIFERENCIA_LINEA. Sin `hotel` la funcion se
+    comporta como siempre, que es lo que mantiene intacto el caso de 0 hoteles.
+    """
     if df_lin is None or df_lin.empty or columna not in df_lin.columns:
         return []
     vals = {_txt(v) for v in valores if _txt(v)}
     if not vals:
         return []
-    return [r for _, r in df_lin.iterrows() if _txt(r.get(columna)) in vals]
+    return [r for _, r in df_lin.iterrows()
+            if _txt(r.get(columna)) in vals
+            and (hotel is None or _hotel(r) == hotel)]
 
 
 def comparar_lineas(lin_f, lin_a):
@@ -352,8 +508,22 @@ def comparar_lineas(lin_f, lin_a):
     return avisos, round(euros, 2), sin_pareja
 
 
-def analizar_factura(fila_f, indices_alb, df_alb, porque, i_f, corte=None,
-                     df_lin_f=None, df_lin_a=None):
+def _lista_alb(pares):
+    """'ALB-7781 (Hotel Sol Playa), ALB-7782 (sin hotel asignado)'.
+
+    Se nombra el hotel, no solo el numero: "está en otro hotel" no le sirve de
+    nada a quien tiene cuatro. Se agrupa por hotel para no repetir el nombre.
+    """
+    por_hotel = {}
+    for num, hid in pares:
+        por_hotel.setdefault(_nombre_hotel(hid), []).append(num)
+    return "; ".join(f"{', '.join(nums)} ({nom})" for nom, nums in por_hotel.items())
+
+
+def analizar_factura(fila_f, indices_alb, df_alb, porque, i_f, cortes=None,
+                     df_lin_f=None, df_lin_a=None, hay_hoteles=False,
+                     bloqueados=None, con_albaran=None):
+    hot = _hotel(fila_f)
     base, aviso = _base_factura(fila_f)
     albs = [df_alb.loc[i] for i in indices_alb]
     nums = [_txt(a.get("numero_albaran")) or "s/n" for a in albs]
@@ -362,13 +532,27 @@ def analizar_factura(fila_f, indices_alb, df_alb, porque, i_f, corte=None,
     if not albs:
         f_fact = _fecha(fila_f.get("fecha"))
         diff = dif_pct = NF
-        if corte and f_fact and f_fact < corte:
+        corte = (cortes or {}).get(hot)
+        if con_albaran is not None and hot not in con_albaran:
+            # Este hotel no ha registrado NI UN albaran. Es el equivalente por
+            # hotel del "no hay albaranes todavia: nada que cruzar" con el que
+            # sale el modulo entero, y por el mismo motivo: no se puede reclamar
+            # una entrega en un sitio donde todavia no se registran entregas.
+            # Sin esto, un hotel que entra nuevo se llena de alertas el dia que
+            # OTRO hotel sube su primer albaran.
+            estado = "ANTERIOR_AL_REGISTRO"
+            detalle = ("no hay ningún albarán sin hotel asignado con el que esta "
+                       "factura pueda cruzar" if not hot else
+                       f"{_nombre_hotel(hot)} todavía no ha registrado ningún "
+                       "albarán: no se puede esperar que esta factura tenga uno")
+        elif corte and f_fact and f_fact < corte:
             # no es una incidencia: cuando se emitio esta factura todavia no se
-            # registraban albaranes, asi que no hay nada que reclamar
+            # registraban albaranes EN ESTE HOTEL, asi que no hay nada que reclamar
             estado = "ANTERIOR_AL_REGISTRO"
             detalle = (f"factura del {f_fact.strftime('%d/%m/%Y')}, anterior al primer "
-                       f"albarán registrado ({corte.strftime('%d/%m/%Y')}): no se puede "
-                       f"esperar que tenga uno")
+                       f"albarán registrado" + (f" en {_nombre_hotel(hot)}" if hot else "")
+                       + f" ({corte.strftime('%d/%m/%Y')}): no se puede esperar que "
+                       "tenga uno")
         else:
             estado = "FACTURA_SIN_ALBARAN"
             detalle = ("no se ha encontrado ninguna entrega que respalde esta factura "
@@ -410,11 +594,12 @@ def analizar_factura(fila_f, indices_alb, df_alb, porque, i_f, corte=None,
     euros_linea = NF
     avisos_l = []
     if albs and estado not in ("ANTERIOR_AL_REGISTRO", "FACTURA_SIN_ALBARAN"):
-        lin_f = _lineas_de(df_lin_f, "archivo", [fila_f.get("archivo")])
+        lin_f = _lineas_de(df_lin_f, "archivo", [fila_f.get("archivo")], hot)
         if not lin_f:
-            lin_f = _lineas_de(df_lin_f, "numero_factura", [fila_f.get("numero_factura")])
+            lin_f = _lineas_de(df_lin_f, "numero_factura",
+                               [fila_f.get("numero_factura")], hot)
         lin_a = _lineas_de(df_lin_a, "numero_albaran",
-                           [a.get("numero_albaran") for a in albs])
+                           [a.get("numero_albaran") for a in albs], hot)
         avisos_l, euros_linea, n_sin_pareja = comparar_lineas(lin_f, lin_a)
         n_comp = len(lin_f)
         if avisos_l:
@@ -435,11 +620,42 @@ def analizar_factura(fila_f, indices_alb, df_alb, porque, i_f, corte=None,
         if not lin_f:
             euros_linea = NF
 
+    # ── Por que este documento no cruza con mas cosas ─────────────────────
+    # Los dos avisos van al final, DESPUES de que el estado este decidido: no
+    # cambian ningun estado, solo explican un hueco. Un hueco sin explicar en
+    # una pantalla de finanzas se lee como "faltan albaranes" cuando lo que
+    # falta es la etiqueta.
+    if hay_hoteles and not hot:
+        # Solo se avisa si hay hoteles EN JUEGO. Con 0 hoteles en el censo todo
+        # esta sin asignar y el aviso saldria en TODAS las facturas, que es
+        # ruido puro: ahi "sin hotel" no es una anomalia, es el estado normal.
+        detalle += (" · sin hotel asignado: solo puede cruzar con albaranes "
+                    "sin hotel")
+    _citan = (bloqueados or {}).get("citan") or []
+    _encajan = (bloqueados or {}).get("encajan") or []
+    if _citan:
+        detalle += (" · OJO: el albarán " + _lista_alb(_citan) + " cita esta "
+                    "factura y está en otro hotel — revisa la etiqueta")
+    elif _encajan and estado not in ("MATCH_ALBARAN_OK", "ANTERIOR_AL_REGISTRO"):
+        # Solo cuando la factura se queda con un hueco o una diferencia: si ya
+        # cuadra con lo suyo, esto seria ruido. Sin este aviso el arreglo del
+        # hotel convierte un cruce erroneo en un "no hay entrega" mudo, y eso se
+        # lee como una reclamacion al proveedor que no toca.
+        detalle += (f" · hay {len(_encajan)} entrega(s) de este proveedor en la "
+                    "ventana registradas en otro hotel (" + _lista_alb(_encajan)
+                    + "): no se cruzan porque el hotel no coincide")
+
     return {
         "archivo":            _txt(fila_f.get("archivo")) or NF,
         "numero_factura":     _txt(fila_f.get("numero_factura")) or NF,
         "fecha":              _txt(fila_f.get("fecha")) or NF,
         "nombre_proveedor":   _txt(fila_f.get("nombre_proveedor")) or NF,
+        # La etiqueta tiene que sobrevivir la cadena ENTERA. La hoja `Albaranes`
+        # ya la llevaba porque arrastra la fila entera; esta se construye a mano
+        # campo a campo y se quedaba sin ella. Es la misma leccion que costo cara
+        # en AR, donde se estampo el hotel en la primera etapa y se dio por hecho
+        # el resto. Vacio = sin asignar, no es un fallo de lectura.
+        "hotel_id":           hot,
         "base_imponible":     base if base is not None else NF,
         "total_factura":      _num(fila_f.get("total_factura")) or NF,
         "n_albaranes":        len(albs),
@@ -533,7 +749,9 @@ def generar_resumen(df_f, df_a):
          "Cantidad": f"{TOL_CANTIDAD*100:.0f}%", "Pct": ""},
         {"Bloque": "Criterio", "Estado": "se compara la BASE IMPONIBLE (el albarán no lleva IVA)",
          "Cantidad": "", "Pct": ""},
-        {"Bloque": "Criterio", "Estado": "no se alerta de facturas anteriores al primer albarán registrado",
+        {"Bloque": "Criterio", "Estado": "solo se cruzan documentos del MISMO hotel; lo que no lleva hotel, solo con lo que no lleva hotel",
+         "Cantidad": "", "Pct": ""},
+        {"Bloque": "Criterio", "Estado": "no se alerta de facturas anteriores al primer albarán registrado EN SU HOTEL, ni de las de un hotel que aún no registra albaranes",
          "Cantidad": "", "Pct": ""},
     ]
     return pd.DataFrame(filas)
@@ -557,7 +775,19 @@ def main():
     print(f"  Facturas: {len(df_fact)}  |  Albaranes: {len(df_alb)}"
           f"  |  ventana {VENTANA_DIAS} días · tolerancia {TOL_IMPORTE*100:.0f}%\n")
 
-    empare, porque = emparejar(df_fact, df_alb)
+    # ¿Hay hoteles EN JUEGO? Basta con que UN documento lleve etiqueta. Sirve
+    # para no llenar de avisos un tenant que no usa hoteles: alli "sin hotel" es
+    # el estado normal de todo, no una anomalia de nadie.
+    hay_hoteles = (any(_hotel(f) for _, f in df_fact.iterrows())
+                   or any(_hotel(a) for _, a in df_alb.iterrows()))
+    if hay_hoteles:
+        _sin_h = sum(1 for _, f in df_fact.iterrows() if not _hotel(f))
+        _sin_a = sum(1 for _, a in df_alb.iterrows() if not _hotel(a))
+        print(f"  Separado por hotel: solo cruzan documentos del mismo hotel"
+              + (f" · {_sin_h} factura(s) y {_sin_a} albarán(es) sin hotel asignado"
+                 if (_sin_h or _sin_a) else "") + "\n")
+
+    empare, porque, bloqueados = emparejar(df_fact, df_alb)
     por_alb = {i_a: i_f for i_f, idxs in empare.items() for i_a in idxs}
 
     df_lin_f, df_lin_a = cargar_lineas()
@@ -571,9 +801,10 @@ def main():
         _falta = "la factura" if df_lin_f.empty else "el albarán"
         print(f"  Nivel 3 (línea a línea) no se aplica: {_falta} no trae líneas.\n")
 
-    corte = fecha_corte(df_alb)
-    res_f = [analizar_factura(df_fact.loc[i_f], idxs, df_alb, porque, i_f, corte,
-                              df_lin_f, df_lin_a)
+    cortes, con_albaran = registro_por_hotel(df_alb)
+    res_f = [analizar_factura(df_fact.loc[i_f], idxs, df_alb, porque, i_f, cortes,
+                              df_lin_f, df_lin_a, hay_hoteles,
+                              bloqueados.get(i_f), con_albaran)
              for i_f, idxs in empare.items()]
     res_a = analizar_albaranes(df_alb, por_alb, df_fact)
 
