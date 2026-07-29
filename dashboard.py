@@ -3688,6 +3688,41 @@ def _cargar_drr_procesado():
     """El DRR del hotel activo. El criterio vive en `drr_del_hotel`."""
     return drr_del_hotel()
 
+def num_drr(s):
+    """El numero que hay dentro de un valor del DRR ya formateado, o None.
+
+    Tolera las DOS formas en que este mismo proyecto escribe los importes, que
+    no son la misma:
+
+        '€16,360'      lo que produce `_fmt` cuando la celda trae un numero
+        '16,360 EUR'   lo que escribe `lector_drr` en el fichero procesado
+
+    El parser de antes solo quitaba '€', '%' y comas, asi que con la SEGUNDA
+    forma —la de los ficheros reales— devolvia None siempre. Consecuencia: en
+    la cadena del GOP, `rev_val` salia None con cualquier DRR de verdad y la
+    rama que deriva el GOP del porcentaje del propio hotel no llegaba a
+    ejecutarse nunca. Se veia como "no hay datos" cuando si los habia.
+
+    Se descubrio montando la fase E, al ir a ponderar: los numeros del grupo
+    salian todos a cero. Un fallo que solo aparece con el formato real y no con
+    el de los tests es exactamente el que hay que dejar cerrado con una
+    funcion sola y compartida.
+    """
+    if s is None:
+        return None
+    t = str(s).strip()
+    if t in ("", "N/D", "nan", "None", "NaT"):
+        return None
+    # Fuera moneda, porcentaje y separador de millares. El productor es codigo
+    # nuestro y siempre usa la coma como millar, asi que no hay ambiguedad.
+    t = t.replace("€", "").replace("%", "").replace(",", "")
+    t = t.replace("EUR", "").replace("eur", "").strip()
+    try:
+        return float(t)
+    except ValueError:
+        return None
+
+
 def _leer_drr_stats(ruta):
     """Lee el Excel procesado del DRR y devuelve stats para el frontend."""
     def _fmt(v, is_pct=False, is_eur=False):
@@ -3706,10 +3741,11 @@ def _leer_drr_stats(ruta):
         except ValueError:
             return s if s else "N/D"
 
-    def _num(s):
-        if not s or s == "N/D": return None
-        try: return float(str(s).replace("€","").replace("%","").replace(",","").strip())
-        except: return None
+    # El parser vive fuera (`num_drr`) para que el agregador del grupo use
+    # EXACTAMENTE el mismo. Con dos copias, la del grupo entendia un formato y
+    # la del panel otro, y los numeros dejaban de cuadrar por una razon que no
+    # tiene nada que ver con los hoteles.
+    _num = num_drr
 
     try:
         # Hoja Resumen — métricas KPI
@@ -13570,12 +13606,51 @@ function _mhTarjeta(f, tipo) {
       _mhBloque('Ventas F&B', _mhEur(f.fb.ventas),
                 fc ? 'food cost ' + fc + '%' : 'sin escandallo', fcColor) +
     '</div>' +
-    (esHotel
-      ? '<div style="border-top:1px solid var(--s2);padding-top:10px;font-size:11px;color:var(--dim);display:flex;align-items:center;gap:6px">' +
-          '<span style="opacity:.7">📊</span>' +
-          '<span>Ocupacion, ADR, RevPAR y GOP: <b style="color:var(--mut)">cuando este hotel suba su DRR</b></span>' +
-        '</div>'
-      : '') +
+    (esHotel ? _mhFilaHotelera(f.drr) : '') +
+  '</div>';
+}
+
+// FASE E · la fila hotelera de la tarjeta: ocupacion, ADR, RevPAR y GOP.
+//
+// Tres estados, y los tres se DICEN. Un hueco mudo se lee como un cero, y un
+// hotel que no ha subido un papel no es un hotel que va mal.
+function _mhFilaHotelera(d) {
+  var linea = 'border-top:1px solid var(--s2);padding-top:10px;margin-top:2px;';
+  if (!d || d.estado === 'sin_drr') {
+    return '<div style="' + linea + 'font-size:11px;color:var(--dim);display:flex;align-items:center;gap:6px">' +
+      '<span style="opacity:.7">📊</span>' +
+      '<span>Ocupación, ADR, RevPAR y GOP: <b style="color:var(--mut)">falta subir el DRR de este hotel</b></span>' +
+    '</div>';
+  }
+  var celda = function(et, v, suf) {
+    return '<div style="text-align:center">' +
+      '<div style="font-size:9px;color:var(--mut);text-transform:uppercase;letter-spacing:.3px">' + et + '</div>' +
+      '<div style="font-size:14px;font-weight:700">' +
+        (v === null || v === undefined ? '<span style="color:var(--dim);font-weight:500">N/D</span>'
+                                       : (suf === '%' ? v + '%' : '€' + Math.round(v))) +
+      '</div></div>';
+  };
+  // El GOP lleva su procedencia pegada: si es derivado se dice, y si no hay
+  // GOP sale N/D en vez de un numero de relleno (fase D).
+  var pg = d.gop_procedencia;
+  var notaGop = pg === 'derivado' ? ' <span style="color:#f59e0b">derivado</span>'
+              : pg === 'medido'   ? ''
+              : ' <span style="color:var(--dim)">el DRR no lo trae</span>';
+  var viejo = d.estado === 'drr_viejo'
+    ? '<span style="color:#f59e0b">⚠ DRR de hace ' + d.dias_drr + ' días</span>'
+    : '<span style="color:var(--dim)">DRR de hace ' + (d.dias_drr || 0) + ' días</span>';
+
+  return '<div style="' + linea + '">' +
+    '<div style="display:grid;grid-template-columns:repeat(4,1fr);gap:6px;margin-bottom:8px">' +
+      celda('Ocupación', d.ocupacion_pct, '%') +
+      celda('ADR', d.adr) +
+      celda('RevPAR', d.revpar) +
+      celda('GOP %', d.gop_pct, '%') +
+    '</div>' +
+    '<div style="font-size:10px;color:var(--dim);display:flex;justify-content:space-between;gap:8px;flex-wrap:wrap">' +
+      '<span>' + viejo + (d.dias_oob ? ' · <span style="color:#ef4444">' + d.dias_oob + ' días fuera de balance</span>' : '') + '</span>' +
+      '<span>GOP ' + (d.gop === null || d.gop === undefined ? 'N/D' : _mhEur(d.gop)) + notaGop + '</span>' +
+    '</div>' +
   '</div>';
 }
 
@@ -13634,11 +13709,54 @@ async function loadMultiHotel() {
         '</div>';
       }).join('') + '</div>';
 
-    // ── Banco y cuadre ───────────────────────────────────────────────────
+    // ── Banco, fila hotelera del grupo, y cuadre ─────────────────────────
     var iEl = document.getElementById('mh-insights');
     if (iEl) {
       var trozos = [];
       var b = data.banco || {};
+
+      // FASE E · las medias del grupo, PONDERADAS y con el denominador dicho.
+      //
+      // "Ocupación del grupo 78%" a secas es una trampa si en realidad es "de
+      // los 2 hoteles que subieron el DRR". El "sobre X de N" es lo que hace
+      // que el número sea defendible delante de un cliente.
+      //
+      // Y son DOS denominadores, no uno: un hotel puede tener DRR (y contar
+      // para la ocupación) y no traer un GOP agregable.
+      var h = data.hotelero || {};
+      if (h.con_datos) {
+        var ce = function(et, v, suf) {
+          return '<div><div style="font-size:9px;color:var(--mut);text-transform:uppercase">' + et + '</div>' +
+            '<div style="font-size:18px;font-weight:800">' +
+            (v === null || v === undefined ? '<span style="color:var(--dim);font-size:14px">N/D</span>'
+                                           : (suf === '%' ? v + '%' : '€' + Math.round(v))) +
+            '</div></div>';
+        };
+        trozos.push(
+          '<div class="card" style="border-left:3px solid #22c55e;padding:13px 16px;display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:14px">' +
+            '<div>' +
+              '<div style="font-size:9px;font-weight:700;letter-spacing:.6px;color:#22c55e;text-transform:uppercase">🛏 Del DRR — medias ponderadas por tamaño</div>' +
+              '<div style="font-size:11px;color:var(--dim);margin-top:3px">' +
+                'Sobre <b style="color:var(--mut)">' + h.con_datos + ' de ' + h.n_hoteles + '</b> hoteles' +
+                (h.sin_drr ? ' · ' + h.sin_drr + ' sin DRR' : '') +
+                (h.viejos ? ' · <span style="color:#f59e0b">' + h.viejos + ' con DRR viejo</span>' : '') +
+                (h.gop_sobre !== h.con_datos ? ' · GOP sobre ' + h.gop_sobre : '') +
+                (h.dias_oob ? ' · <span style="color:#ef4444">' + h.dias_oob + ' días fuera de balance</span>' : '') +
+              '</div>' +
+            '</div>' +
+            '<div style="display:flex;gap:20px;flex-wrap:wrap">' +
+              ce('Ocupación', h.ocupacion_pct, '%') + ce('ADR', h.adr) +
+              ce('RevPAR', h.revpar) + ce('GOP %', h.gop_pct, '%') +
+            '</div>' +
+          '</div>');
+      } else if (h.n_hoteles) {
+        trozos.push(
+          '<div class="card" style="border-left:3px solid var(--s2);padding:13px 16px">' +
+            '<div style="font-size:9px;font-weight:700;letter-spacing:.6px;color:var(--mut);text-transform:uppercase">🛏 Del DRR</div>' +
+            '<div style="font-size:12px;color:var(--dim);margin-top:4px">Ningún hotel ha subido su DRR todavía. ' +
+            'Ocupación, ADR, RevPAR y GOP llegan con él — no se estiman.</div>' +
+          '</div>');
+      }
       if (b.hay_datos) {
         // Separado de las tarjetas y etiquetado "del grupo" a proposito: el
         // extracto es de la cuenta de la sociedad, no del hotel. Si estuviera

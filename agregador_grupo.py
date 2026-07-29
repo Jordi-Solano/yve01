@@ -250,6 +250,179 @@ def _fb_del_grupo(fichas, ficha_entera):
     )
 
 
+# ── La fila hotelera, del DRR (fase E) ────────────────────────────────────
+#
+# Un DRR de mas de esto es viejo. El DRR es un informe DIARIO: a los siete dias
+# ya no cuenta lo que esta pasando, cuenta lo que pasaba. No se descarta —sus
+# numeros siguen siendo reales— pero se dice.
+DIAS_PARA_VIEJO = 7
+
+# Que periodo del DRR manda. MTD es del que se habla ("como va el mes"); si el
+# DRR no lo trae, el de hoy. El presupuesto NUNCA: es objetivo, no realidad.
+_PERIODOS = ("mtd", "today")
+
+
+def _valor(metricas, clave):
+    """El numero de una metrica en el primer periodo que lo tenga, o None."""
+    from dashboard import num_drr
+    fila = (metricas or {}).get(clave) or {}
+    for p in _PERIODOS:
+        v = num_drr(fila.get(p))
+        if v is not None:
+            return v, p
+    return None, None
+
+
+def _ficha_drr(hid):
+    """La fila hotelera de un hotel: sus metricas de habitacion, o por que no.
+
+    Tres estados, y los tres se enseñan:
+
+        con_drr     hay DRR y es reciente
+        drr_viejo   hay DRR pero de hace mas de DIAS_PARA_VIEJO dias
+        sin_drr     ese hotel no ha subido ninguno
+
+    `sin_drr` NO es cero. Es la ausencia del dato, y por eso este hotel se
+    queda fuera de las medias del grupo en vez de entrar como un cero. Las dos
+    formas de equivocarse aqui son simetricas y las dos mienten: contarlo como
+    0 hunde la media y hace que un hotel que no ha subido un papel parezca un
+    hotel que va mal; saltarselo en silencio la infla. Lo correcto es lo
+    tercero — excluirlo y DECIR el denominador.
+    """
+    import os
+    import time
+    from dashboard import drr_del_hotel, _leer_drr_stats
+
+    vacia = {"estado": "sin_drr", "dias_drr": None, "archivo": None,
+             "ocupacion_pct": None, "adr": None, "revpar": None,
+             "noches_ocupadas": None, "noches_disponibles": None,
+             "rooms_revenue": None, "ingresos": None,
+             "gop": None, "gop_pct": None, "gop_procedencia": None,
+             "dias_oob": None, "periodo": None}
+
+    try:
+        ruta = drr_del_hotel(hotel=hid)
+    except Exception:
+        ruta = None
+    if not ruta or not os.path.exists(ruta):
+        return vacia
+
+    try:
+        s = _leer_drr_stats(ruta)
+    except Exception:
+        return vacia
+    if not s or s.get("error"):
+        return vacia
+
+    m = s.get("metricas") or {}
+    ocup, per   = _valor(m, "Occupancy %")
+    ocupadas, _ = _valor(m, "Rooms Occupied")
+    adr, _      = _valor(m, "ADR")
+    revpar, _   = _valor(m, "Revenue PAR")
+    rooms_rev,_ = _valor(m, "Rooms Revenue")
+    ingresos, _ = _valor(m, "Total Revenue")
+    gop, _      = _valor(m, "GOP")
+    gop_pct, _  = _valor(m, "GOP %")
+
+    # Noches disponibles: el DRR no las trae, pero se deducen de sus propios
+    # dos numeros (ocupadas / ocupacion). Se usa esto y no las habitaciones del
+    # censo a proposito: el censo no sabe de cuantos DIAS habla el DRR, y
+    # multiplicar por un numero de dias supuesto seria inventar el denominador
+    # justo en la metrica que mas depende de el.
+    disponibles = None
+    if ocupadas is not None and ocup:
+        p = ocup / 100 if ocup > 1 else ocup
+        if p > 0:
+            disponibles = ocupadas / p
+
+    dias = None
+    try:
+        dias = int((time.time() - os.path.getmtime(ruta)) // 86400)
+    except Exception:
+        pass
+    estado = "con_drr"
+    if dias is not None and dias > DIAS_PARA_VIEJO:
+        estado = "drr_viejo"
+
+    return {
+        "estado": estado,
+        "dias_drr": dias,
+        "archivo": os.path.basename(ruta),
+        "periodo": per,
+        "ocupacion_pct": round(ocup, 1) if ocup is not None else None,
+        "adr": round(adr, 2) if adr is not None else None,
+        "revpar": round(revpar, 2) if revpar is not None else None,
+        "noches_ocupadas": ocupadas,
+        "noches_disponibles": round(disponibles, 1) if disponibles else None,
+        "rooms_revenue": rooms_rev,
+        "ingresos": ingresos,
+        "gop": gop,
+        "gop_pct": round(gop_pct, 2) if gop_pct is not None else None,
+        # De la fase D. Lo que no sea agregable no entra en el GOP del grupo.
+        "gop_procedencia": (s.get("gop_procedencia") or {}).get(per or "mtd"),
+        "dias_oob": s.get("dias_oob"),
+    }
+
+
+def _hotelero_del_grupo(fichas):
+    """Las medias del grupo, PONDERADAS, y diciendo sobre cuantos hoteles.
+
+    Una media plana de porcentajes es mentira en cuanto los hoteles tienen
+    tamaños distintos: un hotel de 400 habitaciones al 60% y uno de 20 al 100%
+    no dan 80% de ocupacion del grupo, dan 62%. Asi que se suman los de arriba
+    y los de abajo por separado y se divide al final:
+
+        ocupacion = Σ noches ocupadas   / Σ noches disponibles
+        ADR       = Σ ingresos de hab.  / Σ noches ocupadas
+        RevPAR    = Σ ingresos de hab.  / Σ noches disponibles
+        GOP %     = Σ GOP €             / Σ ingresos totales
+
+    Y el denominador VA EN LA RESPUESTA. "Ocupacion del grupo 78%" a secas es
+    una trampa si en realidad es "de los 2 hoteles que subieron el DRR". El
+    "sobre 2 de 3" es lo que hace que el numero sea defendible.
+
+    El GOP lleva su propio denominador porque puede ser distinto: un hotel
+    puede tener DRR (y contar para la ocupacion) y aun asi no traer un GOP
+    agregable.
+    """
+    total = len(fichas)
+    con_datos = [f for f in fichas if f["drr"]["estado"] != "sin_drr"]
+
+    def suma(campo, de=None):
+        s, hay = 0.0, False
+        for f in (de if de is not None else con_datos):
+            v = f["drr"].get(campo)
+            if v is not None:
+                s += float(v); hay = True
+        return (s if hay else None)
+
+    ocupadas    = suma("noches_ocupadas")
+    disponibles = suma("noches_disponibles")
+    rooms_rev   = suma("rooms_revenue")
+
+    # El GOP se agrega SOLO con las procedencias que la fase D deja pasar.
+    con_gop = [f for f in con_datos
+               if f["drr"].get("gop") is not None
+               and agregable(f["drr"].get("gop_procedencia"))]
+    gop_eur  = suma("gop", de=con_gop)
+    ingresos = suma("ingresos", de=con_gop)
+
+    return {
+        "n_hoteles": total,
+        "con_datos": len(con_datos),
+        "sin_drr":   total - len(con_datos),
+        "viejos":    len([f for f in con_datos if f["drr"]["estado"] == "drr_viejo"]),
+        "ocupacion_pct": round(ocupadas / disponibles * 100, 1) if (ocupadas and disponibles) else None,
+        "adr":           round(rooms_rev / ocupadas, 2) if (rooms_rev and ocupadas) else None,
+        "revpar":        round(rooms_rev / disponibles, 2) if (rooms_rev and disponibles) else None,
+        "gop_eur":       round(gop_eur, 2) if gop_eur is not None else None,
+        "gop_pct":       round(gop_eur / ingresos * 100, 2) if (gop_eur is not None and ingresos) else None,
+        "gop_sobre":     len(con_gop),
+        "dias_oob":      int(suma("dias_oob") or 0),
+        "ponderado":     True,
+    }
+
+
 # ── El cuadre ─────────────────────────────────────────────────────────────
 
 # Solo lo ADITIVO. Los porcentajes y los ratios (food cost, ocupacion, ADR) no
@@ -335,8 +508,8 @@ def agregado():
     c_inv = partir_por_hotel(df_inv, ids)
     c_mer = partir_por_hotel(df_mer, ids)
 
-    def _ficha(clave, nombre):
-        return {
+    def _ficha(clave, nombre, con_drr=False):
+        f = {
             "hotel_id": clave,
             "nombre":   nombre,
             "ap":       _ficha_ap(c_ap[clave]),
@@ -344,8 +517,14 @@ def agregado():
             "ar_real":  _ficha_ar_real(c_res[clave]),
             "fb":       _ficha_fb(df_rec, c_inv[clave], c_ven[clave], c_mer[clave]),
         }
+        # La fila hotelera solo tiene sentido para un HOTEL. "Sin asignar" y
+        # "desconocido" son cajas de documentos, no sitios con habitaciones:
+        # preguntarles la ocupacion no significa nada.
+        if con_drr:
+            f["drr"] = _ficha_drr(clave)
+        return f
 
-    fichas       = [_ficha(hid, nombres[hid]) for hid in ids]
+    fichas       = [_ficha(hid, nombres[hid], con_drr=True) for hid in ids]
     sin_asignar  = _ficha(CAJA_SIN_ASIGNAR, "Sin asignar")
     desconocido  = _ficha(CAJA_DESCONOCIDO, "Hotel desconocido")
 
@@ -373,6 +552,10 @@ def agregado():
         "sin_asignar": sin_asignar,
         "desconocido": desconocido,
         "grupo":       total,
+        # FASE E · la fila hotelera del grupo, ponderada y con su denominador.
+        # Va aparte de `grupo` porque no es aditiva y no entra en el cuadre:
+        # sumar porcentajes no significa nada.
+        "hotelero":    _hotelero_del_grupo(fichas),
         # De grupo, y separado a proposito: el extracto es de la cuenta de la
         # sociedad, no del hotel. `movimientos_banco()` es la unica funcion del
         # almacen sin argumento `hotel` justamente por eso. Repartirlo entre
