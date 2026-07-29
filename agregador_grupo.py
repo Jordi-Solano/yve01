@@ -483,6 +483,15 @@ def agregado():
     hoteles = _censo.hoteles()
     ids     = [str(h["id"]) for h in hoteles]
     nombres = {str(h["id"]): str(h.get("nombre") or "") for h in hoteles}
+    # FASE F: la categoria y el numero de habitaciones salen del CENSO, que es
+    # quien los sabe. El panel viejo los adivinaba del nombre del hotel
+    # ("'5★' si el nombre lleva un 5 o dice boutique"), asi que un "Hotel 5 de
+    # Mayo" salia como cinco estrellas. Adivinar un dato que esta escrito al
+    # lado es de las formas mas tontas de mentir.
+    ficha_censo = {str(h["id"]): {"categoria":    str(h.get("categoria") or "") or None,
+                                  "habitaciones": h.get("habitaciones") or None,
+                                  "ciudad":       str(h.get("ciudad") or "") or None}
+                   for h in hoteles}
 
     # ── Una lectura por fuente, sin filtrar ───────────────────────────────
     from dashboard import cargar_datos_ap_sin_filtrar, cargar_datos_ar_sin_filtrar
@@ -522,6 +531,7 @@ def agregado():
         # preguntarles la ocupacion no significa nada.
         if con_drr:
             f["drr"] = _ficha_drr(clave)
+            f["censo"] = ficha_censo.get(clave, {})
         return f
 
     fichas       = [_ficha(hid, nombres[hid], con_drr=True) for hid in ids]

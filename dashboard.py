@@ -11668,10 +11668,47 @@ _resetSessionTimer();
 var demoModeActive = false;
 
 // ── Hotel activo: filtra AR/AP/AR Real a un hotel concreto ────────────────
+// FASE F · Multi-Hotel es una vista de GRUPO, asi que solo existe en el grupo.
+//
+// Dentro de un hotel no significa nada: enseñaria las tarjetas de todos los
+// hoteles justo cuando el usuario ha dicho que quiere mirar uno. Y como el
+// agregador NO depende del hotel de la sesion (se comprobo en la fase A), la
+// pestaña seguiria enseñando el grupo entero — que es peor que no estar,
+// porque parece que el filtro no funciona.
+//
+// En vista de grupo pasa a ser la PRIMERA: es la que se mira al entrar.
+function _ordenarPestanaMultiHotel(hayHotelElegido) {
+  var tab = document.getElementById('tab-multi-hotel');
+  if (!tab) return;
+  var barra = tab.parentElement;
+  if (!barra) return;
+
+  if (hayHotelElegido) {
+    tab.style.display = 'none';
+    // Si estabamos DENTRO de Multi-Hotel al elegir hotel, la pestaña se
+    // esconde debajo de los pies. Hay que llevarse al usuario a algun sitio,
+    // no dejarlo mirando un panel sin pestaña.
+    var panel = document.getElementById('panel-multi_hotel');
+    if (panel && panel.classList.contains('active')) {
+      var destino = document.getElementById('tab-ar_otas') ||
+                    barra.querySelector('.tab:not([style*="none"])');
+      if (destino && typeof switchTab === 'function') {
+        var m = (destino.getAttribute('onclick') || '').match(/switchTab\('([^']+)'/);
+        if (m) switchTab(m[1], destino);
+      }
+    }
+    return;
+  }
+
+  tab.style.display = '';
+  if (barra.firstElementChild !== tab) barra.insertBefore(tab, barra.firstElementChild);
+}
+
 async function _initHotelActivo() {
   try {
     var d = await fetch('/api/hotel_activo').then(function(r){ return r.json(); });
     var sel = document.getElementById('hotel-activo-sel');
+    _ordenarPestanaMultiHotel(!!(d && d.hotel));
     if (!sel) return;
     if (!d.hoteles || d.hoteles.length < 2) { sel.style.display = 'none'; return; }
     sel.style.display = '';
@@ -13415,34 +13452,7 @@ function setMHView(view) {
 
 var _mhGrupoActivo = '';
 
-function renderMHGrupos(grupos) {
-  var host = document.getElementById('mh-grupo-chips');
-  if (!host) {
-    var ancla = document.getElementById('mh-kpis') || document.getElementById('mh-status');
-    if (!ancla || !ancla.parentNode) return;
-    host = document.createElement('div');
-    host.id = 'mh-grupo-chips';
-    host.style.cssText = 'display:flex;gap:8px;flex-wrap:wrap;margin:0 0 14px';
-    ancla.parentNode.insertBefore(host, ancla);
-  }
-  if (!grupos || grupos.length < 2) { host.innerHTML = ''; return; }
-  var chips = [''].concat(grupos);
-  host.innerHTML = chips.map(function(g) {
-    var sel = (g || '') === (_mhGrupoActivo || '');
-    var label = g ? '🏨 ' + g : t('mh.todasCadenas', 'Todas las cadenas');
-    return '<button onclick="filtrarMHGrupo(this.dataset.g)" data-g="' + g.replace(/"/g, '&quot;') + '" style="padding:6px 14px;border-radius:18px;font-size:12px;cursor:pointer;font-weight:600;transition:background-color .15s,border-color .15s,color .15s,box-shadow .15s,transform .15s,opacity .15s;' +
-      (sel ? 'background:var(--acc,#3b82f6);border:1px solid var(--acc,#3b82f6);color:#fff' : 'background:rgba(255,255,255,.05);border:1px solid var(--s2);color:var(--mut)') + '">' + label + '</button>';
-  }).join('');
-}
 
-function filtrarMHGrupo(g) {
-  _mhGrupoActivo = g || '';
-  window._mhGrupo = g || null;
-  _mhClasicaLoaded = false;
-  if (typeof _mh_loaded !== 'undefined') _mh_loaded = false;
-  if (typeof loadMultiHotel === 'function') loadMultiHotel();
-  loadMHClasica();
-}
 
 async function loadMHClasica() {
   // FASE B: ya no pide nada. Antes hacia tres llamadas a /overview, /rankings y
@@ -13453,91 +13463,10 @@ async function loadMHClasica() {
   if (typeof loadMultiHotel === 'function') return loadMultiHotel();
 }
 
-function renderMHStatus(ov) {
-  var cont = document.getElementById('mh-status');
-  if (!cont) return;
-  var hoteles = ov.hoteles || [];
-  var ok = hoteles.filter(function(h){ return (h.alertas||0) === 0; }).length;
-  var warn = hoteles.filter(function(h){ return (h.alertas||0) >= 1 && (h.alertas||0) <= 2; }).length;
-  var crit = hoteles.filter(function(h){ return (h.alertas||0) > 2; }).length;
-  cont.innerHTML =
-    '<div style="background:rgba(34,197,94,.08);border:1px solid rgba(34,197,94,.25);border-radius:12px;padding:16px;display:flex;align-items:center;gap:12px">' +
-      '<span style="font-size:26px">✅</span>' +
-      '<div><div style="font-size:24px;font-weight:800;color:#22c55e">' + ok + '</div>' +
-      '<div style="font-size:12px;color:var(--mut)">Hoteles OK</div></div></div>' +
-    '<div style="background:rgba(245,158,11,.08);border:1px solid rgba(245,158,11,.25);border-radius:12px;padding:16px;display:flex;align-items:center;gap:12px">' +
-      '<span style="font-size:26px">⚠️</span>' +
-      '<div><div style="font-size:24px;font-weight:800;color:#f59e0b">' + warn + '</div>' +
-      '<div style="font-size:12px;color:var(--mut)">Con avisos</div></div></div>' +
-    '<div style="background:rgba(239,68,68,.08);border:1px solid rgba(239,68,68,.25);border-radius:12px;padding:16px;display:flex;align-items:center;gap:12px">' +
-      '<span style="font-size:26px">🚨</span>' +
-      '<div><div style="font-size:24px;font-weight:800;color:#ef4444">' + crit + '</div>' +
-      '<div style="font-size:12px;color:var(--mut)">Críticos</div></div></div>';
-}
 
-function renderMHRankings(top) {
-  var cont = document.getElementById('mh-rankings');
-  if (!cont) return;
-  if (!top.length) { cont.innerHTML = '<div style="color:var(--dim);font-size:13px;padding:8px">Sin datos</div>'; return; }
-  cont.innerHTML = top.map(function(h, i) {
-    var medal = i === 0 ? '#FFD700' : i === 1 ? '#C0C0C0' : i === 2 ? '#CD7F32' : 'var(--dim)';
-    var rev = h.revpar_eur || h.revpar || 0;
-    return '<div style="display:flex;justify-content:space-between;align-items:center;padding:10px 0;border-bottom:1px solid var(--s2)">' +
-      '<div style="display:flex;align-items:center;gap:12px">' +
-        '<span style="font-size:17px;font-weight:800;color:' + medal + ';min-width:20px">' + (i+1) + '</span>' +
-        '<div style="font-weight:600;font-size:13px">' + (h.hotel_nombre || h.nombre || '') + '</div>' +
-      '</div>' +
-      '<div style="font-weight:700;color:#22c55e">€' + Math.round(rev) + '</div>' +
-    '</div>';
-  }).join('');
-}
 
-function renderMHAlertasClasica(alertas) {
-  var cont = document.getElementById('mh-alertas');
-  if (!cont) return;
-  if (!alertas.length) { cont.innerHTML = '<div style="color:#22c55e;font-size:13px;padding:8px">✓ Sin alertas activas</div>'; return; }
-  cont.innerHTML = alertas.slice(0,8).map(function(a) {
-    return '<div style="display:flex;align-items:center;gap:10px;padding:9px 0;border-bottom:1px solid var(--s2)">' +
-      '<span style="color:#f59e0b">▲</span>' +
-      '<div style="font-size:12px"><span style="font-weight:600">' + (a.hotel || a.hotel_nombre || '') + '</span> ' +
-      '<span style="color:var(--mut)">' + (a.msg || a.mensaje || a.tipo || 'Alerta') + '</span></div></div>';
-  }).join('');
-}
 
-function _calSparkline(data, color) {
-  if (!data || !data.length) return '<div style="width:80px;height:40px"></div>';
-  var max = Math.max.apply(null, data.concat([0.1]));
-  var min = Math.min.apply(null, data);
-  var pts = data.map(function(v, i) {
-    var x = (i / ((data.length - 1) || 1)) * 80;
-    var y = 40 - ((v - min) / ((max - min) || 1)) * 36 - 2;
-    return x.toFixed(1) + ',' + y.toFixed(1);
-  }).join(' ');
-  return '<svg width="80" height="40" style="overflow:visible"><polyline points="' + pts + '" fill="none" stroke="' + color + '" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>';
-}
 
-function renderMHTableFull(hoteles) {
-  var tbody = document.getElementById('mh-tbody-full');
-  if (!tbody) return;
-  tbody.innerHTML = hoteles.map(function(h) {
-    var alertas = h.alertas || 0;
-    var stColor = alertas === 0 ? '#22c55e' : alertas <= 2 ? '#f59e0b' : '#ef4444';
-    var stIcon = alertas === 0 ? '●' : alertas <= 2 ? '▲' : '■';
-    var _hn = (h.nombre || h.hotel_nombre || '').replace(/'/g, "\\'");
-    return '<tr style="cursor:pointer" title="' + t('mh.verHotel', 'Ver solo este hotel') + '" onclick="seleccionarHotelActivo(\'' + _hn + '\', true)">' +
-      '<td style="font-weight:600">' + (h.nombre || h.hotel_nombre || '') +
-        (h.grupo && !_mhGrupoActivo ? '<div style="font-size:10px;color:var(--dim);font-weight:400">' + h.grupo + '</div>' : '') + '</td>' +
-      '<td style="color:var(--mut)">' + (h.stars ? '★'.repeat(h.stars) : '—') + '</td>' +
-      '<td style="text-align:right">' + (h.habitaciones || 0) + '</td>' +
-      '<td style="text-align:right">' + (h.ocupacion_pct || 0) + '%</td>' +
-      '<td style="text-align:right">€' + Math.round(h.adr_eur || h.adr || 0) + '</td>' +
-      '<td style="text-align:right;font-weight:600">€' + Math.round(h.revpar_eur || h.revpar || 0) + '</td>' +
-      '<td style="text-align:right;font-weight:600;color:#22c55e">€' + Math.round((h.total_ingresos || h.revenue_mtd || 0)/1000) + 'K</td>' +
-      '<td style="text-align:right">' + (h.gop_pct || 0) + '%</td>' +
-      '<td style="text-align:center;color:' + stColor + '">' + stIcon + '</td>' +
-    '</tr>';
-  }).join('');
-}
 
 
 // ── FASE B · Multi-Hotel con datos reales ────────────────────────────────
@@ -13550,6 +13479,18 @@ function renderMHTableFull(hoteles) {
 // La fila hotelera —ocupacion, ADR, RevPAR, GOP— sale del DRR y va en su fase.
 // Mientras tanto cada tarjeta dice "sin DRR" en vez de enseñar un hueco mudo:
 // un dato que falta tiene que decir POR QUE falta, o parece que vale cero.
+
+// FASE F · aqui vivian siete funciones del panel antiguo —renderMHGrupos,
+// filtrarMHGrupo, renderMHStatus, renderMHRankings, renderMHAlertasClasica,
+// _calSparkline y renderMHTableFull— que quedaron huerfanas al reescribir
+// Multi-Hotel en la fase B. No las llamaba nadie.
+//
+// En `renderMHTableFull` vivia el bug de las estrellas: hacia
+// `'★'.repeat(h.stars)` con `h.stars` siendo el TEXTO '4★'. `repeat` convierte
+// su argumento a numero, '4★' da NaN, y NaN se convierte a 0: la columna salia
+// SIEMPRE vacia. Se arregla borrandolo, no parcheandolo — la categoria ahora
+// sale del censo (ver `_mhTarjeta`), que es de donde tenia que haber salido
+// siempre en vez de adivinarse del nombre del hotel.
 
 function _mhEur(n) {
   n = Number(n) || 0;
@@ -13582,9 +13523,17 @@ function _mhTarjeta(f, tipo) {
     // eso era mentira en las tarjetas que SI lo tienen. El subtitulo dice el
     // estado de verdad.
     var e = (f.drr || {}).estado;
-    sub = e === 'con_drr'   ? 'Datos reales · con DRR'
-        : e === 'drr_viejo' ? 'Datos reales · DRR de hace ' + ((f.drr || {}).dias_drr || 0) + ' días'
-        :                     'Datos reales · sin DRR';
+    // FASE F: la categoria y las habitaciones salen del CENSO. Antes se
+    // adivinaban del nombre ('5★' si llevaba un 5), asi que un "Hotel 5 de
+    // Mayo" salia de cinco estrellas. Si el censo no las trae, no se ponen:
+    // no hay nada que adivinar.
+    var c = f.censo || {};
+    var ident = [c.categoria, c.habitaciones ? c.habitaciones + ' hab.' : null, c.ciudad]
+                  .filter(Boolean).join(' · ');
+    sub = (ident ? ident + ' — ' : '') +
+          (e === 'con_drr'   ? 'con DRR'
+         : e === 'drr_viejo' ? 'DRR de hace ' + ((f.drr || {}).dias_drr || 0) + ' días'
+         :                     'sin DRR');
   }
   var fc = Number(f.fb.food_cost_pct) || 0;
   var fcColor = fc === 0 ? 'var(--dim)' : fc > 35 ? '#ef4444' : fc > 30 ? '#f59e0b' : '#22c55e';
