@@ -59,6 +59,32 @@ def _xlsx(fname, **kw):
     _FB_CACHE[key] = (df, now, huella)
     return df
 
+
+def _xlsx_hotel(fname, **kw):
+    """Como `_xlsx`, pero dejando solo las filas del hotel elegido (fase 4b).
+
+    Es para los tres ficheros que van POR HOTEL: ventas del TPV, inventario y
+    mermas. El recetario y los proveedores NO pasan por aqui: una cadena
+    comparte carta y comparte proveedores, y separarlos obligaria a subir el
+    mismo escandallo N veces.
+
+    El filtro va DESPUES de la cache, no dentro: la cache guarda el fichero
+    crudo y la clave es (tenant, fichero). Si se filtrase antes de guardar,
+    el primer hotel que entrase dejaria SUS filas cacheadas y el siguiente se
+    las comeria como si fueran suyas.
+
+    Quien decide que es "de este hotel" es `almacen_datos`, el mismo sitio que
+    lo decide para AP y AR. Un cuarto criterio propio de F&B es justo como se
+    llega a que cada panel conteste una cosa distinta.
+    """
+    df = _xlsx(fname, **kw)
+    try:
+        from almacen_datos import solo_del_hotel_activo as _solo
+        return _solo(df)
+    except Exception:
+        return df
+
+
 def _invalidate():
     _FB_CACHE.clear()
 
@@ -317,9 +343,9 @@ def api_resultados():
                 "meta": {}
             })
         df_rec = _xlsx("recetas.xlsx")
-        df_inv = _xlsx("inventario.xlsx")
-        df_mer = _xlsx("mermas.xlsx")
-        df_ven = _xlsx("ventas_fb_diarias.xlsx")
+        df_inv = _xlsx_hotel("inventario.xlsx")
+        df_mer = _xlsx_hotel("mermas.xlsx")
+        df_ven = _xlsx_hotel("ventas_fb_diarias.xlsx")
 
         recipes = _calc_recipe_costs(df_rec, df_inv)
         recipe_map = {r['id']: r for r in recipes}
@@ -440,7 +466,7 @@ def api_inventario():
         _df_inv_check = pd.read_excel(inv_path)
         if _df_inv_check.empty or len(_df_inv_check) < 1:
             return jsonify({'ok': True, 'items': [], 'valor_total': 0, 'alertas_count': 0, 'criticos_count': 0, 'top_alerts': []})
-        df = _xlsx("inventario.xlsx")
+        df = _xlsx_hotel("inventario.xlsx")
         df['stock_actual_kg_l'] = pd.to_numeric(df['stock_actual_kg_l'], errors='coerce').fillna(0)
         df['stock_inicial_kg_l'] = pd.to_numeric(df['stock_inicial_kg_l'], errors='coerce').fillna(0)
         df['coste_unitario'] = pd.to_numeric(df['coste_unitario'], errors='coerce').fillna(0)
@@ -480,7 +506,7 @@ def api_mermas():
         _df_mer_check = pd.read_excel(mer_path)
         if _df_mer_check.empty or len(_df_mer_check) < 1:
             return jsonify({'ok': True, 'mermas': [], 'total_coste': 0, 'por_categoria': {}, 'total': 0, 'por_causa': {}})
-        df = _xlsx("mermas.xlsx")
+        df = _xlsx_hotel("mermas.xlsx")
         # Normalizar: Claude puede devolver 'coste' en vez de 'coste_merma'
         if 'coste_merma' not in df.columns and 'coste' in df.columns:
             df = df.rename(columns={'coste': 'coste_merma'})
@@ -524,6 +550,11 @@ def api_registrar_merma():
         path = DATOS / "mermas.xlsx"
         df = pd.read_excel(path)
         cantidad = float(data['cantidad'])
+        try:
+            import censo_hoteles as _censo
+            _hid_merma = _censo.para_guardar()
+        except Exception:
+            _hid_merma = ""
         coste_u  = float(data['coste_unitario'])
         new_row = {
             'fecha': datetime.now().strftime('%Y-%m-%d'),
@@ -534,6 +565,7 @@ def api_registrar_merma():
             'causa': data['causa'],
             'coste_unitario': coste_u,
             'coste_merma': round(cantidad * coste_u, 2),
+            'hotel_id': _hid_merma,          # fase 4b: las mermas son del hotel
         }
         df = pd.concat([df, pd.DataFrame([new_row])], ignore_index=True)
         df.to_excel(path, index=False)
@@ -547,7 +579,7 @@ def api_registrar_merma():
 def api_recetas():
     try:
         df_rec = _xlsx("recetas.xlsx")
-        df_inv = _xlsx("inventario.xlsx")
+        df_inv = _xlsx_hotel("inventario.xlsx")
         recipes = _calc_recipe_costs(df_rec, df_inv)
         # Add ranking and margin info
         for i, r in enumerate(sorted(recipes, key=lambda x: x.get('fc_pct', 0))):

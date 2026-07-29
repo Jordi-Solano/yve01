@@ -1461,6 +1461,7 @@ def _enrutar_tipo_doc(reg, fname, fpath=None):
                 fecha = reg.get('fecha', date.today().isoformat())
                 if 'fecha' not in _df_ventas.columns:
                     _df_ventas['fecha'] = fecha
+                _df_ventas['hotel_id'] = censo_hoteles.para_guardar()   # fase 4b
                 ventas_path = os.path.join(_ddir(), 'ventas_fb_diarias.xlsx')
                 if os.path.exists(ventas_path):
                     _df_old_v = pd.read_excel(ventas_path)
@@ -1641,12 +1642,20 @@ def _enrutar_tipo_doc(reg, fname, fpath=None):
             inv_items = reg.get('items', reg.get('productos', []))
             if inv_items:
                 _df_inv = _normalize_cols(pd.DataFrame(inv_items), _INV_COL_MAP)
+                # El stock es de CADA hotel (fase 4b). Se estampa aqui, despues
+                # de leer: el clasificador no se entera de nada.
+                _df_inv['hotel_id'] = censo_hoteles.para_guardar()
                 inv_path = os.path.join(_ddir(), 'inventario.xlsx')
                 if os.path.exists(inv_path):
                     _df_old = pd.read_excel(inv_path)
                     _df_inv = pd.concat([_df_old, _df_inv], ignore_index=True)
                     if 'ingrediente' in _df_inv.columns:
-                        _df_inv.drop_duplicates(subset=['ingrediente'], keep='last', inplace=True)
+                        # (ingrediente, hotel), no solo ingrediente. Con la clave
+                        # antigua el "Tomate" del hotel B BORRABA el del hotel A:
+                        # cada hotel tiene su stock y su precio de compra. Mismo
+                        # fallo que tenia AP con la clave por nombre de fichero.
+                        _sub_inv = [c for c in ('ingrediente', 'hotel_id') if c in _df_inv.columns]
+                        _df_inv.drop_duplicates(subset=_sub_inv, keep='last', inplace=True)
                 _df_inv.to_excel(inv_path, index=False)
                 nombres = [str(i.get('ingrediente', i.get('producto', '?')))[:20] for i in inv_items[:5]]
                 _msg = f'✓ Inventario {fname}: {len(inv_items)} productos ({", ".join(nombres)}{"..." if len(inv_items)>5 else ""}) integrados'
@@ -1661,6 +1670,7 @@ def _enrutar_tipo_doc(reg, fname, fpath=None):
             merma_items = reg.get('items', reg.get('mermas', []))
             if merma_items:
                 _df_mer = _normalize_cols(pd.DataFrame(merma_items), _MER_COL_MAP)
+                _df_mer['hotel_id'] = censo_hoteles.para_guardar()   # fase 4b
                 mer_path = os.path.join(_ddir(), 'mermas.xlsx')
                 if os.path.exists(mer_path):
                     _df_old_m = pd.read_excel(mer_path)
@@ -4094,11 +4104,17 @@ def api_upload_ventas_pos():
             df_new['precio_unitario'] = df_new['total_venta'] / df_new['unidades_vendidas'].replace(0, 1)
 
         # Load existing and append
+        df_new['hotel_id'] = censo_hoteles.para_guardar()   # fase 4b
         path = os.path.join(_ddir(), "ventas_fb_diarias.xlsx")
         df_existing = pd.read_excel(path) if os.path.exists(path) else pd.DataFrame()
+        # `hotel_id` DENTRO de la lista de columnas: esto es una lista blanca, y
+        # una lista blanca se come en silencio lo que no este en ella. Es
+        # exactamente como `guardar_excel` de lector_ota se comio el hotel en la
+        # fase 3 y nos costo una verificacion entera.
         df_combined = pd.concat([df_existing, df_new[['fecha','id_receta','nombre_plato',
                                                        'categoria','unidades_vendidas',
-                                                       'precio_unitario','total_venta']]], ignore_index=True)
+                                                       'precio_unitario','total_venta',
+                                                       'hotel_id']]], ignore_index=True)
         df_combined = df_combined.drop_duplicates()
         df_combined.to_excel(path, index=False)
 

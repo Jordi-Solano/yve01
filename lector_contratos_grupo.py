@@ -364,11 +364,20 @@ def distribuir_contrato(datos, transformado, datos_dir=None):
     if fb_total > 0:
         pax = int(_f(fb.get("pax"))) or 1
         plato = "Banquete evento · " + evento_nombre
+        # El catering de un evento es venta de F&B del hotel donde se celebra
+        # (fase 4b). Sin esto, la unica entrada a ventas que NO pasa por el lote
+        # se quedaba sin etiqueta y caia en "sin asignar".
+        try:
+            import censo_hoteles as _censo
+            _hid_fb = _censo.para_guardar()
+        except Exception:
+            _hid_fb = os.environ.get("YVE_HOTEL", "")
         _append_xlsx(os.path.join(dd, "ventas_fb_diarias.xlsx"), {
             "fecha": (datos.get("alojamiento", {}) or {}).get("fecha_entrada") or hoy,
             "nombre_plato": plato, "categoria": "Eventos",
             "unidades_vendidas": pax, "precio_unitario": round(fb_total / pax, 2),
             "total_venta": round(fb_total, 2),
+            "hotel_id": _hid_fb,
         }, dedup_col="nombre_plato")
         res["fb"] = round(fb_total, 2)
 

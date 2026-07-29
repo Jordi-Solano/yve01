@@ -186,11 +186,22 @@ def export_fb_pdf():
         elements.append(Spacer(1, 0.4*cm))
 
         # Load F&B data
+        #
+        # El informe en PDF es el SEGUNDO camino de lectura de F&B, y lee los
+        # xlsx por su cuenta sin pasar por `tab_fb_dashboard`. En AR el fallo
+        # fue exactamente este: se filtro un camino y quedaron cuatro sueltos.
+        # Ventas, mermas e inventario van por hotel; el recetario es del grupo.
+        def _solo_hotel(df):
+            try:
+                from almacen_datos import solo_del_hotel_activo as _s
+                return _s(df)
+            except Exception:
+                return df
         datos = BASE_DIR / 'datos-referencia'
-        df_ven = pd.read_excel(datos / 'ventas_fb_diarias.xlsx')
-        df_mer = pd.read_excel(datos / 'mermas.xlsx')
-        df_rec = pd.read_excel(datos / 'recetas.xlsx')
-        df_inv = pd.read_excel(datos / 'inventario.xlsx')
+        df_ven = _solo_hotel(pd.read_excel(datos / 'ventas_fb_diarias.xlsx'))
+        df_mer = _solo_hotel(pd.read_excel(datos / 'mermas.xlsx'))
+        df_rec = pd.read_excel(datos / 'recetas.xlsx')      # grupo: no se filtra
+        df_inv = _solo_hotel(pd.read_excel(datos / 'inventario.xlsx'))
 
         total_ventas   = float(df_ven['total_venta'].sum())
         total_mermas   = float(df_mer['coste_merma'].sum()) if 'coste_merma' in df_mer else 0
