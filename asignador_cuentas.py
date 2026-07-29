@@ -150,6 +150,55 @@ _COLS_ORACLE = ("oracle_status", "oracle_journal_id", "oracle_batch_id",
                 "oracle_fecha", "oracle_error")
 
 
+_VACIOS_CRUCE = ("", "nan", "none", "nat", "<na>", "no_encontrado", "null")
+
+
+def _txt_cruce(v):
+    """Texto comparable para la clave del cruce. Los vacios, todos a ''.
+
+    Hace falta porque los dos lados escriben el vacio DISTINTO:
+    `matching_ap_albaran` pone la cadena literal `NO_ENCONTRADO`, el Excel de
+    facturas devuelve `NaN`, y `str(float('nan'))` es `'nan'`, que no es vacio
+    para Python. Sin unificarlo, la clave no casaria y la factura perderia su
+    estado — que es la unica forma en que este cambio podria empeorar algo.
+
+    NO se pasa a minusculas a proposito: `_guardar_factura_ap` deduplica con la
+    cadena tal cual, y plegar mayusculas juntaria `Factura.pdf` con
+    `factura.pdf`, que en un sistema sensible a mayusculas son dos ficheros.
+    """
+    s = "" if v is None else str(v)
+    s = " ".join(s.split()).strip()
+    return "" if s.lower() in _VACIOS_CRUCE else s
+
+
+def _clave_cruce(fila):
+    """Identidad de una factura para pegarle el estado de un cruce.
+
+    Es `(archivo, hotel_id)`: **la MISMA pareja con la que
+    `_guardar_factura_ap` deduplica** el Excel de facturas. Esa es toda la
+    razon — quien lee tiene que usar la identidad de quien escribe, o los dos
+    criterios se separan en el siguiente cambio.
+
+    POR QUE NO ERA ASI, Y POR QUE FALLABA:
+    cuando se escribio este merge, `archivo` SI era unico por factura, y el
+    codigo lo dice en el docstring de `clave_factura` de la pantalla de
+    aprobaciones. La separacion por hotel cambio la clave del escritor a
+    `(archivo, hotel_id)` —para que dos hoteles que suban `factura_enero.pdf` no
+    se borren el uno al otro— y este lado se quedo atras. Consecuencia medida:
+    con dos hoteles y el mismo nombre de fichero sobrevivia UN estado y se le
+    pegaba a las dos facturas, asi que **una DIFERENCIA_IMPORTE real llegaba al
+    panel en verde**, lista para aprobar y contabilizar.
+
+    POR QUE NO EL NUMERO DE FACTURA (que es lo primero que uno piensa):
+      - puede venir VACIO, y el proyecto no fusiona nunca dos facturas sin
+        numero; con el numero como clave volverian a compartirla todas;
+      - no es unico por si solo: cada proveedor tiene su propia numeracion, asi
+        que la `FA-001` de dos proveedores son dos facturas distintas;
+      - y no es la clave del escritor, que es el criterio que importa aqui.
+    """
+    return _txt_cruce(fila.get("archivo")) + "|" + _txt_cruce(fila.get("hotel_id"))
+
+
 def cargar_todas_facturas_ap():
     """Carga TODAS las facturas AP (todos los dias) conservando lo ya contabilizado.
 
@@ -205,7 +254,15 @@ def cargar_todas_facturas_ap():
         # cada modulo llama al detalle de una manera
         _det = next((c for c in ("detalle_matching", "alerta_detalle", "detalle")
                      if c in dm.columns), None)
-        dm = dm[["archivo", "estado_matching"] + ([_det] if _det else [])].copy()
+        _cols = ["archivo", "estado_matching"] + ([_det] if _det else [])
+        if "hotel_id" in dm.columns:
+            _cols.append("hotel_id")
+        dm = dm[_cols].copy()
+        if "hotel_id" not in dm.columns:
+            # Un informe sin columna de hotel no es un error: puede venir de
+            # antes de la separacion. Se trata como "sin asignar", y la red de
+            # mas abajo se encarga de que no pierda el cruce por eso.
+            dm["hotel_id"] = ""
         if _det:
             dm = dm.rename(columns={_det: "detalle_matching"})
         else:
@@ -218,13 +275,56 @@ def cargar_todas_facturas_ap():
             _cruces.append(dm)
             print(f"  Matching unido: {patron}")
     if _cruces:
-        dm_total = pd.concat(_cruces, ignore_index=True).drop_duplicates(
-            subset=["archivo"], keep="first")
+        dm_total = pd.concat(_cruces, ignore_index=True)
+        # La clave es (archivo, hotel) — ver `_clave_cruce`. `keep="first"`
+        # CONSERVA la prioridad de siempre: gana el primer informe de la lista
+        # (PO > F&B > albaran), que esta puesta a proposito ahi arriba.
+        dm_total["_clave_cruce"] = [_clave_cruce(f) for f in dm_total.to_dict("records")]
+        dm_total = dm_total.drop_duplicates(subset=["_clave_cruce"], keep="first")
+        _mt = dm_total[["_clave_cruce", "estado_matching", "detalle_matching"]]
         # quitar las de la pasada anterior: si no, el merge crea
         # estado_matching_x / estado_matching_y y se pierde la buena
         df = df.drop(columns=[c for c in ("estado_matching", "detalle_matching")
                               if c in df.columns])
-        df = df.merge(dm_total, on="archivo", how="left")
+        df["_clave_cruce"] = [_clave_cruce(f) for f in df.to_dict("records")]
+        df = df.merge(_mt, on="_clave_cruce", how="left")
+
+        # ── LA RED: nadie puede PERDER el estado que ya tenia ─────────────
+        # Segunda pasada por `archivo` A SECAS para las facturas que se hayan
+        # quedado sin estado, pero SOLO con los archivos que aparecen bajo UNA
+        # sola clave. Si un archivo esta en dos hoteles es exactamente el caso
+        # del bug, y ahi la red NO se aplica.
+        #
+        # Con esto la propiedad que pidio el usuario se cumple por
+        # construccion: una factura solo puede CONSERVAR o GANAR estado, nunca
+        # perderlo. Sirve para el informe que no trae columna de hotel mientras
+        # la factura si lo tiene — el unico caso en que la clave fuerte falla.
+        _por_arch = {}
+        for fila in dm_total.to_dict("records"):
+            _a = _txt_cruce(fila.get("archivo"))
+            if _a:
+                _por_arch.setdefault(_a, []).append(fila)
+        _unicos = {a: v[0] for a, v in _por_arch.items() if len(v) == 1}
+        if _unicos:
+            # astype(object) antes de escribir texto: una columna que ha salido
+            # entera vacia se tipa float64 y rechaza cadenas (nos paso en la
+            # asignacion manual de conciliacion)
+            for _c in ("estado_matching", "detalle_matching"):
+                if _c in df.columns:
+                    df[_c] = df[_c].astype(object)
+            _rescatadas = 0
+            for _i in df.index:
+                if _txt_cruce(df.at[_i, "estado_matching"] if "estado_matching" in df.columns else ""):
+                    continue
+                _e = _unicos.get(_txt_cruce(df.at[_i, "archivo"]))
+                if _e:
+                    df.at[_i, "estado_matching"] = _e.get("estado_matching")
+                    df.at[_i, "detalle_matching"] = _e.get("detalle_matching", "")
+                    _rescatadas += 1
+            if _rescatadas:
+                print(f"  Cruzadas por nombre de fichero (el informe no traia hotel): {_rescatadas}")
+
+        df = df.drop(columns=["_clave_cruce"])
     return df
 
 def aplicar_formato(ws):
