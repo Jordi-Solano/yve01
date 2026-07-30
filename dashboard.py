@@ -1154,6 +1154,29 @@ def _clave_ota_hotel(ota, hotel):
     return _t(ota) + '|' + _t(hotel)
 
 
+def _ota_es_lista(v):
+    """True si el campo OTA trae VARIAS OTAs en una sola cadena.
+
+    Un acuerdo de distribucion tipico cubre Booking Y Expedia. El schema del
+    clasificador tiene la OTA arriba, en singular, asi que cuando el contrato es
+    multi-OTA la IA no tiene donde poner la OTA de cada tarifa y las junta:
+    "Booking.com / Expedia". Esa cadena no es una OTA — es una lista — y
+    estamparla en las filas colapsa el contrato y hace que ninguna factura
+    cruce. Se detecta por separador tipico o por dos nombres conocidos dentro.
+    """
+    s = str(v or '').strip()
+    if not s:
+        return False
+    if any(sep in s for sep in ('/', ',', ' y ', ' & ', ' + ', '+')):
+        return True
+    try:
+        from lector_facturas_ap import OTAS_CONOCIDAS
+    except Exception:
+        return False
+    sl = s.lower()
+    return sum(1 for o in OTAS_CONOCIDAS if o in sl) >= 2
+
+
 def _ap_tiene_datos(reg):
     """True si de una factura AP se ha extraido algo aprovechable.
 
@@ -1757,9 +1780,16 @@ def _enrutar_tipo_doc(reg, fname, fpath=None):
             else:
                 _df_p = pd.DataFrame([{'Porcentaje_Comision': reg.get('porcentaje_pactado',
                                                                       reg.get('porcentaje'))}])
+            # La OTA de CADA fila manda. La de arriba (`ota`) solo se usa para
+            # rellenar la fila que no traiga la suya, y SOLO si es una OTA
+            # limpia: si es una lista ("Booking.com / Expedia") NO se estampa,
+            # porque no se sabe que porcentaje es de cual. Antes se estampaba y
+            # el dedup por (OTA, hotel) colapsaba el contrato a la mitad.
             if 'OTA' not in _df_p.columns:
-                _df_p['OTA'] = ota
-            _df_p['OTA'] = _df_p['OTA'].astype(object).fillna(ota)
+                _df_p['OTA'] = None
+            _df_p['OTA'] = _df_p['OTA'].astype(object)
+            if not _ota_es_lista(ota):
+                _df_p['OTA'] = _df_p['OTA'].fillna(ota)
             if 'Mercado' not in _df_p.columns:
                 _df_p['Mercado'] = None
             if 'Hotel' not in _df_p.columns:
@@ -1769,6 +1799,20 @@ def _enrutar_tipo_doc(reg, fname, fpath=None):
             # sin hotel = tarifa generica de esa OTA.
             _df_p = _df_p[['OTA', 'Hotel', 'Porcentaje_Comision', 'Mercado']]
             _df_p = _df_p[_df_p['Porcentaje_Comision'].notna()]
+            # Una tarifa sin OTA no se puede cruzar con ninguna factura. Se
+            # aparta en vez de guardarla con una OTA inventada. Con OTA por fila
+            # (el schema arreglado) esto no aparta nada; con la OTA combinada y
+            # sin OTA por fila, aparta el contrato entero — y entonces se avisa
+            # en vez de cantar un ✓ sobre datos que no van a cruzar.
+            _sin_ota = _df_p['OTA'].isna() | (_df_p['OTA'].astype(str).str.strip().isin(['', 'nan', 'None']))
+            _n_sin_ota = int(_sin_ota.sum())
+            _df_p = _df_p[~_sin_ota]
+            if _df_p.empty:
+                _msg = (f'⚠ {fname}: el contrato cubre varias OTAs ({ota}) pero las '
+                        f'tarifas no dicen la OTA de cada una — no puedo separarlas con '
+                        f'seguridad. Súbelo como un contrato por OTA, o revisa el documento.')
+                _marca = 'SKIP'
+                return _msg, _marca, _flags
             _n_t = len(_df_p)
             _pact_path = os.path.join(_ddir(), 'comisiones_pactadas.xlsx')
             if os.path.exists(_pact_path):
@@ -1793,13 +1837,21 @@ def _enrutar_tipo_doc(reg, fname, fpath=None):
             _df_p.drop_duplicates(subset=['_k'], keep='last', inplace=True)
             _df_p = _df_p.drop(columns=['_k'])
             _df_p.to_excel(_pact_path, index=False)
+            # El resumen lista lo que SE HA GUARDADO, por (OTA, hotel). Antes
+            # filtraba por `r["OTA"] == ota`, y con la OTA de arriba combinada no
+            # casaba ninguna fila: el mensaje salia "de Booking.com / Expedia (—)"
+            # aun habiendo guardado 4 tarifas.
+            _recien = _df_p.tail(_n_t)
             _pcts = ', '.join(
-                (f'{r["Hotel"]} {r["Porcentaje_Comision"]}%'
-                 if str(r.get('Hotel') or '').strip() not in ('', 'nan', 'None')
-                 else f'{r["OTA"]} {r["Porcentaje_Comision"]}%')
-                for _, r in _df_p.iterrows()
-                if str(r['OTA']).strip().lower() == str(ota).strip().lower())
-            _msg = f'✓ Contrato OTA {fname}: {_n_t} tarifa(s) pactada(s) de {ota} ({_pcts or "—"}) guardadas'
+                f'{r["OTA"]} {r["Hotel"]} {r["Porcentaje_Comision"]}%'.replace('  ', ' ')
+                if str(r.get('Hotel') or '').strip() not in ('', 'nan', 'None')
+                else f'{r["OTA"]} {r["Porcentaje_Comision"]}%'
+                for _, r in _recien.iterrows())
+            _otas_txt = ', '.join(sorted({str(r['OTA']).strip() for _, r in _recien.iterrows()}))
+            _aviso_sin = (f' · {_n_sin_ota} sin OTA identificable, no guardada(s)'
+                          if _n_sin_ota else '')
+            _msg = (f'✓ Contrato OTA {fname}: {_n_t} tarifa(s) pactada(s) de '
+                    f'{_otas_txt} ({_pcts or "—"}) guardadas{_aviso_sin}')
             _marca = 'CONTRATO_OTA_OK'
             # Cambiar lo pactado obliga a re-verificar las facturas ya cargadas
             _flags['has_ar'] = True
