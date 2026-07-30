@@ -830,6 +830,76 @@ def _normalize_cols(df, expected_map):
         df = df.rename(columns=rename)
     return df
 
+# Los tres ficheros de F&B que son de CADA hotel, con la clave que identifica
+# una fila DENTRO de su hotel. El inventario es el que dolia: el "Tomate" del
+# hotel B borraba el del hotel A, y cada hotel tiene su stock y su precio de
+# compra. Mermas y ventas no tienen clave propia —una merma es un hecho con
+# fecha, y dos mermas identicas el mismo dia son dos mermas— asi que se
+# deduplican por la fila entera, que ya incluye el hotel.
+_CLAVE_FB = {
+    'inventario.xlsx': ('ingrediente',),
+    'mermas.xlsx': (),
+    'ventas_fb_diarias.xlsx': (),
+}
+
+
+def _guardar_fb_del_hotel(df, fichero):
+    """Añade `df` a un fichero de F&B del hotel activo.
+
+    Devuelve (filas DE ESTE HOTEL, filas entrantes) — no el fichero entero. Es
+    a proposito: quien llama lo usa para el mensaje de la pantalla, y decir "20
+    en el hotel" cuando 20 son las filas de los dos hoteles juntos es la clase
+    de numero que hace perder una tarde. Al fichero completo se va por el
+    fichero.
+
+    UN solo sitio donde se estampa el hotel y se deduplica, porque estos tres
+    ficheros los escriben TRES puertas distintas —la capa 1 por nombre de
+    fichero, el clasificador de IA y la foto— y solo la de la IA lo hacia bien.
+
+    Lo que pasaba por las otras dos: la fila se guardaba sin `hotel_id`, y los
+    paneles de F&B leen con `_xlsx_hotel`, que filtra por el hotel de la sesion
+    y FALLA CERRADO. Resultado medido en la prueba de integracion: el lote
+    cantaba "14 items integrados" y el panel de inventario mostraba 0. Un cero
+    en silencio es peor que un error.
+
+    Y el inventario se deduplicaba por `ingrediente` a secas, sin hotel: subir
+    el inventario de dos hoteles con ingredientes en comun dejaba 16 filas
+    donde tenian que haber 20, porque el stock de uno borraba el del otro.
+
+    Los ficheros de antes de la separacion no traen la columna: sus filas se
+    marcan como "sin asignar" en vez de heredar el hotel de quien esta mirando,
+    que seria inventarse a quien pertenece un dato viejo.
+    """
+    import pandas as _pd
+    df = df.copy()
+    hid = censo_hoteles.para_guardar()
+    df['hotel_id'] = hid
+    entrantes = len(df)
+    ruta = os.path.join(_ddir(), fichero)
+    if os.path.exists(ruta):
+        viejo = _pd.read_excel(ruta)
+        if not viejo.empty:
+            if 'hotel_id' not in viejo.columns:
+                viejo = viejo.copy()
+                viejo['hotel_id'] = ''
+            df = _pd.concat([viejo, df], ignore_index=True)
+    clave = [c for c in _CLAVE_FB.get(fichero, ()) if c in df.columns]
+    if clave:
+        df = df.drop_duplicates(subset=clave + ['hotel_id'], keep='last')
+    else:
+        df = df.drop_duplicates(keep='last')
+    df.to_excel(ruta, index=False)
+    if fichero in _EXCEL_CACHE:
+        del _EXCEL_CACHE[fichero]
+    try:
+        from tab_fb_dashboard import _invalidate as _inv_fb
+        _inv_fb()
+    except Exception:
+        pass
+    del_hotel = df[df['hotel_id'].astype(str) == str(hid)]
+    return del_hotel, entrantes
+
+
 # ── Capa 1: el nombre PROPONE, las cabeceras CONFIRMAN ───────────────────
 # Antes el nombre del fichero mandaba y el archivo no se abria nunca: un CSV
 # llamado "extracto_movimientos_junio" con ventas dentro acababa en el libro de
@@ -1566,12 +1636,7 @@ def _enrutar_tipo_doc(reg, fname, fpath=None):
                 fecha = reg.get('fecha', date.today().isoformat())
                 if 'fecha' not in _df_ventas.columns:
                     _df_ventas['fecha'] = fecha
-                _df_ventas['hotel_id'] = censo_hoteles.para_guardar()   # fase 4b
-                ventas_path = os.path.join(_ddir(), 'ventas_fb_diarias.xlsx')
-                if os.path.exists(ventas_path):
-                    _df_old_v = pd.read_excel(ventas_path)
-                    _df_ventas = pd.concat([_df_old_v, _df_ventas], ignore_index=True)
-                _df_ventas.to_excel(ventas_path, index=False)
+                _df_ventas, _ = _guardar_fb_del_hotel(_df_ventas, 'ventas_fb_diarias.xlsx')
                 _msg = f'✓ F&B {fname}: {len(platos)} platos, €{total} integrados por IA'
             else:
                 _msg = f'✓ F&B {fname}: ventas detectadas — €{total}'
@@ -1747,21 +1812,13 @@ def _enrutar_tipo_doc(reg, fname, fpath=None):
             inv_items = reg.get('items', reg.get('productos', []))
             if inv_items:
                 _df_inv = _normalize_cols(pd.DataFrame(inv_items), _INV_COL_MAP)
-                # El stock es de CADA hotel (fase 4b). Se estampa aqui, despues
-                # de leer: el clasificador no se entera de nada.
-                _df_inv['hotel_id'] = censo_hoteles.para_guardar()
-                inv_path = os.path.join(_ddir(), 'inventario.xlsx')
-                if os.path.exists(inv_path):
-                    _df_old = pd.read_excel(inv_path)
-                    _df_inv = pd.concat([_df_old, _df_inv], ignore_index=True)
-                    if 'ingrediente' in _df_inv.columns:
-                        # (ingrediente, hotel), no solo ingrediente. Con la clave
-                        # antigua el "Tomate" del hotel B BORRABA el del hotel A:
-                        # cada hotel tiene su stock y su precio de compra. Mismo
-                        # fallo que tenia AP con la clave por nombre de fichero.
-                        _sub_inv = [c for c in ('ingrediente', 'hotel_id') if c in _df_inv.columns]
-                        _df_inv.drop_duplicates(subset=_sub_inv, keep='last', inplace=True)
-                _df_inv.to_excel(inv_path, index=False)
+                # El stock es de CADA hotel. Se estampa despues de leer: el
+                # clasificador no se entera de nada. La clave es
+                # (ingrediente, hotel), y quien la aplica es `_guardar_fb_del_hotel`
+                # — este camino ya lo hacia bien y ahora lo hace en el mismo
+                # sitio que los otros dos, que es lo que impide que vuelvan a
+                # separarse.
+                _df_inv, _ = _guardar_fb_del_hotel(_df_inv, 'inventario.xlsx')
                 nombres = [str(i.get('ingrediente', i.get('producto', '?')))[:20] for i in inv_items[:5]]
                 _msg = f'✓ Inventario {fname}: {len(inv_items)} productos ({", ".join(nombres)}{"..." if len(inv_items)>5 else ""}) integrados'
             else:
@@ -1775,12 +1832,7 @@ def _enrutar_tipo_doc(reg, fname, fpath=None):
             merma_items = reg.get('items', reg.get('mermas', []))
             if merma_items:
                 _df_mer = _normalize_cols(pd.DataFrame(merma_items), _MER_COL_MAP)
-                _df_mer['hotel_id'] = censo_hoteles.para_guardar()   # fase 4b
-                mer_path = os.path.join(_ddir(), 'mermas.xlsx')
-                if os.path.exists(mer_path):
-                    _df_old_m = pd.read_excel(mer_path)
-                    _df_mer = pd.concat([_df_old_m, _df_mer], ignore_index=True)
-                _df_mer.to_excel(mer_path, index=False)
+                _df_mer, _ = _guardar_fb_del_hotel(_df_mer, 'mermas.xlsx')
                 total_merma = sum(float(m.get('coste_merma', m.get('coste', 0)) or 0) for m in merma_items)
                 _msg = f'✓ Mermas {fname}: {len(merma_items)} registros — €{total_merma:.2f} extraídos por IA'
             else:
@@ -2058,15 +2110,13 @@ def api_procesar_batch_stream():
                                 _mark(fname, 'FB_OK')
                                 continue
                             
-                            # Integrar con ventas existentes
-                            ventas_path = os.path.join(_ddir(), 'ventas_fb_diarias.xlsx')
-                            if os.path.exists(ventas_path):
-                                _df_exist_fb = _pdf.read_excel(ventas_path)
-                                if not _df_exist_fb.empty:
-                                    _df_fb = _pdf.concat([_df_exist_fb, _df_fb], ignore_index=True)
-                                    _df_fb.drop_duplicates(keep='last', inplace=True)
-                            _df_fb.to_excel(ventas_path, index=False)
-                            yield f'data: ✓ F&B {fname}: {len(_df_fb)} registros integrados\n\n'
+                            # Las columnas, con el mismo mapa que las otras
+                            # dos puertas: sin normalizar, el panel no encuentra
+                            # ni `nombre_plato` ni `unidades_vendidas`.
+                            _df_fb = _normalize_cols(_df_fb, _VEN_COL_MAP)
+                            _df_fb, _n_fb = _guardar_fb_del_hotel(_df_fb, 'ventas_fb_diarias.xlsx')
+                            yield (f'data: ✓ F&B {fname}: {_n_fb} registros integrados '
+                                   f'· {len(_df_fb)} en el hotel\n\n')
                         except Exception as _efb:
                             import shutil as _sh4c
                             _sh4c.copy2(fpath, os.path.join(_ddir(), 'ventas_fb_upload' + ext))
@@ -2079,15 +2129,9 @@ def api_procesar_batch_stream():
                             import pandas as _pdi
                             _df_i = _pdi.read_csv(fpath) if ext == '.csv' else _pdi.read_excel(fpath)
                             _df_i = _normalize_cols(_df_i, _INV_COL_MAP)
-                            inv_path = os.path.join(_ddir(), 'inventario.xlsx')
-                            if os.path.exists(inv_path):
-                                _df_ei = _pdi.read_excel(inv_path)
-                                if not _df_ei.empty:
-                                    _df_i = _pdi.concat([_df_ei, _df_i], ignore_index=True)
-                                    if 'ingrediente' in _df_i.columns:
-                                        _df_i.drop_duplicates(subset=['ingrediente'], keep='last', inplace=True)
-                            _df_i.to_excel(inv_path, index=False)
-                            yield f'data: ✓ Inventario {fname}: {len(_df_i)} items integrados\n\n'
+                            _df_i, _n_i = _guardar_fb_del_hotel(_df_i, 'inventario.xlsx')
+                            yield (f'data: ✓ Inventario {fname}: {_n_i} items integrados '
+                                   f'· {len(_df_i)} en el hotel\n\n')
                         except Exception:
                             import shutil as _sh5
                             _sh5.copy2(fpath, os.path.join(_ddir(), 'inventario_upload' + ext))
@@ -2100,14 +2144,9 @@ def api_procesar_batch_stream():
                             import pandas as _pdm
                             _df_m = _pdm.read_csv(fpath) if ext == '.csv' else _pdm.read_excel(fpath)
                             _df_m = _normalize_cols(_df_m, _MER_COL_MAP)
-                            mer_path = os.path.join(_ddir(), 'mermas.xlsx')
-                            if os.path.exists(mer_path):
-                                _df_em = _pdm.read_excel(mer_path)
-                                if not _df_em.empty:
-                                    _df_m = _pdm.concat([_df_em, _df_m], ignore_index=True)
-                                    _df_m.drop_duplicates(keep='last', inplace=True)
-                            _df_m.to_excel(mer_path, index=False)
-                            yield f'data: ✓ Mermas {fname}: {len(_df_m)} registros integrados\n\n'
+                            _df_m, _n_m = _guardar_fb_del_hotel(_df_m, 'mermas.xlsx')
+                            yield (f'data: ✓ Mermas {fname}: {_n_m} registros integrados '
+                                   f'· {len(_df_m)} en el hotel\n\n')
                         except Exception:
                             import shutil as _sh5m
                             _sh5m.copy2(fpath, os.path.join(_ddir(), 'mermas_upload' + ext))
@@ -2721,11 +2760,7 @@ def api_scan_documento():
                 fecha = datos.get('fecha', date.today().isoformat())
                 if 'fecha' not in _df_v.columns:
                     _df_v['fecha'] = fecha
-                ventas_path = os.path.join(_ddir(), 'ventas_fb_diarias.xlsx')
-                if os.path.exists(ventas_path):
-                    _df_old_v = pd.read_excel(ventas_path)
-                    _df_v = pd.concat([_df_old_v, _df_v], ignore_index=True)
-                _df_v.to_excel(ventas_path, index=False)
+                _df_v, _ = _guardar_fb_del_hotel(_df_v, 'ventas_fb_diarias.xlsx')
                 items_count = len(platos)
                 mensaje = f'{items_count} platos, €{total} integrados'
                 guardado = True
@@ -2737,13 +2772,7 @@ def api_scan_documento():
             inv_items = datos.get('items', datos.get('productos', []))
             if inv_items:
                 _df_inv = _normalize_cols(pd.DataFrame(inv_items), _INV_COL_MAP)
-                inv_path = os.path.join(_ddir(), 'inventario.xlsx')
-                if os.path.exists(inv_path):
-                    _df_old_i = pd.read_excel(inv_path)
-                    _df_inv = pd.concat([_df_old_i, _df_inv], ignore_index=True)
-                    if 'ingrediente' in _df_inv.columns:
-                        _df_inv.drop_duplicates(subset=['ingrediente'], keep='last', inplace=True)
-                _df_inv.to_excel(inv_path, index=False)
+                _df_inv, _ = _guardar_fb_del_hotel(_df_inv, 'inventario.xlsx')
                 items_count = len(inv_items)
                 nombres = [str(i.get('ingrediente', '?'))[:15] for i in inv_items[:4]]
                 mensaje = f'{items_count} productos ({", ".join(nombres)}...) integrados'
@@ -2756,11 +2785,7 @@ def api_scan_documento():
             merma_items = datos.get('items', datos.get('mermas', []))
             if merma_items:
                 _df_m = _normalize_cols(pd.DataFrame(merma_items), _MER_COL_MAP)
-                mer_path = os.path.join(_ddir(), 'mermas.xlsx')
-                if os.path.exists(mer_path):
-                    _df_old_m = pd.read_excel(mer_path)
-                    _df_m = pd.concat([_df_old_m, _df_m], ignore_index=True)
-                _df_m.to_excel(mer_path, index=False)
+                _df_m, _ = _guardar_fb_del_hotel(_df_m, 'mermas.xlsx')
                 items_count = len(merma_items)
                 total_merma = sum(float(m.get('coste_merma', m.get('coste', 0)) or 0) for m in merma_items)
                 mensaje = f'{items_count} registros — €{total_merma:.2f} integrados'
@@ -4493,29 +4518,16 @@ def api_upload_ventas_pos():
         if 'precio_unitario'    not in df_new.columns:
             df_new['precio_unitario'] = df_new['total_venta'] / df_new['unidades_vendidas'].replace(0, 1)
 
-        # Load existing and append
-        df_new['hotel_id'] = censo_hoteles.para_guardar()   # fase 4b
-        path = os.path.join(_ddir(), "ventas_fb_diarias.xlsx")
-        df_existing = pd.read_excel(path) if os.path.exists(path) else pd.DataFrame()
-        # `hotel_id` DENTRO de la lista de columnas: esto es una lista blanca, y
-        # una lista blanca se come en silencio lo que no este en ella. Es
-        # exactamente como `guardar_excel` de lector_ota se comio el hotel en la
-        # fase 3 y nos costo una verificacion entera.
-        df_combined = pd.concat([df_existing, df_new[['fecha','id_receta','nombre_plato',
-                                                       'categoria','unidades_vendidas',
-                                                       'precio_unitario','total_venta',
-                                                       'hotel_id']]], ignore_index=True)
-        df_combined = df_combined.drop_duplicates()
-        df_combined.to_excel(path, index=False)
-
-        # Invalidate caches
-        if 'ventas_fb_diarias.xlsx' in _EXCEL_CACHE:
-            del _EXCEL_CACHE['ventas_fb_diarias.xlsx']
-        try:
-            from tab_fb_dashboard import _invalidate
-            _invalidate()
-        except Exception:
-            pass
+        # El hotel y el deduplicado, en el mismo sitio que las otras tres
+        # puertas. La lista de columnas se queda —aqui SI interesa recortar a
+        # las del esquema— pero ojo: es una lista blanca, y una lista blanca se
+        # come en silencio lo que no este en ella. Es exactamente como
+        # `guardar_excel` de lector_ota se comio el hotel en la fase 3 y nos
+        # costo una verificacion entera. Por eso `hotel_id` lo pone
+        # `_guardar_fb_del_hotel` DESPUES del recorte, no antes.
+        df_new = df_new[['fecha', 'id_receta', 'nombre_plato', 'categoria',
+                         'unidades_vendidas', 'precio_unitario', 'total_venta']]
+        df_combined, _ = _guardar_fb_del_hotel(df_new, 'ventas_fb_diarias.xlsx')
 
         return jsonify({
             "ok": True,
