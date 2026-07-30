@@ -13405,7 +13405,26 @@ async function uploadDRR(input) {
 
 function renderDRR(s) {
   if (!s || s.error) {
-    document.getElementById('drr-metrics').innerHTML = '<div class="empty"><p>Error: ' + (s ? s.error : 'sin datos') + '</p></div>';
+    // Sin DRR para este hotel (o error al leerlo): se vacia el panel ENTERO, no
+    // solo las tarjetas. Antes esta rama solo tocaba `drr-metrics` y ademas
+    // `loadDRR` la protegia con `if (data)`, asi que con un hotel sin DRR nunca
+    // se llegaba a llamar: el panel se quedaba con el DRR del hotel anterior
+    // —Ribera y Faro ensenaban el de Costa Azul—. El backend YA filtra bien
+    // (drr_del_hotel devuelve None); el agujero era de repintado, aqui.
+    // El grafico y el resto de contenedores tambien traen datos del otro hotel,
+    // por eso se limpian los siete: tarjetas, calendario, alertas, barra de
+    // estado (que ensena el NOMBRE del fichero), fecha de subida, barra de
+    // budget y el grafico (renderDRRChart, cuyo endpoint tambien da null aqui y
+    // esconde su tarjeta).
+    var _msg = (s && s.error) ? ('Error: ' + s.error) : 'Sin DRR para este hotel.';
+    var _vaciar = function(id, html){ var el = document.getElementById(id); if (el) el.innerHTML = html; };
+    _vaciar('drr-metrics', '<div class="empty"><p>' + _msg + '</p></div>');
+    _vaciar('drr-days', '');
+    _vaciar('drr-alerts', '');
+    var _st = document.getElementById('drr-status'); if (_st) _st.textContent = '';
+    var _up = document.getElementById('drr-last-upload'); if (_up) _up.textContent = '';
+    var _bb = document.getElementById('drr-budget-bar'); if (_bb) _bb.style.display = 'none';
+    renderDRRChart();
     return;
   }
 
@@ -13618,7 +13637,10 @@ async function loadDRR() {
   try {
     const r = await fetch('/api/stats_drr');
     const data = await r.json();
-    if (data) renderDRR(data);
+    // Siempre, tambien con `data` null: renderDRR vacia el panel cuando no hay
+    // DRR. Con el viejo `if (data)` el vacio no se repintaba y quedaba a la
+    // vista el DRR del hotel anterior. Esa era la fuga de Ribera/Faro.
+    renderDRR(data);
   } catch(e) {}
 }
 
