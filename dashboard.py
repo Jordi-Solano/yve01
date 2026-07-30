@@ -250,6 +250,11 @@ def cargar_ultimo_excel(patron, directorio):
                 continue
         return None, None
 
+# Un numero escrito a la española o a la inglesa, y nada mas: se usa para
+# decidir si una columna de texto es en realidad numerica.
+_re_num_es = __import__('re').compile(r'^-?\d{1,3}(?:[.,]\d{3})*(?:[.,]\d+)?$|^-?\d+(?:[.,]\d+)?$')
+
+
 def safe_float(val):
     try:
         if val is None or str(val).strip() in ("", NF, "nan", "None"):
@@ -763,16 +768,64 @@ def api_push_test():
 
 
 # ── Normalización de columnas para datos extraídos por IA ────────────
+def _clave_col(nombre):
+    """El nombre de una columna, comparable: sin acentos, en minusculas y con
+    guion bajo donde hubiera espacios, guiones o puntos.
+
+    Asi "Unidades Vendidas", "unidades-vendidas" y "UNIDADES VENDIDAS" son la
+    misma columna, que es lo que las listas de alias querian decir siempre.
+    """
+    s = _plegar(nombre)
+    for ch in ('-', '.', '/', '(', ')', ':'):
+        s = s.replace(ch, ' ')
+    return '_'.join(s.split())
+
+
 def _normalize_cols(df, expected_map):
     """Renombra columnas de un DataFrame para que coincidan con el esquema esperado.
-    expected_map: {'nombre_esperado': ['alternativa1', 'alternativa2', ...]}"""
+    expected_map: {'nombre_esperado': ['alternativa1', 'alternativa2', ...]}
+
+    Dos pasadas: primero el nombre EXACTO —lo de siempre, sin cambiar nada— y
+    solo si ninguna alternativa casa, el nombre NORMALIZADO (`_clave_col`). La
+    segunda pasada nunca reasigna una columna que la primera ya haya colocado,
+    asi que solo puede recuperar columnas que antes se quedaban sin mapear.
+
+    La comparacion es SIEMPRE de nombre COMPLETO, jamas por subcadena, y de eso
+    hay cicatriz: `/fb/api/upload_ventas` tenia su propia cadena de `elif` con
+    `'id' in cl`, e "id" esta dentro de `cantidad`, de `unidad` y hasta de
+    `unidades_vendidas` —su propio nombre canonico—. Las cantidades acababan en
+    `id_receta`, `unidades_vendidas` se rellenaba con 1 por defecto y el food
+    cost salia 0,06% en vez de 16,25%.
+
+    Y una columna de origen no se usa dos veces: dos columnas cayendo en el
+    mismo nombre canonico dejaban el DataFrame con nombres duplicados, que es
+    un fallo mucho mas raro de encontrar que un renombrado que no ocurre.
+    """
+    por_clave = {}
+    for c in df.columns:
+        por_clave.setdefault(_clave_col(c), c)
+    canonicos = {_clave_col(k) for k in expected_map}
+
     rename = {}
     for expected, alternatives in expected_map.items():
-        if expected not in df.columns:
-            for alt in alternatives:
-                if alt in df.columns:
-                    rename[alt] = expected
-                    break
+        if expected in df.columns:
+            continue
+        for alt in alternatives:
+            if alt in df.columns and alt not in rename:
+                rename[alt] = expected
+                break
+        else:
+            # segunda pasada: los mismos alias, comparando nombres normalizados
+            for alt in list(alternatives) + [expected]:
+                clave = _clave_col(alt)
+                c = por_clave.get(clave)
+                if c is None or c in rename:
+                    continue
+                # y no se le roba a otro campo su propio nombre canonico
+                if clave != _clave_col(expected) and clave in canonicos:
+                    continue
+                rename[c] = expected
+                break
     if rename:
         df = df.rename(columns=rename)
     return df
@@ -964,11 +1017,22 @@ _MER_COL_MAP = {
     'unidad': ['unit', 'medida'],
 }
 
+# OJO al ORDEN: los mapas se recorren de arriba abajo y la primera columna que
+# case se la queda ese nombre canonico. `unidades_vendidas` va ANTES de
+# `precio_unitario` a proposito, porque "unidades" y "unitario" comparten
+# familia de nombres y las cantidades son lo que no se puede perder.
 _VEN_COL_MAP = {
-    'nombre_plato': ['plato', 'nombre', 'producto', 'item', 'dish'],
-    'categoria': ['tipo', 'category', 'grupo'],
-    'unidades_vendidas': ['cantidad', 'qty', 'units', 'unidades'],
-    'total_venta': ['total', 'importe', 'revenue', 'ventas'],
+    'fecha': ['dia', 'date', 'day', 'fecha_venta'],
+    'nombre_plato': ['plato', 'nombre', 'producto', 'item', 'dish', 'articulo',
+                     'descripcion'],
+    'categoria': ['tipo', 'category', 'grupo', 'familia'],
+    'unidades_vendidas': ['cantidad', 'qty', 'units', 'unidades', 'uds',
+                          'cant', 'n_unidades'],
+    'precio_unitario': ['precio', 'pvp', 'price', 'precio_venta'],
+    'total_venta': ['total', 'importe', 'revenue', 'ventas', 'total_ventas',
+                    'importe_total'],
+    'id_receta': ['receta', 'recipe', 'id', 'codigo', 'cod', 'sku',
+                  'id_plato', 'ref'],
 }
 
 _BANK_COL_MAP = {
@@ -4339,6 +4403,48 @@ def api_notif_config_save():
 
 
 
+def _leer_csv_flexible(f):
+    """Lee un CSV sin dar por hecho el separador ni el decimal.
+
+    Se prueban los cuatro separadores reales por orden de cuantas columnas
+    sacan: gana el que mas produce, porque un separador equivocado deja el
+    fichero en una sola columna. Y si los numeros vienen a la española
+    (1.234,56) se convierten al vuelo — la coma decimal es lo normal en un TPV
+    de aqui, y una columna de cantidades que llega como texto vale lo mismo que
+    no llegar.
+    """
+    import pandas as pd, io
+    crudo = f.read()
+    if isinstance(crudo, str):
+        crudo = crudo.encode('utf-8')
+    mejor = None
+    for sep in (';', ',', '\t', '|'):
+        for cod in ('utf-8-sig', 'latin-1'):
+            try:
+                d = pd.read_csv(io.BytesIO(crudo), sep=sep, encoding=cod)
+            except Exception:
+                continue
+            if mejor is None or len(d.columns) > len(mejor.columns):
+                mejor = d
+            break
+    if mejor is None:
+        raise ValueError('no he podido leer el CSV con ningun separador conocido')
+    # numeros a la española: solo donde la columna ha llegado como texto.
+    #
+    # La comprobacion es "NO es numerica", no "es object": en pandas 3 una
+    # columna de texto tiene dtype `str`, no `object`, asi que preguntar por
+    # object no encontraba ninguna y los importes se quedaban en '7.595,00'
+    # tal cual. Reventaba luego, al dividir para sacar el precio unitario:
+    # "unsupported operand type(s) for /: 'str' and 'int'".
+    for c in mejor.columns:
+        if pd.api.types.is_numeric_dtype(mejor[c]):
+            continue
+        muestra = mejor[c].dropna().astype(str).head(20)
+        if len(muestra) and all(_re_num_es.match(v.strip()) for v in muestra):
+            mejor[c] = [safe_float(v) for v in mejor[c]]
+    return mejor
+
+
 @app.route("/fb/api/upload_ventas", methods=["POST"])
 @login_required
 def api_upload_ventas_pos():
@@ -4351,24 +4457,26 @@ def api_upload_ventas_pos():
     fname = f.filename.lower()
     try:
         if fname.endswith('.csv'):
-            df_new = pd.read_csv(f)
+            # Un TPV español exporta con punto y coma, que es lo normal cuando la
+            # coma es el separador decimal. Con `read_csv(f)` a secas el fichero
+            # entero entraba como UNA sola columna y la subida se rechazaba por
+            # columnas que si estaban.
+            df_new = _leer_csv_flexible(f)
         elif fname.endswith(('.xlsx', '.xls')):
             df_new = pd.read_excel(f)
         else:
             return jsonify({"ok": False, "error": "Formato no soportado. Usa .xlsx o .csv"}), 400
 
-        # Normalize columns — accept flexible naming
-        col_map = {}
-        for col in df_new.columns:
-            cl = col.lower().replace(' ','_')
-            if 'fecha' in cl or 'date' in cl:                col_map[col] = 'fecha'
-            elif 'receta' in cl or 'recipe' in cl or 'id' in cl: col_map[col] = 'id_receta'
-            elif 'plato' in cl or 'nombre' in cl or 'name' in cl: col_map[col] = 'nombre_plato'
-            elif 'categ' in cl:                               col_map[col] = 'categoria'
-            elif 'unidad' in cl or 'qty' in cl or 'cantidad' in cl: col_map[col] = 'unidades_vendidas'
-            elif 'precio' in cl or 'price' in cl or 'unit' in cl:   col_map[col] = 'precio_unitario'
-            elif 'total' in cl or 'venta' in cl or 'revenue' in cl: col_map[col] = 'total_venta'
-        df_new = df_new.rename(columns=col_map)
+        # El MISMO mapa que usan los otros dos caminos de ventas (el lote y la
+        # foto), en vez de una tercera cadena de `elif` propia. Aqui vivia el
+        # bug: comparaba por SUBCADENA con `'id' in cl`, e "id" esta dentro de
+        # `cantidad`, de `unidad` y hasta de `unidades_vendidas`. La columna de
+        # cantidades acababa renombrada a `id_receta`, `unidades_vendidas` se
+        # rellenaba con 1 unos renglones mas abajo, y el food cost salia 0,06%
+        # en vez de 16,25%. Con cabeceras reales de TPV
+        # (Fecha·Plato·Categoria·Cantidad·Importe) era peor: `Importe` no casaba
+        # con nada y la subida se rechazaba por "falta total_venta".
+        df_new = _normalize_cols(df_new, _VEN_COL_MAP)
 
         # Validate minimum required columns
         required = ['fecha', 'nombre_plato', 'total_venta']
