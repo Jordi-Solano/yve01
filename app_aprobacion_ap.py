@@ -30,13 +30,70 @@ def _require_login():
 
 # ── Datos ─────────────────────────────────────────────────────────────────
 
-def cargar_facturas_ap():
+def _facturas_crudas():
+    """El fichero que Oracle va a leer, sin filtrar. Las rutas son las de la
+    RAIZ a proposito: son exactamente las que usa `oracle_lector_facturas`, y
+    este panel y Oracle tienen que estar mirando el MISMO fichero. Si el panel
+    leyera el arbol del tenant y Oracle la raiz, se aprobaria una cosa y se
+    contabilizaria otra."""
     excels = sorted(glob.glob(os.path.join(PROCESADAS_DIR, "facturas_contabilizadas_*.xlsx")), reverse=True)
     if not excels:
         excels = sorted(glob.glob(os.path.join(PROCESADAS_DIR, "facturas_ap_*.xlsx")), reverse=True)
     if not excels:
         return pd.DataFrame()
     return pd.read_excel(excels[0])
+
+
+def cargar_facturas_ap():
+    """Las facturas DEL HOTEL ELEGIDO.
+
+    Este panel es donde una persona aprueba, y lo que aprueba es lo que Oracle
+    contabiliza despues. Sin filtro mostraba las facturas de TODO el grupo
+    juntas: en produccion salia "POR APROBAR 3" con facturas de tres hoteles
+    distintos, sin decir de cual era cada una. Aprobar la de otro hotel desde el
+    panel del tuyo es exactamente lo que la separacion por hotel viene a evitar,
+    y aqui el error no se queda en una pantalla: acaba en el libro mayor.
+
+    Se filtra con `solo_del_hotel_activo`, la misma pieza que usa el panel de
+    aprobaciones de AR, y FALLA EN CERRADO: con un hotel elegido y sin columna
+    de hotel no se devuelve nada. Un filtro que parece filtrar y no filtra es
+    peor que no tenerlo.
+    """
+    df = _facturas_crudas()
+    if df.empty:
+        return df
+    try:
+        from almacen_datos import solo_del_hotel_activo as _solo
+        return _solo(df)
+    except Exception:
+        return df
+
+
+def facturas_sin_hotel():
+    """Cuantas facturas se quedan fuera por no llevar hotel.
+
+    El filtro es de igualdad estricta, asi que una factura sin `hotel_id`
+    —residuo de antes de la separacion— no sale en NINGUN hotel y no hay forma
+    de aprobarla. Eso, callado, es un agujero mudo: la factura existe, Oracle no
+    la va a contabilizar porque nadie la puede aprobar, y nadie se entera. Se
+    cuenta aqui para poder decirlo en la pantalla.
+    """
+    df = _facturas_crudas()
+    if df.empty or "hotel_id" not in df.columns:
+        return len(df) if not df.empty and "hotel_id" not in df.columns else 0
+    return int(sum(1 for v in df["hotel_id"] if not safe_str(v)))
+
+
+def _nombre_hotel(hid):
+    """El nombre del hotel para la pantalla. Solo presentacion."""
+    h = safe_str(hid)
+    if not h:
+        return ""
+    try:
+        import censo_hoteles
+        return censo_hoteles.nombre_de(h) or h
+    except Exception:
+        return h
 
 def cargar_aprobaciones():
     if not os.path.exists(APRO_FILE):
@@ -145,6 +202,10 @@ def facturas_a_lista(df):
             "estado_matching":   safe_str(r.get("estado_matching","")),
             "alerta_detalle":    safe_str(r.get("detalle_matching",r.get("alerta_detalle",""))),
             "departamento_po":   safe_str(r.get("departamento_po","General")),
+            # De QUE hotel es esta factura. Sin esto, quien aprueba no lo sabia:
+            # las de tres hoteles salian mezcladas y con la misma cara.
+            "hotel_id":          safe_str(r.get("hotel_id")),
+            "hotel":             _nombre_hotel(r.get("hotel_id")),
             "accion":            apro_map.get(_clave, ""),
         })
     return filas
@@ -249,6 +310,9 @@ def api_stats():
         "aprobadas":     cnt("accion","APROBADA", rows),
         "rechazadas":    cnt("accion","RECHAZADA", rows),
         "total":         len(rows),
+        # lo que el filtro deja fuera por no llevar hotel: no se puede aprobar
+        # desde ningun panel, y callarlo lo convierte en un agujero mudo
+        "sin_hotel":     facturas_sin_hotel(),
     })
 
 @login_required
@@ -267,6 +331,16 @@ def api_accion():
     if not clave or not accion or not comentario or not departamento:
         return jsonify({"ok": False, "error": "Faltan campos obligatorios"}), 400
 
+    # El hotel desde el que se aprueba, para el rastro. Es una columna NUEVA:
+    # Oracle sigue cruzando por `numero_factura` y no se entera de que existe,
+    # asi que no cambia nada de lo que ya funciona. Pero una aprobacion sin
+    # constancia de a que hotel pertenece no es auditable.
+    try:
+        import censo_hoteles as _ch
+        _hid = _ch.activo() or ""
+    except Exception:
+        _hid = ""
+
     now_str = datetime.now().strftime("%d/%m/%Y %H:%M:%S")
     nueva = pd.DataFrame([{
         "fecha_hora":    now_str,
@@ -281,6 +355,7 @@ def api_accion():
         "comentario":    comentario,
         "departamento":  departamento,
         "aprobador":     aprobador,
+        "hotel_id":      _hid,
     }])
 
     if os.path.exists(APRO_FILE):
@@ -526,6 +601,12 @@ svg.yvi{width:1em;height:1em;vertical-align:-0.125em;flex-shrink:0;display:inlin
     <div class="sc"><div class="sc-lbl">Con incidencia</div><div class="sc-v c-o" id="s-tot">—</div></div>
   </div>
 
+  <!-- El filtro por hotel es de igualdad estricta, asi que una factura sin
+       hotel no sale en NINGUN panel y no hay forma de aprobarla. Callarlo la
+       convierte en un agujero mudo: la factura existe, Oracle no la va a
+       contabilizar porque nadie la puede aprobar, y nadie se entera. -->
+  <div id="aviso-sin-hotel" class="alerta-box warn" style="display:none;margin-bottom:14px"></div>
+
   <div id="tab-facturas">
     <div id="lista"></div>
   </div>
@@ -618,6 +699,16 @@ async function loadData() {
   document.getElementById('s-ok').textContent   = stats.match_ok??'—';
   document.getElementById('s-tot').textContent  = stats.discrepancias??'—';
 
+  const av = document.getElementById('aviso-sin-hotel');
+  const sh = stats.sin_hotel || 0;
+  if (av) {
+    av.style.display = sh ? 'block' : 'none';
+    av.textContent = sh
+      ? sh + (sh === 1 ? ' factura no tiene hotel asignado, asi que no aparece en ningun hotel y no se puede aprobar desde aqui.'
+                       : ' facturas no tienen hotel asignado, asi que no aparecen en ningun hotel y no se pueden aprobar desde aqui.')
+      : '';
+  }
+
   const lista = document.getElementById('lista');
   if(!rows.length){lista.innerHTML='<div class="empty"><span class="emo">📭</span>'
     +'<div class="tit">No queda nada por aprobar</div>'
@@ -630,7 +721,8 @@ async function loadData() {
     const _ab = _abiertas.has(_num);
     return '<div class="card" id="card-'+i+'" data-num="'+_num+'" data-clave="'+txt(r.clave).replace(/"/g,'&quot;')+'">' +
       '<div class="card-top">' +
-        '<div><div class="prov-name">'+txt(r.nombre_proveedor)+'</div><div class="prov-num">'+_num+'</div></div>' +
+        '<div><div class="prov-name">'+txt(r.nombre_proveedor)+'</div><div class="prov-num">'+_num+
+          (r.hotel ? ' &middot; ' + txt(r.hotel) : '')+'</div></div>' +
         '<div class="card-acc">' +
           '<span class="badge '+(r.tipo_proveedor==='FB'?'b-fb':'b-otras')+'">'+txt(r.tipo_proveedor)+'</span>' +
           '<button class="chev'+(_ab?' abierta':'')+'" id="chev-'+i+'" onclick="toggleDet('+i+')" title="Ver la factura completa">▼</button>' +
