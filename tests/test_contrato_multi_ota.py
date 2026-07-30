@@ -174,10 +174,39 @@ def test_el_detector_de_lista_de_otas():
     print("  ✔ el detector separa 'lista de OTAs' de 'una OTA'")
 
 
+def test_el_schema_del_clasificador_pide_ota_por_fila():
+    """El schema de CONTRATO_OTA tiene que pedir la OTA en CADA tarifa.
+
+    Es el cambio del clasificador que aprobo Jordi, y el que hace que la forma B
+    ocurra de verdad con la IA. Este invariante lo fija: si alguien revierte el
+    schema al de antes (OTA solo arriba), un contrato multi-OTA vuelve a colapsar
+    y el writer solo puede avisar, no verificar.
+
+    El schema es JSON valido con valores de ejemplo, asi que se parsea de verdad
+    en vez de buscar la subcadena "ota" —que aparece tambien en la de arriba— y
+    asi el test comprueba la ESTRUCTURA, no el texto.
+    """
+    src = open(os.path.join(BASE, "lector_facturas_ap.py"), encoding="utf-8").read()
+    linea = next((l for l in src.splitlines()
+                  if l.strip().startswith('{"tipo_documento":"CONTRATO_OTA"')), None)
+    assert linea, "no encuentro la linea del schema CONTRATO_OTA en el clasificador"
+    esquema = json.loads(linea.strip())
+    tarifa = (esquema.get("tarifas") or [{}])[0]
+    assert "ota" in tarifa, (
+        f"la tarifa del schema CONTRATO_OTA no tiene campo `ota`: {tarifa}. Sin "
+        "el la IA no puede decir la OTA de cada fila y un acuerdo multi-OTA "
+        "vuelve al bug 7 — cuatro tarifas colapsando a dos.")
+    assert "ota" in esquema, (
+        "el schema tiene que conservar el `ota` de arriba (para el contrato de "
+        "una sola OTA); solo cambia que ahora se deja vacio cuando son varias.")
+    print("  ✔ el schema del clasificador pide `ota` en cada tarifa (y conserva el de arriba)")
+
+
 PRUEBAS = [test_multi_ota_sin_ota_por_fila_no_se_guarda_a_ciegas,
            test_con_ota_por_fila_las_cuatro_tarifas_cruzan,
            test_una_sola_ota_sigue_yendo,
-           test_el_detector_de_lista_de_otas]
+           test_el_detector_de_lista_de_otas,
+           test_el_schema_del_clasificador_pide_ota_por_fila]
 
 
 def main():

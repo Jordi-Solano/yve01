@@ -247,8 +247,8 @@ propio. Basta con identificarlo):
 COMISIONES_OTA (una entrada en "facturas" por CADA factura/hotel que veas):
 {"tipo_documento":"COMISIONES_OTA","ota":"nombre","periodo":"mes/año","importe_bruto":0.0,"comision":0.0,"porcentaje":0.0,"facturas":[{"numero_factura":"X","nombre_hotel":"X","fecha":"DD/MM/YYYY","periodo_inicio":"DD/MM/YYYY","periodo_fin":"DD/MM/YYYY","importe_bruto":0.0,"porcentaje_comision":0.0,"importe_comision":0.0,"importe_neto":0.0}]}
 
-CONTRATO_OTA (una entrada en "tarifas" por CADA hotel/mercado pactado):
-{"tipo_documento":"CONTRATO_OTA","ota":"nombre","tarifas":[{"nombre_hotel":"X","porcentaje_pactado":0.0,"mercado":"Nacional|Internacional|...","vigencia_inicio":"DD/MM/YYYY","vigencia_fin":"DD/MM/YYYY"}]}
+CONTRATO_OTA (una entrada en "tarifas" por CADA (OTA, hotel/mercado) pactado; si el contrato cubre VARIAS OTAs —p.ej. Booking Y Expedia—, cada tarifa lleva SU "ota" y el "ota" de arriba se deja vacio):
+{"tipo_documento":"CONTRATO_OTA","ota":"la OTA si el contrato es de una sola; vacio si cubre varias","tarifas":[{"ota":"la OTA de esta tarifa","nombre_hotel":"X","porcentaje_pactado":0.0,"mercado":"Nacional|Internacional|...","vigencia_inicio":"DD/MM/YYYY","vigencia_fin":"DD/MM/YYYY"}]}
 
 ROOMING:
 {"tipo_documento":"ROOMING","grupo":"nombre","num_habitaciones":0,"checkin":"DD/MM/YYYY","checkout":"DD/MM/YYYY","tarifa_media":0.0}
