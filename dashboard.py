@@ -427,6 +427,7 @@ def cargar_datos():
 def calcular_stats(df):
     if df.empty:
         return {"total":0,"importe_total":0,"correctas":0,"discrepancias":0,
+                "cobro_debajo":0,"sin_tarifa":0,
                 "importe_reclamable":0,"di_pendientes":0,"aprobadas":0,"rechazadas":0,"sin_accion":0}
     total = len(df)
     importe_total = sum(safe_float(v) for v in df.get("importe_bruto", pd.Series()))
@@ -434,9 +435,21 @@ def calcular_stats(df):
     estado_col = df["estado"].fillna("") if "estado" in df.columns else pd.Series([""] * total)
     correctas     = int((estado_col == "CORRECTO").sum())
     discrepancias = int((estado_col == "DISCREPANCIA").sum())
+    # Los dos estados que NO son ni correcto ni reclamable, y que antes no se
+    # contaban en ningun sitio: una factura asi desaparecia del resumen.
+    cobro_debajo  = int((estado_col == "COBRO_POR_DEBAJO").sum())
+    sin_tarifa    = int((estado_col.isin(["SIN_TARIFA_HOTEL", "OTA_DESCONOCIDA"])).sum())
 
     if "discrepancia_euros" in df.columns:
-        importe_reclamable = sum(abs(safe_float(v)) for v in df.loc[estado_col == "DISCREPANCIA", "discrepancia_euros"])
+        # SIN abs(). El valor absoluto es justo como se perdia el signo: una
+        # comision cobrada POR DEBAJO de lo pactado da un importe negativo, y
+        # sumada en valor absoluto salia en el panel como dinero a devolver.
+        # Ahora esas filas ni llegan aqui —tienen su propio estado— y el total
+        # solo suma lo que de verdad se ha cobrado de mas.
+        importe_reclamable = sum(
+            v for v in (safe_float(x) for x in
+                        df.loc[estado_col == "DISCREPANCIA", "discrepancia_euros"])
+            if v > 0)
     else:
         importe_reclamable = 0.0
 
@@ -452,6 +465,8 @@ def calcular_stats(df):
         "importe_total": round(importe_total, 2),
         "correctas": correctas,
         "discrepancias": discrepancias,
+        "cobro_debajo": cobro_debajo,
+        "sin_tarifa": sin_tarifa,
         "importe_reclamable": round(importe_reclamable, 2),
         "di_pendientes": di_pendientes,
         "aprobadas": aprobadas,
@@ -6197,6 +6212,10 @@ function bEstado(e) {
     DISCREPANCIA:    ['b-disc', '⚠ Discrepancia'],
     OTA_DESCONOCIDA: ['b-unk',  '? OTA desc.'],
     SIN_PORCENTAJE:  ['b-na',   '~ Sin %'],
+    // Sin estos dos, el estado se pintaba con su nombre en crudo
+    // ('SIN_TARIFA_HOTEL') o se confundia con una discrepancia reclamable.
+    COBRO_POR_DEBAJO: ['b-unk', '↓ Cobrado por debajo'],
+    SIN_TARIFA_HOTEL: ['b-unk', '? Sin tarifa del hotel'],
   };
   const [c, l] = m[e] || ['b-na', e || '—'];
   return '<span class="badge ' + c + '">' + l + '</span>';
@@ -6541,6 +6560,10 @@ function renderActivity(rows) {
   const items = [
     { dot:'g', n: c.CORRECTO             || 0, txt: 'correctas sin incidencias',    key:'res.correctas' },
     { dot:'r', n: c.DISCREPANCIA         || 0, txt: 'con discrepancia de comisión',  key:'res.discrepancia' },
+    // Las dos que antes no se contaban en ninguna linea: una factura sin
+    // tarifa del hotel, o cobrada por debajo, no salia en el resumen.
+    { dot:'o', n: c.COBRO_POR_DEBAJO     || 0, txt: 'cobradas por debajo de lo pactado', key:'res.porDebajo' },
+    { dot:'m', n: (c.SIN_TARIFA_HOTEL||0) + (c.OTA_DESCONOCIDA||0), txt: 'sin tarifa pactada con la que comparar', key:'res.sinTarifa' },
     { dot:'o', n: d.FALTA_CERTIFICADO_DI || 0, txt: 'sin certificado DI',            key:'res.sinDI' },
     { dot:'b', n: d.CERTIFICADO_OK       || 0, txt: 'con certificado DI OK',         key:'res.conDI' },
     { dot:'m', n: d.OTA_DESCONOCIDA      || 0, txt: 'OTA no reconocida',             key:'res.noReconocida' },

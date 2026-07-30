@@ -18,6 +18,14 @@ REPORTE_SALIDA = os.path.join(REPORTES_DIR, f"verificacion_{FECHA_HOY}.xlsx")
 TOLERANCIA = 0.5
 NF = "NO_ENCONTRADO"
 
+# Cobrar MENOS de lo pactado no es una discrepancia reclamable: es lo contrario.
+# Iba con estado DISCREPANCIA y un importe NEGATIVO, y el panel lo sumaba en
+# valor absoluto al total "a devolver". O sea que una OTA que nos cobra 182 EUR
+# de MENOS aparecia como 182 EUR que reclamarle. Merece su propio estado: hay
+# que mirarlo (a lo mejor el contrato esta mal cargado, o la OTA arrastra un
+# ajuste) pero no se reclama, y desde luego no se suma a lo reclamable.
+COBRO_DEBAJO = "COBRO_POR_DEBAJO"
+
 try:
     from openpyxl.styles import PatternFill, Font, Alignment
     VERDE    = PatternFill(start_color="C6EFCE", end_color="C6EFCE", fill_type="solid")
@@ -147,7 +155,11 @@ def verificar_factura(fila, comisiones_df):
             if diferencia < TOLERANCIA:
                 estado = "CORRECTO"
             else:
-                estado = "DISCREPANCIA"
+                # El SIGNO decide de que estamos hablando. Positivo: la OTA se
+                # ha cobrado mas de lo pactado y hay algo que reclamar.
+                # Negativo: se ha cobrado menos, y eso no se reclama.
+                estado = ("DISCREPANCIA" if comision_factura > comision_pactada
+                          else COBRO_DEBAJO)
                 if importe_bruto is not None:
                     importe_discrepancia = round(
                         importe_bruto * (comision_factura - comision_pactada) / 100, 2
