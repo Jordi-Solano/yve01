@@ -218,6 +218,20 @@ def leer_daily_master(wb):
 # Real account rows end around row 244; room list starts ~row 1004
 
 SECTIONS = {"ASSETS", "LIABILITIES", "EXPENSES", "INCOME", "REVENUE"}
+
+# Las secciones que SON ingresos. Viven aqui, con el resto del vocabulario del
+# Trial Balance, porque quien lee el fichero es quien sabe como se llaman las
+# cosas dentro. Y sobre todo: para que no haya DOS listas.
+#
+# De aqui salio un bug que duro desde el primer commit. `dashboard` filtraba el
+# revenue diario por la cadena "INCOME" a pelo, y los ficheros reales traen
+# "REVENUE": el filtro casaba cero filas y el grafico de Revenue Diario salia
+# vacio, sin decir nada. Este modulo ya aceptaba las dos grafias (estan las dos
+# en SECTIONS, arriba) y copia la etiqueta del fichero tal cual, asi que la
+# unica forma de que las dos partes no vuelvan a discrepar es que la lista sea
+# UNA y este donde se define el vocabulario.
+SECCIONES_INGRESO = frozenset({"INCOME", "REVENUE"})
+SECCIONES_GASTO = frozenset({"EXPENSES"})
 MAX_TB_ROW = 300  # Read up to this row for the Trial Balance (before room list)
 
 def leer_trial_balance_dia(wb, dia: int):

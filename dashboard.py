@@ -3956,21 +3956,42 @@ def num_drr(s):
 
 def _leer_drr_stats(ruta):
     """Lee el Excel procesado del DRR y devuelve stats para el frontend."""
-    def _fmt(v, is_pct=False, is_eur=False):
+    def _fmt(v, is_pct=False, is_eur=False, dec=0, es_conteo=False):
+        """El valor tal y como se ve en la tarjeta.
+
+        `dec` son los decimales. NO es un adorno: el ADR, el RevPAR y el Spend
+        PAR son importes POR UNIDAD, y ahi el decimal es informacion. El panel
+        los formateaba con `:,.0f` como cualquier total, asi que un RevPAR de
+        83,70 EUR se enseñaba como 84 EUR. Y el redondeo no se quedaba en la
+        pantalla: `agregador_grupo` vuelve a leer ESTA cadena para ponderar el
+        RevPAR del grupo, o sea que el numero del grupo se calculaba con 79 en
+        vez de 79,20.
+
+        `es_conteo` es para las habitaciones ocupadas: un recuento no lleva
+        decimales ni simbolo de moneda. Salia "7,200.00", que no es un numero de
+        habitaciones que nadie escriba.
+
+        Y ya no hay atajo "si trae coma esta formateado". Ese atajo era el
+        tercer sintoma del mismo enredo: `lector_drr` escribe los importes como
+        "40,130 EUR", con coma, asi que se devolvian TAL CUAL y las tarjetas
+        salian en dos formatos distintos a la vez —unas "€135" y otras
+        "40,130 EUR"—. Ahora se parsea siempre con `num_drr`, que entiende las
+        dos formas, y se formatea en un solo sitio.
+        """
         if v is None: return "N/D"
         s = str(v).strip()
         if s in ("", "nan", "None", "N/D", "NaT"): return "N/D"
-        if "%" in s or "€" in s or "," in s: return s   # already formatted
-        try:
-            f = float(s)
-            if is_pct:
-                pct = f * 100 if abs(f) <= 1 else f
-                return f"{pct:.1f}%"
-            if is_eur:
-                return f"€{f:,.0f}"
-            return s
-        except ValueError:
-            return s if s else "N/D"
+        f = num_drr(s)
+        if f is None:
+            return s          # texto de verdad ("REVISAR", "n/a"...): tal cual
+        if is_pct:
+            pct = f * 100 if abs(f) <= 1 else f
+            return f"{pct:.1f}%"
+        if es_conteo:
+            return f"{f:,.0f}"
+        if is_eur:
+            return f"€{f:,.{dec}f}"
+        return f"{f:,.{dec}f}" if dec else s
 
     # El parser vive fuera (`num_drr`) para que el agregador del grupo use
     # EXACTAMENTE el mismo. Con dos copias, la del grupo entendia un formato y
@@ -3986,14 +4007,23 @@ def _leer_drr_stats(ruta):
                 "Rooms Revenue", "F&B Revenue Total", "Rooms Occupied", "Spend PAR"]
         PCT_KEYS = {"Occupancy %", "GOP %"}
         EUR_KEYS = {"Total Revenue", "GOP", "Rooms Revenue", "F&B Revenue Total", "ADR", "Revenue PAR", "Spend PAR"}
+        # Importes POR UNIDAD: el decimal es informacion, no adorno. Un RevPAR
+        # de 83,70 no es 84, y la diferencia se multiplica por las habitaciones
+        # disponibles del mes.
+        EUR_2DEC = {"ADR", "Revenue PAR", "Spend PAR"}
+        # Recuentos: sin decimales y sin moneda.
+        CONTEO_KEYS = {"Rooms Occupied"}
         for _, row in df_res.iterrows():
             name = str(row.iloc[0]).strip() if pd.notna(row.iloc[0]) else ""
             if name in KEYS:
+                _kw = dict(is_pct=name in PCT_KEYS, is_eur=name in EUR_KEYS,
+                           dec=2 if name in EUR_2DEC else 0,
+                           es_conteo=name in CONTEO_KEYS)
                 metricas[name] = {
-                    "today":    _fmt(row.iloc[1] if pd.notna(row.iloc[1]) else None, name in PCT_KEYS, name in EUR_KEYS),
-                    "mtd":      _fmt(row.iloc[2] if pd.notna(row.iloc[2]) else None, name in PCT_KEYS, name in EUR_KEYS),
-                    "forecast": _fmt(row.iloc[3] if pd.notna(row.iloc[3]) else None, name in PCT_KEYS, name in EUR_KEYS),
-                    "budget":   _fmt(row.iloc[4] if len(row) > 4 and pd.notna(row.iloc[4]) else None, name in PCT_KEYS, name in EUR_KEYS),
+                    "today":    _fmt(row.iloc[1] if pd.notna(row.iloc[1]) else None, **_kw),
+                    "mtd":      _fmt(row.iloc[2] if pd.notna(row.iloc[2]) else None, **_kw),
+                    "forecast": _fmt(row.iloc[3] if pd.notna(row.iloc[3]) else None, **_kw),
+                    "budget":   _fmt(row.iloc[4] if len(row) > 4 and pd.notna(row.iloc[4]) else None, **_kw),
                 }
         # ── FASE D · De donde sale el GOP, dicho ────────────────────────────
         #
@@ -4131,9 +4161,15 @@ def api_drr_daily_chart():
         return jsonify(None)
     try:
         df = _excel(ruta, sheet_name="Trial_Balance_Completo", header=0)
-        income = df[df["Sección"] == "INCOME"].copy()
+        # Las secciones las nombra `lector_drr`, no este fichero. Aqui habia la
+        # cadena "INCOME" escrita a mano, y los DRR reales traen "REVENUE": el
+        # filtro casaba cero filas y el grafico salia vacio en silencio. Con la
+        # lista compartida, las dos partes no pueden volver a discrepar.
+        from lector_drr import SECCIONES_INGRESO, SECCIONES_GASTO
+        _secc = df["Sección"].astype(str).str.strip().str.upper()
+        income = df[_secc.isin(SECCIONES_INGRESO)].copy()
         income["Total"] = pd.to_numeric(income["Total"], errors="coerce").abs()
-        expenses = df[df["Sección"] == "EXPENSES"].copy()
+        expenses = df[_secc.isin(SECCIONES_GASTO)].copy()
         expenses["Total"] = pd.to_numeric(expenses["Total"], errors="coerce").abs()
         daily_rev = income.groupby("Día")["Total"].sum()
         daily_exp = expenses.groupby("Día")["Total"].sum()
@@ -4144,7 +4180,32 @@ def api_drr_daily_chart():
                       for _, row in df.drop_duplicates("Día").iterrows()
                       if pd.notna(row["Fecha"])}
         dias = sorted([int(d) for d in daily_rev.index.tolist()])
-        labels = [fechas_map.get(d, str(d))[-5:] for d in dias]  # MM-DD
+        # MM-DD, PARSEANDO la fecha, no cortando la cadena por los ultimos 5
+        # caracteres. `lector_drr` escribe la fecha en dos formatos segun lo que
+        # traiga el .xlsm —ISO cuando la celda es una fecha de verdad, 'Jul-01'
+        # cuando es texto— y con el corte a ciegas el eje del grafico salia con
+        # etiquetas como 'ul-01'. Si no se puede parsear se usa la fecha tal cual,
+        # que dice algo, en vez de un trozo de cadena que no dice nada.
+        def _etiqueta(d):
+            f = str(fechas_map.get(d, "") or "")
+            try:
+                return pd.to_datetime(f, errors="raise").strftime("%m-%d")
+            except Exception:
+                return f or str(d)
+        labels = [_etiqueta(d) for d in dias]
+        # Una ausencia tambien tiene que decir de donde viene. Si no hay dias,
+        # el panel necesita saber si es que el DRR no trae hojas de dia o es que
+        # las trae y ninguna cuadra con las secciones de ingreso — que es
+        # exactamente el bug que estuvo tapado aqui. Sin esto, "vacio" y "roto"
+        # se ven igual.
+        _motivo = ""
+        if not dias:
+            _secciones = sorted(set(_secc.dropna()) - {"NAN", ""})
+            if df.empty:
+                _motivo = "el DRR procesado no trae ninguna hoja de dia"
+            else:
+                _motivo = ("el DRR trae dias pero ninguna fila de ingresos: "
+                           f"secciones encontradas {_secciones or 'ninguna'}")
         return jsonify({
             "dias":     dias,
             "labels":   labels,
@@ -4152,7 +4213,11 @@ def api_drr_daily_chart():
             "revenue":  [round(float(daily_rev.get(d, 0)), 0) for d in dias],
             "expenses": [round(float(daily_exp.get(d, 0)), 0) for d in dias],
             "oob":      [d in oob_dias for d in dias],
-            "oob_count": len(oob_dias),
+            # Antes contaba los descuadres del fichero ENTERO, independiente del
+            # filtro, asi que decia a la vez "cero dias" y "un dia descuadrado".
+            # Un contador tiene que contar lo que se esta mostrando.
+            "oob_count": len([d for d in dias if d in oob_dias]),
+            "motivo":   _motivo,
         })
     except Exception as e:
         return jsonify({"error": str(e)}), 500
@@ -5843,9 +5908,15 @@ svg.yvi{width:1em;height:1em;vertical-align:-0.125em;flex-shrink:0;display:inlin
     <div id="drr-budget-bar" style="display:none;background:rgba(15,23,42,.5);border-radius:10px;padding:10px 14px;margin-bottom:16px;border:1px solid var(--s2)"></div>
 
     <!-- Revenue Chart -->
-    <div class="card" style="margin-bottom:22px" id="drr-chart-card" style="display:none">
+    <!-- OJO: UN solo atributo `style`. Estaba dos veces —uno con el margen y
+         otro con `display:none`— y en HTML gana el primero, asi que el
+         `display:none` se descartaba y la tarjeta estaba visible desde que
+         carga la pagina, con datos o sin ellos. Es la mitad de por que el
+         Revenue Diario "salia vacio" en vez de "no estar". -->
+    <div class="card" id="drr-chart-card" style="margin-bottom:22px;display:none">
       <div class="card-title" data-i18n="card.revDiario">Revenue Diario</div>
       <div class="drr-chart-wrap"><canvas id="drr-revenue-chart" class="hide-lite"></canvas></div>
+      <div id="drr-chart-vacio" style="display:none;padding:18px 4px;font-size:12.5px;color:var(--mut);line-height:1.6"></div>
     </div>
 
     <!-- Days grid -->
@@ -6929,10 +7000,33 @@ async function renderDRRChart() {
   try {
     const r = await fetch('/api/drr_daily_chart');
     const d = await r.json();
-    if (!d || d.error || !d.dias) return;
     const card = document.getElementById('drr-chart-card');
-    if (card) card.style.display = 'block';
+    const vacio = document.getElementById('drr-chart-vacio');
     const canvas = document.getElementById('drr-revenue-chart');
+
+    // Sin DRR cargado no hay nada que contar: la tarjeta se queda escondida y
+    // el bloque de "sube un DRR" de arriba ya lo dice.
+    if (!d || d.error) { if (card) card.style.display = 'none'; return; }
+
+    // Y aqui el segundo agujero: el guard era `!d.dias`, y en JavaScript un
+    // array VACIO es truthy, asi que no abortaba nunca. Enseñaba la tarjeta y
+    // dibujaba un grafico de cero barras — el "sale vacio" que costo una
+    // prueba de integracion entera. Ahora, si no hay dias, se dice POR QUE.
+    if (!Array.isArray(d.dias) || d.dias.length === 0) {
+      if (card) card.style.display = 'block';
+      if (canvas) canvas.style.display = 'none';
+      if (vacio) {
+        vacio.style.display = 'block';
+        vacio.textContent = _tSSE('No hay revenue por día que mostrar')
+          + (d.motivo ? ' — ' + d.motivo : '')
+          + '. El resto de la pestaña sigue siendo válido.';
+      }
+      if (_drrChart) { _drrChart.destroy(); _drrChart = null; }
+      return;
+    }
+    if (card) card.style.display = 'block';
+    if (vacio) vacio.style.display = 'none';
+    if (canvas) canvas.style.display = '';
     if (!canvas || !window.Chart) return;
     if (_drrChart) { _drrChart.destroy(); _drrChart = null; }
     const oobColors = d.dias.map((_, i) => d.oob[i] ? 'rgba(239,68,68,0.85)' : 'rgba(59,130,246,0.75)');
@@ -6945,7 +7039,9 @@ async function renderDRRChart() {
         }),
         datasets: [{
           label: 'Revenue',
-          backgroundColor: d.oob ? d.oob.map(isOob => isOob ? 'rgba(239,68,68,.7)' : 'rgba(59,130,246,.5)') : 'rgba(59,130,246,.5)',
+          // UNA sola clave `backgroundColor`. Estaba dos veces y en un objeto
+          // JavaScript gana la ultima, asi que la primera era codigo muerto —
+          // el mismo fallo de forma que el `style` duplicado de la tarjeta.
           data: d.revenue,
           backgroundColor: oobColors,
           borderColor: oobColors,
@@ -13265,8 +13361,15 @@ function renderDRR(s) {
   const SHOW = [
     {key:'Total Revenue', label:'Total Revenue', color:'var(--acc2)'},
     {key:'Occupancy %', label:'Occupancy %', color:'var(--grn)'},
-    {key:'ADR', label:'ADR', color:'var(--tx)'},
-    {key:'Revenue PAR', label:'RevPAR', color:'var(--tx)'},
+    {key:'ADR', label:'ADR', color:'var(--tx)', tip:'Average Daily Rate — Rooms Revenue ÷ habitaciones ocupadas'},
+    {key:'Revenue PAR', label:'RevPAR', color:'var(--tx)', tip:'Revenue Per Available Room — Rooms Revenue ÷ habitaciones disponibles. También = ADR × ocupación'},
+    // El numerador y el denominador con los que se comprueban el ADR y el
+    // RevPAR. Se leian y NO se enseñaban, asi que la pantalla daba el
+    // resultado y escondia los dos datos que permiten verificarlo a mano.
+    // Enseñar la division entera es la diferencia entre un panel que informa y
+    // uno en el que hay que creer.
+    {key:'Rooms Occupied', label:'Habitaciones ocupadas', color:'var(--tx)', tip:'El denominador del ADR y el numerador de la ocupación'},
+    {key:'Rooms Revenue', label:'Rooms Revenue', color:'var(--acc2)', tip:'El numerador del ADR y del RevPAR'},
     {key:'GOP', label:'GOP', color:'var(--ora)', tip:'Gross Operating Profit — beneficio bruto antes de deuda e impuestos'},
     {key:'GOP %', label:'GOP %', color:'var(--pur)', tip:'GOP como porcentaje del Revenue Total. 30-45% es saludable en hoteles 4-5★'},
   ];
