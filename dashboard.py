@@ -5181,6 +5181,7 @@ body::before{
 /* Modo acento total: todos los contenedores responden al acento */
 body.acentuar-todo .sc,
 body.acentuar-todo .card,
+body.acentuar-todo .drr-mc,
 body.acentuar-todo .fb-kpi-card{border-color:rgba(var(--acc-r,59),var(--acc-g,130),var(--acc-b,246),.4)!important;background:rgba(var(--acc-r,59),var(--acc-g,130),var(--acc-b,246),.06)!important}
 body.acentuar-todo .sc .sc-val{color:var(--acc2)!important}
 body.acentuar-todo .fb-kpi-val{color:var(--acc2)!important}
@@ -5411,6 +5412,37 @@ tr:hover td{background:rgba(255,255,255,.025)}
 .drr-alerts .da-item:last-child{border-bottom:none}
 .drr-alerts .da-dot{width:8px;height:8px;border-radius:50%;flex-shrink:0;margin-top:5px;background:var(--ora)}
 .drr-alerts .da-txt{font-size:.85rem;color:var(--tx)}
+
+/* ── DRR rediseño (fase presentación) — reorganización por grupos ───────
+   Solo maquetación y tamaños. El acento de las burbujas .drr-mc lo pone la
+   regla global `body.acentuar-todo` (ahi se anadio .drr-mc), igual que .card:
+   asi todas las burbujas del panel responden al color personalizado. */
+.rd-actions{display:flex;justify-content:flex-end;gap:8px;align-items:center;margin-bottom:20px}
+.rd-group{margin-bottom:18px}
+.rd-glabel{font-size:10px;font-weight:700;letter-spacing:.6px;text-transform:uppercase;color:var(--mut);margin:0 2px 10px}
+.rd-prov{font-size:15px;color:var(--grn);font-weight:600;display:flex;align-items:center;gap:8px;line-height:1.5}
+.rd-grid{display:grid;gap:12px}
+.rd-grid.rate{grid-template-columns:1.3fr 1fr 1fr 1fr}
+.rd-grid.rev{grid-template-columns:1.3fr 1fr 2fr}
+.rd-grid.gop{grid-template-columns:1.3fr 1fr 2fr}
+@media(max-width:900px){.rd-grid.rate,.rd-grid.rev,.rd-grid.gop{grid-template-columns:1fr 1fr}}
+@media(max-width:560px){.rd-grid.rate,.rd-grid.rev,.rd-grid.gop{grid-template-columns:1fr}}
+.rd-tile .rd-hero{font-size:21px;font-weight:800;letter-spacing:-.02em;line-height:1.15;color:var(--tx)}
+.rd-tile.hero .rd-hero{font-size:26px;color:var(--acc2)}
+.rd-tile.hero.grn .rd-hero{color:var(--grn)}
+.rd-hero .per{font-size:10px;font-weight:600;color:var(--dim);margin-left:6px;letter-spacing:.4px}
+.rd-mini{display:flex;gap:16px;margin-top:10px;padding-top:9px;border-top:1px solid var(--s2);flex-wrap:wrap}
+.rd-mini>div{font-size:10.5px;color:var(--dim)}
+.rd-mini b{display:block;font-size:12px;color:var(--tx);font-weight:700;margin-top:1px}
+.rd-bud{display:flex;flex-direction:column;justify-content:center}
+.rd-daywrap{display:grid;grid-template-columns:repeat(auto-fill,minmax(155px,1fr));gap:10px}
+.rd-daycard{background:var(--bg);border:1px solid var(--s2);border-radius:12px;padding:12px 14px}
+.rd-daycard.oob{border-color:rgba(239,68,68,.4);background:rgba(239,68,68,.05)}
+.rd-dc-top{font-size:11px;color:var(--mut);margin-bottom:6px}
+.rd-dc-amt{font-size:18px;font-weight:800;color:var(--tx);letter-spacing:-.01em}
+.rd-dc-sub{font-size:10px;color:var(--dim);margin-top:1px}
+.rd-dc-st{font-size:11.5px;font-weight:700;margin-top:8px}
+.rd-dc-st.ok{color:var(--grn)} .rd-dc-st.oob{color:var(--red)}
 
 
 /* ── GUIDED TOUR ─────────────────────────────────── */
@@ -5931,60 +5963,32 @@ svg.yvi{width:1em;height:1em;vertical-align:-0.125em;flex-shrink:0;display:inlin
 
   <!-- PANEL DRR -->
   <div id="panel-drr" class="panel">
-  <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:18px;flex-wrap:wrap;gap:12px">
-      <div class="drr-upload">
-        <label for="drr-file-input" class="btn-run" style="cursor:pointer;font-size:13px" data-i18n="btn.uploadDrr">📂 Subir DRR (.xlsm)</label>
-        <input type="file" id="drr-file-input" accept=".xlsm,.xlsx" style="display:none" onchange="uploadDRR(this)">
-        <span class="drr-status" id="drr-status" style="font-size:12px;color:var(--mut);margin-left:10px" data-i18n="drr.sinArchivo">Sin archivo cargado</span>
-      </div>
-      <div style="display:flex;gap:8px">
-        <div id="drr-oob-badge" style="display:none;background:rgba(239,68,68,.1);border:1px solid rgba(239,68,68,.25);color:var(--red);border-radius:8px;padding:5px 12px;font-size:12px;font-weight:700"></div>
-        <a href="/api/exportar/drr" class="btn-ref" style="text-decoration:none;font-size:12px" data-i18n="btn.downloadExcel">⬇️ Excel</a>
-        <a href="/api/exportar/drr/pdf" class="btn-ref" style="text-decoration:none;font-size:12px">📄 PDF</a>
-      </div>
+    <!-- Acciones (sin titulo ni chips: decision de diseno). El estado va oculto,
+         que lo leen la subida y el onboarding; el OOB va dentro del panel. -->
+    <div class="rd-actions">
+      <label for="drr-file-input" class="btn-run" style="cursor:pointer;font-size:13px;margin:0" data-i18n="btn.uploadDrr">📂 Subir DRR</label>
+      <input type="file" id="drr-file-input" accept=".xlsm,.xlsx" style="display:none" onchange="uploadDRR(this)">
+      <a href="/api/exportar/drr" class="btn-ref" style="text-decoration:none;font-size:12px" data-i18n="btn.downloadExcel">⬇️ Excel</a>
+      <a href="/api/exportar/drr/pdf" class="btn-ref" style="text-decoration:none;font-size:12px">📄 PDF</a>
     </div>
-
-    <!-- KPI Metrics -->
-    <div class="drr-metrics" id="drr-metrics" style="display:grid;grid-template-columns:repeat(auto-fit,minmax(140px,1fr));gap:10px;margin-bottom:12px">
-      <div class="empty" id="drr-drop-zone" 
-    style="border:2px dashed var(--s3);border-radius:12px;padding:32px;cursor:pointer;transition:background-color .2s,border-color .2s,color .2s,box-shadow .2s,transform .2s,opacity .2s"
-    ondragover="event.preventDefault();this.style.borderColor='var(--acc)';this.style.background='rgba(var(--acc-r,59),var(--acc-g,130),var(--acc-b,246),.05)'"
-    ondragleave="this.style.borderColor='var(--s3)';this.style.background=''"
-    ondrop="event.preventDefault();this.style.borderColor='var(--s3)';this.style.background='';uploadDRR({files:event.dataTransfer.files})"
-    onclick="document.getElementById('drr-file-input').click()">
-  <div class="ei">📊</div>
-  <p style="margin-bottom:6px">Arrastra tu DRR aquí o</p>
-  <p style="font-size:12px;color:var(--acc2);font-weight:600" data-i18n="drr.hazClic">haz clic para seleccionar (.xlsm/.xlsx)</p>
-</div>
-    </div>
-    <div id="drr-budget-bar" style="display:none;background:rgba(15,23,42,.5);border-radius:10px;padding:10px 14px;margin-bottom:16px;border:1px solid var(--s2)"></div>
-
-    <!-- Revenue Chart -->
-    <!-- OJO: UN solo atributo `style`. Estaba dos veces —uno con el margen y
-         otro con `display:none`— y en HTML gana el primero, asi que el
-         `display:none` se descartaba y la tarjeta estaba visible desde que
-         carga la pagina, con datos o sin ellos. Es la mitad de por que el
-         Revenue Diario "salia vacio" en vez de "no estar". -->
-    <div class="card" id="drr-chart-card" style="margin-bottom:22px;display:none">
-      <div class="card-title" data-i18n="card.revDiario">Revenue Diario</div>
-      <div class="drr-chart-wrap"><canvas id="drr-revenue-chart" class="hide-lite"></canvas></div>
-      <div id="drr-chart-vacio" style="display:none;padding:18px 4px;font-size:12.5px;color:var(--mut);line-height:1.6"></div>
-    </div>
-
-    <!-- Days grid -->
-    <div class="card" style="margin-bottom:22px">
-      <div class="card-title" data-i18n="card.trialBalance">Trial Balance — Estado Diario</div>
-      <div class="drr-days" id="drr-days"></div>
-    </div>
-
-    <!-- Alerts -->
-    <div class="card">
-      <div class="card-title" data-i18n="card.alertasDrr">Alertas DRR</div>
-      <div class="drr-alerts" id="drr-alerts">
-        <div class="empty"><p>Sin alertas.</p></div>
+    <span class="drr-status" id="drr-status" style="display:none" data-i18n="drr.sinArchivo">Sin archivo cargado</span>
+    <span id="drr-oob-badge" style="display:none"></span>
+    <!-- Cuerpo: lo pinta renderDRR. #drr-metrics vive aqui (ancla del tour) y lo
+         reconstruye renderDRR con los tres grupos. Al arrancar, la zona de subida. -->
+    <div id="drr-body">
+      <div class="drr-metrics" id="drr-metrics" style="display:grid;grid-template-columns:repeat(auto-fit,minmax(140px,1fr));gap:10px">
+        <div class="empty" id="drr-drop-zone"
+      style="border:2px dashed var(--s3);border-radius:12px;padding:32px;cursor:pointer;transition:background-color .2s,border-color .2s,color .2s,box-shadow .2s,transform .2s,opacity .2s"
+      ondragover="event.preventDefault();this.style.borderColor='var(--acc)';this.style.background='rgba(var(--acc-r,59),var(--acc-g,130),var(--acc-b,246),.05)'"
+      ondragleave="this.style.borderColor='var(--s3)';this.style.background=''"
+      ondrop="event.preventDefault();this.style.borderColor='var(--s3)';this.style.background='';uploadDRR({files:event.dataTransfer.files})"
+      onclick="document.getElementById('drr-file-input').click()">
+    <div class="ei">📊</div>
+    <p style="margin-bottom:6px">Arrastra tu DRR aquí o</p>
+    <p style="font-size:12px;color:var(--acc2);font-weight:600" data-i18n="drr.hazClic">haz clic para seleccionar (.xlsm/.xlsx)</p>
+  </div>
       </div>
     </div>
-
   </div><!-- /panel-drr -->
 
   <!-- PANEL BANCO -->
@@ -7050,8 +7054,11 @@ var _drrChart = null;
 
 async function renderDRRChart() {
   try {
-    const r = await fetch('/api/drr_daily_chart');
-    const d = await r.json();
+    // Lee el dato que ya cargó renderDRR; si se llama suelto (tras subir un DRR),
+    // lo pide. El guard mira la LONGITUD de `dias`: un array vacío es truthy en
+    // JS, así que `!d.dias` no abortaba nunca — de ahí el "gráfico vacío".
+    let d = window._drrChartData;
+    if (!d) { const r = await fetch('/api/drr_daily_chart'); d = await r.json(); }
     const card = document.getElementById('drr-chart-card');
     const vacio = document.getElementById('drr-chart-vacio');
     const canvas = document.getElementById('drr-revenue-chart');
@@ -7081,73 +7088,51 @@ async function renderDRRChart() {
     if (canvas) canvas.style.display = '';
     if (!canvas || !window.Chart) return;
     if (_drrChart) { _drrChart.destroy(); _drrChart = null; }
-    const oobColors = d.dias.map((_, i) => d.oob[i] ? 'rgba(239,68,68,0.85)' : 'rgba(59,130,246,0.75)');
+
+    // Grafico de AREA (evolucion por dia). El eje se ajusta al RANGO del revenue
+    // para que se note el sube y baja aunque la diferencia de euros sea poca; el
+    // dia descuadrado va en rojo con ⚠, y cada punto lleva su importe encima.
+    const ctx = canvas.getContext('2d');
+    const gv = v => getComputedStyle(document.body).getPropertyValue(v).trim();
+    const acc = gv('--acc') || '#3b82f6', tx = gv('--tx') || '#f1f5f9', red = gv('--red') || '#ef4444', mut = gv('--mut') || '#94a3b8', s2v = gv('--s2') || '#334155', bg = gv('--bg') || '#0f172a';
+    const _rgba = (c, a) => { c = (c || '').trim(); if (c[0] === '#') { let h = c.slice(1); if (h.length === 3) h = h.split('').map(x => x + x).join(''); const n = parseInt(h, 16); return 'rgba(' + ((n >> 16) & 255) + ',' + ((n >> 8) & 255) + ',' + (n & 255) + ',' + a + ')'; } const m = c.match(/(\d+)[,\s]+(\d+)[,\s]+(\d+)/); return m ? 'rgba(' + m[1] + ',' + m[2] + ',' + m[3] + ',' + a + ')' : c; };
+    const _eur = n => '€' + Math.round(n).toLocaleString('en-US');
+    const rev = d.revenue, minR = Math.min.apply(null, rev), maxR = Math.max.apply(null, rev);
+    const _pad = Math.max((maxR - minR) * 0.5, maxR * 0.01) || 1000;
+    const yMin = Math.max(0, Math.floor((minR - _pad) / 100) * 100), yMax = Math.ceil((maxR + _pad) / 100) * 100;
+    const grad = ctx.createLinearGradient(0, 0, 0, 215);
+    grad.addColorStop(0, _rgba(acc, .16)); grad.addColorStop(1, _rgba(acc, 0));
+    const N = rev.length;
+    const etiquetas = { id: 'drrRevLab', afterDatasetsDraw(c) {
+      const cx = c.ctx, meta = c.getDatasetMeta(0);
+      cx.save(); cx.font = '700 11px Inter,sans-serif';
+      meta.data.forEach((pt, i) => {
+        cx.fillStyle = d.oob[i] ? red : tx;
+        cx.textAlign = i === 0 ? 'left' : (i === N - 1 ? 'right' : 'center');
+        const dx = i === 0 ? -2 : (i === N - 1 ? 2 : 0);
+        cx.fillText(_eur(rev[i]) + (d.oob[i] ? ' ⚠' : ''), pt.x + dx, pt.y - 14);
+      });
+      cx.restore();
+    } };
     _drrChart = new Chart(canvas, {
-      type: 'bar',
-      data: {
-        labels: d.labels || d.dias.map((dia, i) => {
-          const f = d.fechas[i] || '';
-          return f ? f.slice(8) + '/' + f.slice(5,7) : String(dia);
-        }),
-        datasets: [{
-          label: 'Revenue',
-          // UNA sola clave `backgroundColor`. Estaba dos veces y en un objeto
-          // JavaScript gana la ultima, asi que la primera era codigo muerto —
-          // el mismo fallo de forma que el `style` duplicado de la tarjeta.
-          data: d.revenue,
-          backgroundColor: oobColors,
-          borderColor: oobColors,
-          borderWidth: 0,
-          borderRadius: 3,
-        }, {
-          label: 'Trend 7d',
-          data: (() => {
-            const rev = d.revenue, trend = [];
-            for (let i = 0; i < rev.length; i++) {
-              const w = rev.slice(Math.max(0,i-3), i+4);
-              trend.push(w.reduce((a,b)=>a+b,0)/w.length);
-            }
-            return trend;
-          })(),
-          type: 'line',
-          borderColor: 'rgba(34,197,94,0.7)',
-          backgroundColor: 'transparent',
-          borderWidth: 1.5,
-          pointRadius: 0,
-          tension: 0.4,
-        }]
-      },
+      type: 'line',
+      data: { labels: d.labels || d.dias.map(String), datasets: [{
+        label: 'Revenue', data: rev, borderColor: acc, backgroundColor: grad, fill: true, tension: .35, borderWidth: 2.5,
+        pointRadius: d.oob.map(o => o ? 6 : 5), pointHoverRadius: 7,
+        pointBackgroundColor: d.oob.map(o => o ? red : acc), pointBorderColor: bg, pointBorderWidth: 2
+      }] },
       options: {
-        responsive: true,
-        maintainAspectRatio: false,
-        plugins: {
-          legend: { display: false },
-          tooltip: {
-            callbacks: {
-              title: (items) => {
-                const i = items[0].dataIndex;
-                return 'Día ' + d.dias[i] + (d.oob[i] ? ' ⚠ OOB' : '');
-              },
-              label: (item) => item.dataset.label === 'Revenue'
-                ? '€' + item.raw.toLocaleString('es-ES', {maximumFractionDigits:0})
-                : 'Trend: €' + Math.round(item.raw).toLocaleString('es-ES')
-            }
-          }
-        },
+        responsive: true, maintainAspectRatio: false, layout: { padding: { top: 26, left: 6, right: 16 } },
+        plugins: { legend: { display: false }, tooltip: { callbacks: {
+          title: items => 'Día ' + d.dias[items[0].dataIndex] + (d.oob[items[0].dataIndex] ? ' ⚠ OOB' : ''),
+          label: item => 'Revenue: ' + _eur(item.raw)
+        } } },
         scales: {
-          x: {
-            grid: { color: 'rgba(51,65,85,0.4)', drawBorder: false },
-            ticks: { color: '#64748b', font: { size: 9 }, maxTicksLimit: 10 }
-          },
-          y: {
-            grid: { color: 'rgba(51,65,85,0.4)', drawBorder: false },
-            ticks: {
-              color: '#64748b', font: { size: 9 },
-              callback: v => '€' + (v/1000).toFixed(0) + 'K'
-            }
-          }
+          x: { grid: { display: false }, ticks: { color: mut, font: { size: 11 }, padding: 6 } },
+          y: { min: yMin, max: yMax, grid: { color: _rgba(s2v, .45), drawBorder: false }, ticks: { color: mut, font: { size: 10 }, maxTicksLimit: 5, callback: v => '€' + Math.round(v / 1000) + 'K' } }
         }
-      }
+      },
+      plugins: [etiquetas]
     });
   } catch(e) { console.warn('DRR chart error:', e); }
 }
@@ -13376,20 +13361,10 @@ async function uploadDRR(input) {
       const diasStr = data.stats.total_dias || '?';
       const oob     = data.stats.dias_oob   || 0;
       status.textContent = '✓ ' + file.name + ' · ' + diasStr + ' ' + (t('drr.diasLabel', 'días'));
-      const badge = document.getElementById('drr-oob-badge');
-      if (badge) {
-        if (oob > 0) { badge.style.display='block'; badge.textContent='⚠ ' + oob + ' OOB'; }
-        else           badge.style.display='none';
-      }
-      renderDRR(data.stats);
-      // Also reload daily chart
-      const chartResp = await fetch('/api/drr_daily_chart');
-      const chartData = await chartResp.json();
-      if (chartData && window._drrChartInstance) {
-        window._drrChartInstance.data.labels   = chartData.labels;
-        window._drrChartInstance.data.datasets[0].data = chartData.revenue;
-        window._drrChartInstance.update();
-      }
+      // renderDRR reconstruye el panel entero (grupos, budget, gráfico y el
+      // Estado diario, que ya marca los OOB por día), así que no hace falta el
+      // badge suelto ni recargar el gráfico aparte.
+      await renderDRR(data.stats);
       if (dropZone) dropZone.style.display = 'none';
       showNotification('✓ DRR procesado — ' + diasStr + ' días · ' + oob + ' OOB', 'success');
     } else {
@@ -13403,151 +13378,123 @@ async function uploadDRR(input) {
   if (label) label.textContent = origLbl;
 }
 
-function renderDRR(s) {
+async function renderDRR(s) {
+  const body = document.getElementById('drr-body');
+  const statusEl = document.getElementById('drr-status');
+
+  // Sin DRR para este hotel (o error): se vacia el cuerpo ENTERO y se destruye
+  // el grafico. `loadDRR` llama a renderDRR SIEMPRE (ya no la protege con
+  // `if (data)`), asi que con null el panel queda limpio en vez de heredar el
+  // DRR del hotel anterior — Ribera/Faro ensenaban el de Costa Azul. El backend
+  // ya filtra bien (drr_del_hotel devuelve None); el agujero era de repintado.
   if (!s || s.error) {
-    // Sin DRR para este hotel (o error al leerlo): se vacia el panel ENTERO, no
-    // solo las tarjetas. Antes esta rama solo tocaba `drr-metrics` y ademas
-    // `loadDRR` la protegia con `if (data)`, asi que con un hotel sin DRR nunca
-    // se llegaba a llamar: el panel se quedaba con el DRR del hotel anterior
-    // —Ribera y Faro ensenaban el de Costa Azul—. El backend YA filtra bien
-    // (drr_del_hotel devuelve None); el agujero era de repintado, aqui.
-    // El grafico y el resto de contenedores tambien traen datos del otro hotel,
-    // por eso se limpian los siete: tarjetas, calendario, alertas, barra de
-    // estado (que ensena el NOMBRE del fichero), fecha de subida, barra de
-    // budget y el grafico (renderDRRChart, cuyo endpoint tambien da null aqui y
-    // esconde su tarjeta).
-    var _msg = (s && s.error) ? ('Error: ' + s.error) : 'Sin DRR para este hotel.';
-    var _vaciar = function(id, html){ var el = document.getElementById(id); if (el) el.innerHTML = html; };
-    _vaciar('drr-metrics', '<div class="empty"><p>' + _msg + '</p></div>');
-    _vaciar('drr-days', '');
-    _vaciar('drr-alerts', '');
-    var _st = document.getElementById('drr-status'); if (_st) _st.textContent = '';
-    var _up = document.getElementById('drr-last-upload'); if (_up) _up.textContent = '';
-    var _bb = document.getElementById('drr-budget-bar'); if (_bb) _bb.style.display = 'none';
-    renderDRRChart();
+    const _msg = (s && s.error) ? ('Error: ' + s.error) : 'Sin DRR para este hotel.';
+    if (body) body.innerHTML = '<div class="drr-metrics" id="drr-metrics" style="display:grid;grid-template-columns:repeat(auto-fit,minmax(140px,1fr));gap:10px">'
+      + '<div class="empty"><p>' + _msg + '</p></div></div>';
+    if (statusEl) statusEl.textContent = '';
+    window._drrChartData = null;
+    try { if (_drrChart) { _drrChart.destroy(); _drrChart = null; } } catch(e) {}
     return;
   }
+  if (!body) return;
 
-  // KPI cards
-  const SHOW = [
-    {key:'Total Revenue', label:'Total Revenue', color:'var(--acc2)'},
-    {key:'Occupancy %', label:'Occupancy %', color:'var(--grn)'},
-    {key:'ADR', label:'ADR', color:'var(--tx)', tip:'Average Daily Rate — Rooms Revenue ÷ habitaciones ocupadas'},
-    {key:'Revenue PAR', label:'RevPAR', color:'var(--tx)', tip:'Revenue Per Available Room — Rooms Revenue ÷ habitaciones disponibles. También = ADR × ocupación'},
-    // El numerador y el denominador con los que se comprueban el ADR y el
-    // RevPAR. Se leian y NO se enseñaban, asi que la pantalla daba el
-    // resultado y escondia los dos datos que permiten verificarlo a mano.
-    // Enseñar la division entera es la diferencia entre un panel que informa y
-    // uno en el que hay que creer.
-    {key:'Rooms Occupied', label:'Habitaciones ocupadas', color:'var(--tx)', tip:'El denominador del ADR y el numerador de la ocupación'},
-    {key:'Rooms Revenue', label:'Rooms Revenue', color:'var(--acc2)', tip:'El numerador del ADR y del RevPAR'},
-    {key:'GOP', label:'GOP', color:'var(--ora)', tip:'Gross Operating Profit — beneficio bruto antes de deuda e impuestos'},
-    {key:'GOP %', label:'GOP %', color:'var(--pur)', tip:'GOP como porcentaje del Revenue Total. 30-45% es saludable en hoteles 4-5★'},
-  ];
-  // FASE D · el GOP dice de donde sale.
-  //
-  // Antes, un GOP medido y uno estimado con la media del sector llegaban aqui
-  // con la misma pinta: los dos con un " ~" pegado al numero. Ahora la
-  // procedencia viene aparte, y el pie de la tarjeta la escribe con palabras.
-  // La rama del 22% ya no existe: si no hay de donde sacarlo, sale N/D.
+  // Datos del grafico: se piden UNA vez y se comparten. Los usan el importe por
+  // dia del Estado diario (abajo) y `renderDRRChart` (que lee este mismo global
+  // en vez de volver a pedirlo).
+  try { const _r = await fetch('/api/drr_daily_chart'); window._drrChartData = await _r.json(); }
+  catch(e) { window._drrChartData = null; }
+
+  const M = s.metricas || {};
+  const _num = v => parseFloat(String(v == null ? '' : v).replace(/[^0-9.]/g,'')) || 0;
+  const _eur = n => '€' + Math.round(n).toLocaleString('en-US');
+
+  // Una tarjeta KPI: MTD grande (el numero del que se habla) y Hoy/Prev/Ppto en
+  // una linea compacta debajo. Los cuatro periodos siguen; cambia la jerarquia.
+  function tile(name, key, cls, tip) {
+    const m = M[key] || {};
+    return '<div class="drr-mc rd-tile ' + (cls || '') + '">'
+      + '<div class="mc-name"' + (tip ? ' data-tip="' + tip + '"' : '') + '>' + name + '</div>'
+      + '<div class="rd-hero">' + (m.mtd || 'N/D') + '<span class="per">MTD</span></div>'
+      + '<div class="rd-mini"><div>Hoy<b>' + (m.today || 'N/D') + '</b></div>'
+      + '<div>Prev.<b>' + (m.forecast || 'N/D') + '</b></div>'
+      + '<div>Ppto.<b>' + (m.budget || 'N/D') + '</b></div></div></div>';
+  }
+
+  // Budget: MES (MTD) vs Presupuesto. Antes era HOY (un dia) / presupuesto del
+  // MES entero -> ~3% siempre, sin sentido. Mismos numeros, ratio con sentido.
+  const tr = M['Total Revenue'] || {};
+  const _bp = Math.round(_num(tr.mtd) / (_num(tr.budget) || 1) * 100);
+  const bpct = isFinite(_bp) ? _bp : 0;
+  const budCol = bpct >= 95 ? 'var(--grn)' : bpct >= 75 ? 'var(--ora)' : 'var(--red)';
+  const budBar = '<div class="drr-mc rd-bud">'
+    + '<div style="display:flex;justify-content:space-between;font-size:11px;color:var(--mut);margin-bottom:9px"><span>Revenue del mes (MTD) vs Presupuesto</span><span style="color:' + budCol + ';font-weight:800">' + bpct + '%</span></div>'
+    + '<div style="height:8px;border-radius:5px;background:var(--s2);overflow:hidden"><div style="height:100%;width:' + Math.min(100, Math.max(0, bpct)) + '%;background:' + budCol + ';border-radius:5px"></div></div>'
+    + '<div style="font-size:10.5px;color:var(--dim);margin-top:8px">' + (tr.mtd || 'N/D') + ' de ' + (tr.budget || 'N/D') + ' presupuestado</div></div>';
+
+  // Procedencia del GOP, en su propia burbuja (no pegada al %). Refleja lo que
+  // trae `gop_procedencia`: medido / derivado / estimado / sin datos.
   const _proc = s.gop_procedencia || {};
-  const _PIE = {
-    medido:    {txt:'Medido — lo trae el DRR',                       color:'#22c55e'},
-    derivado:  {txt:'Derivado de los datos de este hotel',           color:'#f59e0b'},
-    inventado: {txt:'Estimado sin datos de este hotel — no se usa',  color:'#ef4444'},
-    sin_datos: {txt:'El DRR no trae el GOP. No se estima.',          color:'var(--dim)'},
-  };
-  function _pieGop(clave) {
-    if (clave !== 'GOP' && clave !== 'GOP %') return '';
-    // MTD manda: es el numero del que se habla. Si no hay, el de hoy.
-    const p = _proc.mtd || _proc.today || _proc.forecast || 'sin_datos';
-    const info = _PIE[p]; if (!info) return '';
-    const origen = (p === 'derivado' && _proc.mtd_origen) ? ' (' + _proc.mtd_origen + ')' : '';
-    return '<div class="mc-row" style="border:none;padding-top:6px">'
-         + '<span style="font-size:10px;color:' + info.color + ';line-height:1.3">'
-         + info.txt + origen + '</span></div>';
-  }
+  const _pv = _proc.mtd || _proc.today || _proc.forecast || 'sin_datos';
+  const _provTxt = {medido:'● Medido — lo trae el DRR', derivado:'● Derivado de los datos del hotel', inventado:'● Estimado — sin datos del hotel', sin_datos:'● El DRR no trae el GOP'}[_pv] || '● Medido — lo trae el DRR';
+  const _provCol = {medido:'var(--grn)', derivado:'var(--ora)', inventado:'var(--red)', sin_datos:'var(--dim)'}[_pv] || 'var(--grn)';
 
-  const metricsEl = document.getElementById('drr-metrics');
-  metricsEl.innerHTML = SHOW.map(m => {
-    const d = s.metricas[m.key] || {};
-    return '<div class="drr-mc">'
-      + '<div class="mc-name" ' + (m.tip ? 'data-tip="' + m.tip + '"' : '') + '>' + m.label + '</div>'
-      + '<div class="mc-row"><span class="mc-k">Today</span><span class="mc-v" style="color:' + m.color + '">' + (d.today || 'N/D') + '</span></div>'
-      + '<div class="mc-row"><span class="mc-k">MTD</span><span class="mc-v">' + (d.mtd || 'N/D') + '</span></div>'
-      + '<div class="mc-row"><span class="mc-k">Forecast</span><span class="mc-v">' + (d.forecast || 'N/D') + '</span></div>'
-      + '<div class="mc-row"><span class="mc-k">Budget</span><span class="mc-v" style="color:var(--dim)">'
-      + (d.budget || 'N/D') + '</span></div>'
-      + _pieGop(m.key)
-      + '</div>';
+  // Tres grupos con jerarquia. #drr-metrics (ancla del tour) va en el primero.
+  const groups = ''
+    + '<div class="rd-group"><div class="rd-glabel">Ocupación y tarifa</div>'
+    +   '<div class="rd-grid rate" id="drr-metrics">'
+    +     tile('RevPAR', 'Revenue PAR', 'hero', 'Revenue Per Available Room — Rooms Revenue ÷ habitaciones disponibles. También = ADR × ocupación')
+    +     tile('Ocupación', 'Occupancy %', '')
+    +     tile('ADR', 'ADR', '', 'Average Daily Rate — Rooms Revenue ÷ habitaciones ocupadas')
+    +     tile('Hab. ocupadas', 'Rooms Occupied', '', 'El denominador del ADR y el numerador de la ocupación')
+    +   '</div></div>'
+    + '<div class="rd-group"><div class="rd-glabel">Ingresos</div>'
+    +   '<div class="rd-grid rev">'
+    +     tile('Total Revenue', 'Total Revenue', 'hero')
+    +     tile('Rooms Revenue', 'Rooms Revenue', '', 'El numerador del ADR y del RevPAR')
+    +     budBar
+    +   '</div></div>'
+    + '<div class="rd-group"><div class="rd-glabel">Beneficio</div>'
+    +   '<div class="rd-grid gop">'
+    +     tile('GOP %', 'GOP %', 'hero grn')
+    +     tile('GOP', 'GOP', '', 'Gross Operating Profit — beneficio bruto antes de deuda e impuestos')
+    +     '<div class="drr-mc" style="display:flex;align-items:center"><div class="rd-prov" style="color:' + _provCol + '">' + _provTxt + '</div></div>'
+    +   '</div></div>';
+
+  const chartCard = '<div class="card" id="drr-chart-card" style="margin-bottom:20px">'
+    + '<div class="card-title">Revenue Diario</div>'
+    + '<div style="height:215px;position:relative"><canvas id="drr-revenue-chart"></canvas></div>'
+    + '<div id="drr-chart-vacio" style="display:none;padding:14px 4px;font-size:12.5px;color:var(--mut);line-height:1.6"></div>'
+    + '<div style="font-size:11px;color:var(--mut);margin-top:12px;display:flex;gap:18px;flex-wrap:wrap">'
+    +   '<span style="display:inline-flex;align-items:center;gap:6px"><i style="width:14px;height:3px;border-radius:2px;background:var(--acc)"></i>Revenue por día</span>'
+    +   '<span style="color:var(--red)">⚠ = día descuadrado</span></div></div>';
+
+  // Estado diario: una tarjeta por dia CON DATOS, con el revenue del dia y, en
+  // los descuadrados, el importe del descuadre. El importe sale del revenue
+  // (limpio), NO del campo `diff`, que arrastra el "descuadre falso" en los dias
+  // que cuadran; `diff` solo se usa para el descuadre real de los OOB.
+  const _cd = window._drrChartData || {};
+  const _rev = _cd.revenue || [], _cdias = _cd.dias || [];
+  const revByDay = {};
+  _cdias.forEach((dn, i) => { revByDay[dn] = _rev[i]; });
+  const dcards = (s.dias || []).map(d => {
+    const rev = revByDay[d.dia];
+    const f = String(d.fecha || '').slice(5);
+    return '<div class="rd-daycard ' + (d.oob ? 'oob' : 'ok') + '">'
+      + '<div class="rd-dc-top">Día ' + d.dia + (f ? ' · ' + f : '') + '</div>'
+      + '<div class="rd-dc-amt">' + (rev != null ? _eur(rev) : '—') + '</div>'
+      + '<div class="rd-dc-sub">revenue del día</div>'
+      + '<div class="rd-dc-st ' + (d.oob ? 'oob' : 'ok') + '">' + (d.oob ? ('⚠ Descuadre ' + _eur(Math.abs(d.diff || 0))) : '✓ Cuadra') + '</div></div>';
   }).join('');
+  const trialCard = '<div class="card"><div class="card-title">Estado diario · Trial Balance</div>'
+    + '<div class="rd-daywrap">' + (dcards || '<div class="empty"><p>Sin días con datos.</p></div>') + '</div></div>';
 
-  // Days grid
-  const daysEl = document.getElementById('drr-days');
-  const diasMap = {};
-  (s.dias || []).forEach(d => { diasMap[d.dia] = d; });
-  let daysHtml = '';
-  for (let i = 1; i <= 31; i++) {
-    const d = diasMap[i];
-    if (d) {
-      const cls = d.oob ? 'oob' : 'ok';
-      const label = d.oob ? '⚠ OOB' : '✓ OK';
-      daysHtml += '<div class="drr-day ' + cls + '"><div class="day-n">' + i + '</div>' + label + '</div>';
-    } else {
-      daysHtml += '<div class="drr-day empty"><div class="day-n">' + i + '</div>—</div>';
-    }
-  }
-  daysEl.innerHTML = daysHtml;
+  body.innerHTML = groups + chartCard + trialCard;
 
-  // Alerts
-  const alertsEl = document.getElementById('drr-alerts');
-  if (s.alertas && s.alertas.length) {
-    alertsEl.innerHTML = s.alertas.map(a =>
-      '<div class="da-item"><div class="da-dot"></div><div class="da-txt">' + a + '</div></div>'
-    ).join('');
-  } else {
-    alertsEl.innerHTML = '<div class="empty"><p>Sin alertas — todo en balance.</p></div>';
-  }
+  // Estado oculto: lo leen la subida de DRR y el paso de onboarding ("...días").
+  if (statusEl) statusEl.textContent = (s.archivo || '') + ' · ' + s.total_dias + ' días · ' + s.dias_oob + ' OOB';
 
-  // Update status bar
-  document.getElementById('drr-status').textContent =
-    s.archivo + ' · ' + s.total_dias + ' días · ' + s.dias_oob + ' OOB';
-  // Render revenue chart
+  // El grafico lee window._drrChartData (ya cargado arriba).
   renderDRRChart();
-
-  // Show last upload date
-  if (s.last_upload) {
-    var tag = document.getElementById('oracle-mode-badge');
-    var daysMsg = s.days_ago === 0 ? 'hoy' : s.days_ago === 1 ? 'ayer' : 'hace ' + s.days_ago + 'd';
-    var uploadEl = document.getElementById('drr-last-upload');
-    if (uploadEl) uploadEl.textContent = '📅 Último DRR: ' + s.last_upload + ' (' + daysMsg + ')';
-    if (tag && s.days_ago > 3) {
-      tag.textContent = '⚠ DRR desactualizado'; tag.style.display='inline';
-      tag.style.background='rgba(239,68,68,.15)'; tag.style.color='var(--red)';
-    }
-  }
-
-  // Budget vs Real bar
-  const budgetBarEl = document.getElementById('drr-budget-bar');
-  if (budgetBarEl && s.metricas) {
-    const rev = s.metricas['Total Revenue'] || {};
-    if (rev.today && rev.budget && rev.today !== 'N/D' && rev.budget !== 'N/D') {
-      const todayNum = parseFloat(String(rev.today).replace(/[^0-9.]/g,'')) || 0;
-      const budgetNum = parseFloat(String(rev.budget).replace(/[^0-9.]/g,'')) || 0;
-      if (budgetNum > 0) {
-        const pct = Math.round(todayNum / budgetNum * 100);
-        const color = pct >= 100 ? 'var(--grn)' : pct >= 85 ? 'var(--ora)' : 'var(--red)';
-        budgetBarEl.innerHTML = '<div style="display:flex;align-items:center;gap:12px;font-size:12px">' +
-          '<span style="color:var(--mut);white-space:nowrap">Revenue hoy vs Budget:</span>' +
-          '<div style="flex:1;background:var(--s2);border-radius:4px;height:8px;overflow:hidden">' +
-            '<div style="height:100%;border-radius:4px;background:' + color + ';width:' + Math.min(100, pct) + '%;transition:width .6s ease"></div>' +
-          '</div>' +
-          '<span style="color:' + color + ';font-weight:700;min-width:36px">' + pct + '%</span>' +
-          '</div>';
-        budgetBarEl.style.display = 'block';
-      }
-    }
-  }
 }
 
 async function runConciliacion() {
@@ -13640,7 +13587,7 @@ async function loadDRR() {
     // Siempre, tambien con `data` null: renderDRR vacia el panel cuando no hay
     // DRR. Con el viejo `if (data)` el vacio no se repintaba y quedaba a la
     // vista el DRR del hotel anterior. Esa era la fuga de Ribera/Faro.
-    renderDRR(data);
+    await renderDRR(data);
   } catch(e) {}
 }
 

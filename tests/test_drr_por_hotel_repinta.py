@@ -176,8 +176,9 @@ def _cuerpo_loadDRR(js):
 
 
 def _rama_vacio_renderDRR(js):
-    m = re.search(r"function renderDRR\(s\)\s*\{\s*if \(!s \|\| s\.error\)\s*\{(.*?)\n\s*return;",
-                  js, re.S)
+    fn = re.search(r"async function renderDRR\(s\)\s*\{(.*?)\n\}", js, re.S)
+    assert fn, "no encuentro `renderDRR`"
+    m = re.search(r"if \(!s \|\| s\.error\)\s*\{(.*?)\n\s*return;", fn.group(1), re.S)
     assert m, "no encuentro la rama de «sin datos» de `renderDRR`"
     return m.group(1)
 
@@ -202,17 +203,17 @@ def test_loadDRR_repinta_tambien_el_vacio(ruta=None):
 # ── 4 · el vacio limpia el panel entero ────────────────────────────────────
 
 def test_el_vacio_limpia_todo_el_panel(ruta=None):
-    js = _js(ruta)
-    rama = _rama_vacio_renderDRR(js)
-    faltan = [x for x in ("drr-days", "drr-alerts", "drr-status", "renderDRRChart")
+    # Tras el rediseño la rama de «sin datos» reconstruye el cuerpo entero
+    # (#drr-body) y destruye el gráfico. El invariante es el mismo: con null no
+    # puede quedar NADA del hotel anterior en pantalla.
+    rama = _rama_vacio_renderDRR(_js(ruta))
+    faltan = [x for x in ("body.innerHTML", "_drrChart", "destroy")
               if x not in rama]
     assert not faltan, (
-        f"la rama de «sin datos» de renderDRR no vacia {faltan}. El panel DRR "
-        "pinta siete sitios (tarjetas, calendario, alertas, barra de estado con "
-        "el NOMBRE del fichero, fecha, budget y grafico). Si el vacio solo toca "
-        "las tarjetas, el hotel sin DRR ensena el calendario y el grafico del "
-        "otro hotel: media pantalla equivocada.")
-    print("  ✔ el vacio limpia calendario, alertas, barra de estado y grafico (no solo las tarjetas)")
+        f"la rama de «sin datos» de renderDRR no limpia el panel: falta {faltan}. "
+        "Tiene que reconstruir #drr-body (body.innerHTML) y destruir el gráfico "
+        "(_drrChart.destroy()); si no, el hotel sin DRR hereda el del anterior.")
+    print("  ✔ el vacío reconstruye el cuerpo y destruye el gráfico (no hereda el hotel anterior)")
 
 
 PRUEBAS = [test_el_hotel_sin_drr_responde_vacio,
@@ -238,21 +239,14 @@ def _copia(cambios, que):
 SABOTAJES = [
     ("vuelve el `if (data)` de loadDRR",
      test_loadDRR_repinta_tambien_el_vacio,
-     [("    // Siempre, tambien con `data` null: renderDRR vacia el panel cuando no hay\n"
-       "    // DRR. Con el viejo `if (data)` el vacio no se repintaba y quedaba a la\n"
+     [("    // vista el DRR del hotel anterior. Esa era la fuga de Ribera/Faro.\n"
+       "    await renderDRR(data);",
        "    // vista el DRR del hotel anterior. Esa era la fuga de Ribera/Faro.\n"
-       "    renderDRR(data);",
        "    if (data) renderDRR(data);")]),
-    ("el vacio vuelve a tocar solo las tarjetas",
+    ("el vacio deja de destruir el grafico",
      test_el_vacio_limpia_todo_el_panel,
-     [("    _vaciar('drr-metrics', '<div class=\"empty\"><p>' + _msg + '</p></div>');\n"
-       "    _vaciar('drr-days', '');\n"
-       "    _vaciar('drr-alerts', '');\n"
-       "    var _st = document.getElementById('drr-status'); if (_st) _st.textContent = '';\n"
-       "    var _up = document.getElementById('drr-last-upload'); if (_up) _up.textContent = '';\n"
-       "    var _bb = document.getElementById('drr-budget-bar'); if (_bb) _bb.style.display = 'none';\n"
-       "    renderDRRChart();",
-       "    _vaciar('drr-metrics', '<div class=\"empty\"><p>' + _msg + '</p></div>');")]),
+     [("    try { if (_drrChart) { _drrChart.destroy(); _drrChart = null; } } catch(e) {}",
+       "")]),
 ]
 
 

@@ -256,14 +256,19 @@ def test_la_pantalla_no_pinta_un_grafico_vacio(ruta=None):
 
 
 def test_las_tarjetas_dejan_comprobar_el_adr_a_mano(ruta=None):
+    # Tras el rediseño ya no hay lista `SHOW`: las tarjetas se construyen con
+    # `tile(...)` por grupo. El invariante es el mismo — el panel tiene que
+    # seguir enseñando el numerador (Rooms Revenue) y el denominador (Rooms
+    # Occupied) con los que se comprueba a mano el ADR/RevPAR.
     js = _js(ruta)
-    show = re.search(r"const SHOW = \[(.*?)\];", js, re.S)
-    assert show, "no encuentro la lista SHOW de tarjetas del DRR"
-    faltan = [k for k in ("Rooms Occupied", "Rooms Revenue") if k not in show.group(1)]
+    fn = re.search(r"async function renderDRR\(s\)\s*\{(.*?)\n\}", js, re.S)
+    assert fn, "no encuentro `renderDRR`"
+    cuerpo = fn.group(1)
+    faltan = [k for k in ("Rooms Occupied", "Rooms Revenue") if k not in cuerpo]
     assert not faltan, (
-        f"las tarjetas del DRR no enseñan {faltan}. Se LEEN y no se enseñaban, "
-        "asi que la pantalla daba el ADR y el RevPAR y escondia el numerador y "
-        "el denominador: no habia forma de comprobar la division a mano.")
+        f"renderDRR no enseña {faltan}. El ADR y el RevPAR se comprueban a mano "
+        "con Rooms Occupied (denominador) y Rooms Revenue (numerador): tienen que "
+        "salir en el panel.")
     print("  ✔ el panel enseña Rooms Occupied y Rooms Revenue")
 
 
@@ -325,11 +330,12 @@ SABOTAJES = [
        '        income = df[df["Sección"] == "INCOME"].copy()')]),
     ("vuelve el `style` duplicado en la tarjeta",
      test_la_pantalla_no_pinta_un_grafico_vacio,
-     [('<div class="card" id="drr-chart-card" style="margin-bottom:22px;display:none">',
-       '<div class="card" style="margin-bottom:22px" id="drr-chart-card" style="display:none">')]),
+     [('<div class="card" id="drr-chart-card" style="margin-bottom:20px">',
+       '<div class="card" style="x" id="drr-chart-card" style="margin-bottom:20px">')]),
     ("las tarjetas pierden Rooms Occupied",
      test_las_tarjetas_dejan_comprobar_el_adr_a_mano,
-     [("    {key:'Rooms Occupied', label:'Habitaciones ocupadas', color:'var(--tx)', tip:'El denominador del ADR y el numerador de la ocupación'},\n", "")]),
+     [("tile('Hab. ocupadas', 'Rooms Occupied', '', 'El denominador del ADR y el numerador de la ocupación')",
+       "tile('Hab. ocupadas', 'Occupancy %', '', '')")]),
 ]
 
 
