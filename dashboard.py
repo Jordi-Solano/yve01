@@ -227,6 +227,34 @@ try:
 except Exception as _e:
     print(f"[censo] siembra desde entorno omitida: {_e}")
 
+# Igual que el censo: la config del banco (grupo vs por hotel) se siembra desde
+# YVE_BANCO_MODO para sobrevivir a los despliegues (disco efimero de Render).
+try:
+    import config_banco as _cfgbanco_arranque
+    _cfgbanco_arranque.sembrar_desde_entorno()
+except Exception as _e:
+    print(f"[config_banco] siembra desde entorno omitida: {_e}")
+
+
+def _estampar_hotel_banco(df):
+    """Marca las filas NUEVAS del extracto con el hotel activo — SOLO en modo
+    'por_hotel'. En 'grupo' (o sin elegir aún) no toca nada: el banco va junto,
+    como siempre. Es el mismo patron que AP/AR (`df['hotel_id'] = para_guardar()`),
+    pero gobernado por la eleccion del usuario (config_banco). El clasificador no
+    se toca: esto ocurre DESPUES de clasificar, al guardar. Si no hay hotel para
+    asignar, se deja sin marcar y queda 'sin asignar' (visible, no escondido)."""
+    try:
+        import config_banco as _cfgb
+        if not _cfgb.por_hotel():
+            return df
+        import censo_hoteles as _c
+        hid = _c.para_guardar()
+        if hid:
+            df['hotel_id'] = hid
+    except Exception as _e:
+        print(f"[config_banco] no se pudo estampar el hotel en el extracto: {_e}")
+    return df
+
 _pipeline_running = False
 _pipeline_lock    = threading.Lock()
 
@@ -1636,6 +1664,7 @@ def _enrutar_tipo_doc(reg, fname, fpath=None):
         try:
             _movs = reg['movimientos']
             _df_movs = _normalize_cols(pd.DataFrame(_movs), _BANK_COL_MAP)
+            _estampar_hotel_banco(_df_movs)   # modo por_hotel: marca las filas nuevas
             banco_path = os.path.join(_ddir(), 'extracto_banco.xlsx')
             if os.path.exists(banco_path):
                 _df_exist = pd.read_excel(banco_path)
@@ -2133,6 +2162,7 @@ def api_procesar_batch_stream():
                                 _mark(fname, 'BANK_OK')
                                 continue
                             
+                            _estampar_hotel_banco(_df_bank)   # modo por_hotel: marca las filas nuevas
                             # Integrar con extracto existente
                             banco_path = os.path.join(_ddir(), 'extracto_banco.xlsx')
                             if os.path.exists(banco_path):
@@ -2792,6 +2822,7 @@ def api_scan_documento():
             movimientos = datos.get('movimientos', [])
             if movimientos:
                 _df_movs = _normalize_cols(pd.DataFrame(movimientos), _BANK_COL_MAP)
+                _estampar_hotel_banco(_df_movs)   # modo por_hotel: marca las filas nuevas
                 banco_path = os.path.join(_ddir(), 'extracto_banco.xlsx')
                 if os.path.exists(banco_path):
                     _df_old = pd.read_excel(banco_path)
@@ -4411,6 +4442,27 @@ def stats_banco(df):
             "alertas": alertas[:10]}
 
 
+@app.route("/api/config_banco", methods=["GET", "POST"])
+@login_required
+def api_config_banco():
+    """Cómo funciona el banco de la empresa: 'grupo' o 'por_hotel'.
+
+    Se elige UNA vez (modal la primera vez que se abre Banco) y gobierna cómo se
+    muestra/filtra. Vive en el servidor (`config_banco.json` del tenant), no en el
+    navegador: así funciona igual desde el móvil y el PC. Sobrevive a los deploys
+    si se siembra `YVE_BANCO_MODO` en Render (como `YVE_HOTELES_SEED`).
+    """
+    import config_banco as _cfg
+    if request.method == "POST":
+        data = request.get_json(force=True) or {}
+        m = _cfg.elegir(data.get("modo"))
+        if not m:
+            return jsonify({"ok": False, "error": "modo inválido (grupo|por_hotel)"}), 400
+        _audit("BANCO_CONFIG", f"modo={m}")
+        return jsonify({"ok": True, "modo": m})
+    return jsonify({"ok": True, "modo": _cfg.modo(), "elegido": _cfg.elegido()})
+
+
 @app.route("/api/stats_banco")
 def api_stats_banco():
     """Resumen de conciliacion bancaria para el dashboard.
@@ -4420,15 +4472,46 @@ def api_stats_banco():
     se recupera del ultimo informe (incluidas las asignaciones manuales) y lo
     que no este en el informe cuenta como pendiente. Quien junta los dos
     ficheros es almacen_datos.movimientos_banco(), no este endpoint.
+
+    Segun la config del banco (config_banco):
+      - 'grupo' (o sin elegir): se muestra junto, como siempre.
+      - 'por_hotel': con un hotel activo, se filtra por `hotel_id`. Lo que no
+        lleva hotel (extractos viejos, o subidos sin hotel) NO se esconde: se
+        cuenta aparte como `sin_asignar`.
     """
     try:
         import almacen_datos as _alm
+        import config_banco as _cfg
+        import censo_hoteles as _censo
+        _modo = _cfg.modo()
         df, info = _alm.movimientos_banco(reportes_dir=_rdir())
 
         if df is None or df.empty:
             return jsonify(None)
 
+        sin_asignar = 0
+        hotel = ""
+        if _modo == "por_hotel":
+            hotel = _censo.activo()
+            if hotel:
+                if "hotel_id" in df.columns:
+                    # Al leer el Excel, las celdas vacías vuelven como NaN (float),
+                    # no como '' — por eso fillna('') ANTES de comparar: si no, un
+                    # movimiento sin hotel se contaría como 0 "sin asignar" y se
+                    # perdería justo la visibilidad honesta que prometemos.
+                    _h = df["hotel_id"].fillna("").astype(str).str.strip()
+                    _sin = _h.isin(["", "nan", "None", "NaN"])
+                    sin_asignar = int(_sin.sum())
+                    df = df[_h == hotel]
+                else:
+                    # extracto sin columna de hotel: nada asignado a este hotel
+                    sin_asignar = len(df)
+                    df = df.iloc[0:0]
+
         return jsonify(dict(stats_banco(df),
+                            modo=_modo or "grupo",
+                            hotel=hotel,
+                            sin_asignar=sin_asignar,
                             sin_conciliar=info.get("informe") is None,
                             archivo=info.get("informe"),
                             extracto=info.get("extracto")))
@@ -5993,6 +6076,13 @@ svg.yvi{width:1em;height:1em;vertical-align:-0.125em;flex-shrink:0;display:inlin
 
   <!-- PANEL BANCO -->
   <div id="panel-banco" class="panel">
+    <!-- Modo del banco (grupo / por hotel), elegido por el usuario. La etiqueta
+         y el enlace de "cambiar" los rellena loadBanco cuando ya hay elección. -->
+    <div style="display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:10px;margin-bottom:14px">
+      <span id="banco-modo-chip" style="display:none;font-size:11.5px;font-weight:600;padding:5px 12px;border-radius:999px;background:var(--s1);border:1px solid var(--s2);color:var(--mut)"></span>
+      <a id="banco-modo-cambiar" href="javascript:void(0)" onclick="abrirModoBanco()" style="display:none;font-size:11.5px;color:var(--acc2);text-decoration:none">⚙ Cambiar cómo funciona el banco</a>
+    </div>
+    <div id="banco-progress-bar" style="display:none;margin-bottom:14px"></div>
     <div class="stats lite-visible" id="banco-stats">
       <div class="sc hl c-blu"><div class="sc-lbl" data-i18n="sc.movimientos">Movimientos</div><div class="sc-val" id="bk-total" data-tip="Movimientos totales en el extracto">—</div><div class="sc-sub" data-i18n="sc.delExtracto">del extracto</div></div>
       <div class="sc c-grn"><div class="sc-lbl" data-i18n="sc.conciliados">Conciliados</div><div class="sc-val" id="bk-conc" data-tip="Cruzados con factura en el sistema">—</div><div class="sc-sub" data-i18n="sc.conFactura">con factura</div></div>
@@ -6008,6 +6098,27 @@ svg.yvi{width:1em;height:1em;vertical-align:-0.125em;flex-shrink:0;display:inlin
         <a href="/api/exportar/asientos" class="btn-ref" style="text-decoration:none;font-size:12px;background:rgba(var(--acc-r,59),var(--acc-g,130),var(--acc-b,246),.15);border-color:rgba(var(--acc-r,59),var(--acc-g,130),var(--acc-b,246),.4);color:var(--acc2)" title="Exportar Libro Diario para A3, Sage, Holded...">📒 Libro Diario</a>
       <button class="btn-run" onclick="runConciliacion()" style="font-size:12px">⚡ Conciliar</button>
       <a href="/conciliacion/" class="btn-ref" style="text-decoration:none;font-size:12px" data-i18n="btn.verConciliacion">🏦 Ver conciliación</a>
+    </div>
+
+    <!-- Modal de primera vez: ¿cómo funciona el banco de esta empresa? Resuelve
+         el nº10 convirtiéndolo en una elección (grupo vs por hotel), no un bug.
+         La elección se guarda en el servidor (config_banco.json) y gobierna todo. -->
+    <div id="modal-banco-config" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,.72);z-index:9000;align-items:center;justify-content:center;padding:20px">
+      <div class="card" style="max-width:600px;width:100%">
+        <div style="font-size:18px;font-weight:800;margin-bottom:6px">🏦 ¿Cómo funciona el banco de tu empresa?</div>
+        <div style="font-size:13px;color:var(--mut);margin-bottom:20px;line-height:1.6">Un extracto bancario no dice a qué hotel es cada movimiento, así que lo eliges tú una vez. Se guarda en tu empresa (funciona igual desde el móvil y el PC) y puedes cambiarlo luego.</div>
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px">
+          <button type="button" onclick="elegirModoBanco('grupo')" style="text-align:left;background:var(--s1);border:1px solid var(--s2);border-radius:12px;padding:16px;cursor:pointer;color:var(--tx);transition:border-color .15s,background-color .15s" onmouseover="this.style.borderColor='var(--acc)'" onmouseout="this.style.borderColor='var(--s2)'">
+            <div style="font-size:15px;font-weight:700;margin-bottom:6px">🏛️ Una cuenta del grupo</div>
+            <div style="font-size:12px;color:var(--mut);line-height:1.5">Una sola cuenta para toda la empresa. El banco se muestra junto, igual en todos los hoteles.</div>
+          </button>
+          <button type="button" onclick="elegirModoBanco('por_hotel')" style="text-align:left;background:var(--s1);border:1px solid var(--s2);border-radius:12px;padding:16px;cursor:pointer;color:var(--tx);transition:border-color .15s,background-color .15s" onmouseover="this.style.borderColor='var(--acc)'" onmouseout="this.style.borderColor='var(--s2)'">
+            <div style="font-size:15px;font-weight:700;margin-bottom:6px">🏨 Cada hotel su cuenta</div>
+            <div style="font-size:12px;color:var(--mut);line-height:1.5">Cada hotel tiene su cuenta. El banco se separa por hotel; subes cada extracto dentro de su hotel.</div>
+          </button>
+        </div>
+        <div style="text-align:right;margin-top:16px"><a href="javascript:void(0)" onclick="cerrarModoBanco()" id="banco-modal-cancelar" style="display:none;font-size:12px;color:var(--mut);text-decoration:none">Cancelar</a></div>
+      </div>
     </div>
   </div><!-- /panel-banco -->
 
@@ -12447,6 +12558,10 @@ function switchTab(tab, el) {
   }
   // Lo que ya estuviera pintado se traduce YA, sin esperar al observer.
   if (panel) _pintarYa(panel);
+  // La PRIMERA vez que se abre Banco (sin config elegida) sale el modal de
+  // "¿cómo funciona tu banco?". Va aqui, no en el cargador, para que salga al
+  // ABRIR la pestaña (no en la precarga de fondo) aunque el panel este cacheado.
+  if (tab === 'banco' && typeof _checkBancoConfig === 'function') _checkBancoConfig();
   _cargarPanel(tab, panel, false);
 }
 
@@ -14372,37 +14487,89 @@ function renderMHFinancieroClasico(data) {
 
 function loadNotificaciones() { if (typeof cargarNotificaciones === 'function') cargarNotificaciones(); else if (typeof loadNotif === 'function') loadNotif(); }
 
+// ── Banco: cómo funciona (grupo vs por hotel), elegido por el usuario ──────
+async function _cargarConfigBanco() {
+  try {
+    const d = await fetch('/api/config_banco').then(r => r.json());
+    window._bancoModo = (d && d.elegido) ? d.modo : '';
+  } catch(e) { window._bancoModo = ''; }
+  return window._bancoModo;
+}
+function abrirModoBanco() {
+  var c = document.getElementById('banco-modal-cancelar'); if (c) c.style.display = 'inline';
+  var m = document.getElementById('modal-banco-config'); if (m) m.style.display = 'flex';
+}
+function cerrarModoBanco() {
+  var m = document.getElementById('modal-banco-config'); if (m) m.style.display = 'none';
+}
+// La PRIMERA vez (sin elección) el modal es obligatorio: sin botón de cancelar.
+async function _checkBancoConfig() {
+  var modo = window._bancoModo;
+  if (modo === undefined) modo = await _cargarConfigBanco();
+  if (!modo) {
+    var c = document.getElementById('banco-modal-cancelar'); if (c) c.style.display = 'none';
+    var m = document.getElementById('modal-banco-config'); if (m) m.style.display = 'flex';
+  }
+}
+async function elegirModoBanco(modo) {
+  try {
+    const r = await _postJson('/api/config_banco', { modo: modo });
+    const d = await r.json();
+    if (!d || !d.ok) { showNotification('✗ ' + ((d && d.error) || 'no se pudo guardar'), 'error'); return; }
+    window._bancoModo = d.modo;
+    cerrarModoBanco();
+    showNotification(d.modo === 'grupo' ? '🏛️ Banco del grupo' : '🏨 Banco por hotel', 'info');
+    loadBanco();
+  } catch(e) { showNotification('✗ ' + e.message, 'error'); }
+}
+
 async function loadBanco() {
+  // Etiqueta de modo (si ya está elegido). El modal de primera vez lo dispara
+  // switchTab al ABRIR la pestaña, no este cargador de datos.
+  var modo = window._bancoModo;
+  if (modo === undefined) modo = await _cargarConfigBanco();
+  var chip = document.getElementById('banco-modo-chip');
+  var camb = document.getElementById('banco-modo-cambiar');
+  if (modo) {
+    if (chip) { chip.style.display = 'inline-block'; chip.textContent = modo === 'grupo' ? '🏛️ Banco del grupo' : '🏨 Banco por hotel'; }
+    if (camb) camb.style.display = 'inline';
+  } else {
+    if (chip) chip.style.display = 'none';
+    if (camb) camb.style.display = 'none';
+  }
   try {
     var r = await fetch('/api/stats_banco');
     var d = await r.json();
-    if (!d) return;
-    document.getElementById('bk-total').textContent = d.total || '—';
+    if (!d) {
+      ['bk-total','bk-conc','bk-pend','bk-diff'].forEach(function(id){ var e=document.getElementById(id); if(e) e.textContent='0'; });
+      var ip = document.getElementById('bk-imp-pend'); if (ip) ip.textContent = '—';
+      var ba0 = document.getElementById('bk-alertas'); if (ba0) ba0.innerHTML = '<div class="empty"><p>Sin movimientos bancarios.</p></div>';
+      var pb0 = document.getElementById('banco-progress-bar'); if (pb0) pb0.style.display = 'none';
+      return;
+    }
+    document.getElementById('bk-total').textContent = d.total || '0';
     document.getElementById('bk-conc').textContent = d.conciliados || '0';
-    // Conciliation progress bar
     var _bT = d.total||0, _bC = d.conciliados||0, _pEl = document.getElementById('banco-progress-bar');
     if (_pEl && _bT > 0) { var _pct = Math.round(_bC/_bT*100), _col = _pct>=80?'var(--grn)':_pct>=50?'var(--ora)':'var(--red)'; _pEl.style.display='block'; _pEl.innerHTML = '<div style="display:flex;align-items:center;gap:12px;font-size:12px"><span style="color:var(--mut);white-space:nowrap">Conciliado:</span><div style="flex:1;background:var(--s2);border-radius:4px;height:8px;overflow:hidden"><div style="height:100%;border-radius:4px;background:'+_col+';width:'+_pct+'%;transition:width .6s ease"></div></div><span style="color:'+_col+';font-weight:700;min-width:60px">'+_bC+'/'+_bT+' ('+_pct+'%)</span></div>'; }
+    else if (_pEl) { _pEl.style.display='none'; }
     document.getElementById('bk-pend').textContent = d.pendientes || '0';
     document.getElementById('bk-diff').textContent = d.diferencias || '0';
     document.getElementById('bk-imp-pend').textContent = d.importe_pendiente ? eur(d.importe_pendiente) + ' pend.' : '—';
 
     var el = document.getElementById('bk-alertas');
-    if (d.alertas && d.alertas.length) {
-      el.innerHTML = d.alertas.map(function(a) {
-        return '<div class="act-item"><div class="adot r"></div><div class="atxt"><b>' + a.dias + ' ' + t('bk.dias', 'días') + '</b> ' + t('bk.sinConciliar', 'sin conciliar:') + ' ' + a.concepto + ' — ' + eur(a.importe) + '</div></div>';
-      }).join('');
-    } else {
-      el.innerHTML = '<div class="empty"><p>Sin alertas bancarias pendientes.</p></div>';
+    var _html = (d.alertas && d.alertas.length)
+      ? d.alertas.map(function(a) { return '<div class="act-item"><div class="adot r"></div><div class="atxt"><b>' + a.dias + ' ' + t('bk.dias', 'días') + '</b> ' + t('bk.sinConciliar', 'sin conciliar:') + ' ' + a.concepto + ' — ' + eur(a.importe) + '</div></div>'; }).join('')
+      : '<div class="empty"><p>Sin alertas bancarias pendientes.</p></div>';
+    // Modo por hotel: lo que no está asignado a ningún hotel NO se esconde, se avisa.
+    if (modo === 'por_hotel' && d.sin_asignar) {
+      _html = '<div class="act-item"><div class="adot" style="background:var(--ora)"></div><div class="atxt"><b>' + d.sin_asignar + '</b> movimiento(s) sin asignar a un hotel — súbelos dentro del hotel que corresponda</div></div>' + _html;
     }
+    el.innerHTML = _html;
   } catch(e) {
     console.warn('Error banco:', e);
-    var el = document.getElementById('bk-alertas');
-    if (el && el.innerHTML.includes('—')) {
-      el.innerHTML = '<div class="empty"><p>Sin alertas bancarias.</p></div>';
-    }
-    ['bk-total','bk-conc','bk-pend','bk-diff'].forEach(function(id){
-      var el2 = document.getElementById(id); if (el2 && el2.textContent === '—') el2.textContent = '0';
-    });
+    var el2 = document.getElementById('bk-alertas');
+    if (el2 && el2.innerHTML.includes('—')) el2.innerHTML = '<div class="empty"><p>Sin alertas bancarias.</p></div>';
+    ['bk-total','bk-conc','bk-pend','bk-diff'].forEach(function(id){ var e=document.getElementById(id); if (e && e.textContent === '—') e.textContent = '0'; });
   }
 }
 
