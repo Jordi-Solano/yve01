@@ -219,6 +219,8 @@ __marimo__/
 
 # PWA push (no secretos en git)
 datos-referencia/push_subscriptions.json
+# lo escriben las pruebas y el propio servidor; no es codigo
+datos-referencia/audit_log.json
 vapid_keys.json
 *.vapid
 

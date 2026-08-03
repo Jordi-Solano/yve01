@@ -83,10 +83,12 @@ var P={
  plane:'<path d="M17.8 19.2 16 11l3.5-3.5a2.12 2.12 0 0 0-3-3L13 8 4.8 6.2a1 1 0 0 0-.9 1.7l5.6 3.4-2.3 2.3-2.6-.5a1 1 0 0 0-.9 1.6l2.6 2.6a1 1 0 0 0 1.6-.9l-.5-2.6 2.3-2.3 3.4 5.6a1 1 0 0 0 1.7-.9z"/>',
  link:'<path d="M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.71"/><path d="M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07l1.71-1.71"/>',
  back:'<line x1="19" y1="12" x2="5" y2="12"/><polyline points="12 19 5 12 12 5"/>',
+ plus:'<line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/>',
 };
 window.icon=function(n,cls){var p=P[n];if(!p)return '';
  return '<svg class="yvi'+(cls?' '+cls:'')+'" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">'+p+'</svg>';};
 var MAP={
+ '\u2795':'plus',
  '\u26a1':'zap','\ud83d\udd0c':'zap','\ud83d\udcf8':'camera','\ud83d\udcf7':'camera','\u22ef':'dots',
  '\u22ee':'dots','\ud83d\udce5':'inbox','\ud83d\udced':'inbox','\ud83d\udcec':'inbox','\ud83d\udce8':'inbox',
  '\ud83d\udce9':'inbox','\ud83d\udce6':'pack','\ud83d\ude9a':'pack','\ud83d\uded2':'pack','\ud83d\udcca':'chart',

@@ -174,6 +174,66 @@ def _num_cliente(fila, *nombres):
         return 0.0
 
 
+@ar_real_bp.route('/api/ar_real/cliente', methods=['POST'])
+def api_crear_cliente():
+    """Da de alta un cliente de credito.
+
+    Sin clientes no hay limite de credito ni aviso de riesgo: la pantalla
+    enseñaba 0 y no habia forma de meter ninguno — el generador de demo era el
+    unico que escribia este fichero.
+
+    Se escribe con las MISMAS columnas que lee `api_clientes`
+    (`nombre_cliente`, `nif`, `credito_limite`, `dias_pago`, `email`,
+    `telefono`), y el nombre es la identidad: dar de alta dos veces el mismo
+    cliente lo ACTUALIZA en vez de duplicarlo.
+    """
+    d = request.get_json(force=True, silent=True) or {}
+    nombre = str(d.get('nombre') or d.get('nombre_cliente') or '').strip()
+    if not nombre:
+        return jsonify({'ok': False, 'error': 'Falta el nombre del cliente'}), 400
+    try:
+        limite = float(str(d.get('limite') or d.get('credito_limite') or 0).replace(',', '.'))
+    except Exception:
+        limite = 0.0
+    if limite <= 0:
+        return jsonify({'ok': False, 'error': 'El limite de credito tiene que ser mayor que 0'}), 400
+    try:
+        dias = int(float(d.get('dias_pago') or 30))
+    except Exception:
+        dias = 30
+
+    fila = {
+        'nombre_cliente': nombre,
+        'nif': str(d.get('nif') or '').strip(),
+        'credito_limite': round(limite, 2),
+        'credito_usado': 0,
+        'dias_pago': dias,
+        'email': str(d.get('email') or '').strip(),
+        'telefono': str(d.get('telefono') or '').strip(),
+    }
+    try:
+        import censo_hoteles as _censo
+        fila['hotel_id'] = _censo.para_guardar()
+    except Exception:
+        fila['hotel_id'] = ''
+
+    ruta = _os.path.join(DATOS, 'clientes_credito.xlsx')
+    try:
+        if _os.path.exists(ruta):
+            df = pd.read_excel(ruta)
+            if len(df) and 'nombre_cliente' in df.columns:
+                # el nombre es la identidad: se actualiza, no se duplica
+                df = df[df['nombre_cliente'].astype(str).str.strip().str.lower()
+                        != nombre.lower()]
+            df = pd.concat([df, pd.DataFrame([fila])], ignore_index=True)
+        else:
+            df = pd.DataFrame([fila])
+        df.to_excel(ruta, index=False)
+    except Exception as e:
+        return jsonify({'ok': False, 'error': str(e)[:180]}), 500
+    return jsonify({'ok': True, 'cliente': nombre, 'total': int(len(df))})
+
+
 @ar_real_bp.route('/api/ar_real/clientes')
 def api_clientes():
     """Lista de clientes corporativos con estado de crédito."""

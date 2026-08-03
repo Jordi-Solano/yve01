@@ -2084,7 +2084,7 @@ def api_procesar_batch_stream():
     lote = {}   # solo lo procesado en ESTA tanda (el resumen final se cuenta de aqui)
 
     def _mark(fname, result='OK'):
-        log[fname] = {'fecha': _dt2.now().strftime('%Y-%m-%d %H:%M'), 'resultado': result}
+        log[fname] = _entrada_proc(result)                      # M8
         lote[fname] = {'resultado': result}
         _save_proc_log(log)
 
@@ -2803,7 +2803,7 @@ def api_scan_documento():
         # Guardar en historial
         from datetime import datetime as _dt2
         log = _load_proc_log()
-        log[fname] = {'fecha': _dt2.now().strftime('%Y-%m-%d %H:%M'), 'resultado': f'{tipo}_OK'}
+        log[fname] = _entrada_proc(f'{tipo}_OK')                # M8
         _save_proc_log(log)
         
         # Integrar datos según tipo — MISMO flujo que Procesar Archivos
@@ -2943,7 +2943,7 @@ def api_scan_documento():
             # albaran en papel fotografiado con el movil es el caso MAS normal
             # de todos, y hasta ahora caia al else generico y no se guardaba.
             _m, _mk, _fl = _enrutar_tipo_doc(datos, fname)
-            log[fname] = {'fecha': _dt2.now().strftime('%Y-%m-%d %H:%M'), 'resultado': _mk}
+            log[fname] = _entrada_proc(_mk)                     # M8
             _save_proc_log(log)
             mensaje = _m.split(': ', 1)[-1] if ': ' in _m else _m
             items_count = len(datos.get('facturas', datos.get('tarifas',
@@ -3252,6 +3252,24 @@ def _save_proc_log(log):
     with open(PROC_LOG_PATH, 'w', encoding='utf-8') as f:
         json.dump(log, f, indent=2, ensure_ascii=False)
 
+
+def _entrada_proc(resultado):
+    """Una entrada del historial de procesados, con SU hotel (M8).
+
+    El historial era otra puerta que no filtraba: enseñaba los archivos de
+    todos los hoteles mezclados. Se estampa aqui, en el UNICO sitio que
+    construye la entrada, para que las cuatro puertas que escriben en el log
+    (el lote, el escaneo por foto, el camino no-stream y el reproceso) no
+    puedan volver a olvidarse.
+    """
+    from datetime import datetime as _dtp
+    try:
+        _h = censo_hoteles.para_guardar()
+    except Exception:
+        _h = ''
+    return {'fecha': _dtp.now().strftime('%Y-%m-%d %H:%M'),
+            'resultado': resultado, 'hotel_id': _h}
+
 def _detect_file_type(filename):
     """Detect what section a file belongs to."""
     name = filename.lower()
@@ -3271,8 +3289,19 @@ def _detect_file_type(filename):
 def api_historial_procesado():
     """Devuelve historial de archivos procesados con tipo y resultado."""
     log = _load_proc_log()
+    # M8 · igualdad estricta, como el cruce factura<->albaran: con un hotel
+    # elegido se ven SOLO sus archivos; lo que no lleva hotel (entradas de
+    # antes de este cambio) se ve en la vista de grupo. El vacio NO es
+    # comodin. En vista de grupo —o con 0/1 hoteles— se ve todo, que es
+    # exactamente lo de siempre.
+    try:
+        _hact = censo_hoteles.activo()
+    except Exception:
+        _hact = ''
     items = []
     for fname, info in sorted(log.items(), key=lambda x: x[1].get('fecha',''), reverse=True):
+        if _hact and str(info.get('hotel_id', '') or '') != _hact:
+            continue
         resultado = info.get('resultado', '—')
         # Determinar el tab que se actualizó
         tab = '—'
@@ -3387,7 +3416,7 @@ def api_procesar_batch():
     from datetime import datetime as _dt
     
     def _mark_processed(fname, resultado='OK'):
-        log[fname] = {'fecha': _dt.now().strftime('%Y-%m-%d %H:%M'), 'resultado': resultado}
+        log[fname] = _entrada_proc(resultado)                   # M8
         _save_proc_log(log)
     
     def generar():
@@ -5233,7 +5262,26 @@ body::before{
   .nav{padding:env(safe-area-inset-top) 10px 0 10px;gap:4px;height:calc(52px + env(safe-area-inset-top));box-sizing:border-box}
   .logo-name{font-size:15px}
   .logo-tag{display:none}
-  .nav-right{gap:4px}
+  /* M10 · La nav derecha medía 409 px en una pantalla de 370: el selector de
+     hotel (151) + Procesar (141) + los dos botones. Con `flex-shrink:0` no
+     cabia y arrastraba TODA la pagina hacia la derecha —162 px medidos—, que
+     es el "se descoloca" al cambiar de apartado. Ahora encoge y, si aun asi
+     no cabe, se desliza DENTRO de la nav en vez de mover la pagina. */
+  .nav-right{gap:4px;flex-shrink:1;min-width:0;overflow-x:auto;scrollbar-width:none}
+  .nav-right::-webkit-scrollbar{display:none}
+  #hotel-activo-sel{max-width:104px}
+  /* Red de seguridad: que ningun elemento pueda volver a desplazar la pagina
+     de lado. La causa se arregla arriba; esto es para que no vuelva. */
+  html,body{max-width:100%;overflow-x:hidden}
+  /* M9 · El historial de procesados, en tarjetas: una tabla de 4 columnas no
+     cabe en un movil y se leia a trozos. */
+  .hist-t thead{display:none}
+  .hist-t,.hist-t tbody,.hist-t tr,.hist-t td{display:block;width:auto}
+  .hist-t{min-width:0!important}
+  .hist-t tr{border:1px solid var(--s2)!important;border-radius:10px;margin-bottom:8px;padding:8px 10px;position:relative}
+  .hist-t td{padding:2px 0!important;max-width:none!important;white-space:normal!important;overflow:visible!important;word-break:break-word}
+  .hist-t td[data-r]::before{content:attr(data-r) ': ';color:var(--dim);font-size:10px;text-transform:uppercase;letter-spacing:.4px}
+  .hist-t td:first-child{position:absolute;right:8px;top:8px;padding:0!important}
   .btn-ref{font-size:11px;padding:5px 8px}
   .btn-run{font-size:12px;padding:7px 12px}
   #btn-install-pwa{display:none}
@@ -6267,7 +6315,10 @@ svg.yvi{width:1em;height:1em;vertical-align:-0.125em;flex-shrink:0;display:inlin
 
       <!-- Client list -->
       <div>
-        <div style="font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.5px;color:var(--mut);margin-bottom:10px">Clientes</div>
+        <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:10px;gap:8px">
+          <div style="font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.5px;color:var(--mut)">Clientes</div>
+          <button onclick="abrirNuevoCliente()" class="btn-ref" data-i18n="ar.btnNuevoCliente" style="font-size:11px;padding:6px 10px;min-height:36px">➕ Nuevo cliente</button>
+        </div>
         <div id="ar-clientes-list" style="display:flex;flex-direction:column;gap:8px"></div>
       </div>
 
@@ -11303,6 +11354,31 @@ function _avisar409(d){
   return false;
 }
 
+// ── M7: el fondo se queda quieto mientras hay un modal abierto ───────
+// `overflow:hidden` a secas NO vale en iOS: el fondo sigue moviendose con el
+// dedo. Lo que si funciona es fijar el body y compensar el desplazamiento,
+// devolviendolo al cerrar para que la pagina no pegue un salto.
+var _scrollFondo = 0;
+function _bloquearFondo(si) {
+  var b = document.body;
+  if (!b) return;
+  if (si) {
+    if (b.dataset.fondoFijo) return;            // ya estaba, no re-guardar
+    _scrollFondo = window.scrollY || window.pageYOffset || 0;
+    b.dataset.fondoFijo = '1';
+    b.style.position = 'fixed';
+    b.style.top = (-_scrollFondo) + 'px';
+    b.style.left = '0';
+    b.style.right = '0';
+    b.style.width = '100%';
+  } else if (b.dataset.fondoFijo) {
+    delete b.dataset.fondoFijo;
+    b.style.position = ''; b.style.top = ''; b.style.left = '';
+    b.style.right = ''; b.style.width = '';
+    window.scrollTo(0, _scrollFondo);
+  }
+}
+
 async function openUploadModal() {
   // Reset state
   _uploadFiles = [];
@@ -11391,6 +11467,7 @@ async function openUploadModal() {
 
   var modal = document.getElementById('upload-modal');
   modal.style.display = 'flex';
+  _bloquearFondo(true);          // M7
 }
 
 function procesarPendientesServidor() {
@@ -11412,6 +11489,7 @@ function procesarPendientesServidor() {
 
 function closeUploadModal() {
   document.getElementById('upload-modal').style.display = 'none';
+  _bloquearFondo(false);         // M7
   _uploadFiles = [];
 }
 
@@ -12150,11 +12228,13 @@ async function mostrarHistorialProcesado() {
     
     var rows = d.items.map(function(item) {
       var color = item.icono === '✓' ? '#4ade80' : (item.icono === '⚠' ? '#facc15' : (item.icono === 'ℹ' ? '#60a5fa' : '#f87171'));
+      // M9: en el movil cada fila se convierte en una tarjeta (ver .hist-t en
+      // el CSS). Los data-r sirven de etiqueta ahi, donde no hay cabecera.
       return '<tr style="border-bottom:1px solid rgba(255,255,255,.05)">' +
         '<td style="padding:8px 12px;color:' + color + ';font-size:14px">' + item.icono + '</td>' +
-        '<td style="padding:8px 10px;font-size:12px;max-width:250px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap" title="' + item.archivo + '">' + item.archivo + '</td>' +
-        '<td style="padding:8px 10px;font-size:12px;color:var(--acc2)">' + item.tab + '</td>' +
-        '<td style="padding:8px 10px;font-size:11px;color:#64748b">' + item.fecha + '</td>' +
+        '<td data-r="Archivo" style="padding:8px 10px;font-size:12px;max-width:250px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap" title="' + item.archivo + '">' + item.archivo + '</td>' +
+        '<td data-r="Dónde" style="padding:8px 10px;font-size:12px;color:var(--acc2)">' + item.tab + '</td>' +
+        '<td data-r="Fecha" style="padding:8px 10px;font-size:11px;color:#64748b">' + item.fecha + '</td>' +
         '</tr>';
     }).join('');
     
@@ -12178,7 +12258,7 @@ async function mostrarHistorialProcesado() {
         '<button onclick="this.closest(\'[id=historial-modal]\').remove()" style="background:none;border:none;color:var(--mut);font-size:20px;cursor:pointer">✕</button>' +
       '</div>' +
       '<div style="margin-bottom:14px">' + (tabSummary || '<span style="color:#64748b;font-size:12px">Sin datos procesados</span>') + '</div>' +
-      '<table style="width:100%;border-collapse:collapse">' +
+      '<table class="hist-t" style="width:100%;border-collapse:collapse">' +
         '<thead><tr style="border-bottom:1px solid rgba(255,255,255,.1)">' +
           '<th style="padding:6px 12px;text-align:left;font-size:11px;color:#64748b"></th>' +
           '<th style="padding:6px 10px;text-align:left;font-size:11px;color:#64748b">ARCHIVO</th>' +
@@ -15067,6 +15147,76 @@ loadBanco();
 // ═════════════════════════════════════════════════════════════════════
 // AR REAL — Procesar grupos corporativos
 // ═════════════════════════════════════════════════════════════════════
+// ── Alta de un cliente de credito ────────────────────────────────────
+// Sin clientes no hay limite ni aviso de riesgo, y no habia forma de meter
+// ninguno: el generador de demo era el unico que escribia ese fichero.
+function abrirNuevoCliente() {
+  var v = document.getElementById('nuevo-cliente-modal');
+  if (v) v.remove();
+  var m = document.createElement('div');
+  m.id = 'nuevo-cliente-modal';
+  m.style.cssText = 'position:fixed;inset:0;z-index:9500;background:rgba(0,0,0,.7);display:flex;align-items:center;justify-content:center;padding:16px';
+  var campo = function(id, etiq, tipo, ph) {
+    return '<label style="display:block;margin-bottom:10px">' +
+      '<span style="display:block;font-size:11px;color:var(--mut);margin-bottom:4px">' + etiq + '</span>' +
+      '<input id="' + id + '" type="' + tipo + '" placeholder="' + (ph || '') + '" ' +
+      'style="width:100%;box-sizing:border-box;background:var(--bg);border:1px solid var(--s3);color:var(--tx);' +
+      'padding:11px 12px;border-radius:9px;font-size:14px;outline:none"></label>';
+  };
+  m.innerHTML = '<div style="background:var(--s1);border:1px solid var(--s2);border-radius:16px;padding:22px;width:min(420px,100%);max-height:88vh;overflow:auto">' +
+    '<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:16px">' +
+      '<h3 style="margin:0;font-size:16px;font-weight:800">➕ ' + t('ar.nuevoCliente', 'Nuevo cliente de crédito') + '</h3>' +
+      '<button onclick="cerrarNuevoCliente()" style="background:none;border:none;color:var(--mut);font-size:22px;cursor:pointer;min-width:44px;min-height:44px">✕</button>' +
+    '</div>' +
+    campo('ncl-nombre', t('ar.clNombre', 'Nombre del cliente') + ' *', 'text', 'Viajes Meridiano S.A.') +
+    campo('ncl-nif', t('ar.clNif', 'NIF / CIF'), 'text', 'A28004556') +
+    campo('ncl-limite', t('ar.clLimite', 'Límite de crédito (€)') + ' *', 'number', '25000') +
+    campo('ncl-dias', t('ar.clDias', 'Días de pago'), 'number', '30') +
+    campo('ncl-email', t('ar.clEmail', 'Email'), 'email', 'cuentas@cliente.com') +
+    campo('ncl-tel', t('ar.clTel', 'Teléfono'), 'text', '') +
+    '<div id="ncl-err" style="display:none;font-size:12px;color:var(--red);margin:4px 0 10px"></div>' +
+    '<div style="display:flex;gap:10px;justify-content:flex-end;margin-top:6px">' +
+      '<button onclick="cerrarNuevoCliente()" class="btn-ref" style="min-height:44px">' + t('js.cancelar', 'Cancelar') + '</button>' +
+      '<button id="ncl-ok" onclick="guardarNuevoCliente()" style="background:var(--acc);border:none;color:#fff;padding:12px 20px;border-radius:10px;font-size:14px;font-weight:700;cursor:pointer;min-height:44px">' + t('js.guardar', 'Guardar') + '</button>' +
+    '</div></div>';
+  m.addEventListener('click', function(e) { if (e.target === m) cerrarNuevoCliente(); });
+  document.body.appendChild(m);
+  if (typeof _bloquearFondo === 'function') _bloquearFondo(true);
+  var n = document.getElementById('ncl-nombre'); if (n) n.focus();
+}
+
+function cerrarNuevoCliente() {
+  var m = document.getElementById('nuevo-cliente-modal');
+  if (m) m.remove();
+  if (typeof _bloquearFondo === 'function') _bloquearFondo(false);
+}
+
+async function guardarNuevoCliente() {
+  var val = function(id) { var e = document.getElementById(id); return e ? e.value.trim() : ''; };
+  var err = document.getElementById('ncl-err');
+  var pinta = function(txt) { if (err) { err.textContent = txt; err.style.display = txt ? 'block' : 'none'; } };
+  pinta('');
+  var nombre = val('ncl-nombre'), limite = val('ncl-limite');
+  if (!nombre) { pinta(t('ar.faltaNombre', 'Pon el nombre del cliente.')); return; }
+  if (!limite || Number(limite) <= 0) { pinta(t('ar.faltaLimite', 'El límite de crédito tiene que ser mayor que 0.')); return; }
+  var btn = document.getElementById('ncl-ok');
+  if (btn) { btn.disabled = true; btn.style.opacity = '.5'; }
+  try {
+    var r = await _postJson('/api/ar_real/cliente', {
+      nombre: nombre, nif: val('ncl-nif'), limite: limite,
+      dias_pago: val('ncl-dias') || 30, email: val('ncl-email'), telefono: val('ncl-tel')
+    });
+    var d = await r.json();
+    if (!d.ok) throw new Error(d.error || 'error');
+    cerrarNuevoCliente();
+    showNotification('✓ ' + d.cliente, 'success');
+    if (typeof cargarARRealData === 'function') cargarARRealData();
+  } catch(e) {
+    pinta('✗ ' + (e.message || 'error'));
+    if (btn) { btn.disabled = false; btn.style.opacity = '1'; }
+  }
+}
+
 function abrirEmitirFactura() {
   const modal = document.getElementById('modal-emitir');
   modal.style.display = 'flex';

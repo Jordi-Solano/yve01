@@ -78,24 +78,52 @@ def _get_facturas_ap():
 
 
 def _get_facturas_ar():
-    """Lee facturas AR (comisiones OTA) del Excel de demo."""
+    """Facturas AR (comisiones OTA) REALES, del almacen de datos.
+
+    Antes leia `facturas_ota_demo.xlsx`, un fichero de demo que se retiro del
+    repo en la fase C: desde entonces esta mitad del Libro Diario salia
+    SIEMPRE a cero, en silencio. **Nunca volver a poner ese fichero** — se lee
+    de `almacen_datos.facturas_ar()`, que es el punto unico de lectura y ya
+    consolida todos los dias y deduplica.
+
+    Se traducen los nombres de las columnas a los que espera el generador de
+    asientos (`ota`, `comision`), en vez de tocar el generador: asi el dia que
+    cambie el almacen solo hay que mirar aqui.
+    """
     try:
-        import openpyxl
-        wb = openpyxl.load_workbook(DATA / 'facturas_ota_demo.xlsx')
-        ws = wb.active
-        rows = list(ws.iter_rows(values_only=True))
-        if not rows:
-            return []
-        headers = [str(h).lower().replace(' ', '_') for h in rows[0]]
-        result = []
-        for row in rows[1:]:
-            if not any(row):
-                continue
-            d = dict(zip(headers, row))
-            result.append(d)
-        return result
+        import almacen_datos
+        import pandas as _pd
     except Exception:
         return []
+    try:
+        # `hotel=...` no se pasa: el filtro por hotel de esta pantalla lo hace
+        # quien la pinta, igual que en los demas exportadores.
+        df = almacen_datos.facturas_ar()
+    except Exception:
+        return []
+    if df is None or not len(df):
+        return []
+
+    def _v(fila, *nombres):
+        for n in nombres:
+            if n in fila and _pd.notna(fila[n]) and str(fila[n]).strip() != '':
+                return fila[n]
+        return ''
+
+    salida = []
+    for _, f in df.iterrows():
+        d = f.to_dict()
+        salida.append({
+            'fecha': str(_v(d, 'fecha', 'periodo_inicio', 'fecha_factura'))[:10],
+            'ota': str(_v(d, 'nombre_ota', 'ota', 'agencia')) or 'OTA',
+            'numero_factura': str(_v(d, 'numero_factura', 'invoice')),
+            # el generador acepta comision/importe/amount/total; se le da la
+            # comision, que es lo que se contabiliza de una factura de OTA.
+            'comision': _v(d, 'importe_comision', 'comision', 'total_comision'),
+            'importe_bruto': _v(d, 'importe_bruto'),
+            'hotel_id': _v(d, 'hotel_id'),
+        })
+    return salida
 
 
 def _num(v, default=0.0):
