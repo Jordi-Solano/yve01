@@ -399,8 +399,13 @@
  "upload.procesarN": "⚡ Traiter {n} nouveaux fichiers",
  "upload.procesarSel": "⚡ Traiter la sélection",
  "upload.procesarUno": "⚡ Traiter 1 nouveau fichier",
+ "upload.quitar": "Retirer",
  "upload.quitarMarcas": "Effacer la sélection",
+ "upload.selArchivos": "📄 Choisir des fichiers",
+ "upload.selCarpeta": "📁 Choisir un dossier",
  "upload.separarGrupo": "Séparer en photos distinctes",
+ "upload.subtitulo": "Factures · Relevés bancaires · Ventes POS · Inventaire · Pertes · Commissions OTA · Rooming — classement automatique par IA",
+ "upload.tiposZona": "PDF · Excel · CSV · Photos — classement automatique",
  "upload.unirN": "🔗 Fusionner les {n} en un document",
  "upload.yaProcN": "{n} déjà traités (seront ignorés)",
  "upload.yaProcUno": "1 déjà traité (sera ignoré)"

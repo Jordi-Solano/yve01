@@ -399,8 +399,13 @@
  "upload.procesarN": "⚡ {n} neue Dateien verarbeiten",
  "upload.procesarSel": "⚡ Ausgewählte verarbeiten",
  "upload.procesarUno": "⚡ 1 neue Datei verarbeiten",
+ "upload.quitar": "Entfernen",
  "upload.quitarMarcas": "Auswahl aufheben",
+ "upload.selArchivos": "📄 Dateien auswählen",
+ "upload.selCarpeta": "📁 Ordner auswählen",
  "upload.separarGrupo": "Wieder in einzelne Fotos trennen",
+ "upload.subtitulo": "Rechnungen · Kontoauszüge · POS-Verkäufe · Inventar · Schwund · OTA-Provisionen · Rooming — automatisch per KI klassifiziert",
+ "upload.tiposZona": "PDF · Excel · CSV · Fotos — automatisch klassifiziert",
  "upload.unirN": "🔗 Die {n} zu einem Dokument zusammenfügen",
  "upload.yaProcN": "{n} bereits verarbeitet (werden übersprungen)",
  "upload.yaProcUno": "1 bereits verarbeitet (wird übersprungen)"

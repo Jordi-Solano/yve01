@@ -6442,7 +6442,7 @@ Gestoría Nord: Hotel Pirineus, Hotel Vall" style="width:100%;background:var(--b
     <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:22px">
       <div>
         <h2 style="font-size:18px;font-weight:800;margin:0">⚡ Procesar Archivos</h2>
-        <div style="font-size:12px;color:var(--mut);margin-top:4px">Facturas · Extractos bancarios · Ventas POS · Inventario · Mermas · Comisiones OTA · Rooming — clasificación automática por IA</div>
+        <div style="font-size:12px;color:var(--mut);margin-top:4px" data-i18n="upload.subtitulo">Facturas · Extractos bancarios · Ventas POS · Inventario · Mermas · Comisiones OTA · Rooming — clasificación automática por IA</div>
       </div>
       <button onclick="closeUploadModal()" style="background:none;border:none;color:var(--mut);font-size:24px;cursor:pointer">×</button>
     </div>
@@ -6464,11 +6464,13 @@ Gestoría Nord: Hotel Pirineus, Hotel Vall" style="width:100%;background:var(--b
          style="border:2px dashed var(--s3);border-radius:14px;padding:32px;text-align:center;cursor:pointer;transition:background-color .2s,border-color .2s,color .2s,box-shadow .2s,transform .2s,opacity .2s;margin-bottom:16px">
       <div style="font-size:36px;margin-bottom:10px">📂</div>
       <div style="font-size:15px;font-weight:600;color:var(--tx);margin-bottom:6px">Arrastra archivos aquí o haz clic</div>
-      <div style="font-size:12px;color:var(--dim);margin-bottom:14px">PDF · Excel · CSV · Fotos — clasificación automática</div>
+      <div style="font-size:12px;color:var(--dim);margin-bottom:14px" data-i18n="upload.tiposZona">PDF · Excel · CSV · Fotos — clasificación automática</div>
       <div style="display:flex;gap:10px;justify-content:center;flex-wrap:wrap">
         <button onclick="event.stopPropagation();document.getElementById('upload-file-input').click()"
+                data-i18n="upload.selArchivos"
                 style="background:var(--acc);border:none;color:#fff;padding:8px 18px;border-radius:9px;font-size:13px;font-weight:600;cursor:pointer">📄 Seleccionar archivos</button>
         <button class="hide-mobile" onclick="event.stopPropagation();document.getElementById('upload-folder-input').click()"
+                data-i18n="upload.selCarpeta"
                 style="background:var(--s2);border:1px solid var(--s3);color:var(--tx);padding:8px 18px;border-radius:9px;font-size:13px;font-weight:600;cursor:pointer">📁 Seleccionar carpeta</button>
       </div>
     </div>
@@ -11772,7 +11774,7 @@ function _renderFileList() {
             (isProc ? ' · <span style="color:var(--ora)">⚠ Ya procesado</span>' : '') +
           '</div>' +
         '</div>' +
-        '<button onclick="event.stopPropagation();_removeUploadFile(' + i + ')" title="Quitar" ' +
+        '<button onclick="event.stopPropagation();_removeUploadFile(' + i + ')" title="' + t('upload.quitar', 'Quitar') + '" ' +
           'style="background:none;border:none;color:var(--dim);cursor:pointer;font-size:20px;line-height:1;' +
           'min-width:44px;min-height:44px;display:flex;align-items:center;justify-content:center;flex:0 0 auto">×</button>' +
       '</div>');

@@ -399,8 +399,13 @@
  "upload.procesarN": "⚡ Processa {n} arxius nous",
  "upload.procesarSel": "⚡ Processa els seleccionats",
  "upload.procesarUno": "⚡ Processa 1 arxiu nou",
+ "upload.quitar": "Treu",
  "upload.quitarMarcas": "Treu les marques",
+ "upload.selArchivos": "📄 Selecciona arxius",
+ "upload.selCarpeta": "📁 Selecciona carpeta",
  "upload.separarGrupo": "Separa en fotos soltes",
+ "upload.subtitulo": "Factures · Extractes bancaris · Vendes POS · Inventari · Minves · Comissions OTA · Rooming — classificació automàtica per IA",
+ "upload.tiposZona": "PDF · Excel · CSV · Fotos — classificació automàtica",
  "upload.unirN": "🔗 Uneix les {n} en un document",
  "upload.yaProcN": "{n} ja processats (s'ometran)",
  "upload.yaProcUno": "1 ja processat (s'ometrà)"

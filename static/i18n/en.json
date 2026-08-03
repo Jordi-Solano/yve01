@@ -399,8 +399,13 @@
  "upload.procesarN": "⚡ Process {n} new files",
  "upload.procesarSel": "⚡ Process selected",
  "upload.procesarUno": "⚡ Process 1 new file",
+ "upload.quitar": "Remove",
  "upload.quitarMarcas": "Clear selection",
+ "upload.selArchivos": "📄 Choose files",
+ "upload.selCarpeta": "📁 Choose folder",
  "upload.separarGrupo": "Split back into separate photos",
+ "upload.subtitulo": "Invoices · Bank statements · POS sales · Inventory · Waste · OTA commissions · Rooming — classified automatically by AI",
+ "upload.tiposZona": "PDF · Excel · CSV · Photos — classified automatically",
  "upload.unirN": "🔗 Merge the {n} into one document",
  "upload.yaProcN": "{n} already processed (will be skipped)",
  "upload.yaProcUno": "1 already processed (will be skipped)"
