@@ -12361,7 +12361,16 @@ async function _procesarGrupoFotos(grupo, pref, addLine, cierre) {
       // aprovechable") y antes solo se atrapaba el primero, porque se
       // comparaba el texto del error. El segundo se llevaba las fotos por
       // delante aunque el servidor estuviera pidiendo justo lo contrario.
-      addLine('Las fotos no son un contrato — proceso cada una como documento suelto', 'l-info');
+      // El servidor manda un `message` DISTINTO para cada uno de los dos
+      // casos que marca con `reprocesar`, y antes se enseñaba siempre el
+      // mismo texto: "no son un contrato" cuando en realidad el sistema si
+      // creyo que lo era y lo que fallo fue la lectura. Se usa el suyo.
+      // Se le quita el "— revisar manualmente", que ya no es verdad: se
+      // reprocesan solas.
+      var _mm = String((_dc && _dc.message) || '').trim()
+                  .replace(/\s*[—-]\s*revisar manualmente\.?$/i, '')
+                  .replace(/\.$/, '');
+      addLine((_mm || 'Las fotos no son un contrato') + ' — proceso cada una como documento suelto', 'l-info');
       errs += await _procesarImagenes(grupo, addLine, cierre);
     } else {
       // La IA fallo o devolvio algo que no se entiende. Las fotos siguen

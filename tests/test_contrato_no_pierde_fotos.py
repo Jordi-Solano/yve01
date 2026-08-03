@@ -6,9 +6,12 @@ las fotos en uno de los cuatro caminos de fallo. El servidor ya lo dice con
 una MARCA (`reprocesar`) y la pone en dos casos; los otros dos no la traen
 pero las fotos siguen siendo documentos.
 
-La propiedad que protege: **ningun camino de fallo se queda sin reprocesar**.
-Y la que no se puede mover: el contrato bueno y el mensaje "Las fotos no son
-un contrato…" salen IDENTICOS.
+Dos propiedades:
+  · **ningun camino de fallo se queda sin reprocesar**;
+  · cada uno de los dos casos que el servidor marca dice **lo suyo** — antes
+    los dos enseñaban "no son un contrato", incluso cuando el sistema si creia
+    que lo era y lo que fallo fue leerlo.
+Y la que no se puede mover: el contrato bueno, con sus cuatro lineas de dinero.
 
 Se prueba la funcion REAL sacada del HTML servido (regla 26).
 
@@ -27,7 +30,6 @@ sys.path.insert(0, BASE)
 os.chdir(BASE)
 
 SABOTAJE = '--sabotaje' in sys.argv
-MSG_NO_CONTRATO = 'Las fotos no son un contrato — proceso cada una como documento suelto'
 
 
 def html_servido():
@@ -70,11 +72,14 @@ CASOS = [
 
     ('"las fotos no parecen un contrato de grupo" -> reprocesa (ya iba)',
      {'ok': False, 'needs_review': True, 'reprocesar': True,
-      'error': 'las fotos no parecen un contrato de grupo'}, True),
+      'error': 'las fotos no parecen un contrato de grupo',
+      'message': 'Las imágenes no parecen un contrato de grupo/BEO.'}, True),
 
     ('"no se ha podido leer ni importe, ni habitaciones..." -> reprocesa (ERA EL BUG)',
      {'ok': False, 'needs_review': True, 'reprocesar': True,
-      'error': 'no se ha podido leer ni importe, ni habitaciones, ni el nombre del contrato'}, True),
+      'error': 'no se ha podido leer ni importe, ni habitaciones, ni el nombre del contrato',
+      'message': 'Parece un contrato de grupo, pero no se ha extraído ningún dato '
+                 'aprovechable — revisar manualmente.'}, True),
 
     ('La IA fallo, sin marca -> reprocesa igual',
      {'ok': False, 'needs_review': True,
@@ -160,13 +165,27 @@ console.log(JSON.stringify(salida));
             fallos += 1
             print(f"          esperaba reproceso={esperado}; lineas={r['lineas']}")
 
-    # El mensaje del caso que NO se puede mover, byte a byte
-    linea2 = got[1]['lineas']
-    ok_msg = MSG_NO_CONTRATO in linea2
-    print(f"  {'OK ' if ok_msg else 'FALLA'}  El mensaje de «no son un contrato» sale IDENTICO")
-    if not ok_msg:
-        fallos += 1
-        print(f'          recibi: {linea2}')
+    # Los dos casos de `reprocesar` tienen que decir COSAS DISTINTAS: el
+    # servidor manda un `message` para cada uno y antes se enseñaba siempre el
+    # mismo texto ("no son un contrato") aunque el sistema si creyera que lo era.
+    l_no_contrato = ' | '.join(got[1]['lineas'])
+    l_sin_datos = ' | '.join(got[2]['lineas'])
+    ok_a = ('no parecen un contrato de grupo/BEO' in l_no_contrato
+            and 'proceso cada una como documento suelto' in l_no_contrato)
+    ok_b = ('no se ha extraído ningún dato aprovechable' in l_sin_datos
+            and 'proceso cada una como documento suelto' in l_sin_datos
+            and 'no parecen un contrato' not in l_sin_datos
+            and 'revisar manualmente' not in l_sin_datos)
+    ok_dist = l_no_contrato != l_sin_datos
+    for etiqueta, ok in (('«no parecen un contrato» dice lo suyo', ok_a),
+                         ('«no se ha leido ningun dato» dice lo SUYO, no lo otro', ok_b),
+                         ('los dos mensajes son DISTINTOS', ok_dist)):
+        print(f"  {'OK ' if ok else 'FALLA'}  {etiqueta}")
+        if not ok:
+            fallos += 1
+    if not (ok_a and ok_b):
+        print(f'          A: {l_no_contrato}')
+        print(f'          B: {l_sin_datos}')
 
     # Y el camino del contrato bueno, con sus cuatro lineas de dinero
     l0 = ' | '.join(got[0]['lineas'])
