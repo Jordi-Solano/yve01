@@ -6472,8 +6472,13 @@ Gestoría Nord: Hotel Pirineus, Hotel Vall" style="width:100%;background:var(--b
                 style="background:var(--s2);border:1px solid var(--s3);color:var(--tx);padding:8px 18px;border-radius:9px;font-size:13px;font-weight:600;cursor:pointer">📁 Seleccionar carpeta</button>
       </div>
     </div>
-    <input id="upload-file-input" type="file" multiple accept=".pdf,.xlsm,.xlsx,.xls,.csv,image/*" style="display:none" onchange="handleUploadFiles(this.files)">
-    <input id="upload-folder-input" type="file" multiple webkitdirectory style="display:none" onchange="handleUploadFiles(this.files)">
+    <input id="upload-file-input" type="file" multiple accept=".pdf,.xlsm,.xlsx,.xls,.csv,image/*" style="display:none" onchange="handleUploadFiles(this.files, this)">
+    <input id="upload-folder-input" type="file" multiple webkitdirectory style="display:none" onchange="handleUploadFiles(this.files, this)">
+    <!-- Nada se descarta en silencio. Va FUERA de #upload-file-list a
+         proposito: si se descartan TODOS los ficheros la lista esta vacia y
+         escondida, y es justo cuando mas falta hace el aviso. -->
+    <div id="upload-aviso-descartes" style="display:none;margin-bottom:14px;padding:11px 13px;border-radius:11px;
+         border:1px solid rgba(245,158,11,.35);background:rgba(245,158,11,.08);font-size:12px;line-height:1.5;color:var(--tx)"></div>
     <!-- Already uploaded files on server -->
     <div id="server-files-section" style="display:none;margin-bottom:16px">
       <div style="font-size:11px;font-weight:700;color:var(--dim);text-transform:uppercase;letter-spacing:.5px;margin-bottom:8px">EN SERVIDOR (facturas-entrada)</div>
@@ -11265,6 +11270,9 @@ async function openUploadModal() {
   var procBtn = document.getElementById('btn-upload-procesar');
   procBtn.disabled = true; procBtn.style.opacity = '.4'; procBtn.style.cursor = 'not-allowed';
 
+  var _avDesc = document.getElementById('upload-aviso-descartes');
+  if (_avDesc) { _avDesc.style.display = 'none'; _avDesc.innerHTML = ''; }
+
   _uploadFilaVista = false;      // cada apertura decide de cero
   await _cargarCensoSubida();
 
@@ -11401,18 +11409,74 @@ function _readDir(dirEntry, files, done) {
   });
 }
 
-function handleUploadFiles(fileList) {
-  var files = Array.from(fileList).filter(function(f) {
-    return f.name.match(/\.(pdf|xlsm|xlsx|xls|csv|jpe?g|png|webp|heic)$/i) || (f.type || '').indexOf('image/') === 0;
-  });
-  _addFilesToList(files);
+function _pareceDocumento(f) {
+  return /\.(pdf|xlsm|xlsx|xls|csv|jpe?g|png|webp|heic)$/i.test(f.name || '') ||
+         (f.type || '').indexOf('image/') === 0;
+}
+
+function handleUploadFiles(fileList, input) {
+  var todos = Array.from(fileList || []);
+  var buenos = [], desconocidos = [];
+  todos.forEach(function(f) { (_pareceDocumento(f) ? buenos : desconocidos).push(f); });
+
+  var r = _addFilesToList(buenos);
+  _avisoDescartes(todos.length, r.anadidos, desconocidos, r.repetidos);
+
+  // EL ARREGLO DE LA CAMARA: el input no se limpiaba NUNCA. Si el navegador
+  // considera que el valor no ha cambiado, no vuelve a disparar 'change' y la
+  // siguiente foto no llega a ejecutar nada. Se limpia DESPUES de haber
+  // sacado los File del FileList: los objetos ya extraidos siguen siendo
+  // validos, lo que se vacia es la seleccion del input.
+  if (input) { try { input.value = ''; } catch(e) {} }
 }
 
 function _addFilesToList(newFiles) {
-  // Merge with existing, deduplicate by name
+  // Junta con lo que ya hay. Se sigue deduplicando por nombre —dos ficheros
+  // con el mismo nombre se pisarian mas adelante— pero ya NO en silencio:
+  // se devuelve que se ha quedado fuera para poder decirlo.
   var existing = new Set(_uploadFiles.map(function(f){ return f.name; }));
-  newFiles.forEach(function(f) { if (!existing.has(f.name)) { _uploadFiles.push(f); } });
+  var anadidos = 0, repetidos = [];
+  (newFiles || []).forEach(function(f) {
+    if (existing.has(f.name)) { repetidos.push(f.name); return; }
+    existing.add(f.name);            // dos repetidos en la MISMA tanda tambien cuentan
+    _uploadFiles.push(f);
+    anadidos++;
+  });
   _renderFileList();
+  return { anadidos: anadidos, repetidos: repetidos };
+}
+
+// Lo que llega y no entra, dicho en voz alta. Antes desaparecia sin rastro:
+// la pantalla se quedaba igual y no habia forma de saber por que.
+function _avisoDescartes(recibidos, anadidos, desconocidos, repetidos) {
+  var caja = document.getElementById('upload-aviso-descartes');
+  if (!caja) return;
+  desconocidos = desconocidos || []; repetidos = repetidos || [];
+  var fuera = desconocidos.length + repetidos.length;
+  if (!fuera) { caja.style.display = 'none'; caja.innerHTML = ''; return; }
+
+  var nombres = function(lista) {
+    var v = lista.slice(0, 3).map(function(x) { return typeof x === 'string' ? x : (x.name || '(sin nombre)'); });
+    return v.join(', ') + (lista.length > 3 ? ' y ' + (lista.length - 3) + ' mas' : '');
+  };
+  var partes = [];
+  if (repetidos.length) {
+    partes.push('<div style="margin-top:5px">· ' + repetidos.length +
+      (repetidos.length === 1 ? ' tenía un nombre que ya estaba en la lista: ' : ' tenían un nombre que ya estaba en la lista: ') +
+      '<b>' + nombres(repetidos) + '</b></div>');
+  }
+  if (desconocidos.length) {
+    partes.push('<div style="margin-top:5px">· ' + desconocidos.length +
+      (desconocidos.length === 1 ? ' que el navegador no identifica ni como documento ni como foto: ' : ' que el navegador no identifica ni como documento ni como foto: ') +
+      '<b>' + nombres(desconocidos) + '</b></div>');
+  }
+  caja.innerHTML =
+    '<div style="font-weight:700">⚠ ' +
+      (recibidos === 1 ? 'Ha llegado 1 archivo y no se ha añadido.'
+                       : 'Han llegado ' + recibidos + ' archivos y se ' +
+                         (anadidos === 1 ? 'ha añadido 1.' : 'han añadido ' + anadidos + '.')) +
+    '</div>' + partes.join('');
+  caja.style.display = 'block';
 }
 
 function _detectType(fname) {
