@@ -6483,6 +6483,10 @@ Gestoría Nord: Hotel Pirineus, Hotel Vall" style="width:100%;background:var(--b
     <div id="upload-file-list" style="display:none;margin-bottom:16px">
       <div style="font-size:11px;font-weight:700;color:var(--dim);text-transform:uppercase;letter-spacing:.5px;margin-bottom:10px">ARCHIVOS SELECCIONADOS</div>
       <div id="upload-files-container" style="max-height:220px;overflow-y:auto;display:flex;flex-direction:column;gap:6px"></div>
+      <!-- Agrupar fotos: se pinta solo cuando hay 2+ fotos que unir. Va FUERA
+           del contenedor con scroll a proposito, para que el boton no se
+           escape hacia arriba mientras se marcan fotos en una lista larga. -->
+      <div id="upload-unir-bar" style="display:none;margin-top:10px"></div>
       <div style="margin-top:10px;font-size:12px;color:var(--mut)">
         <span id="upload-count-new" style="color:var(--acc2);font-weight:700">0 nuevos</span> · <span id="upload-count-dup" style="color:var(--ora)">0 ya procesados (se saltarán)</span>
       </div>
@@ -11453,6 +11457,104 @@ function _typeColor(t) {
   return 'var(--mut)';
 }
 
+// ── QUE FOTOS SON PAGINAS DEL MISMO DOCUMENTO ────────────────────────
+// Por defecto NINGUNA: cada foto es su propio documento (grupo de 1). Solo
+// se agrupa lo que el usuario une a mano. Antes esto se decidia contando
+// fotos, asi que subir dos facturas distintas las mandaba juntas al lector
+// de contratos de grupo. Aqui ya no adivina nadie.
+//
+// El numero de grupo viaja PEGADO al objeto File (`_grp`), no en un array
+// paralelo: quitar una foto de la lista mueve los indices y un array
+// paralelo se desalinearia en silencio.
+var _grpSeq = 0;
+
+function _esFotoSubida(f) {
+  return /\.(jpe?g|png|webp|heic)$/i.test(f.name || '') || (f.type || '').indexOf('image/') === 0;
+}
+
+// Fotos que todavia se pueden marcar: las ya procesadas no se tocan.
+function _fotosAgrupables() {
+  return _uploadFiles.filter(function(f) {
+    return _esFotoSubida(f) && !_processedNames.has(f.name);
+  });
+}
+
+function _fotosSeleccionadas() {
+  return _fotosAgrupables().filter(function(f) { return f._sel; });
+}
+
+function _toggleSelFoto(idx) {
+  var f = _uploadFiles[idx];
+  if (!f || !_esFotoSubida(f) || _processedNames.has(f.name)) return;
+  f._sel = !f._sel;
+  _renderFileList();
+}
+
+function _unirSeleccionadas() {
+  var sel = _fotosSeleccionadas();
+  if (sel.length < 2) return;
+  _grpSeq++;
+  var g = _grpSeq;
+  sel.forEach(function(f) { f._grp = g; f._sel = false; });
+  _renderFileList();
+}
+
+function _deshacerGrupo(g) {
+  _uploadFiles.forEach(function(f) { if (f._grp === g) { f._grp = 0; f._sel = false; } });
+  _renderFileList();
+}
+
+function _limpiarSeleccion() {
+  _uploadFiles.forEach(function(f) { f._sel = false; });
+  _renderFileList();
+}
+
+// Reparte las fotos de la tanda en documentos.
+// Devuelve {grupos:[[f,f],...], sueltas:[f,...]}, las sueltas en el orden de
+// la lista. Un grupo que se quedo con una sola foto NO es un documento de
+// varias paginas: vuelve a ser una foto suelta.
+function _repartirFotos(imgs) {
+  var porGrupo = {}, orden = [];
+  imgs.forEach(function(f) {
+    if (!f._grp) return;
+    if (!porGrupo[f._grp]) { porGrupo[f._grp] = []; orden.push(f._grp); }
+    porGrupo[f._grp].push(f);
+  });
+  var grupos = [], validos = {};
+  orden.forEach(function(g) {
+    if (porGrupo[g].length >= 2) { grupos.push(porGrupo[g]); validos[g] = true; }
+  });
+  var sueltas = imgs.filter(function(f) { return !(f._grp && validos[f._grp]); });
+  return { grupos: grupos, sueltas: sueltas };
+}
+
+// La barra de agrupar. Solo aparece cuando hay algo que unir de verdad.
+function _pintarBarraUnir() {
+  var bar = document.getElementById('upload-unir-bar');
+  if (!bar) return;
+  var agrup = _fotosAgrupables();
+  if (agrup.length < 2) { bar.style.display = 'none'; bar.innerHTML = ''; return; }
+  bar.style.display = 'block';
+  var sel = _fotosSeleccionadas().length;
+  if (sel >= 2) {
+    bar.innerHTML =
+      '<div style="display:flex;gap:8px;flex-wrap:wrap;align-items:center">' +
+        '<button onclick="_unirSeleccionadas()" style="flex:1;min-width:200px;background:var(--acc);border:none;color:#fff;' +
+          'padding:13px 18px;border-radius:11px;font-size:14px;font-weight:700;cursor:pointer">' +
+          '🔗 Unir las ' + sel + ' en un documento</button>' +
+        '<button onclick="_limpiarSeleccion()" style="background:var(--s2);border:1px solid var(--s3);color:var(--tx);' +
+          'padding:13px 16px;border-radius:11px;font-size:13px;font-weight:600;cursor:pointer">Quitar marcas</button>' +
+      '</div>';
+  } else {
+    bar.innerHTML =
+      '<div style="font-size:12px;color:var(--dim);line-height:1.5;padding:2px 2px">' +
+        (sel === 1
+          ? '☝ Marca al menos otra foto para unirlas como un solo documento.'
+          : '¿Varias fotos de un mismo documento? Marcalas y pulsa <b style="color:var(--tx)">Unir</b>. Si no marcas nada, cada foto es un documento aparte.') +
+      '</div>';
+  }
+}
+
 function _renderFileList() {
   var cont = document.getElementById('upload-files-container');
   var list = document.getElementById('upload-file-list');
@@ -11460,24 +11562,74 @@ function _renderFileList() {
   list.style.display = 'block';
 
   var newCount = 0, dupCount = 0;
-  cont.innerHTML = _uploadFiles.map(function(f, i) {
+  var _tam = function(n) { return n < 1024*1024 ? Math.round(n/1024) + 'KB' : (n/1024/1024).toFixed(1) + 'MB'; };
+  var _pintados = {};   // grupos ya pintados: el bloque va donde su PRIMERA foto
+  var _piezas = [];
+
+  _uploadFiles.forEach(function(f, i) {
     var isProc = _processedNames.has(f.name);
-    var tipo = _detectType(f.name);
-    var size = f.size < 1024*1024 ? Math.round(f.size/1024) + 'KB' : (f.size/1024/1024).toFixed(1) + 'MB';
     if (isProc) dupCount++; else newCount++;
-    return '<div style="display:flex;align-items:center;gap:10px;padding:8px 12px;background:' + 
-      (isProc ? 'rgba(245,158,11,.06)' : 'var(--bg)') + ';border-radius:8px;border:1px solid ' +
-      (isProc ? 'rgba(245,158,11,.2)' : 'var(--s2)') + ';opacity:' + (isProc ? '.6' : '1') + '">' +
-      '<div style="font-size:18px">' + (f.name.endsWith('.xlsm') ? '📊' : '📄') + '</div>' +
-      '<div style="flex:1;min-width:0">' +
-        '<div style="font-size:13px;font-weight:600;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">' + f.name + '</div>' +
-        '<div style="font-size:11px;color:var(--dim)">' + size + ' · <span style="color:' + _typeColor(tipo) + '">' + tipo + '</span>' + 
-          (isProc ? ' · <span style="color:var(--ora)">⚠ Ya procesado</span>' : '') +
+
+    // ¿Esta foto va dentro de un documento de varias paginas?
+    var g = (!isProc && f._grp) ? f._grp : 0;
+    if (g) {
+      var hermanas = _uploadFiles.filter(function(x) { return x._grp === g && !_processedNames.has(x.name); });
+      if (hermanas.length >= 2) {
+        if (_pintados[g]) return;         // ya se pinto con la primera
+        _pintados[g] = true;
+        var nombres = hermanas.map(function(x) { return x.name; }).join(' · ');
+        var bytes = hermanas.reduce(function(s, x) { return s + x.size; }, 0);
+        _piezas.push(
+          '<div style="padding:10px 12px;background:rgba(var(--acc-r,59),var(--acc-g,130),var(--acc-b,246),.07);' +
+            'border-radius:10px;border:1px solid rgba(var(--acc-r,59),var(--acc-g,130),var(--acc-b,246),.35)">' +
+            '<div style="display:flex;align-items:center;gap:10px">' +
+              '<div style="font-size:20px">📄</div>' +
+              '<div style="flex:1;min-width:0">' +
+                '<div style="font-size:13px;font-weight:700;color:var(--acc2)">Documento de ' + hermanas.length + ' páginas</div>' +
+                '<div style="font-size:11px;color:var(--dim);white-space:nowrap;overflow:hidden;text-overflow:ellipsis">' + nombres + '</div>' +
+                '<div style="font-size:11px;color:var(--dim)">' + _tam(bytes) + '</div>' +
+              '</div>' +
+              '<button onclick="_deshacerGrupo(' + g + ')" title="Separar en fotos sueltas" ' +
+                'style="background:none;border:1px solid var(--s3);color:var(--dim);cursor:pointer;font-size:15px;' +
+                'padding:9px 13px;border-radius:9px;line-height:1">✕</button>' +
+            '</div>' +
+          '</div>');
+        return;
+      }
+      // Se quedo sola: deja de ser un documento de varias paginas.
+      f._grp = 0;
+    }
+
+    // Fila normal. Las fotos nuevas llevan casilla grande y toda la fila es
+    // zona de toque: en el movil una casilla de 14px no se acierta con el dedo.
+    var puedeMarcar = !isProc && _esFotoSubida(f) && _fotosAgrupables().length >= 2;
+    var sel = !!(puedeMarcar && f._sel);
+    var casilla = puedeMarcar
+      ? '<div style="width:26px;height:26px;flex:0 0 26px;border-radius:8px;display:flex;align-items:center;' +
+          'justify-content:center;font-size:15px;font-weight:800;color:#fff;border:2px solid ' +
+          (sel ? 'var(--acc)' : 'var(--s3)') + ';background:' + (sel ? 'var(--acc)' : 'transparent') + '">' +
+          (sel ? '✓' : '') + '</div>'
+      : '';
+    _piezas.push(
+      '<div' + (puedeMarcar ? ' onclick="_toggleSelFoto(' + i + ')"' : '') +
+        ' style="display:flex;align-items:center;gap:10px;padding:10px 12px;background:' +
+        (isProc ? 'rgba(245,158,11,.06)' : (sel ? 'rgba(var(--acc-r,59),var(--acc-g,130),var(--acc-b,246),.10)' : 'var(--bg)')) +
+        ';border-radius:8px;border:1px solid ' +
+        (isProc ? 'rgba(245,158,11,.2)' : (sel ? 'var(--acc)' : 'var(--s2)')) +
+        ';opacity:' + (isProc ? '.6' : '1') + (puedeMarcar ? ';cursor:pointer' : '') + '">' +
+        casilla +
+        '<div style="font-size:18px">' + (f.name.endsWith('.xlsm') ? '📊' : '📄') + '</div>' +
+        '<div style="flex:1;min-width:0">' +
+          '<div style="font-size:13px;font-weight:600;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">' + f.name + '</div>' +
+          '<div style="font-size:11px;color:var(--dim)">' + _tam(f.size) + ' · <span style="color:' + _typeColor(_detectType(f.name)) + '">' + _detectType(f.name) + '</span>' +
+            (isProc ? ' · <span style="color:var(--ora)">⚠ Ya procesado</span>' : '') +
+          '</div>' +
         '</div>' +
-      '</div>' +
-      '<button onclick="_removeUploadFile(' + i + ')" style="background:none;border:none;color:var(--dim);cursor:pointer;font-size:16px;padding:0 4px" title="Quitar">×</button>' +
-      '</div>';
-  }).join('');
+        '<button onclick="event.stopPropagation();_removeUploadFile(' + i + ')" style="background:none;border:none;color:var(--dim);cursor:pointer;font-size:16px;padding:6px 8px" title="Quitar">×</button>' +
+      '</div>');
+  });
+  cont.innerHTML = _piezas.join('');
+  _pintarBarraUnir();
 
   document.getElementById('upload-count-new').textContent = newCount + ' nuevo' + (newCount !== 1 ? 's' : '');
   document.getElementById('upload-count-dup').textContent = dupCount + ' ya procesado' + (dupCount !== 1 ? 's' : '') + ' (se saltarán)';
@@ -11557,40 +11709,21 @@ async function uploadAndProcess() {
     };
     var errs = 0;
     var _cierreFotos = {};
-    if (imgs.length >= 2) {
-      // Varias fotos = páginas de UN documento (contrato/BEO). Se procesan TODAS
-      // juntas en UNA sola llamada para poder detectar el contrato de grupo -> AR Real.
-      addLine('📄 Analizando ' + imgs.length + ' fotos como contrato de grupo (puede tardar ~1 min)...', 'l-info');
-      var fdc = new FormData();
-      for (var _k = 0; _k < imgs.length; _k++) {
-        var _cf = await _comprimirImagen(imgs[_k]);
-        fdc.append('files', _cf, _cf.name);
-      }
-      try {
-        var _rc = await fetch('/api/ar_real/procesar_contrato', { method: 'POST', body: fdc, headers: { 'X-CSRF-Token': _csrfToken } });
-        var _dc = await _rc.json();
-        if (_dc && _dc.ok) {
-          var _money = function(v){ return '€' + (Number(v)||0).toLocaleString('es-ES', {minimumFractionDigits:2}); };
-          addLine('✓ Contrato ' + (_dc.contrato || '') + ' · ' + (_dc.cliente || '') + ' · ' + _money(_dc.total_receivable) + ' → AR Real' + (_dc.beo_lineas ? ' · BEO con ' + _dc.beo_lineas + ' partidas' : ''), 'l-ok');
-          var _di2 = _dc.distribucion || {};
-          if (_di2.ap)    addLine('✓ AP comisión agencia: ' + _money(_di2.ap) + ' (pago pendiente)', 'l-ok');
-          if (_di2.banco) addLine('✓ Banco depósito previsto: ' + _money(_di2.banco), 'l-ok');
-          if (_di2.fb)    addLine('✓ F&B evento (banquete): ' + _money(_di2.fb), 'l-ok');
-          if (_dc.requiere_certificado_di) addLine('⚠ Certificado de doble imposición pendiente', 'l-warn');
-        } else if (_dc && /no parecen un contrato/i.test(_dc.error || '')) {
-          addLine('Las fotos no son un contrato — proceso cada una como documento suelto', 'l-info');
-          errs += await _procesarImagenes(imgs, addLine, _cierreFotos);
-        } else {
-          addLine('⚠ No se pudo leer el contrato: ' + ((_dc && _dc.error) || 'error') + '. Revisa que las fotos sean nítidas.', 'l-warn');
-          errs++;
-        }
-      } catch(e) {
-        addLine('✗ ' + (e.message || 'error de red procesando el contrato'), 'l-err');
-        errs++;
-      }
-    } else {
-      // 1 foto: documento suelto (factura, extracto, ticket...)
-      errs = await _procesarImagenes(imgs, addLine, _cierreFotos);
+    // Cada foto es su propio documento salvo que el usuario haya unido varias
+    // a mano en el modal. Antes se decidia CONTANDO fotos (imgs.length >= 2):
+    // dos facturas distintas se mandaban juntas al lector de contratos, que
+    // cuesta una llamada entera a la IA antes de acabar acertando por el
+    // camino de atras. Los dos endpoints y sus mensajes NO cambian.
+    var _rep = _repartirFotos(imgs);
+    var _soloUno = (_rep.grupos.length === 1 && !_rep.sueltas.length);
+    for (var _gi = 0; _gi < _rep.grupos.length; _gi++) {
+      // Con un unico documento el mensaje se queda EXACTAMENTE como estaba:
+      // es el caso que hoy acierta y no se puede mover.
+      var _pref = _soloUno ? '' : ('Documento ' + (_gi + 1) + ' de ' + _rep.grupos.length + ': ');
+      errs += await _procesarGrupoFotos(_rep.grupos[_gi], _pref, addLine, _cierreFotos);
+    }
+    if (_rep.sueltas.length) {
+      errs += await _procesarImagenes(_rep.sueltas, addLine, _cierreFotos);
     }
     if (docs.length) {
       // tanda mezclada: las fotos le pasan su pendiente al lote y se cierra
@@ -12034,6 +12167,46 @@ async function _comprimirImagen(file) {
     }
     return file;
   } catch(e) { return file; } // HEIC u otros que el navegador no decodifica: se envía tal cual
+}
+
+// ── UN grupo de fotos = las paginas de UN documento ───────────────────
+// Es el camino del contrato de grupo tal cual estaba dentro de
+// uploadAndProcess: misma llamada, mismo endpoint, mismos mensajes. Lo unico
+// nuevo es que ahora se puede llamar VARIAS veces, una por documento, que es
+// lo que hace falta para una tanda mezclada (contrato + factura + contrato).
+// `pref` va vacio cuando la tanda trae un solo documento, para que ese caso
+// —el que hoy acierta— salga byte a byte igual que antes.
+async function _procesarGrupoFotos(grupo, pref, addLine, cierre) {
+  var errs = 0;
+  addLine('📄 ' + (pref || '') + 'Analizando ' + grupo.length + ' fotos como contrato de grupo (puede tardar ~1 min)...', 'l-info');
+  var fdc = new FormData();
+  for (var _k = 0; _k < grupo.length; _k++) {
+    var _cf = await _comprimirImagen(grupo[_k]);
+    fdc.append('files', _cf, _cf.name);
+  }
+  try {
+    var _rc = await fetch('/api/ar_real/procesar_contrato', { method: 'POST', body: fdc, headers: { 'X-CSRF-Token': _csrfToken } });
+    var _dc = await _rc.json();
+    if (_dc && _dc.ok) {
+      var _money = function(v){ return '€' + (Number(v)||0).toLocaleString('es-ES', {minimumFractionDigits:2}); };
+      addLine('✓ Contrato ' + (_dc.contrato || '') + ' · ' + (_dc.cliente || '') + ' · ' + _money(_dc.total_receivable) + ' → AR Real' + (_dc.beo_lineas ? ' · BEO con ' + _dc.beo_lineas + ' partidas' : ''), 'l-ok');
+      var _di2 = _dc.distribucion || {};
+      if (_di2.ap)    addLine('✓ AP comisión agencia: ' + _money(_di2.ap) + ' (pago pendiente)', 'l-ok');
+      if (_di2.banco) addLine('✓ Banco depósito previsto: ' + _money(_di2.banco), 'l-ok');
+      if (_di2.fb)    addLine('✓ F&B evento (banquete): ' + _money(_di2.fb), 'l-ok');
+      if (_dc.requiere_certificado_di) addLine('⚠ Certificado de doble imposición pendiente', 'l-warn');
+    } else if (_dc && /no parecen un contrato/i.test(_dc.error || '')) {
+      addLine('Las fotos no son un contrato — proceso cada una como documento suelto', 'l-info');
+      errs += await _procesarImagenes(grupo, addLine, cierre);
+    } else {
+      addLine('⚠ No se pudo leer el contrato: ' + ((_dc && _dc.error) || 'error') + '. Revisa que las fotos sean nítidas.', 'l-warn');
+      errs++;
+    }
+  } catch(e) {
+    addLine('✗ ' + (e.message || 'error de red procesando el contrato'), 'l-err');
+    errs++;
+  }
+  return errs;
 }
 
 // ── Procesado de fotos de documentos, integrado en Procesar Archivos ──
