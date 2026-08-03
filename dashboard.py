@@ -11534,7 +11534,7 @@ function _avisoDescartes(recibidos, anadidos, desconocidos, repetidos, renombrad
   var partes = [];
   if (repetidos.length) {
     partes.push('<div style="margin-top:5px">· ' + repetidos.length +
-      (repetidos.length === 1 ? ' tenía un nombre que ya estaba en la lista: ' : ' tenían un nombre que ya estaba en la lista: ') +
+      (repetidos.length === 1 ? ' era el mismo fichero que ya estaba en la lista: ' : ' eran el mismo fichero que ya estaba en la lista: ') +
       '<b>' + nombres(repetidos) + '</b></div>');
   }
   if (desconocidos.length) {
