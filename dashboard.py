@@ -12355,16 +12355,30 @@ async function _procesarGrupoFotos(grupo, pref, addLine, cierre) {
       if (_di2.banco) addLine('✓ Banco depósito previsto: ' + _money(_di2.banco), 'l-ok');
       if (_di2.fb)    addLine('✓ F&B evento (banquete): ' + _money(_di2.fb), 'l-ok');
       if (_dc.requiere_certificado_di) addLine('⚠ Certificado de doble imposición pendiente', 'l-warn');
-    } else if (_dc && /no parecen un contrato/i.test(_dc.error || '')) {
+    } else if (_dc && _dc.reprocesar) {
+      // LA MARCA, no el texto. El servidor pone `reprocesar` en dos casos
+      // distintos ("no parecen un contrato" y "no se ha leido ningun dato
+      // aprovechable") y antes solo se atrapaba el primero, porque se
+      // comparaba el texto del error. El segundo se llevaba las fotos por
+      // delante aunque el servidor estuviera pidiendo justo lo contrario.
       addLine('Las fotos no son un contrato — proceso cada una como documento suelto', 'l-info');
       errs += await _procesarImagenes(grupo, addLine, cierre);
     } else {
-      addLine('⚠ No se pudo leer el contrato: ' + ((_dc && _dc.error) || 'error') + '. Revisa que las fotos sean nítidas.', 'l-warn');
-      errs++;
+      // La IA fallo o devolvio algo que no se entiende. Las fotos siguen
+      // siendo documentos: se les da su oportunidad una a una en vez de
+      // descartarlas. Perder una factura en silencio es mucho peor que
+      // gastar unas llamadas de mas.
+      addLine('⚠ No se pudo leer el contrato: ' + ((_dc && _dc.error) || 'error') +
+              ' — pruebo cada foto como documento suelto', 'l-warn');
+      errs += await _procesarImagenes(grupo, addLine, cierre);
     }
   } catch(e) {
-    addLine('✗ ' + (e.message || 'error de red procesando el contrato'), 'l-err');
-    errs++;
+    // Se cayo la red entre el navegador y Render. Igual: no se tiran. Si la
+    // red sigue caida, `_procesarImagenes` reintenta 3 veces por foto y
+    // acabara cantando el error de cada una — que es lo que hay que ver.
+    addLine('✗ ' + (e.message || 'error de red procesando el contrato') +
+            ' — pruebo cada foto como documento suelto', 'l-err');
+    errs += await _procesarImagenes(grupo, addLine, cierre);
   }
   return errs;
 }
