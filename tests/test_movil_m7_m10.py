@@ -185,7 +185,13 @@ i_768 = HTML.find('.nav-right{gap:4px')
 comprob_m10 = [
     ('la nav derecha puede encoger', 'flex-shrink:1' in MOVIL and 'min-width:0' in MOVIL),
     ('si no cabe, se desliza DENTRO de la nav', 'overflow-x:auto' in MOVIL),
-    ('el selector de hotel tiene tope', '#hotel-activo-sel{max-width:104px}' in MOVIL),
+    # Medido en el navegador: el selector lleva `max-width:190px` EN LINEA, y
+    # el estilo inline gana a cualquier hoja. Sin `!important` la regla existe
+    # y no hace NADA — que es peor que no ponerla, porque parece hecha.
+    ('el selector de hotel tiene tope', '#hotel-activo-sel{max-width:104px!important}' in MOVIL),
+    ('...y ese tope gana al estilo en línea del propio elemento',
+     re.search(r'id="hotel-activo-sel"[^>]*style="[^"]*max-width:\s*190px', HTML) is not None
+     and 'max-width:104px!important' in MOVIL),
     ('red de seguridad: nada puede desplazar la página',
      'html,body{max-width:100%;overflow-x:hidden}' in MOVIL),
     ('la regla nueva va DESPUÉS de las que anula (si no, no ganaría)',

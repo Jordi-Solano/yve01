@@ -5269,7 +5269,10 @@ body::before{
      no cabe, se desliza DENTRO de la nav en vez de mover la pagina. */
   .nav-right{gap:4px;flex-shrink:1;min-width:0;overflow-x:auto;scrollbar-width:none}
   .nav-right::-webkit-scrollbar{display:none}
-  #hotel-activo-sel{max-width:104px}
+  /* `!important` a proposito: el selector lleva `max-width:190px` EN LINEA
+     (esta pintado con estilo inline), y sin esto la regla no gana nunca —
+     medido en el navegador: seguia en 151 px. */
+  #hotel-activo-sel{max-width:104px!important}
   /* Red de seguridad: que ningun elemento pueda volver a desplazar la pagina
      de lado. La causa se arregla arriba; esto es para que no vuelva. */
   html,body{max-width:100%;overflow-x:hidden}
