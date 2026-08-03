@@ -12421,43 +12421,117 @@ async function _procesarGrupoFotos(grupo, pref, addLine, cierre) {
 // ── Procesado de fotos de documentos, integrado en Procesar Archivos ──
 function _mb(n) { return n > 950000 ? (n/1048576).toFixed(1) + 'MB' : Math.round(n/1024) + 'KB'; }
 
-async function _procesarImagenes(imgs, addLine, acc) {
+// ── CUANTAS FOTOS A LA VEZ ────────────────────────────────────────────
+// De una en una, 12 fotos son ~2 minutos con la pantalla encendida, y ahi es
+// donde el movil puede congelar la pestaña al cambiar de app. Lo que tarda es
+// la IA (~6,5 s medidos por foto), no el navegador: la memoria ni se mueve.
+// Con tres a la vez, esos 2 minutos son ~40 s.
+//
+// OJO: esto SOLO es seguro con el candado del servidor puesto. Sin el, tres
+// guardados simultaneos se pisan el Excel y se pierden facturas (medido: 3 de
+// 6). Si alguna vez Render se atraganta, se baja a 2 aqui y ya esta.
+var _FOTOS_A_LA_VEZ = 3;
+
+// Una linea de progreso viva, que se mueve al final del log para no perderse
+// de vista. Solo aparece cuando hay algo que esperar (3 fotos o mas): con una
+// o dos seria ruido, y con UNA el log tiene que salir identico al de siempre.
+function _progresoFotos(total) {
+  var log = document.getElementById('log');
+  if (!log || total < 3) return { paso: function(){}, fin: function(){} };
+  var p = document.createElement('p');
+  p.className = 'l-info';
+  p.style.fontWeight = '700';
+  var t0 = Date.now(), hechas = 0;
+  var pintar = function() {
+    var txt = '⏳ ' + hechas + ' de ' + total;
+    if (hechas > 0 && hechas < total) {
+      // el tiempo medido por foto TERMINADA ya lleva dentro el paralelismo,
+      // asi que multiplicar por las que quedan da el tiempo de reloj real.
+      var seg = Math.round(((Date.now() - t0) / hechas) * (total - hechas) / 1000);
+      txt += ' · quedan ~' + (seg >= 60 ? Math.ceil(seg / 60) + ' min' : Math.max(1, seg) + ' s');
+    }
+    p.textContent = _tSSE(txt);
+    log.appendChild(p);                 // reaparece al final en cada paso
+    log.scrollTop = log.scrollHeight;
+  };
+  pintar();
+  return {
+    paso: function() { hechas++; pintar(); },
+    fin:  function() { try { p.remove(); } catch(e) {} }
+  };
+}
+
+// El trabajo de UNA foto. Es el cuerpo del bucle de antes, tal cual: misma
+// llamada, mismos 3 reintentos, mismos mensajes. `fi` sigue siendo el indice
+// en la LISTA, no el de llegada, para que `[2/6]` signifique siempre la
+// segunda foto que eligio el usuario aunque termine la cuarta.
+async function _unaFoto(original, fi, total, addLine, acc) {
   var errors = 0;
-  for (var fi = 0; fi < imgs.length; fi++) {
-    var original = imgs[fi];
-    var file = await _comprimirImagen(original);
-    var label = '[' + (fi+1) + '/' + imgs.length + '] ' + (file.name || 'foto');
-    var sizeInfo = file.size < original.size ? ' (' + _mb(original.size) + ' → ' + _mb(file.size) + ')' : ' (' + _mb(file.size) + ')';
-    addLine('🔍 ' + label + sizeInfo + '...', 'l-info');
-    var success = false;
-    for (var retry = 0; retry < 3 && !success; retry++) {
-      try {
-        var formData = new FormData();
-        formData.append('image', file);
-        var r = await fetch('/api/scan_documento', { method: 'POST', body: formData, headers: { 'X-CSRF-Token': _csrfToken } });
-        var data = await r.json();
-        if (data.ok) {
-          var _ok = (data.guardado !== false);
-          // lo que esta foto deja pendiente (cruce / asignador). Este era el
-          // agujero: scan_documento guardaba el documento y ahi se acababa.
-          if (acc && data.cierre) { data.cierre.forEach(function(p){ if (p) acc[p] = true; }); }
-          addLine((_ok ? '✓ ' : '⚠ ') + (file.name || 'foto') + ': ' + (data.tipo || '—') + (data.mensaje ? ' — ' + data.mensaje : ''), _ok ? 'l-ok' : 'l-warn');
-        } else {
-          addLine('✗ ' + (file.name || 'foto') + ': ' + (data.error || 'error'), 'l-err');
-          errors++;
-        }
-        success = true;
-      } catch(e) {
-        if (retry < 2) {
-          addLine('⚠ ' + label + ' — ' + _tSSE('Reconectando') + '... (' + (retry+2) + '/3)', 'l-warn');
-          await new Promise(function(res) { setTimeout(res, 2000 * (retry+1)); });
-        } else {
-          addLine('✗ ' + label + ' — ' + e.message, 'l-err');
-          errors++; success = true;
-        }
+  var file = await _comprimirImagen(original);
+  var label = '[' + (fi+1) + '/' + total + '] ' + (file.name || 'foto');
+  var sizeInfo = file.size < original.size ? ' (' + _mb(original.size) + ' → ' + _mb(file.size) + ')' : ' (' + _mb(file.size) + ')';
+  addLine('🔍 ' + label + sizeInfo + '...', 'l-info');
+  var success = false;
+  for (var retry = 0; retry < 3 && !success; retry++) {
+    try {
+      var formData = new FormData();
+      formData.append('image', file);
+      var r = await fetch('/api/scan_documento', { method: 'POST', body: formData, headers: { 'X-CSRF-Token': _csrfToken } });
+      var data = await r.json();
+      if (data.ok) {
+        var _ok = (data.guardado !== false);
+        // lo que esta foto deja pendiente (cruce / asignador). Este era el
+        // agujero: scan_documento guardaba el documento y ahi se acababa.
+        if (acc && data.cierre) { data.cierre.forEach(function(p){ if (p) acc[p] = true; }); }
+        addLine((_ok ? '✓ ' : '⚠ ') + (file.name || 'foto') + ': ' + (data.tipo || '—') + (data.mensaje ? ' — ' + data.mensaje : ''), _ok ? 'l-ok' : 'l-warn');
+      } else {
+        addLine('✗ ' + (file.name || 'foto') + ': ' + (data.error || 'error'), 'l-err');
+        errors++;
+      }
+      success = true;
+    } catch(e) {
+      if (retry < 2) {
+        addLine('⚠ ' + label + ' — ' + _tSSE('Reconectando') + '... (' + (retry+2) + '/3)', 'l-warn');
+        await new Promise(function(res) { setTimeout(res, 2000 * (retry+1)); });
+      } else {
+        addLine('✗ ' + label + ' — ' + e.message, 'l-err');
+        errors++; success = true;
       }
     }
   }
+  return errors;
+}
+
+async function _procesarImagenes(imgs, addLine, acc) {
+  var lista = imgs || [];
+  var total = lista.length;
+  if (!total) return 0;
+  var errors = 0;
+  var prog = _progresoFotos(total);
+  // Un pozo de trabajo: cada obrero coge la siguiente foto que quede. Asi la
+  // foto lenta no bloquea a las demas, que es lo que pasaria repartiendolas
+  // en tandas fijas de tres.
+  var siguiente = 0;
+  var obreros = [];
+  var aLaVez = Math.min(_FOTOS_A_LA_VEZ, total);
+  for (var w = 0; w < aLaVez; w++) {
+    obreros.push((async function() {
+      while (true) {
+        var i = siguiente++;
+        if (i >= total) return;
+        // OJO: `errors += await ...` NO vale con varios obreros. El `+=`
+        // LEE `errors` ANTES de esperar y lo escribe despues, asi que dos
+        // obreros que terminan a la vez se pisan la cuenta y los errores
+        // desaparecen. Lo cazo el test: dos fotos fallaban y el contador
+        // decia 0. Se lee DESPUES de la espera.
+        var _errFoto = await _unaFoto(lista[i], i, total, addLine, acc);
+        errors += _errFoto;
+        prog.paso();
+      }
+    })());
+  }
+  await Promise.all(obreros);
+  prog.fin();
   return errors;
 }
 
