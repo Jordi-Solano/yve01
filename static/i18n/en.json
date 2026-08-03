@@ -392,9 +392,16 @@
  "upload.llegoUno": "1 file arrived and was not added.",
  "upload.mismoFicheroN": "{n} were the same file already in the list: ",
  "upload.mismoFicheroUno": "1 was the same file already in the list: ",
+ "upload.nuevoUno": "1 new",
+ "upload.nuevosN": "{n} new",
  "upload.pistaOtra": "☝ Tick at least one more photo to merge them into a single document.",
  "upload.pistaUnir": "Several photos of the same document? Tick them and press <b style=\"color:var(--tx)\">Merge</b>. If you tick nothing, each photo is its own document.",
+ "upload.procesarN": "⚡ Process {n} new files",
+ "upload.procesarSel": "⚡ Process selected",
+ "upload.procesarUno": "⚡ Process 1 new file",
  "upload.quitarMarcas": "Clear selection",
  "upload.separarGrupo": "Split back into separate photos",
- "upload.unirN": "🔗 Merge the {n} into one document"
+ "upload.unirN": "🔗 Merge the {n} into one document",
+ "upload.yaProcN": "{n} already processed (will be skipped)",
+ "upload.yaProcUno": "1 already processed (will be skipped)"
 }

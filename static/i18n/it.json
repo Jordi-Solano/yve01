@@ -392,9 +392,16 @@
  "upload.llegoUno": "È arrivato 1 file e non si è aggiunto.",
  "upload.mismoFicheroN": "{n} erano lo stesso file già presente nell'elenco: ",
  "upload.mismoFicheroUno": "1 era lo stesso file già presente nell'elenco: ",
+ "upload.nuevoUno": "1 nuovo",
+ "upload.nuevosN": "{n} nuovi",
  "upload.pistaOtra": "☝ Seleziona almeno un'altra foto per unirle in un solo documento.",
  "upload.pistaUnir": "Più foto dello stesso documento? Selezionale e premi <b style=\"color:var(--tx)\">Unisci</b>. Se non selezioni nulla, ogni foto è un documento a sé.",
+ "upload.procesarN": "⚡ Elabora {n} file nuovi",
+ "upload.procesarSel": "⚡ Elabora i selezionati",
+ "upload.procesarUno": "⚡ Elabora 1 file nuovo",
  "upload.quitarMarcas": "Togli le selezioni",
  "upload.separarGrupo": "Separa in foto singole",
- "upload.unirN": "🔗 Unisci le {n} in un documento"
+ "upload.unirN": "🔗 Unisci le {n} in un documento",
+ "upload.yaProcN": "{n} già elaborati (verranno saltati)",
+ "upload.yaProcUno": "1 già elaborato (verrà saltato)"
 }

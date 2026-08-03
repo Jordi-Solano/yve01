@@ -392,9 +392,16 @@
  "upload.llegoUno": "1 Datei ist angekommen und wurde nicht hinzugefügt.",
  "upload.mismoFicheroN": "{n} waren dieselbe Datei, die schon in der Liste stand: ",
  "upload.mismoFicheroUno": "1 war dieselbe Datei, die schon in der Liste stand: ",
+ "upload.nuevoUno": "1 neu",
+ "upload.nuevosN": "{n} neu",
  "upload.pistaOtra": "☝ Markiere mindestens ein weiteres Foto, um sie zu einem Dokument zusammenzufügen.",
  "upload.pistaUnir": "Mehrere Fotos desselben Dokuments? Markiere sie und drücke <b style=\"color:var(--tx)\">Zusammenfügen</b>. Ohne Markierung ist jedes Foto ein eigenes Dokument.",
+ "upload.procesarN": "⚡ {n} neue Dateien verarbeiten",
+ "upload.procesarSel": "⚡ Ausgewählte verarbeiten",
+ "upload.procesarUno": "⚡ 1 neue Datei verarbeiten",
  "upload.quitarMarcas": "Auswahl aufheben",
  "upload.separarGrupo": "Wieder in einzelne Fotos trennen",
- "upload.unirN": "🔗 Die {n} zu einem Dokument zusammenfügen"
+ "upload.unirN": "🔗 Die {n} zu einem Dokument zusammenfügen",
+ "upload.yaProcN": "{n} bereits verarbeitet (werden übersprungen)",
+ "upload.yaProcUno": "1 bereits verarbeitet (wird übersprungen)"
 }

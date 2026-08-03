@@ -392,9 +392,16 @@
  "upload.llegoUno": "Ha arribat 1 fitxer i no s'ha afegit.",
  "upload.mismoFicheroN": "{n} eren el mateix fitxer que ja hi havia a la llista: ",
  "upload.mismoFicheroUno": "1 era el mateix fitxer que ja hi havia a la llista: ",
+ "upload.nuevoUno": "1 de nou",
+ "upload.nuevosN": "{n} de nous",
  "upload.pistaOtra": "☝ Marca almenys una altra foto per unir-les com un sol document.",
  "upload.pistaUnir": "Diverses fotos d'un mateix document? Marca-les i prem <b style=\"color:var(--tx)\">Uneix</b>. Si no marques res, cada foto és un document a part.",
+ "upload.procesarN": "⚡ Processa {n} arxius nous",
+ "upload.procesarSel": "⚡ Processa els seleccionats",
+ "upload.procesarUno": "⚡ Processa 1 arxiu nou",
  "upload.quitarMarcas": "Treu les marques",
  "upload.separarGrupo": "Separa en fotos soltes",
- "upload.unirN": "🔗 Uneix les {n} en un document"
+ "upload.unirN": "🔗 Uneix les {n} en un document",
+ "upload.yaProcN": "{n} ja processats (s'ometran)",
+ "upload.yaProcUno": "1 ja processat (s'ometrà)"
 }

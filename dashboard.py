@@ -11265,8 +11265,10 @@ async function openUploadModal() {
   _uploadFiles = [];
   document.getElementById('upload-file-list').style.display = 'none';
   document.getElementById('upload-files-container').innerHTML = '';
-  document.getElementById('upload-count-new').textContent = '0 nuevos';
-  document.getElementById('upload-count-dup').textContent = '0 ya procesados (se saltarán)';
+  document.getElementById('upload-count-new').textContent =
+    t('upload.nuevosN', '{n} nuevos').replace('{n}', 0);
+  document.getElementById('upload-count-dup').textContent =
+    t('upload.yaProcN', '{n} ya procesados (se saltarán)').replace('{n}', 0);
   var procBtn = document.getElementById('btn-upload-procesar');
   procBtn.disabled = true; procBtn.style.opacity = '.4'; procBtn.style.cursor = 'not-allowed';
 
@@ -11778,15 +11780,24 @@ function _renderFileList() {
   cont.innerHTML = _piezas.join('');
   _pintarBarraUnir();
 
-  document.getElementById('upload-count-new').textContent = newCount + ' nuevo' + (newCount !== 1 ? 's' : '');
-  document.getElementById('upload-count-dup').textContent = dupCount + ' ya procesado' + (dupCount !== 1 ? 's' : '') + ' (se saltarán)';
+  document.getElementById('upload-count-new').textContent =
+    t(newCount === 1 ? 'upload.nuevoUno' : 'upload.nuevosN',
+      newCount === 1 ? '1 nuevo' : '{n} nuevos').replace('{n}', newCount);
+  document.getElementById('upload-count-dup').textContent =
+    t(dupCount === 1 ? 'upload.yaProcUno' : 'upload.yaProcN',
+      dupCount === 1 ? '1 ya procesado (se saltará)'
+                     : '{n} ya procesados (se saltarán)').replace('{n}', dupCount);
   
   var procBtn = document.getElementById('btn-upload-procesar');
   // Hacen falta las dos cosas: ficheros nuevos Y hotel resuelto.
   var puede = newCount > 0 && _hotelResuelto();
   procBtn.textContent = !_hotelResuelto()
     ? t('upload.eligeHotelBoton', '🏨 Elige un hotel para continuar')
-    : '⚡ Procesar ' + (newCount > 0 ? newCount + ' archivo' + (newCount !== 1 ? 's' : '') + ' nuevo' + (newCount !== 1 ? 's' : '') : 'seleccionados');
+    : (newCount > 0
+        ? t(newCount === 1 ? 'upload.procesarUno' : 'upload.procesarN',
+            newCount === 1 ? '⚡ Procesar 1 archivo nuevo'
+                           : '⚡ Procesar {n} archivos nuevos').replace('{n}', newCount)
+        : t('upload.procesarSel', '⚡ Procesar seleccionados'));
   procBtn.disabled = !puede;
   procBtn.style.opacity = puede ? '1' : '.4';
   procBtn.style.cursor = puede ? 'pointer' : 'not-allowed';
