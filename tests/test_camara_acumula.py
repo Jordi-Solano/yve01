@@ -34,6 +34,19 @@ SABOTAJE = '--sabotaje' in sys.argv
 FUNCIONES = ('_pareceDocumento', '_claveNombre', '_huellaFichero', '_nombreLibre',
              '_esImagen', 'handleUploadFiles', '_addFilesToList')
 
+# Que avisos se ven y cuales no. Renombrar es SILENCIOSO a proposito (con la
+# camara todas las fotos se llaman igual, asi que avisar en cada tanda seria
+# ruido); los otros dos si se dicen.
+#   (titulo, [recibidos, anadidos, ilegibles, repetidos, renombrados], se_ve, texto_que_debe_salir)
+AVISOS = [
+    ('Solo renombrados: NO se avisa', [3, 3, 0, 0, 2], False, None),
+    ('Muchos renombrados (25 fotos de camara): NO se avisa', [25, 25, 0, 0, 24], False, None),
+    ('El mismo fichero otra vez: SI se avisa', [2, 1, 0, 1, 0], True, 'ya estaba en la lista'),
+    ('Fichero ilegible: SI se avisa', [1, 0, 1, 0, 0], True, 'no identifica'),
+    ('Renombrado + ilegible: se avisa SOLO de lo ilegible', [3, 2, 1, 0, 1], True, 'no identifica'),
+    ('Nada raro: NO se avisa', [2, 2, 0, 0, 0], False, None),
+]
+
 
 def html_servido():
     import dashboard
@@ -170,6 +183,42 @@ function correr(tandas) {
 '''
 
 
+def avisos_resultado(html):
+    """Corre el _avisoDescartes REAL contra una caja de mentira y mira que sale."""
+    fn = extraer_funcion(html, '_avisoDescartes')
+    if SABOTAJE:
+        # Vuelve el aviso de renombrado que Jordi pidio quitar.
+        fn = fn.replace('caja.style.borderColor = \'rgba(245,158,11,.35)\';', '''
+  if (!fuera && renombrados.length) {
+    caja.innerHTML = '<div>' + renombrados.length + ' foto se llamaba igual que otra.</div>';
+    caja.style.display = 'block'; return;
+  }
+  caja.style.borderColor = 'rgba(245,158,11,.35)';''', 1)
+    guion = '''
+const caja = { style: {}, innerHTML: '' };
+Object.defineProperty(caja, 'innerText', { get() {
+  return String(this.innerHTML).replace(/<[^>]*>/g, ' ').replace(/\\s+/g, ' ').trim();
+} });
+const document = { getElementById: function() { return caja; } };
+''' + fn + '''
+const CASOS = ''' + json.dumps([a[1] for a in AVISOS]) + ''';
+console.log(JSON.stringify(CASOS.map(function(a) {
+  caja.style = {}; caja.innerHTML = '';
+  _avisoDescartes(a[0], a[1], new Array(a[2]).fill({name:'raro'}),
+                  new Array(a[3]).fill('dup.jpg'),
+                  new Array(a[4]).fill('image.jpg → image_2.jpg'));
+  return { visible: caja.style.display === 'block', texto: caja.innerText };
+})));
+'''
+    with tempfile.NamedTemporaryFile('w', suffix='.js', delete=False, encoding='utf-8') as fh:
+        fh.write(guion)
+        p = fh.name
+    out = subprocess.run(['node', p], capture_output=True, text=True)
+    os.unlink(p)
+    assert out.returncode == 0, f'node fallo en los avisos:\n{out.stderr[:600]}'
+    return json.loads(out.stdout.strip().splitlines()[-1])
+
+
 def main():
     html = html_servido()
     fns = '\n'.join(extraer_funcion(html, n) for n in FUNCIONES)
@@ -218,6 +267,21 @@ console.log(JSON.stringify({
                 print(f"          NOMBRES QUE CHOCAN al comprimir: {r['nombres']}")
             if not r['input_limpio']:
                 print('          el input NO se limpia')
+
+    # ── Que se avisa y que no ────────────────────────────────────────
+    for (titulo, args, se_ve, texto), r in zip(AVISOS, avisos_resultado(html)):
+        ok = (r['visible'] == se_ve)
+        if ok and texto:
+            ok = texto in r['texto']
+        if ok and not se_ve:
+            ok = not r['texto'].strip()
+        # renombrar nunca se nombra, ni cuando la caja se enseña por otra cosa
+        if ok and 'llamaba igual' in r['texto']:
+            ok = False
+        print(f"  {'OK ' if ok else 'FALLA'}  {titulo}")
+        if not ok:
+            fallos += 1
+            print(f"          visible={r['visible']} (esperaba {se_ve}) · texto: {r['texto'][:90]!r}")
 
     # El orden no decide
     ns = sorted(set(x['n'] for x in got['orden']))

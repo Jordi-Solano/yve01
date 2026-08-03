@@ -11517,21 +11517,12 @@ function _avisoDescartes(recibidos, anadidos, desconocidos, repetidos, renombrad
   desconocidos = desconocidos || []; repetidos = repetidos || []; renombrados = renombrados || [];
   var fuera = desconocidos.length + repetidos.length;
 
-  // Renombrar NO es descartar: la foto entra. Se cuenta aparte y en tono
-  // neutro, porque es justo lo que el movil hace todo el rato (todas sus
-  // fotos de camara se llaman igual) y en rojo pareceria un problema.
-  if (!fuera && renombrados.length) {
-    caja.style.borderColor = 'rgba(var(--acc-r,59),var(--acc-g,130),var(--acc-b,246),.35)';
-    caja.style.background = 'rgba(var(--acc-r,59),var(--acc-g,130),var(--acc-b,246),.07)';
-    caja.innerHTML =
-      '<div>' + renombrados.length +
-      (renombrados.length === 1 ? ' foto se llamaba igual que otra y la he guardado como '
-                                : ' fotos se llamaban igual que otras y las he guardado como ') +
-      '<b>' + renombrados.map(function(t){ return t.split(' → ')[1]; }).slice(0, 4).join(', ') +
-      (renombrados.length > 4 ? '…' : '') + '</b>. Entran todas.</div>';
-    caja.style.display = 'block';
-    return;
-  }
+  // Renombrar NO se avisa, A PROPOSITO. Con la camara TODAS las fotos se
+  // llaman `image.jpg`, asi que el aviso saltaria en cada tanda y acabaria
+  // siendo ruido que se ignora — que es como se pierde el credito de los
+  // avisos que SI importan. La foto entra igual, con su nombre unico, y eso
+  // ya se ve en la lista. `renombrados` se sigue recibiendo: las pruebas
+  // comprueban con el que el renombrado ocurre aunque no se enseñe.
   caja.style.borderColor = 'rgba(245,158,11,.35)';
   caja.style.background = 'rgba(245,158,11,.08)';
   if (!fuera) { caja.style.display = 'none'; caja.innerHTML = ''; return; }
