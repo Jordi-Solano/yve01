@@ -11414,13 +11414,53 @@ function _pareceDocumento(f) {
          (f.type || '').indexOf('image/') === 0;
 }
 
+// ── DOS FOTOS CON EL MISMO NOMBRE SON DOS DOCUMENTOS ─────────────────
+// El movil llama `image.jpg` a TODAS las fotos de camara. Antes la 2a y
+// siguientes se descartaban por nombre repetido: por eso la camara solo
+// dejaba añadir una. Ahora se renombran para que entren todas.
+//
+// La clave de choque NO es el nombre que trae, es el que va a tener DESPUES
+// de comprimirse: `_comprimirImagen` renombra toda foto comprimida a
+// `<base>.jpg`, asi que `recibo.png` y `recibo.jpeg` acabarian siendo el
+// mismo `recibo.jpg` aunque entren con nombres distintos. Y ese nombre es la
+// clave con la que el servidor deduplica las facturas: dos iguales y una
+// desaparece del Excel sin avisar.
+function _claveNombre(nombre) {
+  var n = String(nombre || 'foto');
+  if (/\.(jpe?g|png|webp|heic)$/i.test(n)) return n.replace(/\.\w+$/, '').toLowerCase() + '.jpg';
+  return n.toLowerCase();
+}
+
+// "Es EXACTAMENTE el mismo fichero" (el mismo de la galeria elegido dos
+// veces) frente a "dos fotos distintas que se llaman igual". Por el nombre no
+// se distinguen; con el tamaño y la fecha, si. Se guarda el nombre original
+// en el fichero renombrado para que la huella siga funcionando a la tercera.
+function _huellaFichero(f) {
+  return (f._nombreOriginal || f.name || '') + '|' + (f.size || 0) + '|' + (f.lastModified || 0);
+}
+
+function _nombreLibre(nombre, usadas) {
+  if (!usadas.has(_claveNombre(nombre))) return nombre;
+  var m = String(nombre || 'foto').match(/^(.*?)(\.[^.]+)?$/);
+  var base = m[1] || 'foto', ext = m[2] || '';
+  for (var i = 2; i < 1000; i++) {
+    var cand = base + '_' + i + ext;
+    if (!usadas.has(_claveNombre(cand))) return cand;
+  }
+  return base + '_' + Date.now() + ext;
+}
+
+function _esImagen(f) {
+  return /\.(jpe?g|png|webp|heic)$/i.test(f.name || '') || (f.type || '').indexOf('image/') === 0;
+}
+
 function handleUploadFiles(fileList, input) {
   var todos = Array.from(fileList || []);
   var buenos = [], desconocidos = [];
   todos.forEach(function(f) { (_pareceDocumento(f) ? buenos : desconocidos).push(f); });
 
   var r = _addFilesToList(buenos);
-  _avisoDescartes(todos.length, r.anadidos, desconocidos, r.repetidos);
+  _avisoDescartes(todos.length, r.anadidos, desconocidos, r.repetidos, r.renombrados);
 
   // EL ARREGLO DE LA CAMARA: el input no se limpiaba NUNCA. Si el navegador
   // considera que el valor no ha cambiado, no vuelve a disparar 'change' y la
@@ -11431,28 +11471,69 @@ function handleUploadFiles(fileList, input) {
 }
 
 function _addFilesToList(newFiles) {
-  // Junta con lo que ya hay. Se sigue deduplicando por nombre —dos ficheros
-  // con el mismo nombre se pisarian mas adelante— pero ya NO en silencio:
-  // se devuelve que se ha quedado fuera para poder decirlo.
-  var existing = new Set(_uploadFiles.map(function(f){ return f.name; }));
-  var anadidos = 0, repetidos = [];
+  var usadas = new Set();
+  _uploadFiles.forEach(function(f) { usadas.add(_claveNombre(f.name)); });
+  var huellas = new Set(_uploadFiles.map(_huellaFichero));
+
+  var anadidos = 0, repetidos = [], renombrados = [];
   (newFiles || []).forEach(function(f) {
-    if (existing.has(f.name)) { repetidos.push(f.name); return; }
-    existing.add(f.name);            // dos repetidos en la MISMA tanda tambien cuentan
-    _uploadFiles.push(f);
+    // El MISMO fichero otra vez: eso si es un duplicado de verdad.
+    if (huellas.has(_huellaFichero(f))) { repetidos.push(f.name); return; }
+
+    // Las fotos ademas esquivan los nombres YA PROCESADOS. Si no, una foto de
+    // camara nueva llamada `image.jpg` heredaria el "ya procesado" de la de
+    // ayer y `uploadAndProcess` la filtraria sin decir nada. Los documentos
+    // (pdf, excel) conservan ese aviso, que ahi si es util: no vienen de una
+    // camara y repetir nombre suele significar repetir fichero.
+    var evita = usadas;
+    if (_esImagen(f) && _processedNames && _processedNames.size) {
+      evita = new Set(usadas);
+      _processedNames.forEach(function(n) { evita.add(_claveNombre(n)); });
+    }
+
+    var nombre = _nombreLibre(f.name || 'foto', evita);
+    var entra = f;
+    if (nombre !== f.name) {
+      try {
+        entra = new File([f], nombre, { type: f.type, lastModified: f.lastModified });
+        entra._nombreOriginal = f.name;
+      } catch (e) { entra = f; }     // navegador sin constructor de File: entra tal cual
+      if (entra !== f) renombrados.push(f.name + ' → ' + nombre);
+    }
+    usadas.add(_claveNombre(entra.name));
+    huellas.add(_huellaFichero(entra));
+    _uploadFiles.push(entra);
     anadidos++;
   });
   _renderFileList();
-  return { anadidos: anadidos, repetidos: repetidos };
+  return { anadidos: anadidos, repetidos: repetidos, renombrados: renombrados };
 }
 
 // Lo que llega y no entra, dicho en voz alta. Antes desaparecia sin rastro:
 // la pantalla se quedaba igual y no habia forma de saber por que.
-function _avisoDescartes(recibidos, anadidos, desconocidos, repetidos) {
+function _avisoDescartes(recibidos, anadidos, desconocidos, repetidos, renombrados) {
   var caja = document.getElementById('upload-aviso-descartes');
   if (!caja) return;
-  desconocidos = desconocidos || []; repetidos = repetidos || [];
+  desconocidos = desconocidos || []; repetidos = repetidos || []; renombrados = renombrados || [];
   var fuera = desconocidos.length + repetidos.length;
+
+  // Renombrar NO es descartar: la foto entra. Se cuenta aparte y en tono
+  // neutro, porque es justo lo que el movil hace todo el rato (todas sus
+  // fotos de camara se llaman igual) y en rojo pareceria un problema.
+  if (!fuera && renombrados.length) {
+    caja.style.borderColor = 'rgba(var(--acc-r,59),var(--acc-g,130),var(--acc-b,246),.35)';
+    caja.style.background = 'rgba(var(--acc-r,59),var(--acc-g,130),var(--acc-b,246),.07)';
+    caja.innerHTML =
+      '<div>' + renombrados.length +
+      (renombrados.length === 1 ? ' foto se llamaba igual que otra y la he guardado como '
+                                : ' fotos se llamaban igual que otras y las he guardado como ') +
+      '<b>' + renombrados.map(function(t){ return t.split(' → ')[1]; }).slice(0, 4).join(', ') +
+      (renombrados.length > 4 ? '…' : '') + '</b>. Entran todas.</div>';
+    caja.style.display = 'block';
+    return;
+  }
+  caja.style.borderColor = 'rgba(245,158,11,.35)';
+  caja.style.background = 'rgba(245,158,11,.08)';
   if (!fuera) { caja.style.display = 'none'; caja.innerHTML = ''; return; }
 
   var nombres = function(lista) {
