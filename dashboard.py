@@ -258,6 +258,29 @@ def _estampar_hotel_banco(df):
 _pipeline_running = False
 _pipeline_lock    = threading.Lock()
 
+# ── Las escrituras del Excel, en fila ────────────────────────────────
+# Render corre con `--workers 1 --threads 8`: un proceso y ocho hilos. Los
+# guardadores hacen leer -> concatenar -> escribir, y eso a la vez es una
+# carrera de libro. MEDIDO: con tres guardados simultaneos se pierden 3 de 6
+# facturas, y ademas salta `BadZipFile` porque un hilo lee el xlsx mientras
+# otro lo esta escribiendo.
+#
+# El candado NO toca ni un dato: solo pone las llamadas en fila. Uno solo para
+# los tres guardadores; lo que protege es el patron, no un fichero concreto, y
+# escribir un xlsx son milisegundos frente a los ~7 s que tarda la IA.
+_guardado_lock = threading.Lock()
+
+
+def _en_fila(_fn):
+    """Un guardador cada vez. Envuelve sin reindentar el cuerpo."""
+    def _envuelta(*a, **kw):
+        with _guardado_lock:
+            return _fn(*a, **kw)
+    _envuelta.__name__ = getattr(_fn, '__name__', '_envuelta')
+    _envuelta.__doc__ = getattr(_fn, '__doc__', None)
+    _envuelta.__wrapped__ = _fn
+    return _envuelta
+
 # ── Helpers ────────────────────────────────────────────────────────────────
 
 def cargar_ultimo_excel(patron, directorio):
@@ -1234,6 +1257,7 @@ def _tipo_documento(reg):
     return 'FACTURA' if reg.get('es_factura') else ''
 
 
+@_en_fila
 def _guardar_factura_ap(filas):
     """Guarda 1..N facturas AP en el Excel del dia. UNICO sitio que las guarda.
 
@@ -1306,6 +1330,7 @@ _COLS_LINEA_ALB = ('clave', 'numero_albaran', 'nombre_proveedor', 'n_linea',
                    'descripcion', 'cantidad', 'unidad', 'precio_unitario', 'importe')
 
 
+@_en_fila
 def _guardar_albaran(cabecera, lineas):
     """Guarda un albaran en albaranes_YYYYMMDD.xlsx, en DOS hojas.
 
@@ -1361,6 +1386,7 @@ _COLS_LINEA_PO = ('clave', 'numero_po', 'nombre_proveedor', 'n_linea',
                   'descripcion', 'cantidad', 'unidad', 'precio_unitario', 'importe')
 
 
+@_en_fila
 def _guardar_orden_compra(cabecera, lineas):
     """Guarda un PO en ordenes_compra_YYYYMMDD.xlsx, en DOS hojas.
 
