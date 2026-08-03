@@ -345,6 +345,15 @@ def distribuir_contrato(datos, transformado, datos_dir=None):
         agencia = ag.get("nombre") or (datos.get("cliente", {}) or {}).get("nombre") or "Agencia"
         base = round(com_total / 1.21, 2)
         num = ("COM-" + contrato) if contrato else ("COM-" + datetime.now().strftime("%Y%m%d%H%M"))
+        # BUG 8: esta fila se escribe SIN pasar por `_guardar_factura_ap`, que
+        # es quien estampa el hotel. Sin `hotel_id` la comision cae en "sin
+        # asignar": no sale en ningun hotel y no se puede aprobar. El bloque de
+        # F&B de mas abajo ya lo hacia bien (fase 4b) — aqui faltaba.
+        try:
+            import censo_hoteles as _censo
+            _hid_ap = _censo.para_guardar()
+        except Exception:
+            _hid_ap = os.environ.get("YVE_HOTEL", "")
         _append_xlsx(ap_file, {
             "archivo": "comision_" + (contrato or evento_nombre),
             "numero_factura": num, "fecha": hoy, "nombre_proveedor": agencia,
@@ -353,6 +362,7 @@ def distribuir_contrato(datos, transformado, datos_dir=None):
             "base_imponible": base, "porcentaje_iva": 21,
             "cuota_iva": round(com_total - base, 2), "total_factura": round(com_total, 2),
             "moneda": "EUR", "tipo": "COMISION_AGENCIA", "estado_matching": "SIN_PO",
+            "hotel_id": _hid_ap,
         }, dedup_col="numero_factura")
         res["ap"] = round(com_total, 2)
 
@@ -448,6 +458,11 @@ def procesar_contrato_grupo(image_paths, datos_dir=None, guardar_datos=True):
     r["beo_lineas"] = len(beo.get("lineas", []))
     r["beo_total"] = beo.get("total", 0)
     r["distribucion"] = r_dist
+    # BUG 8: este camino no pedia el paso de cierre, asi que la comision se
+    # guardaba y ahi se quedaba — sin cuenta contable y sin asiento. Se
+    # devuelve la misma lista `cierre` que `/api/scan_documento`, y el
+    # frontend la junta con la de las fotos para llamar UNA vez al cierre.
+    r["cierre"] = (["ap"] if r_dist.get("ap") else []) + ["ar"]
     return r
 
 

@@ -925,6 +925,18 @@ def _guardar_fb_del_hotel(df, fichero):
     df = df.copy()
     hid = censo_hoteles.para_guardar()
     df['hotel_id'] = hid
+    # M3: las mermas sin fecha salian sin fecha en el historial. Las ventas ya
+    # traen la suya; las mermas muchas veces no, y una merma sin fecha no se
+    # puede ordenar ni comparar con el mes anterior. Se pone la de HOY solo
+    # donde falta: si el fichero trae fecha, manda la suya.
+    if fichero == 'mermas.xlsx':
+        _hoy = date.today().strftime('%Y-%m-%d')
+        if 'fecha' not in df.columns:
+            df['fecha'] = _hoy
+        else:
+            df['fecha'] = df['fecha'].astype(object)
+            _vacia = df['fecha'].isna() | (df['fecha'].map(lambda v: str(v).strip()) == '')
+            df.loc[_vacia, 'fecha'] = _hoy
     entrantes = len(df)
     ruta = os.path.join(_ddir(), fichero)
     if os.path.exists(ruta):
@@ -1129,6 +1141,9 @@ _INV_COL_MAP = {
 }
 
 _MER_COL_MAP = {
+    # M3: sin esta entrada, un fichero de mermas con 'Fecha' o 'dia' la perdia
+    # por el camino y el historial salia sin fecha.
+    'fecha': ['dia', 'día', 'fecha_merma', 'date', 'day'],
     'ingrediente': ['producto', 'nombre', 'item', 'articulo'],
     'categoria': ['tipo', 'category', 'grupo'],
     'cantidad_merma': ['cantidad', 'amount', 'qty', 'kilos'],
@@ -11928,7 +11943,9 @@ async function uploadAndProcess() {
       if (btnCl) btnCl.disabled = false;
       if (runBtn) runBtn.disabled = false;
       if (log) _showTabBadges(log.textContent || '');
-      setTimeout(function(){ loadAll(); if (typeof cargarARRealData === 'function') { try { cargarARRealData(); } catch(e){} } }, 700);
+      // M6: 700 ms de espera fija DESPUES de que el cierre ya termino, o
+      // sea con los datos ya escritos. No hay nada que esperar.
+      setTimeout(function(){ loadAll(); if (typeof cargarARRealData === 'function') { try { cargarARRealData(); } catch(e){} } }, 60);
     }
     return;
   }
@@ -12034,7 +12051,10 @@ function _runBatchPipeline(fileNames, keepLog, cierreInicial) {
     if (btnCl) { btnCl.disabled = false; btnCl.textContent = 'Cerrar'; }
     var retryBtn = document.getElementById('btn-retry');
     if (retryBtn) retryBtn.style.display = 'none';
-    setTimeout(function(){ loadAll(); if (typeof cargarARRealData === 'function') { try { cargarARRealData(); } catch(e){} } }, 800);
+    // M6: igual que arriba — 800 ms de espera por si acaso, cuando el lote
+    // ya ha terminado de escribir. Lo que queda de lentitud es el servidor
+    // releyendo el Excel consolidado, que es otro trabajo.
+    setTimeout(function(){ loadAll(); if (typeof cargarARRealData === 'function') { try { cargarARRealData(); } catch(e){} } }, 60);
   }
 
   // El cierre corre SIEMPRE antes de dar el proceso por acabado, y por
@@ -12374,6 +12394,10 @@ async function _procesarGrupoFotos(grupo, pref, addLine, cierre) {
     var _rc = await fetch('/api/ar_real/procesar_contrato', { method: 'POST', body: fdc, headers: { 'X-CSRF-Token': _csrfToken } });
     var _dc = await _rc.json();
     if (_dc && _dc.ok) {
+      // BUG 8: el contrato tambien deja trabajo pendiente (la comision va a
+      // AP y necesita cuenta y asiento). Antes solo las fotos sueltas pedian
+      // el cierre, asi que la comision se quedaba sin contabilizar.
+      if (cierre && _dc.cierre) { _dc.cierre.forEach(function(p){ if (p) cierre[p] = true; }); }
       var _money = function(v){ return '€' + (Number(v)||0).toLocaleString('es-ES', {minimumFractionDigits:2}); };
       addLine('✓ Contrato ' + (_dc.contrato || '') + ' · ' + (_dc.cliente || '') + ' · ' + _money(_dc.total_receivable) + ' → AR Real' + (_dc.beo_lineas ? ' · BEO con ' + _dc.beo_lineas + ' partidas' : ''), 'l-ok');
       var _di2 = _dc.distribucion || {};
@@ -12965,7 +12989,9 @@ document.addEventListener('DOMContentLoaded', () => {
 
 
 function eliminarArchivoServidor(nombre, rowEl) {
-  if (!confirm('¿Eliminar ' + nombre + '?')) return;
+  // M2: sin confirmacion. Es poco destructivo —el fichero sigue en
+  // facturas-entrada— y el dialogo estorbaba justo cuando mas se usa: al
+  // quitar varios ya procesados seguidos.
   _postJson('/api/eliminar_archivo', {nombre: nombre})
   .then(function(r){ return r.json(); })
   .then(function(d) {
