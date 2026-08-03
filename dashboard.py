@@ -11590,8 +11590,9 @@ function _renderFileList() {
                 '<div style="font-size:11px;color:var(--dim)">' + _tam(bytes) + '</div>' +
               '</div>' +
               '<button onclick="_deshacerGrupo(' + g + ')" title="Separar en fotos sueltas" ' +
-                'style="background:none;border:1px solid var(--s3);color:var(--dim);cursor:pointer;font-size:15px;' +
-                'padding:9px 13px;border-radius:9px;line-height:1">✕</button>' +
+                'style="background:none;border:1px solid var(--s3);color:var(--dim);cursor:pointer;font-size:16px;' +
+                'min-width:44px;min-height:44px;display:flex;align-items:center;justify-content:center;' +
+                'border-radius:10px;line-height:1;flex:0 0 auto">✕</button>' +
             '</div>' +
           '</div>');
         return;
@@ -11625,7 +11626,9 @@ function _renderFileList() {
             (isProc ? ' · <span style="color:var(--ora)">⚠ Ya procesado</span>' : '') +
           '</div>' +
         '</div>' +
-        '<button onclick="event.stopPropagation();_removeUploadFile(' + i + ')" style="background:none;border:none;color:var(--dim);cursor:pointer;font-size:16px;padding:6px 8px" title="Quitar">×</button>' +
+        '<button onclick="event.stopPropagation();_removeUploadFile(' + i + ')" title="Quitar" ' +
+          'style="background:none;border:none;color:var(--dim);cursor:pointer;font-size:20px;line-height:1;' +
+          'min-width:44px;min-height:44px;display:flex;align-items:center;justify-content:center;flex:0 0 auto">×</button>' +
       '</div>');
   });
   cont.innerHTML = _piezas.join('');
