@@ -11533,20 +11533,26 @@ function _avisoDescartes(recibidos, anadidos, desconocidos, repetidos, renombrad
   };
   var partes = [];
   if (repetidos.length) {
-    partes.push('<div style="margin-top:5px">· ' + repetidos.length +
-      (repetidos.length === 1 ? ' era el mismo fichero que ya estaba en la lista: ' : ' eran el mismo fichero que ya estaba en la lista: ') +
+    partes.push('<div style="margin-top:5px">· ' +
+      t(repetidos.length === 1 ? 'upload.mismoFicheroUno' : 'upload.mismoFicheroN',
+        repetidos.length === 1 ? '1 era el mismo fichero que ya estaba en la lista: '
+                               : '{n} eran el mismo fichero que ya estaba en la lista: ').replace('{n}', repetidos.length) +
       '<b>' + nombres(repetidos) + '</b></div>');
   }
   if (desconocidos.length) {
-    partes.push('<div style="margin-top:5px">· ' + desconocidos.length +
-      (desconocidos.length === 1 ? ' que el navegador no identifica ni como documento ni como foto: ' : ' que el navegador no identifica ni como documento ni como foto: ') +
+    partes.push('<div style="margin-top:5px">· ' +
+      t('upload.ilegiblesN', '{n} que el navegador no identifica ni como documento ni como foto: ')
+        .replace('{n}', desconocidos.length) +
       '<b>' + nombres(desconocidos) + '</b></div>');
   }
   caja.innerHTML =
     '<div style="font-weight:700">⚠ ' +
-      (recibidos === 1 ? 'Ha llegado 1 archivo y no se ha añadido.'
-                       : 'Han llegado ' + recibidos + ' archivos y se ' +
-                         (anadidos === 1 ? 'ha añadido 1.' : 'han añadido ' + anadidos + '.')) +
+      (recibidos === 1
+        ? t('upload.llegoUno', 'Ha llegado 1 archivo y no se ha añadido.')
+        : t(anadidos === 1 ? 'upload.llegaronUnoDentro' : 'upload.llegaronN',
+            anadidos === 1 ? 'Han llegado {r} archivos y se ha añadido 1.'
+                           : 'Han llegado {r} archivos y se han añadido {a}.')
+            .replace('{r}', recibidos).replace('{a}', anadidos)) +
     '</div>' + partes.join('');
   caja.style.display = 'block';
 }
@@ -11677,16 +11683,17 @@ function _pintarBarraUnir() {
       '<div style="display:flex;gap:8px;flex-wrap:wrap;align-items:center">' +
         '<button onclick="_unirSeleccionadas()" style="flex:1;min-width:200px;background:var(--acc);border:none;color:#fff;' +
           'padding:13px 18px;border-radius:11px;font-size:14px;font-weight:700;cursor:pointer">' +
-          '🔗 Unir las ' + sel + ' en un documento</button>' +
+          t('upload.unirN', '🔗 Unir las {n} en un documento').replace('{n}', sel) + '</button>' +
         '<button onclick="_limpiarSeleccion()" style="background:var(--s2);border:1px solid var(--s3);color:var(--tx);' +
-          'padding:13px 16px;border-radius:11px;font-size:13px;font-weight:600;cursor:pointer">Quitar marcas</button>' +
+          'padding:13px 16px;border-radius:11px;font-size:13px;font-weight:600;cursor:pointer">' +
+          t('upload.quitarMarcas', 'Quitar marcas') + '</button>' +
       '</div>';
   } else {
     bar.innerHTML =
       '<div style="font-size:12px;color:var(--dim);line-height:1.5;padding:2px 2px">' +
         (sel === 1
-          ? '☝ Marca al menos otra foto para unirlas como un solo documento.'
-          : '¿Varias fotos de un mismo documento? Marcalas y pulsa <b style="color:var(--tx)">Unir</b>. Si no marcas nada, cada foto es un documento aparte.') +
+          ? t('upload.pistaOtra', '☝ Marca al menos otra foto para unirlas como un solo documento.')
+          : t('upload.pistaUnir', '¿Varias fotos de un mismo documento? Marcalas y pulsa <b style="color:var(--tx)">Unir</b>. Si no marcas nada, cada foto es un documento aparte.')) +
       '</div>';
   }
 }
@@ -11721,11 +11728,12 @@ function _renderFileList() {
             '<div style="display:flex;align-items:center;gap:10px">' +
               '<div style="font-size:20px">📄</div>' +
               '<div style="flex:1;min-width:0">' +
-                '<div style="font-size:13px;font-weight:700;color:var(--acc2)">Documento de ' + hermanas.length + ' páginas</div>' +
+                '<div style="font-size:13px;font-weight:700;color:var(--acc2)">' +
+                  t('upload.docPaginas', 'Documento de {n} páginas').replace('{n}', hermanas.length) + '</div>' +
                 '<div style="font-size:11px;color:var(--dim);white-space:nowrap;overflow:hidden;text-overflow:ellipsis">' + nombres + '</div>' +
                 '<div style="font-size:11px;color:var(--dim)">' + _tam(bytes) + '</div>' +
               '</div>' +
-              '<button onclick="_deshacerGrupo(' + g + ')" title="Separar en fotos sueltas" ' +
+              '<button onclick="_deshacerGrupo(' + g + ')" title="' + t('upload.separarGrupo', 'Separar en fotos sueltas') + '" ' +
                 'style="background:none;border:1px solid var(--s3);color:var(--dim);cursor:pointer;font-size:16px;' +
                 'min-width:44px;min-height:44px;display:flex;align-items:center;justify-content:center;' +
                 'border-radius:10px;line-height:1;flex:0 0 auto">✕</button>' +

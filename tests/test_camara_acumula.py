@@ -195,6 +195,9 @@ def avisos_resultado(html):
   }
   caja.style.borderColor = 'rgba(245,158,11,.35)';''', 1)
     guion = '''
+// Los textos van por `t(clave, fallback)` + los JSON de i18n. Aqui se
+// devuelve el fallback español, que es lo que se quiere comprobar.
+function t(clave, fb) { return fb !== undefined ? fb : clave; }
 const caja = { style: {}, innerHTML: '' };
 Object.defineProperty(caja, 'innerText', { get() {
   return String(this.innerHTML).replace(/<[^>]*>/g, ' ').replace(/\\s+/g, ' ').trim();
