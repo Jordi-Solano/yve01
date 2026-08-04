@@ -19,8 +19,18 @@ import pandas as pd
 
 # ── Rutas ──────────────────────────────────────────────────────────────────
 BASE_DIR = os.path.dirname(os.path.abspath(__file__))
-REPORTES_DIR = os.path.join(BASE_DIR, "reportes")
-ENTRADA_DIR = os.path.join(BASE_DIR, "facturas-entrada")
+# Las rutas salen del arbol del TENANT, no de la raiz. Estaban clavadas aqui:
+# con un segundo cliente, sus informes de doble imposicion se escribian y se
+# leian del arbol del primero. Para el tenant `default`, `tenant_dirs` devuelve
+# EXACTAMENTE estas mismas rutas, asi que hoy no cambia nada.
+#
+# Se resuelven al importar, y aqui vale: este script solo se ejecuta como
+# subproceso (`python3 detector_doble_imposicion.py`), asi que importar y
+# ejecutar son el mismo momento y el YVE_TENANT del entorno es el bueno. Es el
+# mismo patron que `verificador_comisiones.py`.
+from tenant_dirs import reportes_dir as _t_rdir, entrada_dir as _t_edir
+REPORTES_DIR = _t_rdir()
+ENTRADA_DIR = _t_edir()
 os.makedirs(REPORTES_DIR, exist_ok=True)
 
 FECHA_HOY = date.today().strftime("%Y%m%d")

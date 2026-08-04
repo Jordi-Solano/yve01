@@ -2636,7 +2636,7 @@ def _generar_cierre(pasos):
             try:
                 import subprocess as _sp2
                 _sp2.run(['python3','verificador_comisiones.py'], cwd=BASE_DIR, timeout=30, capture_output=True, env=_env_tenant())
-                _sp2.run(['python3','detector_doble_imposicion.py'], cwd=BASE_DIR, timeout=30, capture_output=True)
+                _sp2.run(['python3','detector_doble_imposicion.py'], cwd=BASE_DIR, timeout=30, capture_output=True, env=_env_tenant())
                 yield 'data: ✓ Verificación completada\n\n'
             except: pass
 

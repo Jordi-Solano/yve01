@@ -13,14 +13,52 @@ from dotenv import load_dotenv
 load_dotenv()
 
 BASE_DIR         = os.path.dirname(os.path.abspath(__file__))
-ENTRADA_DIR      = os.path.join(BASE_DIR, "facturas-entrada")
-SALIDA_DIR       = os.path.join(BASE_DIR, "facturas-procesadas")
-REFERENCIA_DIR   = os.path.join(BASE_DIR, "datos-referencia")
+
+# ── Rutas por tenant, evaluadas EN CADA USO ───────────────────────────────────
+# Estaban clavadas a la raiz: con un segundo cliente, sus facturas AP y su
+# `proveedores.xlsx` salian del arbol del primero.
+#
+# Aqui NO vale resolverlas al importar, como hacen `lector_ota` o
+# `verificador_comisiones`: ese patron sirve porque esos dos solo corren como
+# subproceso. Este modulo lo importa `dashboard` EN PROCESO
+# (`from lector_facturas_ap import procesar_factura_ap, cargar_proveedores,
+# guardar_excel, ...`), y un proceso sirve a VARIOS tenants: la ruta quedaria
+# congelada con el tenant que hubiera en el primer import y todos los demas
+# leerian y escribirian ahi. Por eso se resuelven en cada uso.
+#
+# Es lo mismo que ya hacen `conciliacion_bancaria` y `tab_ar_real`, pero con
+# `__fspath__` porque aqui las rutas se usan con `os.path`, no con `Path`.
+from tenant_dirs import (entrada_dir as _t_edir, procesadas_dir as _t_pdir,
+                         datos_dir as _t_ddir)
+
+
+class _TDir:
+    """Carpeta del tenant, resuelta en cada uso (no al importar)."""
+    def __init__(self, fn): self._fn = fn
+    def __fspath__(self): return self._fn()
+    def __str__(self): return self._fn()
+    def __repr__(self): return self._fn()
+    def __add__(self, o): return self._fn() + o
+    def __radd__(self, o): return o + self._fn()
+    def __truediv__(self, o): return os.path.join(self._fn(), o)
+
+
+class _TFile:
+    """Fichero dentro de una carpeta del tenant, resuelto en cada uso."""
+    def __init__(self, fn, nombre): self._fn, self._n = fn, nombre
+    def __fspath__(self): return os.path.join(self._fn(), self._n)
+    def __str__(self): return os.path.join(self._fn(), self._n)
+    def __repr__(self): return str(self)
+
+
+ENTRADA_DIR      = _TDir(_t_edir)
+SALIDA_DIR       = _TDir(_t_pdir)
+REFERENCIA_DIR   = _TDir(_t_ddir)
 os.makedirs(SALIDA_DIR, exist_ok=True)
 
 FECHA_HOY      = date.today().strftime("%Y%m%d")
-SALIDA_EXCEL   = os.path.join(SALIDA_DIR, f"facturas_ap_{FECHA_HOY}.xlsx")
-PROV_FILE      = os.path.join(REFERENCIA_DIR, "proveedores.xlsx")
+SALIDA_EXCEL   = _TFile(_t_pdir, f"facturas_ap_{FECHA_HOY}.xlsx")
+PROV_FILE      = _TFile(_t_ddir, "proveedores.xlsx")
 NF             = "NO_ENCONTRADO"
 
 OTAS_CONOCIDAS = {"booking.com","booking.es","expedia","hotels.com","despegar",

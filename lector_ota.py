@@ -12,8 +12,12 @@ import pandas as pd
 
 # ── Rutas ──────────────────────────────────────────────────────────────────
 BASE_DIR = os.path.dirname(os.path.abspath(__file__))
-ENTRADA_DIR = os.path.join(BASE_DIR, "facturas-entrada")
-SALIDA_DIR = os.path.join(BASE_DIR, "facturas-procesadas")
+# Al arbol del TENANT (ver la nota de detector_doble_imposicion.py). Este
+# script tambien se ejecuta SOLO como subproceso, con `--file`, asi que
+# resolver al importar es correcto. Para `default` son las rutas de siempre.
+from tenant_dirs import entrada_dir as _t_edir, procesadas_dir as _t_pdir
+ENTRADA_DIR = _t_edir()
+SALIDA_DIR = _t_pdir()
 os.makedirs(SALIDA_DIR, exist_ok=True)
 
 FECHA_HOY = date.today().strftime("%Y%m%d")
