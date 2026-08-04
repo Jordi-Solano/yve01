@@ -109,6 +109,13 @@ chk('no queda ninguna barra de scroll que esconder',
     '.nav-right::-webkit-scrollbar' not in MOVIL)
 chk('la red de seguridad de M10 sigue puesta',
     'html,body{max-width:100%;overflow-x:hidden}' in MOVIL)
+# Medido a 370 px: los hijos de la barra pedian 277 px en una caja de 225 y la
+# rueda acababa en x=400 —fuera de la pantalla y sin poder pulsarla—. Se libera
+# sitio quitandole el texto al boton grande.
+chk('el botón de procesar deja solo el rayo en móvil',
+    "#run-lbl::after{content:'⚡'" in MOVIL and '#run-lbl{font-size:0' in MOVIL)
+chk('y el menú se ancla a la PANTALLA, no al botón',
+    '.menu{position:fixed' in MOVIL and 'width:min(268px,calc(100vw - 16px))' in MOVIL)
 # el menú sigue estando dentro de la barra: por eso importa lo de arriba
 i_nav = HTML.find('<div class="nav-right">')
 i_menu = HTML.find('id="main-menu"')

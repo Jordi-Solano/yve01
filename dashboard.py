@@ -5275,10 +5275,21 @@ body::before{
      Ahora cabe todo sin deslizar, porque el boton de Yve se ha ido a la
      burbuja flotante y el selector de hotel es mas estrecho. */
   .nav-right{gap:4px;flex-shrink:1;min-width:0}
+  /* El boton de procesar, solo el rayo. Medido a 370 px: los hijos de la barra
+     pedian 277 px (selector 92 + procesar 137 + rueda 40 + huecos) en una caja
+     de 225, asi que la rueda acababa en x=400 — fuera de la pantalla y sin
+     poder pulsarla. Quitando el texto sobra sitio para las tres. */
+  #run-lbl{font-size:0;letter-spacing:0}
+  #run-lbl::after{content:'⚡';font-size:15px;letter-spacing:normal}
+  .btn-run{padding:7px 11px}
   /* `!important` a proposito: el selector lleva `max-width:190px` EN LINEA
      (esta pintado con estilo inline), y sin esto la regla no gana nunca —
      medido en el navegador: seguia en 151 px. */
   #hotel-activo-sel{max-width:92px!important;font-size:10.5px;padding:3px 8px}
+  /* El desplegable, anclado a la PANTALLA y no al boton. Da igual donde acabe
+     la barra: siempre cabe entero. */
+  .menu{position:fixed;top:calc(52px + env(safe-area-inset-top));right:8px;left:auto;
+        min-width:0;width:min(268px,calc(100vw - 16px));max-height:calc(100vh - 74px)}
   /* Red de seguridad: que ningun elemento pueda volver a desplazar la pagina
      de lado. La causa se arregla arriba; esto es para que no vuelva. */
   html,body{max-width:100%;overflow-x:hidden}
