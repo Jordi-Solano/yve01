@@ -76,7 +76,9 @@ JS_M7 = sacar('_bloquearFondo')
 if SABOTAJE:
     # como estaba antes: nadie tocaba el body
     JS_M7 = 'function _bloquearFondo(si){ /* nada */ }'
-    MOVIL = MOVIL.replace('flex-shrink:1', 'flex-shrink:0').replace('.hist-t td[data-r]', '.nope')
+    MOVIL = (MOVIL.replace('.nav-right{gap:4px;flex-shrink:1;min-width:0}',
+                           '.nav-right{gap:4px;flex-shrink:0;overflow-x:auto}')
+                  .replace('.hist-t td[data-r]', '.nope'))
 
 PRUEBA = r'''
 // ── un document/window de mentira, lo justo ──────────────────────────
@@ -184,14 +186,22 @@ i_640 = HTML.find('.nav-right{gap:6px}')
 i_768 = HTML.find('.nav-right{gap:4px')
 comprob_m10 = [
     ('la nav derecha puede encoger', 'flex-shrink:1' in MOVIL and 'min-width:0' in MOVIL),
-    ('si no cabe, se desliza DENTRO de la nav', 'overflow-x:auto' in MOVIL),
+    # El `overflow-x:auto` que se puso aqui se QUITO despues, a peticion de
+    # Jordi: hacia que la barra se deslizara de lado y —peor— recortaba el menu
+    # de la rueda, que vive dentro de esta misma caja. Que la pagina no se
+    # mueva lo sostienen `flex-shrink` y la red de `html,body`.
+    # Atada a `.nav-right`: la barra de PESTAÑAS si lleva `overflow-x:auto` a
+    # proposito y buscarlo en todo el bloque daba un falso rojo.
+    ('la barra NO se desliza de lado',
+     'overflow' not in (re.search(r'\.nav-right\{([^}]*)\}', MOVIL) or
+                        type('x', (), {'group': lambda s, n: ''})()).group(1)),
     # Medido en el navegador: el selector lleva `max-width:190px` EN LINEA, y
     # el estilo inline gana a cualquier hoja. Sin `!important` la regla existe
     # y no hace NADA — que es peor que no ponerla, porque parece hecha.
-    ('el selector de hotel tiene tope', '#hotel-activo-sel{max-width:104px!important}' in MOVIL),
+    ('el selector de hotel tiene tope', '#hotel-activo-sel{max-width:92px!important' in MOVIL),
     ('...y ese tope gana al estilo en línea del propio elemento',
      re.search(r'id="hotel-activo-sel"[^>]*style="[^"]*max-width:\s*190px', HTML) is not None
-     and 'max-width:104px!important' in MOVIL),
+     and 'max-width:92px!important' in MOVIL),
     ('red de seguridad: nada puede desplazar la página',
      'html,body{max-width:100%;overflow-x:hidden}' in MOVIL),
     ('la regla nueva va DESPUÉS de las que anula (si no, no ganaría)',

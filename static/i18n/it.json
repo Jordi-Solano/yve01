@@ -413,12 +413,11 @@
   "upload.quitarMarcas": "Togli le selezioni",
   "upload.selArchivos": "📄 Seleziona file",
   "upload.selCarpeta": "📁 Seleziona cartella",
+  "upload.selFotos": "📸 Scatta o scegli foto",
   "upload.separarGrupo": "Separa in foto singole",
   "upload.subtitulo": "Fatture · Estratti conto · Vendite POS · Inventario · Sprechi · Commissioni OTA · Rooming — classificazione automatica con IA",
   "upload.tiposZona": "PDF · Excel · CSV · Foto — classificazione automatica",
   "upload.unirN": "🔗 Unisci le {n} in un documento",
   "upload.yaProcN": "{n} già elaborati (verranno saltati)",
-  "upload.yaProcUno": "1 già elaborato (verrà saltato)",
-  "vacio.enOtros": "Stai visualizzando <b>{hotel}</b>. Ce ne sono <b>{n}</b> in altri hotel — cambia hotel in alto per vederli.",
-  "vacio.soloEste": "Stai visualizzando solo <b>{hotel}</b>."
+  "upload.yaProcUno": "1 già elaborato (verrà saltato)"
 }

@@ -413,12 +413,11 @@
   "upload.quitarMarcas": "Treu les marques",
   "upload.selArchivos": "📄 Selecciona arxius",
   "upload.selCarpeta": "📁 Selecciona carpeta",
+  "upload.selFotos": "📸 Fer o triar fotos",
   "upload.separarGrupo": "Separa en fotos soltes",
   "upload.subtitulo": "Factures · Extractes bancaris · Vendes POS · Inventari · Minves · Comissions OTA · Rooming — classificació automàtica per IA",
   "upload.tiposZona": "PDF · Excel · CSV · Fotos — classificació automàtica",
   "upload.unirN": "🔗 Uneix les {n} en un document",
   "upload.yaProcN": "{n} ja processats (s'ometran)",
-  "upload.yaProcUno": "1 ja processat (s'ometrà)",
-  "vacio.enOtros": "Estàs veient <b>{hotel}</b>. N'hi ha <b>{n}</b> en altres hotels — canvia d'hotel a dalt per veure-ho.",
-  "vacio.soloEste": "Estàs veient només <b>{hotel}</b>."
+  "upload.yaProcUno": "1 ja processat (s'ometrà)"
 }

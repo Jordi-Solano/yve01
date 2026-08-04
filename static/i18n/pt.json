@@ -413,12 +413,11 @@
   "upload.quitarMarcas": "Retirar seleção",
   "upload.selArchivos": "📄 Selecionar ficheiros",
   "upload.selCarpeta": "📁 Selecionar pasta",
+  "upload.selFotos": "📸 Tirar ou escolher fotos",
   "upload.separarGrupo": "Separar em fotos soltas",
   "upload.subtitulo": "Faturas · Extratos bancários · Vendas POS · Inventário · Quebras · Comissões OTA · Rooming — classificação automática por IA",
   "upload.tiposZona": "PDF · Excel · CSV · Fotos — classificação automática",
   "upload.unirN": "🔗 Juntar as {n} num documento",
   "upload.yaProcN": "{n} já processados (serão ignorados)",
-  "upload.yaProcUno": "1 já processado (será ignorado)",
-  "vacio.enOtros": "Estás a ver <b>{hotel}</b>. Há <b>{n}</b> noutros hotéis — muda de hotel acima para os veres.",
-  "vacio.soloEste": "Estás a ver apenas <b>{hotel}</b>."
+  "upload.yaProcUno": "1 já processado (será ignorado)"
 }

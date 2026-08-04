@@ -3284,97 +3284,6 @@ def _detect_file_type(filename):
         return 'AR_o_AP'  # Podría ser extracto, ventas, inventario...
     return 'AP'
 
-@app.route('/api/hay_en_otros_hoteles')
-@login_required
-def api_hay_en_otros_hoteles():
-    """Cuanto hay en los OTROS hoteles, para no mentir en un panel vacio.
-
-    Las pantallas filtran por hotel a proposito. El problema, vivido en
-    Aprobaciones AP: al quedarse vacias decian "Sin datos" — falso, cuando lo
-    que pasa es que el dato esta en otro hotel. Sin esto, una lista vacia es
-    indistinguible de "no hay trabajo".
-
-    SOLO CUENTA. No filtra, no escribe, no cambia lo que ve nadie. Y se pide
-    solo cuando la pantalla YA ha salido vacia, asi que en el caso normal no
-    cuesta ni una lectura.
-
-    Falla en 0: ante cualquier duda se dice "no hay nada en otros hoteles", que
-    es callarse — nunca inventarse un numero que mande al usuario a buscar algo
-    que no existe.
-    """
-    area = (request.args.get('area', '') or '').strip().lower()
-    try:
-        activo = censo_hoteles.activo()
-    except Exception:
-        activo = ''
-    nombre = ''
-    try:
-        nombre = censo_hoteles.nombre_de(activo) or ''
-    except Exception:
-        nombre = ''
-    # Vista de grupo (o 0/1 hoteles): se ve todo, no hay nada "fuera".
-    if not activo:
-        return jsonify({'ok': True, 'area': area, 'hotel': '', 'hotel_nombre': '', 'n': 0})
-
-    def _de_otros(df):
-        """Filas con hotel puesto que NO es el activo."""
-        try:
-            import almacen_datos as _alm
-            col = _alm.COL_HOTEL
-        except Exception:
-            col = 'hotel_id'
-        if df is None or not len(df) or col not in df.columns:
-            return 0
-        n = 0
-        for v in df[col]:
-            s = str('' if v is None else v).strip()
-            if s and s.lower() not in ('nan', 'none', 'nat', '<na>') and s != activo:
-                n += 1
-        return n
-
-    n = 0
-    try:
-        import almacen_datos as _alm
-        if area == 'ar':
-            n = _de_otros(_alm.facturas_ar())
-        elif area == 'ap':
-            n = _de_otros(_alm.facturas_ap())
-        elif area == 'banco':
-            n = _de_otros(_alm.movimientos_banco())
-        elif area == 'fb':
-            # Las ventas del TPV son el fichero que manda en F&B; inventario y
-            # mermas van con el.
-            import pandas as _pd
-            for f in ('ventas_fb_diarias.xlsx', 'mermas.xlsx', 'inventario.xlsx'):
-                p = os.path.join(_ddir(), f)
-                if os.path.exists(p):
-                    try:
-                        n += _de_otros(_pd.read_excel(p))
-                    except Exception:
-                        pass
-        elif area == 'drr':
-            # El DRR lleva el hotel en el NOMBRE del fichero, no en una columna
-            # (ver drr_del_hotel). Se cuenta con el mismo criterio, que es el
-            # unico sitio que decide de quien es un DRR.
-            import glob as _g
-            for p in _g.glob(os.path.join(_rdir(), 'drr_procesado_*.xlsx')):
-                b = os.path.basename(p)
-                try:
-                    if not censo_hoteles.fichero_es_de(b, activo):
-                        for h in censo_hoteles.hoteles():
-                            if str(h.get('id')) != activo and \
-                                    censo_hoteles.fichero_es_de(b, str(h.get('id'))):
-                                n += 1
-                                break
-                except Exception:
-                    pass
-    except Exception:
-        n = 0
-
-    return jsonify({'ok': True, 'area': area, 'hotel': activo,
-                    'hotel_nombre': nombre, 'n': int(n)})
-
-
 @app.route('/api/historial_procesado')
 @login_required
 def api_historial_procesado():
@@ -5358,13 +5267,18 @@ body::before{
      cabia y arrastraba TODA la pagina hacia la derecha —162 px medidos—, que
      es el "se descoloca" al cambiar de apartado. Ahora encoge y, si aun asi
      no cabe, se desliza DENTRO de la nav en vez de mover la pagina. */
-  .pista-hotel{font-size:11px;padding:8px 10px}
-  .nav-right{gap:4px;flex-shrink:1;min-width:0;overflow-x:auto;scrollbar-width:none}
-  .nav-right::-webkit-scrollbar{display:none}
+  /* M10 (revisado) · La barra NO se desliza. El `overflow-x:auto` que se puso
+     aqui hacia dos cosas mal: la barra se movia de lado con el dedo, y ademas
+     RECORTABA el menu de la rueda —que vive dentro de esta caja—, asi que al
+     pulsarla no se veia nada. Medido: el menu iba de x=250 a x=468 y la barra
+     acababa en x=348.
+     Ahora cabe todo sin deslizar, porque el boton de Yve se ha ido a la
+     burbuja flotante y el selector de hotel es mas estrecho. */
+  .nav-right{gap:4px;flex-shrink:1;min-width:0}
   /* `!important` a proposito: el selector lleva `max-width:190px` EN LINEA
      (esta pintado con estilo inline), y sin esto la regla no gana nunca —
      medido en el navegador: seguia en 151 px. */
-  #hotel-activo-sel{max-width:104px!important}
+  #hotel-activo-sel{max-width:92px!important;font-size:10.5px;padding:3px 8px}
   /* Red de seguridad: que ningun elemento pueda volver a desplazar la pagina
      de lado. La causa se arregla arriba; esto es para que no vuelva. */
   html,body{max-width:100%;overflow-x:hidden}
@@ -5521,7 +5435,6 @@ tr:hover td{background:rgba(255,255,255,.025)}
 @keyframes sp{to{transform:rotate(360deg)}}
 
 /* ── EMPTY ── */
-.pista-hotel{margin:14px auto 0;max-width:420px;padding:10px 12px;border-radius:10px;background:rgba(245,158,11,.10);border:1px solid rgba(245,158,11,.30);color:var(--tx);font-size:12px;line-height:1.55;text-align:center}
 .empty{text-align:center;padding:48px 20px;color:var(--mut)}
 .empty .ei{font-size:36px;margin-bottom:10px}
 .empty p{font-size:13px;line-height:1.6}
@@ -5570,7 +5483,14 @@ tr:hover td{background:rgba(255,255,255,.025)}
   animation:pulse-dot 2s infinite;flex-shrink:0;
 }
 @keyframes pulse-dot{0%,100%{opacity:1}50%{opacity:.4}}
-@media(max-width:768px){#chat-fab{display:none}}
+/* La burbuja de Yve tambien en el movil, como en el PC: asi no ocupa sitio en
+   la barra de arriba, que es lo que hacia que no cupiera todo. Un poco mas
+   pequeña y pegada a la esquina para no taparle nada al contenido. */
+@media(max-width:768px){
+  #chat-fab{bottom:16px;right:12px;padding:10px 14px;font-size:12px}
+  #chat-fab span{display:none}
+  #chat-fab::after{content:'Yve';font-weight:800}
+}
 
 #chat-panel{
   position:fixed;top:0;right:0;width:420px;height:100%;
@@ -5965,7 +5885,9 @@ svg.yvi{width:1em;height:1em;vertical-align:-0.125em;flex-shrink:0;display:inlin
     <select id="hotel-activo-sel" onchange="seleccionarHotelActivo(this.value)" style="display:none;background:rgba(255,255,255,.04);border:1px solid rgba(255,255,255,.1);color:var(--acc2);padding:4px 10px;border-radius:20px;font-size:11px;cursor:pointer;max-width:190px;outline:none" title="Hotel activo"></select>
     <span class="pill hide-mobile" style="color:var(--acc2)">👤 __USER_NAME__</span>
 
-    <button class="btn-ref show-mobile" onclick="toggleChat()" style="background:linear-gradient(135deg,rgba(124,58,237,.15),rgba(59,130,246,.15));border-color:rgba(124,58,237,.35);color:#a78bfa;font-weight:700" title="Pregunta a Yve IA">💬 Yve</button>
+    <!-- El acceso a Yve vive en la burbuja flotante (#chat-fab), igual que en
+         el PC. Estaba aqui duplicado solo para el movil y era justo lo que
+         hacia que la barra no cupiera. -->
 
 
 
@@ -6657,12 +6579,20 @@ Gestoría Nord: Hotel Pirineus, Hotel Vall" style="width:100%;background:var(--b
         <button onclick="event.stopPropagation();document.getElementById('upload-file-input').click()"
                 data-i18n="upload.selArchivos"
                 style="background:var(--acc);border:none;color:#fff;padding:8px 18px;border-radius:9px;font-size:13px;font-weight:600;cursor:pointer">📄 Seleccionar archivos</button>
+        <button onclick="event.stopPropagation();document.getElementById('upload-photo-input').click()"
+                data-i18n="upload.selFotos"
+                style="background:var(--s2);border:1px solid var(--s3);color:var(--tx);padding:8px 18px;border-radius:9px;font-size:13px;font-weight:600;cursor:pointer">📸 Hacer o elegir fotos</button>
         <button class="hide-mobile" onclick="event.stopPropagation();document.getElementById('upload-folder-input').click()"
                 data-i18n="upload.selCarpeta"
                 style="background:var(--s2);border:1px solid var(--s3);color:var(--tx);padding:8px 18px;border-radius:9px;font-size:13px;font-weight:600;cursor:pointer">📁 Seleccionar carpeta</button>
       </div>
     </div>
-    <input id="upload-file-input" type="file" multiple accept=".pdf,.xlsm,.xlsx,.xls,.csv,image/*" style="display:none" onchange="handleUploadFiles(this.files, this)">
+    <!-- DOS puertas, a proposito. Antes habia una sola con un `accept` que
+         mezclaba documentos e `image/*`: en el movil eso hace que el sistema
+         abra la GALERIA, asi que todo lo que se elegia acababa siendo una foto
+         —y por eso salia "Foto" en todo y se ofrecia unir donde no tocaba. -->
+    <input id="upload-file-input" type="file" multiple accept=".pdf,.xlsm,.xlsx,.xls,.csv" style="display:none" onchange="handleUploadFiles(this.files, this)">
+    <input id="upload-photo-input" type="file" multiple accept="image/*" style="display:none" onchange="handleUploadFiles(this.files, this)">
     <input id="upload-folder-input" type="file" multiple webkitdirectory style="display:none" onchange="handleUploadFiles(this.files, this)">
     <!-- Nada se descarta en silencio. Va FUERA de #upload-file-list a
          proposito: si se descartan TODOS los ficheros la lista esta vacia y
@@ -7080,7 +7010,6 @@ function renderTable(rows) {
   document.getElementById('tbl-count').textContent = rows.length ? rows.length + ' ' + (t('lbl.registros', 'registros')) : '';
   if (!rows.length) {
     tbody.innerHTML = '<tr><td colspan="12" style="padding:32px;text-align:center"><div style="font-size:32px;margin-bottom:8px">📦</div><div style="font-weight:600;color:var(--mut);margin-bottom:4px">Sin facturas AP</div><div style="font-size:12px;color:var(--dim)">Pulsa ⚡ Procesar Archivos</div></td></tr>';
-    _pistaOtrosHoteles('ar', tbody.querySelector('td'));
     return;
   }
   tbody.innerHTML = rows.map((r, i) => {
@@ -7108,7 +7037,6 @@ function renderActivity(rows) {
   const el = document.getElementById('activity');
   if (!rows.length) {
     el.innerHTML = '<div class="empty"><div class="ei">📂</div><p>Sin datos.<br>Pulsa ⚡ Procesar Archivos.</p></div>';
-    _pistaOtrosHoteles('ar', el.querySelector('.empty'));   // por que esta vacio
     return;
   }
   const c = {}, d = {};
@@ -11832,7 +11760,14 @@ function _typeColor(t) {
 var _grpSeq = 0;
 
 function _esFotoSubida(f) {
-  return /\.(jpe?g|png|webp|heic)$/i.test(f.name || '') || (f.type || '').indexOf('image/') === 0;
+  var n = f.name || '';
+  // La EXTENSION manda, y manda para decir que NO. Algunos selectores de
+  // Android devuelven `type` vacio o hasta `image/...` para un PDF escaneado:
+  // fiarse del MIME hacia que un documento se tratase como foto, saliera
+  // marcado "Foto" y se ofreciera unirlo con otro.
+  if (/\.(pdf|xlsx?|xlsm|csv|docx?|txt)$/i.test(n)) return false;
+  if (/\.(jpe?g|png|webp|heic|heif)$/i.test(n)) return true;
+  return (f.type || '').indexOf('image/') === 0;
 }
 
 // Fotos que todavia se pueden marcar: las ya procesadas no se tocan.
@@ -12965,11 +12900,13 @@ async function _initHotelActivo() {
     sel.style.display = '';
     // El value es el ID; lo que se lee es el nombre. Antes el value era el
     // nombre y por eso dos hoteles parecidos se confundian.
-    sel.innerHTML = '<option value="">🌍 ' + t('mh.todosHoteles', 'Todos los hoteles') + '</option>' +
+    // Sin emoji en las opciones: el desplegable del movil lo pinta el sistema
+    // y cada icono le suma alto y ancho a una lista que ya es larga.
+    sel.innerHTML = '<option value="">' + t('mh.todosHoteles', 'Todos los hoteles') + '</option>' +
       d.hoteles.map(function(h) {
         var _id = String((h && h.id) || ''), _nom = String((h && h.nombre) || '');
         return '<option value="' + _id.replace(/"/g, '&quot;') + '"' + (d.hotel === _id ? ' selected' : '') +
-               '>🏨 ' + _nom.replace(/</g, '&lt;') + '</option>';
+               '>' + _nom.replace(/</g, '&lt;') + '</option>';
       }).join('');
   } catch(e) {}
 }
@@ -13434,7 +13371,6 @@ async function loadFBResumen() {
     const data = await res.json();
     if (!data.ok) {
       cont.innerHTML = _emptyState('🍽️', t('fb.vacioTitulo', 'Aún no hay datos de F&B'), t('fb.vacioSub', 'Sube ventas POS, inventario o mermas y Yve calculará el Food Cost automáticamente.'));
-      _pistaOtrosHoteles('fb', cont.firstElementChild);    // por que esta vacio
       return;
     }
     const r = data.resumen;
@@ -13721,39 +13657,6 @@ async function loadFBRecetas() {
     html += '</tbody></table></div></div>';
     cont.innerHTML = html;
   } catch(e) { cont.innerHTML = '<div class="empty"><p>Error: ' + e.message + '</p></div>'; }
-}
-
-// ── La pista de "esto esta vacio PORQUE estas en un hotel" ──────────────────
-// Mismo bug que se sufrio en Aprobaciones AP: la pantalla filtra por hotel,
-// no lo dice, y al vaciarse parece que no hay trabajo. Se cuelga DEBAJO del
-// vacio que ya existe, sin tocar su texto — esos textos se traducen por
-// coincidencia exacta en `_i18nStrMap` y cambiarlos los dejaria en español.
-//
-// Se llama SOLO cuando la pantalla ya ha salido vacia.
-async function _pistaOtrosHoteles(area, el) {
-  try {
-    if (!el) return;
-    var d = await fetch('/api/hay_en_otros_hoteles?area=' + encodeURIComponent(area))
-      .then(function(r) { return r.json(); });
-    if (!d || !d.hotel_nombre) return;      // vista de grupo: no falta nada
-    var prev = el.querySelector('.pista-hotel');
-    if (prev) prev.remove();
-    var n = d.n || 0;
-    var txt = n
-      ? t('vacio.enOtros', 'Estás viendo <b>{hotel}</b>. Hay <b>{n}</b> en otros hoteles — cambia de hotel arriba para verlo.')
-          .replace('{hotel}', _escHtml(d.hotel_nombre)).replace('{n}', n)
-      : t('vacio.soloEste', 'Estás viendo solo <b>{hotel}</b>.')
-          .replace('{hotel}', _escHtml(d.hotel_nombre));
-    var div = document.createElement('div');
-    div.className = 'pista-hotel';
-    div.innerHTML = '🏨 ' + txt;
-    el.appendChild(div);
-  } catch (e) {}
-}
-
-function _escHtml(s) {
-  return String(s == null ? '' : s).replace(/&/g, '&amp;').replace(/</g, '&lt;')
-    .replace(/>/g, '&gt;').replace(/"/g, '&quot;');
 }
 
 function _emptyState(emoji, titulo, sub, conCta) {
@@ -14200,7 +14103,6 @@ async function renderDRR(s) {
     const _msg = (s && s.error) ? ('Error: ' + s.error) : 'Sin DRR para este hotel.';
     if (body) body.innerHTML = '<div class="drr-metrics" id="drr-metrics" style="display:grid;grid-template-columns:repeat(auto-fit,minmax(140px,1fr));gap:10px">'
       + '<div class="empty"><p>' + _msg + '</p></div></div>';
-    if (body && !(s && s.error)) _pistaOtrosHoteles('drr', body.querySelector('.empty'));
     if (statusEl) statusEl.textContent = '';
     window._drrChartData = null;
     try { if (_drrChart) { _drrChart.destroy(); _drrChart = null; } } catch(e) {}
@@ -15238,9 +15140,7 @@ async function loadBanco() {
     if (!d) {
       ['bk-total','bk-conc','bk-pend','bk-diff'].forEach(function(id){ var e=document.getElementById(id); if(e) e.textContent='0'; });
       var ip = document.getElementById('bk-imp-pend'); if (ip) ip.textContent = '—';
-      var ba0 = document.getElementById('bk-alertas');
-      if (ba0) { ba0.innerHTML = '<div class="empty"><p>Sin movimientos bancarios.</p></div>';
-                 _pistaOtrosHoteles('banco', ba0.querySelector('.empty')); }
+      var ba0 = document.getElementById('bk-alertas'); if (ba0) ba0.innerHTML = '<div class="empty"><p>Sin movimientos bancarios.</p></div>';
       var pb0 = document.getElementById('banco-progress-bar'); if (pb0) pb0.style.display = 'none';
       return;
     }

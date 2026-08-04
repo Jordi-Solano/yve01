@@ -97,41 +97,6 @@ def facturas_sin_hotel():
     return int(sum(1 for v in df["hotel_id"] if not safe_str(v)))
 
 
-def pendientes_en_otros_hoteles():
-    """Cuantas facturas PENDIENTES hay en hoteles que no son el activo.
-
-    El panel filtra por hotel a proposito. El problema no era el filtro: era
-    que al quedarse vacio decia "No queda nada por aprobar", y eso es falso
-    cuando lo que pasa es que el trabajo esta en otro hotel. Aqui es la puerta
-    de Oracle: creerse ese mensaje y cerrar deja facturas sin aprobar.
-
-    Solo cuenta. No cambia lo que se ve ni lo que se puede aprobar.
-    """
-    try:
-        act = _hotel_activo_id()
-    except Exception:
-        return 0
-    if not act:
-        return 0                     # vista de grupo: se ve todo, no falta nada
-    try:
-        filas = facturas_a_lista(_facturas_crudas())
-    except Exception:
-        return 0
-    return sum(1 for r in filas
-               if not r.get("accion")
-               and safe_str(r.get("hotel_id"))
-               and safe_str(r.get("hotel_id")) != act)
-
-
-def _hotel_activo_id():
-    """El hotel elegido en la sesion, o '' en vista de grupo."""
-    try:
-        import censo_hoteles
-        return safe_str(censo_hoteles.activo())
-    except Exception:
-        return ""
-
-
 def _nombre_hotel(hid):
     """El nombre del hotel para la pantalla. Solo presentacion."""
     h = safe_str(hid)
@@ -361,11 +326,6 @@ def api_stats():
         # lo que el filtro deja fuera por no llevar hotel: no se puede aprobar
         # desde ningun panel, y callarlo lo convierte en un agujero mudo
         "sin_hotel":     facturas_sin_hotel(),
-        # QUE hotel se esta enseñando, y cuanto trabajo queda en los otros.
-        # Sin esto la pantalla filtraba en silencio y al vaciarse mentia.
-        "hotel_id":      _hotel_activo_id(),
-        "hotel_nombre":  _nombre_hotel(_hotel_activo_id()),
-        "en_otros_hoteles": pendientes_en_otros_hoteles(),
     })
 
 @login_required
@@ -471,13 +431,6 @@ body::before{content:'';position:fixed;inset:0;z-index:0;pointer-events:none;
   white-space:nowrap}
 .btn-back:hover{background:rgba(var(--acc-r,59),var(--acc-g,130),var(--acc-b,246),.20);
   border-color:rgba(var(--acc-r,59),var(--acc-g,130),var(--acc-b,246),.65)}
-.pista-otros{margin-top:12px;padding:10px 12px;border-radius:10px;
-  background:rgba(245,158,11,.10);border:1px solid rgba(245,158,11,.30);
-  color:var(--tx);font-size:12px;line-height:1.5;text-align:left}
-.hotel-chip{background:rgba(59,130,246,.14);border:1px solid rgba(59,130,246,.35);
-  color:var(--acc2);padding:4px 10px;border-radius:20px;font-size:11px;font-weight:700;
-  white-space:nowrap;max-width:150px;overflow:hidden;text-overflow:ellipsis}
-@media(max-width:768px){.hotel-chip{max-width:96px;font-size:10px;padding:3px 8px}}
 .sel-dept{background:rgba(255,255,255,.04);color:var(--tx);border:1px solid var(--s2);
   padding:7px 11px;border-radius:9px;font-size:12px;cursor:pointer;font-family:var(--font)}
 .sel-dept:hover{border-color:var(--s3)}
@@ -638,7 +591,6 @@ svg.yvi{width:1em;height:1em;vertical-align:-0.125em;flex-shrink:0;display:inlin
   </div>
   <a class="btn-back" href="/" title="Volver al panel principal">← <span class="bk-txt">Panel principal</span></a>
   <div class="nm"></div>
-  <span class="hotel-chip" id="hotel-chip" style="display:none"></span>
   <select class="sel-dept" id="dept-filter" onchange="loadData()">
     <option value="">Todos los departamentos</option>
     <option value="f&b">F&B</option>
@@ -741,9 +693,6 @@ function bMatch(m) {
   return '<span class="badge '+c+'">'+l+'</span>';
 }
 
-// alias: el bloque del mensaje vacio escapa con `esc`, que es `txt`
-const esc = txt;
-
 function alertClass(m) {
   if(m==='ALERTA_CONSUMO')return 'warn';
   if(m==='DISCREPANCIA_PO'||m==='DISCREPANCIA')return 'err';
@@ -773,36 +722,10 @@ async function loadData() {
       : '';
   }
 
-  // Que hotel se esta viendo. El panel filtra por hotel desde la fase 2 y no
-  // lo decia en ningun sitio: una lista vacia era indistinguible de "no hay
-  // trabajo". Aqui eso importa — es la puerta de Oracle.
-  const chip = document.getElementById('hotel-chip');
-  if (chip) {
-    const hn = stats.hotel_nombre || '';
-    chip.style.display = hn ? '' : 'none';
-    chip.textContent = hn ? '🏨 ' + hn : '';
-    chip.title = hn ? 'Estás viendo solo las facturas de ' + hn : '';
-  }
-
   const lista = document.getElementById('lista');
-  if(!rows.length){
-    // La verdad, no "no queda nada": si hay trabajo en otro hotel, se dice.
-    const hn    = stats.hotel_nombre || '';
-    const otros = stats.en_otros_hoteles || 0;
-    const dept  = document.getElementById('dept-filter').value;
-    const tit   = hn ? 'No queda nada por aprobar en ' + esc(hn)
-                     : 'No queda nada por aprobar';
-    const pista = otros
-      ? '<div class="pista-otros">Hay <b>' + otros + '</b> factura' + (otros===1?'':'s')
-        + ' esperando en ' + (otros===1?'otro hotel':'otros hoteles')
-        + '. Cambia de hotel en el panel principal para verla' + (otros===1?'':'s') + '.</div>'
-      : (dept ? '<div class="pista-otros">Estás filtrando por un departamento. '
-                + 'Prueba con «Todos los departamentos».</div>' : '');
-    lista.innerHTML='<div class="empty"><span class="emo">📭</span>'
-      +'<div class="tit">'+tit+'</div>'
-      +'Lo aprobado y lo rechazado está en la solapa Historial.'
-      +pista+'</div>';
-    return;}
+  if(!rows.length){lista.innerHTML='<div class="empty"><span class="emo">📭</span>'
+    +'<div class="tit">No queda nada por aprobar</div>'
+    +'Lo aprobado y lo rechazado está en la solapa Historial.</div>';return;}
 
   lista.innerHTML = rows.map((r,i) => {
     const needsAlert = r.estado_matching && r.estado_matching !== 'MATCH_3WAY_OK' && r.estado_matching !== 'MATCH_CORRECTO' && r.alerta_detalle;
