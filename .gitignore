@@ -221,6 +221,8 @@ __marimo__/
 datos-referencia/push_subscriptions.json
 # lo escriben las pruebas y el propio servidor; no es codigo
 datos-referencia/audit_log.json
+# el registro de lo que Oracle ya contabilizo: dato de ejecucion, no codigo
+datos-referencia/oracle_contabilizadas.json
 vapid_keys.json
 *.vapid
 

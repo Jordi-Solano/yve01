@@ -220,6 +220,17 @@ def cargar_todas_facturas_ap():
     """
     import almacen_datos as _alm
     df = _alm.facturas_ap(PROCESADAS_DIR, REPORTES_DIR)
+    # Bug 11: si algun fichero no se pudo abrir, este informe sale INCOMPLETO y
+    # ademas tapa al de ayer. Antes eso pasaba callando; ahora se dice.
+    try:
+        _ileg = _alm.ficheros_ilegibles()
+    except Exception:
+        _ileg = []
+    if _ileg:
+        print("  " + "\u26a0 " * 3)
+        print(f"  \u26a0  {len(_ileg)} fichero(s) NO se pudieron leer: {', '.join(_ileg[:5])}")
+        print("  \u26a0  Este informe sale INCOMPLETO y puede haber perdido algun")
+        print("  \u26a0  marcador `oracle_status`. Revisa esos ficheros.")
     if df is None or df.empty:
         raise FileNotFoundError("No hay facturas_ap_*.xlsx. Ejecuta lector_facturas_ap.py")
     ya = 0

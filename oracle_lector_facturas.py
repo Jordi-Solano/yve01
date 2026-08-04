@@ -17,6 +17,7 @@ from oracle_auth import is_simulation, ORACLE_LEDGER_NAME
 # ─── Rutas ────────────────────────────────────────────────────────────────────
 BASE_DIR         = Path(__file__).parent
 PROCESADAS_DIR   = BASE_DIR / "facturas-procesadas"
+REPORTES_DIR     = BASE_DIR / "reportes"
 APROBACIONES_DIR = BASE_DIR / "aprobaciones"
 REFERENCIA_DIR   = BASE_DIR / "datos-referencia"
 NF               = "NO_ENCONTRADO"
@@ -72,19 +73,47 @@ def cargar_aprobaciones_ap():
 
 
 def cargar_facturas_contabilizadas():
-    """Carga el último facturas_contabilizadas_*.xlsx."""
-    archivos = sorted(
-        glob.glob(str(PROCESADAS_DIR / "facturas_contabilizadas_*.xlsx")),
-        reverse=True,
-    )
-    if not archivos:
+    """Las facturas contabilizadas de TODOS los días, no solo el último fichero.
+
+    BUG 11 — ANTES abría SOLO el `facturas_contabilizadas_*.xlsx` más reciente.
+    Si ese fichero salía incompleto (porque `almacen_datos` no pudo abrir uno de
+    un día anterior y lo saltó callando), una factura ya CONTABILIZADA reaparecía
+    aquí SIN su `oracle_status` y se volvía a contabilizar en el libro mayor.
+    Reproducido antes de arreglarlo: 2 de 3 facturas duplicadas.
+
+    Se lee por `almacen_datos.facturas_ap()` —el mismo punto único que usa el
+    asignador y, desde ahora, el panel de Aprobaciones—, con las rutas de la
+    RAÍZ explícitas para que panel y Oracle miren exactamente lo mismo.
+
+    Se sigue devolviendo el fichero más reciente como `ruta`: es donde
+    `oracle_actualizar_estado` escribe el marcador, y eso no cambia.
+    """
+    import almacen_datos as _alm
+    df = _alm.facturas_ap(str(PROCESADAS_DIR), str(REPORTES_DIR))
+    _ileg = []
+    try:
+        _ileg = _alm.ficheros_ilegibles()
+    except Exception:
+        pass
+    if df is None or df.empty:
         raise FileNotFoundError(
             "No se encontró facturas_contabilizadas_*.xlsx. "
             "Ejecuta primero asignador_cuentas.py"
         )
-    df = pd.read_excel(archivos[0])
-    print(f"  Facturas contabilizadas: {Path(archivos[0]).name} ({len(df)} filas)")
-    return df, archivos[0]
+    archivos = sorted(
+        glob.glob(str(PROCESADAS_DIR / "facturas_contabilizadas_*.xlsx")),
+        reverse=True,
+    )
+    ruta = archivos[0] if archivos else str(PROCESADAS_DIR / "facturas_contabilizadas.xlsx")
+    print(f"  Facturas contabilizadas: {len(df)} filas de todos los días")
+    if _ileg:
+        # El aviso que faltaba: un fichero ilegible era un print perdido en el
+        # stdout de un subproceso. Aquí importa, porque puede llevarse por
+        # delante un `oracle_status`.
+        print(f"  ⚠  {len(_ileg)} fichero(s) NO se pudieron leer: {', '.join(_ileg[:5])}")
+        print("     Puede faltar algún marcador de contabilizada — el registro "
+              "aparte (oracle_contabilizadas.json) es la red de seguridad.")
+    return df, ruta
 
 
 def construir_journal_lines(row, entity=DEFAULT_ENTITY) -> list:
@@ -225,6 +254,27 @@ def preparar_facturas_para_oracle(bypass_aprobacion: bool = False) -> tuple:
             df.loc[df["oracle_status"].astype(str).str.upper() == "CONTABILIZADA",
                    "numero_factura"].astype(str)
         )
+    # Y el registro aparte, que no depende de ningún Excel (bug 11). Solo
+    # SUMA: nunca quita a nadie de la lista, así que solo puede evitar un
+    # asiento, jamás provocarlo.
+    try:
+        from oracle_actualizar_estado import (ya_contabilizadas_registro,
+                                              apuntar_en_registro)
+        # Primero se SIEMBRA con lo que dice el Excel de hoy. Sin esto, el
+        # registro solo tendría lo contabilizado DESPUÉS de este cambio, y una
+        # factura marcada de antes se quedaría sin red: justo el caso que se
+        # quiere cubrir. Al ser de solo-añadir, sembrar no puede hacer daño.
+        if ya_contabilizadas:
+            apuntar_en_registro([{"numero_factura": n, "estado": "CONTABILIZADA"}
+                                 for n in sorted(ya_contabilizadas)])
+        _del_registro = ya_contabilizadas_registro()
+        _extra = _del_registro - ya_contabilizadas
+        if _extra:
+            print(f"  🔒 {len(_extra)} factura(s) ya contabilizadas según el "
+                  f"registro, aunque el Excel no lo diga: {', '.join(sorted(_extra)[:5])}")
+        ya_contabilizadas |= _del_registro
+    except Exception as _er:
+        print(f"  ⚠  no se pudo leer el registro de contabilizadas: {str(_er)[:70]}")
 
     for _, row in df.iterrows():
         num_fac = str(row.get("numero_factura", "")).strip()

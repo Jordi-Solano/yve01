@@ -5,6 +5,7 @@ y cambia el estado a CONTABILIZADA (o CONTABILIZADA_SIM en simulación).
 """
 
 import glob
+import os
 from pathlib import Path
 from datetime import datetime
 
@@ -15,6 +16,69 @@ from oracle_auth import is_simulation
 BASE_DIR       = Path(__file__).parent
 PROCESADAS_DIR = BASE_DIR / "facturas-procesadas"
 HOY            = datetime.now().strftime("%Y%m%d")
+
+# ── El registro de lo ya contabilizado (bug 11) ───────────────────────────────
+# El `oracle_status` vive dentro del xlsx. Si ese xlsx no se puede abrir, el
+# marcador se pierde y la factura vuelve a parecer nueva: reproducido, Oracle
+# montaba otra vez el asiento de dos facturas ya contabilizadas.
+#
+# Este registro es la copia que NO depende de ningun Excel. Es de SOLO ANADIR:
+# nunca quita a nadie de la lista, asi que solo puede EVITAR un asiento, jamas
+# provocarlo. Se escribe ANTES de tocar el xlsx, para que un fallo al guardar
+# el Excel no deje a Oracle sin memoria de lo que acaba de contabilizar.
+#
+# Solo entra "CONTABILIZADA". "CONTABILIZADA_SIM" NO, a proposito: es la
+# simulacion, y apuntarla dejaria la factura sin contabilizar de verdad para
+# siempre. Es la misma regla exacta que ya usa `oracle_lector_facturas`.
+REGISTRO_FILE = BASE_DIR / "datos-referencia" / "oracle_contabilizadas.json"
+
+
+def _leer_registro() -> dict:
+    """El registro entero. Un registro ilegible se trata como vacio: este
+    fichero solo puede anadir proteccion, nunca quitarla ni romper el flujo."""
+    try:
+        import json
+        with open(REGISTRO_FILE, "r", encoding="utf-8") as f:
+            d = json.load(f)
+        return d if isinstance(d, dict) else {}
+    except Exception:
+        return {}
+
+
+def ya_contabilizadas_registro() -> set:
+    """Numeros de factura que Oracle ya contabilizo DE VERDAD."""
+    return {str(k) for k, v in _leer_registro().items()
+            if str((v or {}).get("estado", "")).upper() == "CONTABILIZADA"}
+
+
+def apuntar_en_registro(resultados: list) -> int:
+    """Apunta en el registro las facturas contabilizadas. Devuelve cuantas."""
+    import json
+    reg = _leer_registro()
+    nuevas = 0
+    for res in resultados or []:
+        if str(res.get("estado", "")).upper() != "CONTABILIZADA":
+            continue
+        num = str(res.get("numero_factura", "")).strip()
+        if not num or num in reg:
+            continue
+        reg[num] = {"estado": "CONTABILIZADA",
+                    "oracle_id": str(res.get("oracle_id", "")),
+                    "fecha": str(res.get("timestamp",
+                                         datetime.now().strftime("%Y-%m-%d %H:%M")))}
+        nuevas += 1
+    if not nuevas:
+        return 0
+    try:
+        os.makedirs(os.path.dirname(str(REGISTRO_FILE)), exist_ok=True)
+        tmp = str(REGISTRO_FILE) + ".tmp"
+        with open(tmp, "w", encoding="utf-8") as f:
+            json.dump(reg, f, ensure_ascii=False, indent=2, sort_keys=True)
+        os.replace(tmp, str(REGISTRO_FILE))
+    except Exception as e:
+        print(f"  \u26a0  no se pudo escribir el registro de contabilizadas: {e}")
+        return 0
+    return nuevas
 
 
 def cargar_facturas() -> tuple:
@@ -35,6 +99,12 @@ def actualizar_estados(resultados: list) -> tuple:
     resultados: lista de dicts con {numero_factura, oracle_id, estado, timestamp}
     Returns: (df_actualizado, ruta_guardada, stats)
     """
+    # Lo PRIMERO, antes de tocar el Excel: si el guardado del xlsx fallara,
+    # Oracle seguiria sabiendo que estas facturas ya estan contabilizadas.
+    _n_reg = apuntar_en_registro(resultados)
+    if _n_reg:
+        print(f"  \U0001f4d2 {_n_reg} apuntada(s) en el registro de contabilizadas")
+
     df, ruta_original = cargar_facturas()
 
     # Asegurar que existen las columnas Oracle

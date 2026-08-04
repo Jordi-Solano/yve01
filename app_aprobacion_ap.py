@@ -13,6 +13,7 @@ from version_estaticos import SELLO as SELLO_ESTATICOS
 
 BASE_DIR         = os.path.dirname(os.path.abspath(__file__))
 PROCESADAS_DIR   = os.path.join(BASE_DIR, "facturas-procesadas")
+REPORTES_DIR     = os.path.join(BASE_DIR, "reportes")
 APROBACIONES_DIR = os.path.join(BASE_DIR, "aprobaciones")
 os.makedirs(APROBACIONES_DIR, exist_ok=True)
 
@@ -31,17 +32,29 @@ def _require_login():
 # ── Datos ─────────────────────────────────────────────────────────────────
 
 def _facturas_crudas():
-    """El fichero que Oracle va a leer, sin filtrar. Las rutas son las de la
-    RAIZ a proposito: son exactamente las que usa `oracle_lector_facturas`, y
-    este panel y Oracle tienen que estar mirando el MISMO fichero. Si el panel
-    leyera el arbol del tenant y Oracle la raiz, se aprobaria una cosa y se
-    contabilizaria otra."""
-    excels = sorted(glob.glob(os.path.join(PROCESADAS_DIR, "facturas_contabilizadas_*.xlsx")), reverse=True)
-    if not excels:
-        excels = sorted(glob.glob(os.path.join(PROCESADAS_DIR, "facturas_ap_*.xlsx")), reverse=True)
-    if not excels:
-        return pd.DataFrame()
-    return pd.read_excel(excels[0])
+    """Lo que Oracle va a leer, sin filtrar por hotel.
+
+    BUG 11 — ANTES abria SOLO el `facturas_contabilizadas_*.xlsx` MAS RECIENTE.
+    Si ese fichero salia incompleto (porque `almacen_datos` no pudo abrir uno
+    de un dia anterior y lo salto callando), el panel perdia facturas... y
+    Oracle perdia su `oracle_status`, que es el unico candado que impide
+    contabilizar dos veces. Reproducido: 3 facturas, 2 ya contabilizadas, y
+    Oracle volvia a montar el asiento de las 2.
+
+    Ahora se lee por `almacen_datos.facturas_ap()`, que junta TODOS los dias y
+    hace ganar la etapa mas avanzada (`facturas_contabilizadas` por encima de
+    `facturas_ap`), asi que el marcador viaja solo. La caida a `facturas_ap_*`
+    cuando no hay contabilizadas ya la hace el propio almacen: son sus dos
+    etapas.
+
+    Las rutas son las de la RAIZ a proposito y se pasan EXPLICITAS: son
+    exactamente las que usa `oracle_lector_facturas`, y este panel y Oracle
+    tienen que estar mirando lo MISMO. Si se dejara resolver el tenant, el
+    panel se iria al arbol del tenant y Oracle se quedaria en la raiz: se
+    aprobaria una cosa y se contabilizaria otra.
+    """
+    import almacen_datos as _alm
+    return _alm.facturas_ap(PROCESADAS_DIR, REPORTES_DIR)
 
 
 def cargar_facturas_ap():

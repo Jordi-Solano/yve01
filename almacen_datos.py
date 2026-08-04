@@ -186,12 +186,29 @@ def _dirs(procesadas_dir=None, reportes_dir=None):
     return procesadas_dir, reportes_dir
 
 
+# Ficheros que la ULTIMA lectura no pudo abrir. Se vacia en cada llamada a
+# `_leer_etapas`, asi que se consulta JUSTO DESPUES de la lectura.
+#
+# Existe por el bug 11: un xlsx ilegible se saltaba con un `print` que iba al
+# stdout de un subproceso —invisible—, y el conjunto salia incompleto. Lo peor
+# no era perder la factura: era perder su `oracle_status`, el unico candado que
+# impide contabilizarla dos veces. Esto NO cambia nada de lo que se devuelve;
+# solo permite que quien lea pueda decir en voz alta que falta algo.
+_ILEGIBLES = []
+
+
+def ficheros_ilegibles():
+    """Los ficheros que la ultima lectura no pudo abrir (ver `_ILEGIBLES`)."""
+    return list(_ILEGIBLES)
+
+
 def _leer_etapas(etapas, procesadas_dir, reportes_dir, hoja=None):
     """Lee TODOS los ficheros de TODAS las etapas y TODOS los dias.
 
     Devuelve (df_concatenado, rutas). Cada fila lleva '_etapa' con la prioridad
     (0 = mas avanzada) para poder deduplicar quedandose con la mejor version.
     """
+    del _ILEGIBLES[:]
     trozos, rutas = [], []
     for prio, (patron, cual) in enumerate(etapas):
         directorio = reportes_dir if cual == "reportes" else procesadas_dir
@@ -204,6 +221,7 @@ def _leer_etapas(etapas, procesadas_dir, reportes_dir, hoja=None):
                     df = pd.read_excel(ruta)
                 except Exception as e:
                     print(f"[almacen_datos] no se pudo leer {os.path.basename(ruta)}: {e}")
+                    _ILEGIBLES.append(os.path.basename(ruta))
                     continue
             if df is None or df.empty:
                 continue
