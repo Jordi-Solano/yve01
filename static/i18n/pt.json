@@ -418,5 +418,7 @@
   "upload.tiposZona": "PDF · Excel · CSV · Fotos — classificação automática",
   "upload.unirN": "🔗 Juntar as {n} num documento",
   "upload.yaProcN": "{n} já processados (serão ignorados)",
-  "upload.yaProcUno": "1 já processado (será ignorado)"
+  "upload.yaProcUno": "1 já processado (será ignorado)",
+  "vacio.enOtros": "Estás a ver <b>{hotel}</b>. Há <b>{n}</b> noutros hotéis — muda de hotel acima para os veres.",
+  "vacio.soloEste": "Estás a ver apenas <b>{hotel}</b>."
 }

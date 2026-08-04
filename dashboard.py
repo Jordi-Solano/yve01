@@ -3284,6 +3284,97 @@ def _detect_file_type(filename):
         return 'AR_o_AP'  # Podría ser extracto, ventas, inventario...
     return 'AP'
 
+@app.route('/api/hay_en_otros_hoteles')
+@login_required
+def api_hay_en_otros_hoteles():
+    """Cuanto hay en los OTROS hoteles, para no mentir en un panel vacio.
+
+    Las pantallas filtran por hotel a proposito. El problema, vivido en
+    Aprobaciones AP: al quedarse vacias decian "Sin datos" — falso, cuando lo
+    que pasa es que el dato esta en otro hotel. Sin esto, una lista vacia es
+    indistinguible de "no hay trabajo".
+
+    SOLO CUENTA. No filtra, no escribe, no cambia lo que ve nadie. Y se pide
+    solo cuando la pantalla YA ha salido vacia, asi que en el caso normal no
+    cuesta ni una lectura.
+
+    Falla en 0: ante cualquier duda se dice "no hay nada en otros hoteles", que
+    es callarse — nunca inventarse un numero que mande al usuario a buscar algo
+    que no existe.
+    """
+    area = (request.args.get('area', '') or '').strip().lower()
+    try:
+        activo = censo_hoteles.activo()
+    except Exception:
+        activo = ''
+    nombre = ''
+    try:
+        nombre = censo_hoteles.nombre_de(activo) or ''
+    except Exception:
+        nombre = ''
+    # Vista de grupo (o 0/1 hoteles): se ve todo, no hay nada "fuera".
+    if not activo:
+        return jsonify({'ok': True, 'area': area, 'hotel': '', 'hotel_nombre': '', 'n': 0})
+
+    def _de_otros(df):
+        """Filas con hotel puesto que NO es el activo."""
+        try:
+            import almacen_datos as _alm
+            col = _alm.COL_HOTEL
+        except Exception:
+            col = 'hotel_id'
+        if df is None or not len(df) or col not in df.columns:
+            return 0
+        n = 0
+        for v in df[col]:
+            s = str('' if v is None else v).strip()
+            if s and s.lower() not in ('nan', 'none', 'nat', '<na>') and s != activo:
+                n += 1
+        return n
+
+    n = 0
+    try:
+        import almacen_datos as _alm
+        if area == 'ar':
+            n = _de_otros(_alm.facturas_ar())
+        elif area == 'ap':
+            n = _de_otros(_alm.facturas_ap())
+        elif area == 'banco':
+            n = _de_otros(_alm.movimientos_banco())
+        elif area == 'fb':
+            # Las ventas del TPV son el fichero que manda en F&B; inventario y
+            # mermas van con el.
+            import pandas as _pd
+            for f in ('ventas_fb_diarias.xlsx', 'mermas.xlsx', 'inventario.xlsx'):
+                p = os.path.join(_ddir(), f)
+                if os.path.exists(p):
+                    try:
+                        n += _de_otros(_pd.read_excel(p))
+                    except Exception:
+                        pass
+        elif area == 'drr':
+            # El DRR lleva el hotel en el NOMBRE del fichero, no en una columna
+            # (ver drr_del_hotel). Se cuenta con el mismo criterio, que es el
+            # unico sitio que decide de quien es un DRR.
+            import glob as _g
+            for p in _g.glob(os.path.join(_rdir(), 'drr_procesado_*.xlsx')):
+                b = os.path.basename(p)
+                try:
+                    if not censo_hoteles.fichero_es_de(b, activo):
+                        for h in censo_hoteles.hoteles():
+                            if str(h.get('id')) != activo and \
+                                    censo_hoteles.fichero_es_de(b, str(h.get('id'))):
+                                n += 1
+                                break
+                except Exception:
+                    pass
+    except Exception:
+        n = 0
+
+    return jsonify({'ok': True, 'area': area, 'hotel': activo,
+                    'hotel_nombre': nombre, 'n': int(n)})
+
+
 @app.route('/api/historial_procesado')
 @login_required
 def api_historial_procesado():
@@ -5267,6 +5358,7 @@ body::before{
      cabia y arrastraba TODA la pagina hacia la derecha —162 px medidos—, que
      es el "se descoloca" al cambiar de apartado. Ahora encoge y, si aun asi
      no cabe, se desliza DENTRO de la nav en vez de mover la pagina. */
+  .pista-hotel{font-size:11px;padding:8px 10px}
   .nav-right{gap:4px;flex-shrink:1;min-width:0;overflow-x:auto;scrollbar-width:none}
   .nav-right::-webkit-scrollbar{display:none}
   /* `!important` a proposito: el selector lleva `max-width:190px` EN LINEA
@@ -5429,6 +5521,7 @@ tr:hover td{background:rgba(255,255,255,.025)}
 @keyframes sp{to{transform:rotate(360deg)}}
 
 /* ── EMPTY ── */
+.pista-hotel{margin:14px auto 0;max-width:420px;padding:10px 12px;border-radius:10px;background:rgba(245,158,11,.10);border:1px solid rgba(245,158,11,.30);color:var(--tx);font-size:12px;line-height:1.55;text-align:center}
 .empty{text-align:center;padding:48px 20px;color:var(--mut)}
 .empty .ei{font-size:36px;margin-bottom:10px}
 .empty p{font-size:13px;line-height:1.6}
@@ -6987,6 +7080,7 @@ function renderTable(rows) {
   document.getElementById('tbl-count').textContent = rows.length ? rows.length + ' ' + (t('lbl.registros', 'registros')) : '';
   if (!rows.length) {
     tbody.innerHTML = '<tr><td colspan="12" style="padding:32px;text-align:center"><div style="font-size:32px;margin-bottom:8px">📦</div><div style="font-weight:600;color:var(--mut);margin-bottom:4px">Sin facturas AP</div><div style="font-size:12px;color:var(--dim)">Pulsa ⚡ Procesar Archivos</div></td></tr>';
+    _pistaOtrosHoteles('ar', tbody.querySelector('td'));
     return;
   }
   tbody.innerHTML = rows.map((r, i) => {
@@ -7014,6 +7108,7 @@ function renderActivity(rows) {
   const el = document.getElementById('activity');
   if (!rows.length) {
     el.innerHTML = '<div class="empty"><div class="ei">📂</div><p>Sin datos.<br>Pulsa ⚡ Procesar Archivos.</p></div>';
+    _pistaOtrosHoteles('ar', el.querySelector('.empty'));   // por que esta vacio
     return;
   }
   const c = {}, d = {};
@@ -13339,6 +13434,7 @@ async function loadFBResumen() {
     const data = await res.json();
     if (!data.ok) {
       cont.innerHTML = _emptyState('🍽️', t('fb.vacioTitulo', 'Aún no hay datos de F&B'), t('fb.vacioSub', 'Sube ventas POS, inventario o mermas y Yve calculará el Food Cost automáticamente.'));
+      _pistaOtrosHoteles('fb', cont.firstElementChild);    // por que esta vacio
       return;
     }
     const r = data.resumen;
@@ -13625,6 +13721,39 @@ async function loadFBRecetas() {
     html += '</tbody></table></div></div>';
     cont.innerHTML = html;
   } catch(e) { cont.innerHTML = '<div class="empty"><p>Error: ' + e.message + '</p></div>'; }
+}
+
+// ── La pista de "esto esta vacio PORQUE estas en un hotel" ──────────────────
+// Mismo bug que se sufrio en Aprobaciones AP: la pantalla filtra por hotel,
+// no lo dice, y al vaciarse parece que no hay trabajo. Se cuelga DEBAJO del
+// vacio que ya existe, sin tocar su texto — esos textos se traducen por
+// coincidencia exacta en `_i18nStrMap` y cambiarlos los dejaria en español.
+//
+// Se llama SOLO cuando la pantalla ya ha salido vacia.
+async function _pistaOtrosHoteles(area, el) {
+  try {
+    if (!el) return;
+    var d = await fetch('/api/hay_en_otros_hoteles?area=' + encodeURIComponent(area))
+      .then(function(r) { return r.json(); });
+    if (!d || !d.hotel_nombre) return;      // vista de grupo: no falta nada
+    var prev = el.querySelector('.pista-hotel');
+    if (prev) prev.remove();
+    var n = d.n || 0;
+    var txt = n
+      ? t('vacio.enOtros', 'Estás viendo <b>{hotel}</b>. Hay <b>{n}</b> en otros hoteles — cambia de hotel arriba para verlo.')
+          .replace('{hotel}', _escHtml(d.hotel_nombre)).replace('{n}', n)
+      : t('vacio.soloEste', 'Estás viendo solo <b>{hotel}</b>.')
+          .replace('{hotel}', _escHtml(d.hotel_nombre));
+    var div = document.createElement('div');
+    div.className = 'pista-hotel';
+    div.innerHTML = '🏨 ' + txt;
+    el.appendChild(div);
+  } catch (e) {}
+}
+
+function _escHtml(s) {
+  return String(s == null ? '' : s).replace(/&/g, '&amp;').replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;').replace(/"/g, '&quot;');
 }
 
 function _emptyState(emoji, titulo, sub, conCta) {
@@ -14071,6 +14200,7 @@ async function renderDRR(s) {
     const _msg = (s && s.error) ? ('Error: ' + s.error) : 'Sin DRR para este hotel.';
     if (body) body.innerHTML = '<div class="drr-metrics" id="drr-metrics" style="display:grid;grid-template-columns:repeat(auto-fit,minmax(140px,1fr));gap:10px">'
       + '<div class="empty"><p>' + _msg + '</p></div></div>';
+    if (body && !(s && s.error)) _pistaOtrosHoteles('drr', body.querySelector('.empty'));
     if (statusEl) statusEl.textContent = '';
     window._drrChartData = null;
     try { if (_drrChart) { _drrChart.destroy(); _drrChart = null; } } catch(e) {}
@@ -15108,7 +15238,9 @@ async function loadBanco() {
     if (!d) {
       ['bk-total','bk-conc','bk-pend','bk-diff'].forEach(function(id){ var e=document.getElementById(id); if(e) e.textContent='0'; });
       var ip = document.getElementById('bk-imp-pend'); if (ip) ip.textContent = '—';
-      var ba0 = document.getElementById('bk-alertas'); if (ba0) ba0.innerHTML = '<div class="empty"><p>Sin movimientos bancarios.</p></div>';
+      var ba0 = document.getElementById('bk-alertas');
+      if (ba0) { ba0.innerHTML = '<div class="empty"><p>Sin movimientos bancarios.</p></div>';
+                 _pistaOtrosHoteles('banco', ba0.querySelector('.empty')); }
       var pb0 = document.getElementById('banco-progress-bar'); if (pb0) pb0.style.display = 'none';
       return;
     }

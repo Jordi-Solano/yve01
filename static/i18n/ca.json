@@ -418,5 +418,7 @@
   "upload.tiposZona": "PDF · Excel · CSV · Fotos — classificació automàtica",
   "upload.unirN": "🔗 Uneix les {n} en un document",
   "upload.yaProcN": "{n} ja processats (s'ometran)",
-  "upload.yaProcUno": "1 ja processat (s'ometrà)"
+  "upload.yaProcUno": "1 ja processat (s'ometrà)",
+  "vacio.enOtros": "Estàs veient <b>{hotel}</b>. N'hi ha <b>{n}</b> en altres hotels — canvia d'hotel a dalt per veure-ho.",
+  "vacio.soloEste": "Estàs veient només <b>{hotel}</b>."
 }

@@ -418,5 +418,7 @@
   "upload.tiposZona": "PDF · Excel · CSV · Photos — classement automatique",
   "upload.unirN": "🔗 Fusionner les {n} en un document",
   "upload.yaProcN": "{n} déjà traités (seront ignorés)",
-  "upload.yaProcUno": "1 déjà traité (sera ignoré)"
+  "upload.yaProcUno": "1 déjà traité (sera ignoré)",
+  "vacio.enOtros": "Vous consultez <b>{hotel}</b>. Il y en a <b>{n}</b> dans d'autres hôtels — changez d'hôtel en haut pour les voir.",
+  "vacio.soloEste": "Vous consultez uniquement <b>{hotel}</b>."
 }

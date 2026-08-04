@@ -418,5 +418,7 @@
   "upload.tiposZona": "PDF · Excel · CSV · Fotos — automatisch klassifiziert",
   "upload.unirN": "🔗 Die {n} zu einem Dokument zusammenfügen",
   "upload.yaProcN": "{n} bereits verarbeitet (werden übersprungen)",
-  "upload.yaProcUno": "1 bereits verarbeitet (wird übersprungen)"
+  "upload.yaProcUno": "1 bereits verarbeitet (wird übersprungen)",
+  "vacio.enOtros": "Sie sehen <b>{hotel}</b>. In anderen Hotels gibt es <b>{n}</b> — oben das Hotel wechseln, um sie zu sehen.",
+  "vacio.soloEste": "Sie sehen nur <b>{hotel}</b>."
 }

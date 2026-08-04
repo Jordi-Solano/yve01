@@ -418,5 +418,7 @@
   "upload.tiposZona": "PDF · Excel · CSV · Photos — classified automatically",
   "upload.unirN": "🔗 Merge the {n} into one document",
   "upload.yaProcN": "{n} already processed (will be skipped)",
-  "upload.yaProcUno": "1 already processed (will be skipped)"
+  "upload.yaProcUno": "1 already processed (will be skipped)",
+  "vacio.enOtros": "You are viewing <b>{hotel}</b>. There are <b>{n}</b> in other hotels — switch hotel above to see them.",
+  "vacio.soloEste": "You are viewing only <b>{hotel}</b>."
 }
