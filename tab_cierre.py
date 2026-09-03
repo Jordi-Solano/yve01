@@ -108,3 +108,127 @@ def api_exportar_cuadre_banco():
     buf, nombre = CB.exportar_excel(_cuadre(mes, hotel))
     return send_file(buf, as_attachment=True, download_name=nombre,
                      mimetype='application/vnd.openxmlformats-officedocument.spreadsheetml.sheet')
+
+
+# ── Inventarios de cierre (Ola B · bloque 3) ────────────────────────────────
+def _inventario_hotel(hotel):
+    import pandas as pd
+    import almacen_datos as ALM
+    dd = str(_t_ddir())
+    try:
+        df = pd.read_excel(os.path.join(dd, 'inventario.xlsx'))
+    except Exception:
+        return pd.DataFrame()
+    return ALM._filtrar_hotel(df, hotel) if hotel else df
+
+
+def _coste_teorico_fb(mes, hotel):
+    """Escandallo × unidades vendidas del mes (tab_fb_dashboard.resumen_fb)."""
+    try:
+        import pandas as pd
+        import tab_fb_dashboard as FB
+        from provisiones import _fecha, _mes_a_rango
+        ini, fin, _ = _mes_a_rango(mes)
+        df_rec = FB._xlsx('recetas.xlsx')
+        df_inv = FB._xlsx_hotel('inventario.xlsx') if hotel else FB._xlsx('inventario.xlsx')
+        df_ven = FB._xlsx_hotel('ventas_fb_diarias.xlsx') if hotel else FB._xlsx('ventas_fb_diarias.xlsx')
+        df_mer = FB._xlsx_hotel('mermas.xlsx') if hotel else FB._xlsx('mermas.xlsx')
+        if df_ven is None or df_ven.empty or 'fecha' not in df_ven.columns:
+            return None
+        mask = df_ven['fecha'].map(lambda v: (lambda f: f is not None and ini <= f <= fin)(_fecha(v)))
+        df_ven = df_ven[mask]
+        if df_ven.empty:
+            return None
+        _, _, resumen = FB.resumen_fb(df_rec, df_inv, df_ven, df_mer)
+        return resumen.get('coste_escandallo')
+    except Exception:
+        return None
+
+
+def _inventarios(mes, hotel):
+    import inventarios as INV
+    import almacen_datos as ALM
+    dd = str(_t_ddir())
+    try:
+        ap = ALM.facturas_ap(str(_t_pdir()), str(_t_rdir()), hotel=hotel or None)
+    except Exception:
+        ap = None
+    return INV.valorar(mes, _inventario_hotel(hotel), ap, _coste_teorico_fb(mes, hotel), INV.config_familias(dd))
+
+
+@cierre_bp.route('/api/inventarios')
+def api_inventarios():
+    mes, hotel = _args()
+    try:
+        res = _inventarios(mes, hotel)
+    except Exception as e:
+        return jsonify({'ok': False, 'error': str(e)[:200]}), 500
+    return jsonify({'ok': True, 'hotel': hotel or '', **res})
+
+
+@cierre_bp.route('/api/exportar/inventarios')
+def api_exportar_inventarios():
+    import inventarios as INV
+    mes, hotel = _args()
+    buf, nombre = INV.exportar_excel(_inventarios(mes, hotel))
+    return send_file(buf, as_attachment=True, download_name=nombre,
+                     mimetype='application/vnd.openxmlformats-officedocument.spreadsheetml.sheet')
+
+
+@cierre_bp.route('/api/inventarios/hoja_recuento')
+def api_hoja_recuento():
+    import inventarios as INV
+    mes, hotel = _args()
+    from provisiones import _mes_a_rango
+    _, _, mes = _mes_a_rango(mes)
+    buf, nombre = INV.hoja_recuento(_inventario_hotel(hotel), mes, INV.config_familias(str(_t_ddir())))
+    return send_file(buf, as_attachment=True, download_name=nombre,
+                     mimetype='application/vnd.openxmlformats-officedocument.spreadsheetml.sheet')
+
+
+@cierre_bp.route('/api/inventarios/recuento', methods=['POST'])
+def api_subir_recuento():
+    """Sube la hoja de recuento rellenada: el `recuento` pasa a ser el stock final.
+
+    Se conserva TODO lo demas del articulo (coste, categoria, stock inicial):
+    solo cambia el stock final de las filas contadas. Los articulos nuevos
+    entran con lo que traiga la hoja.
+    """
+    import pandas as pd
+    import inventarios as INV
+    f = request.files.get('archivo') or request.files.get('file')
+    if not f:
+        return jsonify({'ok': False, 'error': 'Falta el fichero (campo "archivo")'}), 400
+    try:
+        df_c, n, saltadas = INV.leer_recuento(f)
+    except Exception as e:
+        return jsonify({'ok': False, 'error': str(e)[:200]}), 400
+    if df_c.empty:
+        return jsonify({'ok': False, 'error': 'La hoja no trae ningun recuento informado', 'saltadas': saltadas}), 400
+    mes, hotel = _args()
+    actual = _inventario_hotel(hotel)
+    por_nombre = {}
+    if actual is not None and not actual.empty and 'ingrediente' in actual.columns:
+        for _, r in actual.iterrows():
+            por_nombre[INV._norm(r.get('ingrediente'))] = r.to_dict()
+    filas = []; nuevos = 0
+    for _, r in df_c.iterrows():
+        base = por_nombre.get(INV._norm(r['ingrediente']))
+        if base is None:
+            nuevos += 1
+            base = {'ingrediente': r['ingrediente']}
+        fila = dict(base)
+        fila['stock_actual_kg_l'] = float(r['stock_actual_kg_l'])
+        for k in ('categoria', 'unidad', 'coste_unitario', 'proveedor'):
+            if k in r and pd.notna(r[k]) and str(r[k]).strip():
+                fila[k] = r[k]
+        fila.pop('hotel_id', None)
+        filas.append(fila)
+    from dashboard import _guardar_fb_del_hotel, _audit
+    _guardar_fb_del_hotel(pd.DataFrame(filas), 'inventario.xlsx')
+    try:
+        from flask_login import current_user
+        _audit('INVENTARIO_RECUENTO', f'{n} articulos contados, {nuevos} nuevos', getattr(current_user, 'username', None) or 'sistema')
+    except Exception:
+        pass
+    return jsonify({'ok': True, 'contados': n, 'nuevos': nuevos, 'saltadas': saltadas})

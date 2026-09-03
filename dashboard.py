@@ -1022,10 +1022,15 @@ def _guardar_fb_del_hotel(df, fichero):
     if os.path.exists(ruta):
         viejo = _pd.read_excel(ruta)
         if not viejo.empty:
+            viejo = viejo.copy()
             if 'hotel_id' not in viejo.columns:
-                viejo = viejo.copy()
                 viejo['hotel_id'] = ''
+            # Un hotel vacio vuelve de Excel como NaN y NaN != '': el
+            # deduplicado no lo veia igual y cada subida DUPLICABA la fila
+            # (visto con la hoja de recuento del cierre, 0 hoteles).
+            viejo['hotel_id'] = viejo['hotel_id'].map(safe_str)
             df = _pd.concat([viejo, df], ignore_index=True)
+    df['hotel_id'] = df['hotel_id'].map(safe_str)
     clave = [c for c in _CLAVE_FB.get(fichero, ()) if c in df.columns]
     if clave:
         df = df.drop_duplicates(subset=clave + ['hotel_id'], keep='last')
@@ -6549,6 +6554,18 @@ svg.yvi{width:1em;height:1em;vertical-align:-0.125em;flex-shrink:0;display:inlin
       </div>
       <div id="cbanco-pestanas" style="display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:8px;margin-bottom:12px"></div>
       <div id="cbanco-body" style="font-size:12px;color:var(--mut);overflow-x:auto"><div class="empty"><p data-i18n="cierre.cargando">Montando el mes…</p></div></div>
+    </div>
+    <div class="card" id="card-cierre-inv" style="margin-bottom:22px">
+      <div style="display:flex;align-items:center;justify-content:space-between;gap:12px;flex-wrap:wrap;margin-bottom:10px">
+        <div class="card-title" style="margin:0" data-i18n="inv.titulo">Inventarios de cierre</div>
+        <div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap">
+          <a id="inv-hoja" href="/api/inventarios/hoja_recuento" class="btn-ref" style="text-decoration:none;font-size:12px" data-i18n="inv.hoja">📋 Hoja de recuento</a>
+          <label for="inv-file" class="btn-ref" style="cursor:pointer;font-size:12px;margin:0" data-i18n="inv.subir">📤 Subir recuento</label><input type="file" id="inv-file" accept=".xlsx,.xls,.csv" style="display:none" onchange="_invSubir(this)">
+          <a id="inv-excel" href="/api/exportar/inventarios" class="btn-ref" style="text-decoration:none;font-size:12px" data-i18n="inv.descargar">⬇️ Excel</a>
+        </div>
+      </div>
+      <div id="inv-resumen" style="display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:8px;margin-bottom:12px"></div>
+      <div id="inv-body" style="font-size:12px;color:var(--mut);overflow-x:auto"><div class="empty"><p data-i18n="cierre.cargando">Montando el mes…</p></div></div>
     </div>
     <div class="card" id="card-cierre-mayor" style="margin-bottom:22px">
       <div class="card-title" data-i18n="cierre.mayor">Mayor del mes (por cuenta)</div>
@@ -13591,6 +13608,49 @@ async function _cbAsignar(sel){
   } catch(e){ showNotification('✗ ' + e.message, 'error'); }
 }
 
+// ── Inventarios de cierre (Ola B·3) ──────────────────────────────────────
+async function loadInventarios(){
+  var inp = document.getElementById('cierre-mes'); if (!inp) return;
+  var mes = inp.value;
+  var ex = document.getElementById('inv-excel'); if (ex) ex.href = '/api/exportar/inventarios?mes=' + encodeURIComponent(mes);
+  var hj = document.getElementById('inv-hoja'); if (hj) hj.href = '/api/inventarios/hoja_recuento?mes=' + encodeURIComponent(mes);
+  var rs = document.getElementById('inv-resumen'), body = document.getElementById('inv-body');
+  try {
+    var r = await fetch('/api/inventarios?mes=' + encodeURIComponent(mes));
+    var d = await r.json();
+    if (!d || !d.ok) { body.innerHTML = '<div class="empty"><p>' + _cEsc((d&&d.error)||'Error') + '</p></div>'; return; }
+    var s = d.resumen || {};
+    var tile = function(l, v, sub, col){ return '<div class="card" style="padding:10px;border-radius:10px"><div style="font-size:11px;color:var(--mut);text-transform:uppercase;letter-spacing:.4px">' + _cEsc(l) + '</div><div style="font-size:15px;font-weight:700;color:' + (col||'var(--tx)') + '">' + v + '</div>' + (sub?'<div style="font-size:11px;color:var(--dim)">' + _cEsc(sub) + '</div>':'') + '</div>'; };
+    rs.innerHTML = tile(t('inv.kFinal','Existencias finales'), _cEur(s.valor_final), s.n_articulos + ' ' + t('inv.articulos','artículos')) +
+      tile(t('inv.kCompras','Compras F&B del mes'), _cEur(s.compras_fb), (s.n_facturas_fb||0) + ' ' + t('inv.facturas','facturas')) +
+      tile(t('inv.kReal','Consumo real F&B'), s.consumo_real_fb==null?'—':_cEur(s.consumo_real_fb), t('inv.formula','inicial + compras − final')) +
+      tile(t('inv.kTeorico','Consumo teórico'), s.consumo_teorico_fb==null?t('inv.sinDato','sin dato'):_cEur(s.consumo_teorico_fb), t('inv.escandallo','escandallo × ventas')) +
+      tile(t('inv.kDesv','Desviación'), s.desviacion_fb==null?'—':_cEur(s.desviacion_fb) + (s.desviacion_pct!=null?' (' + s.desviacion_pct + ' %)':''), s.n_revisar ? s.n_revisar + ' ' + t('inv.revisar','artículos a revisar') : '', s.desviacion_fb==null?'var(--tx)':(Math.abs(s.desviacion_pct||0)>5?'#f87171':'#22c55e'));
+    var fams = d.familias || [];
+    var LBL = {ALIMENTOS:t('inv.ALIMENTOS','Alimentos'), BEBIDAS:t('inv.BEBIDAS','Bebidas'), LICORES:t('inv.LICORES','Licores'), GUEST_SUPPLIES:t('inv.GUEST','Guest supplies'), OTROS:t('inv.OTROS','Otros')};
+    var h = fams.length ? '<table style="width:100%;border-collapse:collapse;font-size:12px"><thead><tr style="color:var(--dim);text-align:left"><th>' + t('inv.familia','Familia') + '</th><th style="text-align:right">' + t('inv.articulos','artículos') + '</th><th style="text-align:right">' + t('inv.inicial','Inicial') + '</th><th style="text-align:right">' + t('inv.final','Final') + '</th><th style="text-align:right">' + t('inv.variacion','Variación') + '</th><th style="text-align:right">' + t('inv.revisar','a revisar') + '</th></tr></thead><tbody>' +
+      fams.map(function(f){ return '<tr style="border-top:1px solid var(--s2)"><td style="padding:5px 4px;font-weight:700">' + _cEsc(LBL[f.familia]||f.familia) + '</td><td style="text-align:right;padding:5px 4px">' + f.n + '</td><td style="text-align:right;padding:5px 4px">' + _cEur(f.valor_inicial) + '</td><td style="text-align:right;padding:5px 4px">' + _cEur(f.valor_final) + '</td><td style="text-align:right;padding:5px 4px;color:' + (f.variacion<0?'#f87171':'#22c55e') + '">' + _cEur(f.variacion) + '</td><td style="text-align:right;padding:5px 4px">' + (f.revisar||0) + '</td></tr>'; }).join('') + '</tbody></table>' : '<div class="empty"><p>' + t('inv.vacio','Sin inventario. Descarga la hoja de recuento, cuéntalo y súbela, o procesa un inventario en Procesar Archivos.') + '</p></div>';
+    var asi = d.asientos || [];
+    if (asi.length) h += '<div style="margin-top:10px;font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.5px;color:var(--mut)">' + t('inv.asientos','Asiento de variación de existencias') + '</div><table style="width:100%;border-collapse:collapse;font-size:11px">' + asi.map(function(a){ return '<tr style="border-top:1px solid var(--s2)"><td style="padding:3px 4px"><b>' + _cEsc(a.cuenta) + '</b> ' + _cEsc(a.desc_cuenta) + '</td><td style="padding:3px 4px">' + _cEsc(a.concepto) + '</td><td style="text-align:right;padding:3px 4px">' + (a.debe?_cEur(a.debe):'') + '</td><td style="text-align:right;padding:3px 4px">' + (a.haber?_cEur(a.haber):'') + '</td></tr>'; }).join('') + '</table>';
+    var rev = d.revisar || [];
+    if (rev.length) h += '<div style="margin-top:10px;font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.5px;color:#f59e0b">' + t('inv.revisarTit','Artículos a revisar') + '</div><div style="font-size:11px">' + rev.slice(0,30).map(function(a){ return _cEsc(a.articulo) + ' — ' + _cEsc(a.motivo); }).join('<br>') + '</div>';
+    if (s.nota) h += '<div style="margin-top:8px;font-size:11px;color:var(--dim)">' + _cEsc(s.nota) + '</div>';
+    body.innerHTML = h;
+  } catch(e) { if (body) body.innerHTML = '<div class="empty"><p>' + _cEsc(e.message) + '</p></div>'; }
+}
+async function _invSubir(input){
+  var f = input.files && input.files[0]; if (!f) return;
+  var fd = new FormData(); fd.append('archivo', f);
+  try {
+    var tok = ''; try { tok = (await (await fetch('/api/csrf_token')).json()).token || ''; } catch(e){}
+    var r = await fetch('/api/inventarios/recuento?mes=' + encodeURIComponent((document.getElementById('cierre-mes')||{}).value||''), {method:'POST', body: fd, headers: tok ? {'X-CSRF-Token': tok} : {}});
+    var d = await r.json();
+    if (d && d.ok) { showNotification(t('inv.subido','✓ Recuento subido: {n} artículos').replace('{n}', d.contados), 'success'); loadInventarios(); }
+    else showNotification('✗ ' + ((d&&d.error)||'Error'), 'error');
+  } catch(e){ showNotification('✗ ' + e.message, 'error'); }
+  input.value = '';
+}
+
 // ── Cierre de mes (Ola B) ─────────────────────────────────────────────────
 function _cEsc(s){ return String(s==null?'':s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;'); }
 function _cEur(v){ return (v==null||isNaN(Number(v))) ? '—' : Number(v).toLocaleString('es-ES',{minimumFractionDigits:2,maximumFractionDigits:2}) + ' €'; }
@@ -13602,6 +13662,7 @@ async function loadCierre(forzar){
   var ex = document.getElementById('cierre-excel'); if (ex) ex.href = '/api/exportar/cierre?mes=' + encodeURIComponent(mes);
   var rb = document.getElementById('cierre-recon-body'), mb = document.getElementById('cierre-mayor-body'), db = document.getElementById('cierre-diario-body'), av = document.getElementById('cierre-avisos');
   try { loadCuadreBanco(); } catch(e){}
+  try { loadInventarios(); } catch(e){}
   try {
     var r = await fetch('/api/cierre/asientos?mes=' + encodeURIComponent(mes));
     var d = await r.json();
