@@ -550,7 +550,11 @@ def _auto_cuenta_pgc(concepto, proveedor=None):
         return '629'  # Otros servicios
     # Energía / suministros
     if any(x in c for x in ['electric','energía','gas ','agua ','water','utility','suministro']):
-        return '628'  # Suministros
+        # BOMBA 3: devolvia 628, que en plan_cuentas.xlsx es "Comisiones de
+        # agencias y OTAs" — la factura de la luz acababa en la cuenta de
+        # Booking. En este plan la energia va a 629 ("Otros servicios
+        # (telecom, energia)"), igual que en asignador_cuentas.
+        return '629'  # Suministros / energia
     # Mantenimiento
     if any(x in c for x in ['mantenimiento','maintenance','reparac','repair','conservac']):
         return '622'  # Reparaciones y conservación
