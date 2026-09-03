@@ -780,6 +780,37 @@ def api_exportar_provisiones():
     return send_file(buf, as_attachment=True, download_name=nombre,
                      mimetype="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet")
 
+# ── Aging AP: a quien debemos y desde cuando (Ola A) ──────────────────────────
+def _aging_ap_calcular():
+    import aging_ap as _ag
+    from almacen_datos import movimientos_banco as _mb
+    df_ap = cargar_datos_ap()
+    try:
+        df_ar, _ = cargar_datos()
+    except Exception:
+        df_ar = pd.DataFrame()
+    try:
+        df_b, _ = _mb(reportes_dir=_rdir())
+    except Exception:
+        df_b = None
+    return _ag.calcular_aging(df_ap, df_ar, df_b)
+
+@app.route("/api/aging_ap")
+@login_required
+def api_aging_ap():
+    try:
+        return jsonify({"ok": True, **_aging_ap_calcular()})
+    except Exception as e:
+        return jsonify({"ok": False, "error": str(e)[:200]}), 500
+
+@app.route("/api/exportar/aging_ap")
+@login_required
+def api_exportar_aging_ap():
+    import aging_ap as _ag
+    buf, nombre = _ag.exportar_excel(_aging_ap_calcular())
+    return send_file(buf, as_attachment=True, download_name=nombre,
+                     mimetype="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet")
+
 # ── PWA: service worker servido desde la raíz para controlar todo el origen ──
 @app.route("/sw.js")
 def pwa_service_worker():
@@ -6272,6 +6303,16 @@ svg.yvi{width:1em;height:1em;vertical-align:-0.125em;flex-shrink:0;display:inlin
         </div>
       </div>
       <div id="prov-body" style="font-size:13px;color:var(--mut)"><div class="empty"><p data-i18n="prov.cargando">Calculando provisiones…</p></div></div>
+    </div>
+
+    <!-- Aging AP (Ola A): a quien debemos y desde cuando. Solo lectura. -->
+    <div class="card" id="card-aging-ap" style="margin-top:22px">
+      <div style="display:flex;align-items:center;justify-content:space-between;gap:12px;flex-wrap:wrap;margin-bottom:12px">
+        <div class="card-title" style="margin:0" data-i18n="aging.titulo">Antigüedad de la deuda (aging AP)</div>
+        <a href="/api/exportar/aging_ap" class="btn-ref" style="text-decoration:none;font-size:12px" data-i18n="aging.descargar">⬇️ Excel del aging</a>
+      </div>
+      <div id="aging-tramos" style="display:grid;grid-template-columns:repeat(auto-fit,minmax(110px,1fr));gap:8px;margin-bottom:12px"></div>
+      <div id="aging-body" style="font-size:13px;color:var(--mut)"><div class="empty"><p data-i18n="aging.cargando">Calculando antigüedad…</p></div></div>
     </div>
   </div><!-- /panel-ap -->
 
@@ -13896,10 +13937,38 @@ async function loadProvisiones() {
   } catch(e) { body.innerHTML = '<div class="empty"><p>Error</p></div>'; }
 }
 
+// ── Aging AP (Ola A) ─────────────────────────────────────────────────
+async function loadAgingAP() {
+  const body = document.getElementById('aging-body'), tr = document.getElementById('aging-tramos');
+  if (!body || !tr) return;
+  try {
+    const d = await (await fetch('/api/aging_ap', {cache:'no-store'})).json();
+    if (!d.ok) { body.innerHTML = '<div class="empty"><p>' + _provEsc(d.error || 'Error') + '</p></div>'; return; }
+    const orden = ['0-30','31-60','61-90','>90','sin fecha'];
+    const color = {'0-30':'var(--grn)','31-60':'var(--tx)','61-90':'#f59e0b','>90':'var(--red)','sin fecha':'var(--dim)'};
+    tr.innerHTML = orden.filter(k => k !== 'sin fecha' || d.tramos[k] > 0).map(k =>
+      '<div class="sc" style="padding:10px"><div class="sc-lbl">' + (k === 'sin fecha' ? t('aging.sinFecha','sin fecha') : k + ' ' + t('aging.dias','días')) + '</div>' +
+      '<div class="sc-val" style="font-size:16px;color:' + color[k] + '">' + _provFmt(d.tramos[k]) + '</div></div>').join('') +
+      '<div class="sc" style="padding:10px"><div class="sc-lbl">' + t('aging.total','pendiente') + '</div><div class="sc-val" style="font-size:16px">' + _provFmt(d.total) + '</div><div class="sc-sub">' + d.n + ' ' + t('lbl.facturas','facturas') + '</div></div>';
+    if (!d.por_acreedor.length) {
+      body.innerHTML = '<div style="font-size:12px;color:var(--dim)">' + t('aging.vacio','Nada pendiente de pago.') + '</div>';
+      return;
+    }
+    body.innerHTML = '<div class="tbl-wrap"><table style="font-size:12px"><thead><tr><th>' + t('aging.acreedor','Acreedor') + '</th><th>' + t('aging.masAntigua','Más antigua') + '</th><th>0-30</th><th>31-60</th><th>61-90</th><th>&gt;90</th><th style="text-align:right">' + t('aging.total','pendiente') + '</th></tr></thead><tbody>' +
+      d.por_acreedor.map(p => '<tr><td>' + _provEsc(p.acreedor) + ' <span style="color:var(--dim)">· ' + _provEsc(p.origen) + (p.sin_aprobar ? ' · ' + p.sin_aprobar + ' ' + t('aging.sinAprobar','sin aprobar') : '') + '</span></td>' +
+        '<td>' + (p.mas_antigua ? _provEsc(p.mas_antigua) + ' <span style="color:' + (p.dias_max > 60 ? 'var(--red)' : 'var(--dim)') + '">(' + p.dias_max + ' ' + t('aging.dias','días') + ')</span>' : '—') + '</td>' +
+        ['0-30','31-60','61-90','>90'].map(k => '<td>' + (p[k] ? _provFmt(p[k]) : '—') + '</td>').join('') +
+        '<td style="text-align:right"><strong>' + _provFmt(p.importe) + '</strong></td></tr>').join('') +
+      '</tbody></table></div><div style="font-size:11px;color:var(--dim);margin-top:6px">' + t('aging.nota','Pendiente = sin conciliar en el extracto bancario; sin extracto, todo cuenta como pendiente.') + '</div>';
+    if (typeof _pintarYa === 'function') _pintarYa(body);
+  } catch(e) { body.innerHTML = '<div class="empty"><p>Error</p></div>'; }
+}
+
 async function loadAP() {
   _skelOn(['ap-total','ap-importe','ap-matches','ap-disc','ap-sinpo','ap-aprobadas']);
   if (_oracleSim === null) _cargarModoOracle();
   loadProvisiones();
+  loadAgingAP();
   try {
     const [stats, facts] = await Promise.all([
       fetch('/api/stats_ap').then(r=>r.json()),
