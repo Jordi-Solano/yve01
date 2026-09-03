@@ -161,6 +161,10 @@ def main():
         ok(r.get('aprobadas') == 1 and r.get('primera_firma') == 0, f'lote de fc_user: la segunda firma aprueba {r}')
         ok('F-1500' in aprobadas_oracle(), 'y Oracle ya la ve')
 
+        # ── 5b · una factura que no esta en el panel no se aprueba (antes: total 0 = sin doble firma)
+        rr = accion(fc, tf, 'F-NO-EXISTE')
+        ok(rr.status_code == 404 and len(pd.read_excel(APRO)) == 5, f'factura invisible: {rr.status_code}, nada escrito')
+
         # ── 6 · el umbral es configurable ───────────────────────────
         with open(CFG, 'w') as fh:
             fh.write('{"umbral_doble_firma": 5000}')

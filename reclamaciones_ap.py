@@ -234,17 +234,20 @@ def redactar(c, idioma="es", firma_nombre="", firma_entidad=""):
     num = c.get("numero_factura") or "(sin numero)"
     total = _fmt(_num(c.get("total_factura")))
     prov = c.get("proveedor") or "proveedor"
-    hotel = c.get("hotel") or firma_entidad or "nuestro hotel"
+    hotel = c.get("hotel") or firma_entidad or ""
     fecha = c.get("fecha_factura") or ""
     motivo = _MOTIVOS.get(c.get("estado_matching", ""), "los datos facturados no coinciden con nuestros registros")
     detalle = c.get("detalle") or c.get("comentario") or ""
+    # Sin hotel conocido no se inventa ("nuestro hotel"): se omite la frase.
+    emitida = f", emitida a {hotel}" if hotel else ""
+    issued = f", issued to {hotel}" if hotel else ""
     firma = "\n".join(x for x in (firma_nombre or "[Nombre]", firma_entidad or hotel) if x)
 
     if idioma == "en":
         if c.get("tipo") == TIPO_ABONO:
             asunto = f"Credit note request — invoice {num} ({total})"
             cuerpo = (f"Dear {prov},\n\n"
-                      f"Invoice {num}{' dated ' + fecha if fecha else ''} for {total}, issued to {hotel}, "
+                      f"Invoice {num}{' dated ' + fecha if fecha else ''} for {total}{issued} "
                       f"has been rejected in our approval process"
                       f"{' for the following reason: ' + detalle if detalle else ''}.\n\n"
                       f"Please issue a credit note cancelling invoice {num} for {total}.\n\n"
@@ -252,8 +255,8 @@ def redactar(c, idioma="es", firma_nombre="", firma_entidad=""):
         else:
             asunto = f"Corrected invoice request — invoice {num} ({total})"
             cuerpo = (f"Dear {prov},\n\n"
-                      f"While reviewing invoice {num}{' dated ' + fecha if fecha else ''} for {total}, "
-                      f"issued to {hotel}, we found that {motivo}"
+                      f"While reviewing invoice {num}{' dated ' + fecha if fecha else ''} for {total}{issued}, "
+                      f"we found that {motivo}"
                       f"{': ' + detalle if detalle else ''}.\n\n"
                       f"Please issue a corrected invoice (or a credit note for the difference) so we can process the payment.\n\n"
                       f"Kind regards,\n{firma}")
@@ -262,8 +265,8 @@ def redactar(c, idioma="es", firma_nombre="", firma_entidad=""):
     if c.get("tipo") == TIPO_ABONO:
         asunto = f"Solicitud de abono — factura {num} ({total})"
         cuerpo = (f"Estimados {prov},\n\n"
-                  f"La factura {num}{' de fecha ' + fecha if fecha else ''} por importe de {total}, "
-                  f"emitida a {hotel}, ha sido rechazada en nuestro proceso de aprobacion"
+                  f"La factura {num}{' de fecha ' + fecha if fecha else ''} por importe de {total}{emitida} "
+                  f"ha sido rechazada en nuestro proceso de aprobacion"
                   f"{' por el siguiente motivo: ' + detalle if detalle else ''}.\n\n"
                   f"Les rogamos emitan una factura rectificativa (abono) que anule la factura {num} "
                   f"por {total}.\n\n"
@@ -272,8 +275,8 @@ def redactar(c, idioma="es", firma_nombre="", firma_entidad=""):
     else:
         asunto = f"Solicitud de factura rectificativa — factura {num} ({total})"
         cuerpo = (f"Estimados {prov},\n\n"
-                  f"Al revisar la factura {num}{' de fecha ' + fecha if fecha else ''} por importe de {total}, "
-                  f"emitida a {hotel}, hemos detectado que {motivo}"
+                  f"Al revisar la factura {num}{' de fecha ' + fecha if fecha else ''} por importe de {total}{emitida}, "
+                  f"hemos detectado que {motivo}"
                   f"{': ' + detalle if detalle else ''}.\n\n"
                   f"Les rogamos emitan una factura rectificativa (o un abono por la diferencia) "
                   f"para poder tramitar el pago.\n\n"

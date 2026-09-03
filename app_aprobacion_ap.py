@@ -448,14 +448,19 @@ def api_accion():
         return jsonify({"ok": False, "error": "Faltan campos obligatorios"}), 400
 
     # Doble firma por importe: el total sale del panel, nunca del navegador.
-    total = 0.0
+    # Y si la factura NO esta en el panel (otro hotel, otro tenant, ya no
+    # existe) no se decide nada: antes se aprobaba con total 0, o sea sin
+    # doble firma, cualquier factura que no se pudiera ver.
+    total = None
     try:
         for f in facturas_a_lista(cargar_facturas_ap()):
             if f.get("clave") == clave:
                 total = _importe(f.get("total_factura"))
                 break
     except Exception:
-        total = 0.0
+        total = None
+    if total is None:
+        return jsonify({"ok": False, "error": "La factura no esta en el panel (¿otro hotel?). No se registra nada."}), 404
     accion, info = decidir_accion(clave, total, accion, aprobador)
     if accion is None:
         return jsonify({"ok": False, **info}), 409
