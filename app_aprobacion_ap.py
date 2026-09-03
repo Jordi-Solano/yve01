@@ -355,7 +355,7 @@ def api_accion():
         _hid = ""
 
     now_str = datetime.now().strftime("%d/%m/%Y %H:%M:%S")
-    nueva = pd.DataFrame([{
+    registrar_acciones([{
         "fecha_hora":    now_str,
         # ORACLE lee ESTA columna. Si la factura tiene numero se escribe tal
         # cual, como siempre. Si no lo tiene se escribe la clave (el nombre del
@@ -370,7 +370,20 @@ def api_accion():
         "aprobador":     aprobador,
         "hotel_id":      _hid,
     }])
+    return jsonify({"ok": True})
 
+
+def registrar_acciones(filas):
+    """Añade filas a `aprobaciones_ap.xlsx` — el UNICO escritor del registro.
+
+    Lo usan `api_accion` (una a una, desde "Facturas por aprobar") y el boton
+    "Aprobar Match OK" del panel de AP (en lote). Las dos puertas escriben la
+    MISMA forma de fila, porque este fichero es lo que lee Oracle para decidir
+    que contabiliza: dos escritores distintos acabarian separandose.
+    """
+    if not filas:
+        return 0
+    nueva = pd.DataFrame(filas)
     if os.path.exists(APRO_FILE):
         df_ex = pd.read_excel(APRO_FILE)
         df_ex = pd.concat([df_ex, nueva], ignore_index=True)
@@ -379,7 +392,7 @@ def api_accion():
 
     with pd.ExcelWriter(APRO_FILE, engine="openpyxl") as w:
         df_ex.to_excel(w, index=False, sheet_name="Aprobaciones_AP")
-    return jsonify({"ok": True})
+    return len(filas)
 
 @bp.route("/")
 def index():
