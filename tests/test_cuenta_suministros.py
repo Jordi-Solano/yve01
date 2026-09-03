@@ -85,8 +85,14 @@ def main():
        L._auto_cuenta_pgc('Comision reservas', 'Booking.com'),
        'Endesa y Booking ya no comparten cuenta')
 
-    # El clasificador es intocable: solo puede haber cambiado esa regla.
-    ok(len(L.PROMPT_CLASIFICACION) == 8494, f'PROMPT_CLASIFICACION intacto ({len(L.PROMPT_CLASIFICACION)} chars)')
+    # El clasificador es intocable salvo con OK explicito (BONO, 3 sep). Lo que
+    # se exige: los tipos y esquemas de la linea base siguen identicos.
+    import json as _json, re as _re
+    _base = _json.load(open(os.path.join(BASE, 'tests', 'baseline_tipos_clasificador.json'), encoding='utf-8'))
+    _lineas = L.PROMPT_CLASIFICACION.split('\n')
+    _tipos = set(_re.findall(r'→ ([A-Z_]+)', L.PROMPT_CLASIFICACION))
+    ok(set(_base['tipos']) <= _tipos and all(e in _lineas for es in _base['esquemas'].values() for e in es),
+       'PROMPT_CLASIFICACION: tipos y esquemas de la linea base intactos')
     diff = subprocess.run(['git', 'diff', '--name-only', 'HEAD'], capture_output=True,
                           text=True, cwd=BASE).stdout.split()
     ok(not [f for f in diff if f.startswith('oracle_')], 'ningun oracle_* tocado')

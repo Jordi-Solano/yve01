@@ -215,6 +215,15 @@ PROMPT_CLASIFICACION = """CLASIFICACIÓN — Lee TODO el contenido antes de deci
   condiciones): porcentajes y vigencia, SIN nº de factura ni importes
   facturados → CONTRATO_OTA. Ojo: esto NO es una factura, es lo acordado.
 • Lista de habitaciones/huéspedes de un grupo → ROOMING
+• Bono / voucher de agencia o empresa: el documento que una agencia, touroperador
+  o empresa entrega para que el hotel le FACTURE a crédito la estancia de un
+  huésped (direct bill). Lleva nº de bono/voucher, quién paga (la agencia o
+  empresa), el huésped, fechas de entrada y salida, régimen y el precio pactado,
+  y NO lleva IVA desglosado ni nº de factura → BONO.
+  OJO: un bono SE PARECE a una ROOMING (huéspedes y fechas) y a una FACTURA
+  (importe), pero es una AUTORIZACIÓN de cobro a crédito: ni es una venta hecha
+  ni es una lista de grupo. Si dudas entre BONO y FACTURA: sin IVA y sin nº de
+  factura, con "bono"/"voucher"/"a cargo de", es BONO.
 • Orden de compra / pedido / purchase order: lo que el hotel PIDE, ANTES de
   recibir nada. Lleva número de pedido u orden, suele decir "aprobado por" y a
   qué departamento se carga, y NO acredita ni entrega ni cobro → ORDEN_COMPRA.
@@ -287,6 +296,12 @@ COMISIONES_OTA (una entrada en "facturas" por CADA factura/hotel que veas):
 
 CONTRATO_OTA (una entrada en "tarifas" por CADA (OTA, hotel/mercado) pactado; si el contrato cubre VARIAS OTAs —p.ej. Booking Y Expedia—, cada tarifa lleva SU "ota" y el "ota" de arriba se deja vacio):
 {"tipo_documento":"CONTRATO_OTA","ota":"la OTA si el contrato es de una sola; vacio si cubre varias","tarifas":[{"ota":"la OTA de esta tarifa","nombre_hotel":"X","porcentaje_pactado":0.0,"mercado":"Nacional|Internacional|...","vigencia_inicio":"DD/MM/YYYY","vigencia_fin":"DD/MM/YYYY"}]}
+
+BONO (lo que la agencia/empresa AUTORIZA facturarle; "importe_total" es el total
+pactado de la estancia si el bono lo trae, y "precio_noche" el precio por noche
+y habitación si lo trae. Si solo hay uno de los dos, deja el otro en null, NO lo
+calcules. "referencia_reserva" solo si el bono cita el localizador/reserva):
+{"tipo_documento":"BONO","numero_bono":"X","agencia":"quien paga (agencia/empresa)","NIF_agencia":"X","huesped":"X","nombre_hotel":"X","fecha_entrada":"DD/MM/YYYY","fecha_salida":"DD/MM/YYYY","noches":0,"habitaciones":0,"regimen":"SA|AD|MP|PC","precio_noche":0.0,"importe_total":0.0,"moneda":"EUR","referencia_reserva":"X"}
 
 ROOMING:
 {"tipo_documento":"ROOMING","grupo":"nombre","num_habitaciones":0,"checkin":"DD/MM/YYYY","checkout":"DD/MM/YYYY","tarifa_media":0.0}
@@ -1078,6 +1093,59 @@ def albaran_de_respuesta(datos, nombre):
         "n_lineas":           len(lineas),
     }
     return cabecera, lineas
+
+
+def clave_bono(numero, agencia, archivo=""):
+    """Identidad de un bono: numero + quien paga; sin numero, el archivo."""
+    n = _txt_alb(numero)
+    a = _txt_alb(agencia).lower()
+    if n:
+        return f"{n}|{a}"
+    return f"{_txt_alb(archivo)}|{a}"
+
+
+def bono_de_respuesta(datos, nombre):
+    """Un BONO del clasificador -> fila plana. Punto UNICO. Nada de disco.
+
+    Si el bono trae precio por noche, noches y habitaciones pero no total, el
+    total se deriva (es aritmetica, no una suposicion). Lo que no se puede
+    derivar se queda vacio, nunca inventado.
+    """
+    if not isinstance(datos, dict):
+        return {}
+    numero  = str(datos.get("numero_bono") or "").strip()
+    agencia = str(datos.get("agencia") or "").strip()
+    noches  = _safe_float(datos.get("noches"))
+    habs    = _safe_float(datos.get("habitaciones"))
+    precio  = _safe_float(datos.get("precio_noche"))
+    total   = _safe_float(datos.get("importe_total"))
+    if total is None and precio is not None and noches:
+        total = round(precio * noches * (habs or 1), 2)
+    return {
+        "clave":              clave_bono(numero, agencia, nombre),
+        "archivo":            nombre,
+        "numero_bono":        numero,
+        "agencia":            agencia,
+        "NIF_agencia":        str(datos.get("NIF_agencia") or "").strip(),
+        "huesped":            str(datos.get("huesped") or "").strip(),
+        "nombre_hotel":       str(datos.get("nombre_hotel") or "").strip(),
+        "fecha_entrada":      str(datos.get("fecha_entrada") or "").strip(),
+        "fecha_salida":       str(datos.get("fecha_salida") or "").strip(),
+        "noches":             int(noches) if noches is not None else None,
+        "habitaciones":       int(habs) if habs is not None else None,
+        "regimen":            str(datos.get("regimen") or "").strip(),
+        "precio_noche":       precio,
+        "importe_total":      total,
+        "moneda":             str(datos.get("moneda") or "EUR").strip() or "EUR",
+        "referencia_reserva": str(datos.get("referencia_reserva") or "").strip(),
+    }
+
+
+def bono_tiene_datos(fila):
+    """True si hay con que cotejar: quien paga + (importe o fechas)."""
+    if not fila or not _txt_alb(fila.get("agencia")):
+        return False
+    return fila.get("importe_total") is not None or bool(_txt_alb(fila.get("fecha_entrada")))
 
 
 def albaran_tiene_datos(cabecera, lineas):

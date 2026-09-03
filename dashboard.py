@@ -1543,6 +1543,44 @@ def _resumen_po(cabecera, lineas):
     return f'{num} · {prov}{extra}{lin}{eur}{iva}'
 
 
+BONOS_FILE = 'bonos_agencia.xlsx'
+
+
+def _guardar_bono(fila):
+    """Guarda un bono de agencia/empresa en datos-referencia/bonos_agencia.xlsx.
+
+    Un fichero unico (no uno por dia): un bono es una autorizacion de cobro que
+    se coteja contra la factura direct bill cuando esta exista, dias o semanas
+    despues. Reprocesar el mismo bono lo ACTUALIZA (misma clave y mismo hotel).
+    """
+    ruta = os.path.join(_ddir(), BONOS_FILE)
+    _hid = censo_hoteles.para_guardar()
+    fila = dict(fila, hotel_id=_hid, fecha_procesado=date.today().isoformat())
+    df_new = pd.DataFrame([fila])
+    if os.path.exists(ruta):
+        try:
+            _old = pd.read_excel(ruta)
+        except Exception:
+            _old = pd.DataFrame()
+        if not _old.empty and 'clave' in _old.columns:
+            _m = _old['clave'].map(safe_str) == str(fila.get('clave', ''))
+            if 'hotel_id' in _old.columns:
+                # safe_str y no astype(str): un hotel vacio vuelve de Excel como NaN
+                _m = _m & (_old['hotel_id'].map(safe_str) == str(_hid))
+            _old = _old[~_m]
+        df_new = pd.concat([_old, df_new], ignore_index=True)
+    df_new.to_excel(ruta, index=False)
+
+
+def _resumen_bono(fila):
+    num = str(fila.get('numero_bono') or '').strip() or 's/n'
+    ag = str(fila.get('agencia') or '').strip() or 'pagador sin identificar'
+    fe = str(fila.get('fecha_entrada') or '').strip()
+    tot = fila.get('importe_total')
+    eur = f' — €{tot:,.2f}' if isinstance(tot, (int, float)) else ''
+    return f'{num} · {ag}' + (f' · entrada {fe}' if fe else '') + eur
+
+
 def _resumen_albaran(cabecera, lineas):
     """Texto honesto de lo guardado. No promete pantalla: todavia no hay."""
     num = str(cabecera.get('numero_albaran') or '').strip() or 's/n'
@@ -1779,6 +1817,21 @@ def _enrutar_tipo_doc(reg, fname, fpath=None):
             _msg = f'✓ Albarán {_resumen_albaran(_cab_alb, _lin_alb)}'
             _marca = 'ALBARAN_OK'
             _flags['albaran'] = True
+    elif _tipo_doc == 'BONO':
+        # Un bono de agencia/empresa NO es una factura ni una rooming: es la
+        # autorizacion para facturar a credito. Se guarda para cotejarlo con
+        # la factura direct bill (AR Real). NO toca AP.
+        from lector_facturas_ap import bono_de_respuesta, bono_tiene_datos
+        _bono = bono_de_respuesta(reg, fname)
+        if not bono_tiene_datos(_bono):
+            _msg = (f'⚠ {fname}: parece un bono de agencia, pero no se ha podido '
+                    f'extraer ni quien paga ni importe/fechas — revisar manualmente')
+            _marca = 'SKIP'
+        else:
+            _guardar_bono(_bono)
+            _msg = f'✓ Bono {_resumen_bono(_bono)}'
+            _marca = 'BONO_OK'
+            _flags['bono'] = True
     elif _tipo_doc == 'EXTRACTO_BANCO' and reg.get('movimientos'):
         try:
             _movs = reg['movimientos']
@@ -6618,6 +6671,16 @@ svg.yvi{width:1em;height:1em;vertical-align:-0.125em;flex-shrink:0;display:inlin
           </div>
         </div>
       </div>
+    </div>
+
+    <!-- Direct bill: la factura a credito contra el bono de la agencia (Ola A). Solo lectura. -->
+    <div id="ar-bonos-section" class="card" style="margin-top:22px">
+      <div style="display:flex;align-items:center;justify-content:space-between;gap:12px;flex-wrap:wrap;margin-bottom:10px">
+        <div class="card-title" style="margin:0" data-i18n="bonos.titulo">Direct bill: factura vs bono de agencia</div>
+        <div style="display:flex;align-items:center;gap:10px"><span id="ar-bonos-resumen" style="font-size:12px;color:var(--mut)"></span>
+        <a href="/api/exportar/bonos" class="btn-ref" style="text-decoration:none;font-size:12px" data-i18n="bonos.descargar">⬇️ Excel</a></div>
+      </div>
+      <div id="ar-bonos-list" style="display:flex;flex-direction:column;gap:8px"><div class="empty"><p data-i18n="bonos.cargando">Cotejando bonos…</p></div></div>
     </div>
 
     <!-- BEOs generados automáticamente desde contratos -->
@@ -15751,6 +15814,45 @@ async function cargarStatusARReal() { await cargarARRealData(); }
 async function loadARRealData() {
   cargarARRealData();
 }
+// ── Direct bill: bono de agencia vs factura a credito ──
+function _bonoEsc(s){ return String(s==null?'':s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;'); }
+function _bonoEur(v){ return (v==null||isNaN(Number(v))) ? '—' : Number(v).toLocaleString('es-ES',{minimumFractionDigits:2,maximumFractionDigits:2}) + ' €'; }
+async function cargarBonosAR(){
+  var wrap = document.getElementById('ar-bonos-list');
+  var res = document.getElementById('ar-bonos-resumen');
+  if (!wrap) return;
+  try {
+    var r = await fetch('/api/ar_real/bonos');
+    var d = await r.json();
+    var bonos = (d && d.bonos) || [];
+    var sin = (d && d.facturas_sin_bono) || [];
+    var rs = (d && d.resumen) || {};
+    if (res) res.textContent = (bonos.length || sin.length)
+      ? t('bonos.resumen', '{ok} cuadran · {dif} con diferencia · {sf} sin factura · {sb} facturas sin bono')
+          .replace('{ok}', rs.CUADRA||0).replace('{dif}', (rs.DIFERENCIA_IMPORTE||0)+(rs.DIFERENCIA_FECHAS||0)).replace('{sf}', rs.SIN_FACTURA||0).replace('{sb}', rs.FACTURA_SIN_BONO||0)
+      : '';
+    if (!bonos.length && !sin.length) { wrap.innerHTML = _vacioCard(t('bonos.vacio', 'Sube el bono de la agencia (voucher) en Procesar Archivos y aquí verás si la factura a crédito cuadra con lo autorizado.')); return; }
+    var COL = {CUADRA:['#22c55e','rgba(34,197,94,.12)'], DIFERENCIA_IMPORTE:['#f87171','rgba(239,68,68,.12)'], DIFERENCIA_FECHAS:['#f59e0b','rgba(245,158,11,.12)'], SIN_FACTURA:['var(--mut)','rgba(148,163,184,.12)']};
+    var LBL = {CUADRA:t('bonos.cuadra','✓ Cuadra'), DIFERENCIA_IMPORTE:t('bonos.difImporte','⚠ Importe distinto'), DIFERENCIA_FECHAS:t('bonos.difFechas','⚠ Fechas distintas'), SIN_FACTURA:t('bonos.sinFactura','Sin factura aún')};
+    var h = bonos.map(function(b){
+      var c = COL[b.estado] || COL.SIN_FACTURA;
+      return '<div class="card" style="padding:10px 12px;border-radius:10px;display:flex;justify-content:space-between;gap:8px;flex-wrap:wrap;align-items:center">' +
+        '<div style="min-width:0"><div style="font-weight:700;font-size:13px">' + _bonoEsc(b.agencia||'—') + ' · ' + t('bonos.bono','bono') + ' ' + _bonoEsc(b.numero_bono||'s/n') + '</div>' +
+        '<div style="font-size:11px;color:var(--dim)">' + (b.huesped?_bonoEsc(b.huesped)+' · ':'') + _bonoEsc(b.fecha_entrada||'') + (b.fecha_salida?' → '+_bonoEsc(b.fecha_salida):'') +
+        ' · ' + t('bonos.autorizado','autorizado') + ' <b>' + _bonoEur(b.importe_bono) + '</b>' +
+        (b.numero_factura ? ' · ' + t('bonos.factura','factura') + ' ' + _bonoEsc(b.numero_factura) + ' ' + _bonoEur(b.importe_factura) : '') +
+        (b.detalle ? ' · ' + _bonoEsc(b.detalle) : '') + '</div></div>' +
+        '<span style="font-size:11px;font-weight:700;padding:3px 10px;border-radius:20px;background:' + c[1] + ';color:' + c[0] + '">' + _bonoEsc(LBL[b.estado]||b.estado) + '</span></div>';
+    });
+    if (sin.length) {
+      h.push('<div style="font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.5px;color:#f87171;margin-top:6px">' + t('bonos.sinBonoTitulo','Facturas a crédito sin bono que las respalde') + '</div>');
+      sin.forEach(function(f){
+        h.push('<div class="card" style="padding:8px 12px;border-radius:10px;font-size:12px;display:flex;justify-content:space-between;gap:8px;flex-wrap:wrap"><span>' + _bonoEsc(f.numero) + ' · ' + _bonoEsc(f.cliente) + (f.fecha_entrada?' · '+_bonoEsc(f.fecha_entrada):'') + '</span><b>' + _bonoEur(f.total) + '</b></div>');
+      });
+    }
+    wrap.innerHTML = h.join('');
+  } catch(e) {}
+}
 async function cargarBeosAR() {
   var wrap = document.getElementById('ar-beos-list');
   var cnt = document.getElementById('ar-beos-count');
@@ -15794,6 +15896,7 @@ async function cargarARRealData() {
   // Show skeleton on KPIs while loading
   _skelOn(['arp-pendiente','arp-vencido','arp-cobrado','arp-nclientes']);
   try { cargarBeosAR(); } catch(e){}
+  try { cargarBonosAR(); } catch(e){}
   try {
     // Load clients and invoices in parallel
     const [rClientes, rFacturas] = await Promise.all([

@@ -498,6 +498,47 @@ def api_emitir_factura():
     except Exception as e:
         return jsonify({'ok': False, 'error': str(e)}), 500
 
+def _get_bonos():
+    """Los bonos de agencia del hotel activo (datos-referencia/bonos_agencia.xlsx)."""
+    ruta = _os.path.join(DATOS, 'bonos_agencia.xlsx')
+    if not _os.path.exists(ruta):
+        return pd.DataFrame()
+    try:
+        df = pd.read_excel(ruta)
+    except Exception:
+        return pd.DataFrame()
+    try:
+        from almacen_datos import solo_del_hotel_activo as _solo
+        df = _solo(df)
+    except Exception:
+        pass
+    return df
+
+
+def _cotejo_bonos():
+    import matching_bonos as _mb
+    return _mb.cotejar(_get_bonos(), _get_reservas())
+
+
+@ar_real_bp.route('/api/ar_real/bonos')
+def api_ar_real_bonos():
+    """Direct bill: cada bono con su factura a credito (o sin ella), y las
+    facturas a credito que ningun bono respalda. Solo lectura."""
+    try:
+        res = _cotejo_bonos()
+        return jsonify({'ok': True, **res})
+    except Exception as e:
+        return jsonify({'ok': False, 'error': str(e)}), 500
+
+
+@ar_real_bp.route('/api/exportar/bonos')
+def api_exportar_bonos():
+    import matching_bonos as _mb
+    buf, nombre = _mb.exportar_excel(_cotejo_bonos())
+    return send_file(buf, as_attachment=True, download_name=nombre,
+                     mimetype='application/vnd.openxmlformats-officedocument.spreadsheetml.sheet')
+
+
 @ar_real_bp.route('/api/ar_real/beos')
 def api_ar_real_beos():
     """BEOs generados automáticamente desde los contratos (con estado de cotejo vs factura)."""

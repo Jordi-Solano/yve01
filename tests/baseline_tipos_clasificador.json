@@ -1,0 +1,84 @@
+{
+ "tipos": [
+  "ALBARAN",
+  "BEO",
+  "COMISIONES_OTA",
+  "CONTRATO",
+  "CONTRATO_OTA",
+  "DRR",
+  "EXTRACTO_BANCO",
+  "FACTURA",
+  "INVENTARIO",
+  "MERMAS",
+  "ORDEN_COMPRA",
+  "OTRO",
+  "ROOMING",
+  "TM",
+  "VENTAS_POS"
+ ],
+ "esquemas": {
+  "FACTURA": [
+   "{\"es_factura\":true,\"numero_factura\":\"X\",\"fecha\":\"DD/MM/YYYY\",\"nombre_proveedor\":\"X\",\"NIF_proveedor\":\"X\",\"descripcion_concepto\":\"X\",\"base_imponible\":0.0,\"porcentaje_iva\":21,\"cuota_iva\":0.0,\"total_factura\":0.0,\"moneda\":\"EUR\",\"lineas\":[{\"descripcion\":\"X\",\"cantidad\":0.0,\"unidad\":\"kg|ud|l|caja\",\"precio_unitario\":0.0,\"importe\":0.0}]}",
+   "{\"es_factura\":true,\"facturas\":[{\"numero_factura\":\"X\",\"fecha\":\"DD/MM/YYYY\",\"nombre_proveedor\":\"X\",\"NIF_proveedor\":\"X\",\"descripcion_concepto\":\"X\",\"base_imponible\":0.0,\"porcentaje_iva\":21,\"cuota_iva\":0.0,\"total_factura\":0.0,\"moneda\":\"EUR\",\"lineas\":[{\"descripcion\":\"X\",\"cantidad\":0.0,\"unidad\":\"kg|ud|l|caja\",\"precio_unitario\":0.0,\"importe\":0.0}]}]}"
+  ],
+  "ORDEN_COMPRA": [
+   "{\"tipo_documento\":\"ORDEN_COMPRA\",\"numero_po\":\"X\",\"nombre_proveedor\":\"X\",\"NIF_proveedor\":\"X\",\"fecha_pedido\":\"DD/MM/YYYY\",\"departamento\":\"X\",\"importe_aprobado\":0.0,\"iva_incluido\":false,\"moneda\":\"EUR\",\"estado\":\"ABIERTO\",\"lineas\":[{\"descripcion\":\"X\",\"cantidad\":0.0,\"unidad\":\"kg|ud|l|caja\",\"precio_unitario\":0.0,\"importe\":0.0}]}"
+  ],
+  "ALBARAN": [
+   "{\"tipo_documento\":\"ALBARAN\",\"numero_albaran\":\"X\",\"nombre_proveedor\":\"X\",\"NIF_proveedor\":\"X\",\"fecha_entrega\":\"DD/MM/YYYY\",\"referencia_pedido\":\"X\",\"referencia_factura\":\"X\",\"lineas\":[{\"descripcion\":\"X\",\"cantidad\":0.0,\"unidad\":\"kg|ud|l|caja\",\"precio_unitario\":0.0,\"importe\":0.0}],\"total_albaran\":0.0}"
+  ],
+  "INVENTARIO": [
+   "{\"tipo_documento\":\"INVENTARIO\",\"items\":[{\"ingrediente\":\"nombre\",\"categoria\":\"tipo\",\"coste_unitario\":0.0,\"stock_actual_kg_l\":0.0,\"stock_inicial_kg_l\":0.0,\"unidad\":\"kg\",\"proveedor\":\"nombre\",\"critico\":false}]}"
+  ],
+  "MERMAS": [
+   "{\"tipo_documento\":\"MERMAS\",\"items\":[{\"fecha\":\"DD/MM/YYYY\",\"ingrediente\":\"nombre\",\"categoria\":\"tipo\",\"cantidad_merma\":0.0,\"unidad\":\"kg\",\"causa\":\"motivo\",\"coste_unitario\":0.0,\"coste_merma\":0.0}],\"total_mermas\":0.0}"
+  ],
+  "VENTAS_POS": [
+   "{\"tipo_documento\":\"VENTAS_POS\",\"fecha\":\"YYYY-MM-DD\",\"total_ventas\":0.0,\"num_tickets\":0,\"platos\":[{\"nombre_plato\":\"nombre\",\"categoria\":\"tipo\",\"unidades_vendidas\":0,\"total_venta\":0.0}]}"
+  ],
+  "EXTRACTO_BANCO": [
+   "{\"tipo_documento\":\"EXTRACTO_BANCO\",\"movimientos\":[{\"fecha\":\"DD/MM/YYYY\",\"concepto\":\"descripción\",\"importe\":0.0,\"saldo\":0.0}]}"
+  ],
+  "DRR": [
+   "{\"tipo_documento\":\"DRR\"}"
+  ],
+  "COMISIONES_OTA": [
+   "{\"tipo_documento\":\"COMISIONES_OTA\",\"ota\":\"nombre\",\"periodo\":\"mes/año\",\"importe_bruto\":0.0,\"comision\":0.0,\"porcentaje\":0.0,\"facturas\":[{\"numero_factura\":\"X\",\"nombre_hotel\":\"X\",\"fecha\":\"DD/MM/YYYY\",\"periodo_inicio\":\"DD/MM/YYYY\",\"periodo_fin\":\"DD/MM/YYYY\",\"importe_bruto\":0.0,\"porcentaje_comision\":0.0,\"importe_comision\":0.0,\"importe_neto\":0.0}]}"
+  ],
+  "CONTRATO_OTA": [
+   "{\"tipo_documento\":\"CONTRATO_OTA\",\"ota\":\"la OTA si el contrato es de una sola; vacio si cubre varias\",\"tarifas\":[{\"ota\":\"la OTA de esta tarifa\",\"nombre_hotel\":\"X\",\"porcentaje_pactado\":0.0,\"mercado\":\"Nacional|Internacional|...\",\"vigencia_inicio\":\"DD/MM/YYYY\",\"vigencia_fin\":\"DD/MM/YYYY\"}]}"
+  ],
+  "ROOMING": [
+   "{\"tipo_documento\":\"ROOMING\",\"grupo\":\"nombre\",\"num_habitaciones\":0,\"checkin\":\"DD/MM/YYYY\",\"checkout\":\"DD/MM/YYYY\",\"tarifa_media\":0.0}"
+  ],
+  "BEO": [
+   "{\"tipo_documento\":\"BEO\",\"evento\":\"nombre del evento\",\"cliente\":\"empresa cliente\",\"fecha_evento\":\"DD/MM/YYYY\",\"num_asistentes\":0,\"items\":[{\"concepto\":\"descripción\",\"cantidad\":0,\"precio_unitario\":0.0,\"total\":0.0}],\"total_estimado\":0.0,\"notas\":\"observaciones\"}"
+  ],
+  "TM": [
+   "{\"tipo_documento\":\"TM\",\"evento\":\"nombre del evento\",\"cliente\":\"empresa\",\"requisitos\":[{\"tipo\":\"AV/Sala/Catering/Decoración\",\"descripcion\":\"detalle\",\"coste_estimado\":0.0}],\"total_estimado\":0.0}"
+  ],
+  "CONTRATO": [
+   "{\"tipo_documento\":\"CONTRATO\",\"evento\":\"nombre del evento\",\"cliente\":\"empresa cliente\",\"NIF_cliente\":\"X\",\"fecha_firma\":\"DD/MM/YYYY\",\"importe_total\":0.0,\"deposito\":0.0,\"condiciones_pago\":\"descripción\",\"items\":[{\"concepto\":\"descripción\",\"importe\":0.0}],\"vigencia\":\"periodo\"}"
+  ],
+  "OTRO": [
+   "{\"tipo_documento\":\"OTRO\",\"descripcion\":\"qué es el documento\"}"
+  ]
+ },
+ "ramas": [
+  "ALBARAN",
+  "BEO",
+  "COMISIONES_OTA",
+  "CONTRATO",
+  "CONTRATO_OTA",
+  "DRR",
+  "EXTRACTO_BANCO",
+  "FACTURA",
+  "INVENTARIO",
+  "MERMAS",
+  "ORDEN_COMPRA",
+  "OTRO",
+  "ROOMING",
+  "TM",
+  "VENTAS_POS"
+ ]
+}
