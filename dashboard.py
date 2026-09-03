@@ -3164,7 +3164,8 @@ def api_ap_aprobar_lote():
     ya una decision. Se devuelven las cifras reales, sin inventar nada.
     """
     from app_aprobacion_ap import (_ESTADOS_OK, clave_factura, _acciones_por_clave,
-                                   registrar_acciones)
+                                   registrar_acciones, decidir_accion, _firma1_por_clave,
+                                   umbral_doble_firma)
     data = request.get_json(force=True, silent=True) or {}
     pedidas = {safe_str(x) for x in (data.get("facturas") or []) if safe_str(x)}
     if not pedidas:
@@ -3182,7 +3183,9 @@ def api_ap_aprobar_lote():
         # el usuario logueado de flask-login, igual que en el resto de la app.
         usuario = getattr(current_user, "username", None) or "sistema"
         ahora = _dt.now().strftime("%d/%m/%Y %H:%M:%S")
+        firma1 = _firma1_por_clave()           # doble firma: quien puso la primera
         filas, ya_decididas, no_cuadran, vistas = [], 0, 0, set()
+        primera_firma, esperan_segunda = 0, 0
         if not df.empty:
             for _, r in df.iterrows():
                 clave = clave_factura(r)
@@ -3196,6 +3199,16 @@ def api_ap_aprobar_lote():
                 if decididas.get(clave) in ("APROBADA", "RECHAZADA"):
                     ya_decididas += 1
                     continue
+                # Misma regla que "Facturas por aprobar": por encima del umbral
+                # la primera firma es FIRMA_1 (Oracle no la ve) y la segunda,
+                # de OTRA persona, es la APROBADA.
+                accion_real, info = decidir_accion(clave, r.get("total_factura"), "APROBADA",
+                                                   usuario, firma1)
+                if accion_real is None:
+                    esperan_segunda += 1
+                    continue
+                if accion_real == "FIRMA_1":
+                    primera_firma += 1
                 num = safe_str(r.get("numero_factura"))
                 filas.append({
                     "fecha_hora":     ahora,
@@ -3203,21 +3216,25 @@ def api_ap_aprobar_lote():
                     # Oracle no encontrara correspondencia — falla en cerrado.
                     "numero_factura": num or clave,
                     "clave_factura":  clave,
-                    "accion":         "APROBADA",
+                    "accion":         accion_real,
                     "comentario":     f"Aprobacion en lote desde el panel de AP: cruce correcto ({est})",
                     "departamento":   safe_str(r.get("departamento")) or "AP",
                     "aprobador":      usuario,
                     "hotel_id":       _hid,
                 })
-        aprobadas = registrar_acciones(filas)
+        registrar_acciones(filas)
+        aprobadas = sum(1 for f in filas if f["accion"] == "APROBADA")
         no_encontradas = len(pedidas - vistas)
         _audit("AP_LOTE_APROBADO",
-               f"{aprobadas} facturas aprobadas ({ya_decididas} ya decididas, "
+               f"{aprobadas} facturas aprobadas, {primera_firma} con primera firma "
+               f"({ya_decididas} ya decididas, {esperan_segunda} esperan otra persona, "
                f"{no_cuadran} sin cruce correcto, {no_encontradas} no encontradas)",
                usuario)
-        return jsonify({"ok": True, "aprobadas": aprobadas, "ya_decididas": ya_decididas,
-                        "no_cuadran": no_cuadran, "no_encontradas": no_encontradas,
-                        "claves": [f["clave_factura"] for f in filas]})
+        return jsonify({"ok": True, "aprobadas": aprobadas, "primera_firma": primera_firma,
+                        "esperan_segunda": esperan_segunda, "umbral": umbral_doble_firma(),
+                        "ya_decididas": ya_decididas, "no_cuadran": no_cuadran,
+                        "no_encontradas": no_encontradas,
+                        "claves": [f["clave_factura"] for f in filas if f["accion"] == "APROBADA"]})
     except Exception as e:
         return jsonify({"ok": False, "error": str(e)[:200]}), 500
 
@@ -14509,12 +14526,14 @@ async function aprobarMatchOK() {
     const resp = await _postJson('/api/ap/aprobar_lote', {facturas: claves});
     const d = await resp.json();
     if (d.ok) {
-      const n = d.aprobadas || 0;
-      if (n > 0) {
-        showNotification('✓ ' + t('ap.loteOk', '{n} facturas aprobadas (cruce correcto)').replace('{n}', n), 'success');
+      const n = d.aprobadas || 0, p1 = d.primera_firma || 0, esp = d.esperan_segunda || 0;
+      const extra = (p1 || esp) ? ' · ' + t('ap.loteFirma', '{p} con primera firma (más de {u} €: falta otra persona)')
+          .replace('{p}', p1 + esp).replace('{u}', d.umbral || 500) : '';
+      if (n > 0 || p1 > 0) {
+        showNotification((n > 0 ? '✓ ' + t('ap.loteOk', '{n} facturas aprobadas (cruce correcto)').replace('{n}', n) : '✍') + extra, n > 0 ? 'success' : 'info');
       } else {
         showNotification(t('ap.loteCero', 'Ninguna factura aprobada: {c} sin cruce correcto, {d} ya decididas')
-          .replace('{c}', d.no_cuadran || 0).replace('{d}', d.ya_decididas || 0), 'info');
+          .replace('{c}', d.no_cuadran || 0).replace('{d}', d.ya_decididas || 0) + extra, 'info');
       }
       setTimeout(loadAP, 60);
     } else {

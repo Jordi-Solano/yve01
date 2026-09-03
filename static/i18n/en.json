@@ -22,6 +22,7 @@
   "ap.importe": "TOTAL AMOUNT",
   "ap.loteCero": "No invoice approved: {c} without a correct match, {d} already decided",
   "ap.loteEnCurso": "Checking which invoices match...",
+  "ap.loteFirma": "{p} with a first signature (over {u} €: a second person is needed)",
   "ap.loteNada": "No invoices pending approval",
   "ap.loteOk": "{n} invoices approved (matching correct)",
   "ap.matchOk": "MATCHES OK",

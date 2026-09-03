@@ -22,6 +22,7 @@
   "ap.importe": "IMPORT TOTAL",
   "ap.loteCero": "Cap factura aprovada: {c} sense creuament correcte, {d} ja decidides",
   "ap.loteEnCurso": "Comprovant quines factures quadren...",
+  "ap.loteFirma": "{p} amb primera signatura (més de {u} €: falta una altra persona)",
   "ap.loteNada": "No hi ha factures pendents d’aprovar",
   "ap.loteOk": "{n} factures aprovades (creuament correcte)",
   "ap.matchOk": "COINCIDÈNCIES OK",

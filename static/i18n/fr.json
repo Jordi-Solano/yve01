@@ -22,6 +22,7 @@
   "ap.importe": "MONTANT TOTAL",
   "ap.loteCero": "Aucune facture approuvée : {c} sans rapprochement correct, {d} déjà décidées",
   "ap.loteEnCurso": "Vérification des factures qui concordent...",
+  "ap.loteFirma": "{p} avec une première signature (plus de {u} € : une autre personne doit signer)",
   "ap.loteNada": "Aucune facture en attente d’approbation",
   "ap.loteOk": "{n} factures approuvées (rapprochement correct)",
   "ap.matchOk": "CORRESPONDANCES OK",

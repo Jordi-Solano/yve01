@@ -22,6 +22,7 @@
   "ap.importe": "GESAMTBETRAG",
   "ap.loteCero": "Keine Rechnung freigegeben: {c} ohne korrekten Abgleich, {d} bereits entschieden",
   "ap.loteEnCurso": "Prüfe, welche Rechnungen übereinstimmen...",
+  "ap.loteFirma": "{p} mit erster Unterschrift (über {u} €: eine zweite Person muss unterschreiben)",
   "ap.loteNada": "Keine Rechnungen zur Freigabe offen",
   "ap.loteOk": "{n} Rechnungen freigegeben (Abgleich korrekt)",
   "ap.matchOk": "ÜBEREINSTIMMUNGEN OK",

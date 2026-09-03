@@ -8,7 +8,7 @@ import os, glob, json
 from datetime import date, datetime
 import pandas as pd
 from flask import Blueprint, jsonify, request, Response
-from flask_login import login_required
+from flask_login import login_required, current_user
 from version_estaticos import SELLO as SELLO_ESTATICOS
 
 BASE_DIR         = os.path.dirname(os.path.abspath(__file__))
@@ -190,10 +190,104 @@ def _acciones_por_clave():
     return mapa
 
 
+# ── Doble firma por importe (Ola A) ─────────────────────────────────────────
+# Regla del hotel que valido esto: un gasto por encima de un umbral (500 EUR)
+# lo firman DOS personas. La primera firma se guarda como FIRMA_1 y NO cuenta
+# para Oracle (que solo lee APROBADA); la segunda, de OTRA persona, es la que
+# escribe APROBADA. El umbral vive en datos-referencia/config_aprobaciones.json
+# ({"umbral_doble_firma": 500}) o en YVE_UMBRAL_DOBLE_FIRMA; por defecto 500.
+UMBRAL_DOBLE_FIRMA_DEFECTO = 500.0
+ACCIONES_FINALES = ("APROBADA", "RECHAZADA")
+CONFIG_APRO_FILE = os.path.join(BASE_DIR, "datos-referencia", "config_aprobaciones.json")
+
+
+def umbral_doble_firma():
+    try:
+        with open(CONFIG_APRO_FILE, encoding="utf-8") as fh:
+            v = json.load(fh).get("umbral_doble_firma")
+        if v is not None and str(v).strip() != "":
+            return float(v)
+    except Exception:
+        pass
+    try:
+        v = os.environ.get("YVE_UMBRAL_DOBLE_FIRMA", "").strip()
+        if v:
+            return float(v)
+    except ValueError:
+        pass
+    return UMBRAL_DOBLE_FIRMA_DEFECTO
+
+
+def _importe(v):
+    s = safe_str(v).replace("EUR", "").replace("€", "").replace(" ", "")
+    if "," in s and "." in s:
+        s = s.replace(".", "").replace(",", ".")
+    elif "," in s:
+        s = s.replace(",", ".")
+    try:
+        return float(s)
+    except ValueError:
+        return 0.0
+
+
+def necesita_doble_firma(total):
+    return _importe(total) > umbral_doble_firma()
+
+
+def _firma1_por_clave():
+    """{clave: aprobador} de la PRIMERA firma vigente (ultima accion = FIRMA_1)."""
+    df = cargar_aprobaciones()
+    if df.empty or "accion" not in df.columns:
+        return {}
+    filas = df.to_dict("records")
+    if "fecha_hora" in df.columns:
+        filas.sort(key=lambda r: safe_str(r.get("fecha_hora")))
+    mapa = {}
+    for r in filas:
+        k = safe_str(r.get("clave_factura")) or safe_str(r.get("numero_factura"))
+        if not k:
+            continue
+        if safe_str(r.get("accion")).upper() == "FIRMA_1":
+            mapa[k] = safe_str(r.get("aprobador")) or "?"
+        else:
+            mapa.pop(k, None)              # una decision posterior la cierra
+    return mapa
+
+
+def decidir_accion(clave, total, accion, usuario, firma1=None):
+    """Que se escribe de verdad en el registro.
+
+    Devuelve (accion_a_escribir, info). Con RECHAZADA o sin doble firma se
+    escribe lo pedido. Con doble firma: sin primera firma -> FIRMA_1; con una
+    de OTRA persona -> APROBADA (2/2); con una de la MISMA persona -> nada
+    (None) y el motivo en info.
+    """
+    accion = safe_str(accion).upper()
+    if accion != "APROBADA" or not necesita_doble_firma(total):
+        return accion, {"firma": 2 if accion == "APROBADA" else 0, "doble_firma": False}
+    firma1 = _firma1_por_clave() if firma1 is None else firma1
+    quien = firma1.get(clave)
+    if not quien:
+        return "FIRMA_1", {"firma": 1, "doble_firma": True, "falta_segunda": True}
+    if quien.lower() == safe_str(usuario).lower():
+        return None, {"firma": 1, "doble_firma": True, "falta_segunda": True,
+                      "error": f"La segunda firma tiene que ser de otra persona ({quien} ya firmo)"}
+    return "APROBADA", {"firma": 2, "doble_firma": True, "firma1_por": quien}
+
+
+def _usuario_actual(defecto="Jefe de Departamento"):
+    try:
+        return getattr(current_user, "username", None) or defecto
+    except Exception:
+        return defecto
+
+
 def facturas_a_lista(df):
     if df.empty:
         return []
     apro_map = _acciones_por_clave()
+    firma1 = _firma1_por_clave()
+    umbral = umbral_doble_firma()
 
     filas = []
     for _, r in df.iterrows():
@@ -220,6 +314,10 @@ def facturas_a_lista(df):
             "hotel_id":          safe_str(r.get("hotel_id")),
             "hotel":             _nombre_hotel(r.get("hotel_id")),
             "accion":            apro_map.get(_clave, ""),
+            # doble firma: cuantas lleva y quien puso la primera
+            "doble_firma":       _importe(r.get("total_factura")) > umbral,
+            "firmas":            1 if apro_map.get(_clave, "") == "FIRMA_1" else 0,
+            "firma1_por":        firma1.get(_clave, ""),
         })
     return filas
 
@@ -241,9 +339,9 @@ def api_facturas():
         rows = [r for r in rows if dept in r.get("departamento_po","").lower()
                 or dept == "todos"]
     if estado == "pendientes":
-        rows = [r for r in rows if not r.get("accion")]
+        rows = [r for r in rows if r.get("accion") not in ACCIONES_FINALES]
     elif estado == "resueltas":
-        rows = [r for r in rows if r.get("accion")]
+        rows = [r for r in rows if r.get("accion") in ACCIONES_FINALES]
     return jsonify(rows)
 
 
@@ -306,7 +404,7 @@ def api_stats():
     """
     df   = cargar_facturas_ap()
     rows = facturas_a_lista(df)
-    pend = [r for r in rows if not r.get("accion")]
+    pend = [r for r in rows if r.get("accion") not in ACCIONES_FINALES]
     def cnt(key, val, sobre=None):
         return sum(1 for r in (pend if sobre is None else sobre) if r.get(key,"") == val)
     def cnt_en(estados, sobre):
@@ -326,6 +424,9 @@ def api_stats():
         # lo que el filtro deja fuera por no llevar hotel: no se puede aprobar
         # desde ningun panel, y callarlo lo convierte en un agujero mudo
         "sin_hotel":     facturas_sin_hotel(),
+        # doble firma: las que esperan a la segunda persona
+        "segunda_firma": sum(1 for r in pend if r.get("firmas") == 1),
+        "umbral_doble_firma": umbral_doble_firma(),
     })
 
 @login_required
@@ -337,12 +438,27 @@ def api_accion():
     accion      = data.get("accion","")
     comentario  = data.get("comentario","")
     departamento= data.get("departamento","")
-    aprobador   = data.get("aprobador","Jefe de Departamento")
+    # Quien firma es el usuario logueado (antes era un texto fijo, "Jefe de
+    # Departamento", y con eso la doble firma no puede saber si son dos personas).
+    aprobador   = _usuario_actual(data.get("aprobador","Jefe de Departamento"))
 
     # Se exige la CLAVE, no el numero: una factura sin numero tambien se aprueba,
     # y antes daba 400. La clave nunca esta vacia (ver clave_factura).
     if not clave or not accion or not comentario or not departamento:
         return jsonify({"ok": False, "error": "Faltan campos obligatorios"}), 400
+
+    # Doble firma por importe: el total sale del panel, nunca del navegador.
+    total = 0.0
+    try:
+        for f in facturas_a_lista(cargar_facturas_ap()):
+            if f.get("clave") == clave:
+                total = _importe(f.get("total_factura"))
+                break
+    except Exception:
+        total = 0.0
+    accion, info = decidir_accion(clave, total, accion, aprobador)
+    if accion is None:
+        return jsonify({"ok": False, **info}), 409
 
     # El hotel desde el que se aprueba, para el rastro. Es una columna NUEVA:
     # Oracle sigue cruzando por `numero_factura` y no se entera de que existe,
@@ -370,7 +486,7 @@ def api_accion():
         "aprobador":     aprobador,
         "hotel_id":      _hid,
     }])
-    return jsonify({"ok": True})
+    return jsonify({"ok": True, "accion": accion, **info})
 
 
 def registrar_acciones(filas):
@@ -491,6 +607,7 @@ body::before{content:'';position:fixed;inset:0;z-index:0;pointer-events:none;
 .b-man{background:rgba(139,92,246,.14);color:#c4b5fd;border:1px solid rgba(139,92,246,.30)}
 .b-apr{background:rgba(34,197,94,.14);color:#4ade80;border:1px solid rgba(34,197,94,.30)}
 .b-rec{background:rgba(239,68,68,.14);color:#fca5a5;border:1px solid rgba(239,68,68,.30)}
+.b-firma{background:rgba(245,158,11,.14);color:#fbbf24;border:1px solid rgba(245,158,11,.30)}
 .b-pen{background:rgba(148,163,184,.10);color:var(--mut);border:1px solid var(--s2)}
 .info-grid{display:grid;grid-template-columns:repeat(2,1fr);gap:14px 18px;margin-bottom:14px}
 .card-acc{display:flex;align-items:center;gap:8px;flex-shrink:0}
@@ -576,6 +693,7 @@ textarea:focus{border-color:var(--acc);outline:none;
   border-radius:5px;padding:1px 5px;margin-left:6px;text-transform:uppercase}
 .hist-accion.a{background:rgba(34,197,94,.15);color:#4ade80}
 .hist-accion.r{background:rgba(239,68,68,.15);color:#fca5a5}
+.hist-accion.f{background:rgba(245,158,11,.15);color:#fbbf24}
 
 @media(max-width:640px){
   .nav{padding:0 12px;gap:8px;height:54px}
@@ -770,8 +888,9 @@ async function loadData() {
       '</div>' +
       (r.cuenta_debe ? '<div class="cuenta-tag">📒 Cuenta ' + r.cuenta_debe + ' — ' + txt(r.estado_asignacion) + '</div>' : '') +
       alertHtml +
-      (r.accion ? '<div class="estado-row"><span class="badge '+(r.accion==='APROBADA'?'b-apr':'b-rec')+'">'+(r.accion==='APROBADA'?'✓ ':'✗ ')+r.accion+'</span></div>' : '') +
-      (!r.accion ? (
+      (r.accion && r.accion!=='FIRMA_1' ? '<div class="estado-row"><span class="badge '+(r.accion==='APROBADA'?'b-apr':'b-rec')+'">'+(r.accion==='APROBADA'?'✓ ':'✗ ')+r.accion+'</span></div>' : '') +
+      (r.doble_firma ? '<div class="estado-row"><span class="badge b-firma">'+(r.firmas===1 ? '✍ 1/2 firmas · firmó '+txt(r.firma1_por)+' · falta otra persona' : '🔒 Importe alto: necesita dos firmas')+'</span></div>' : '') +
+      (r.accion!=='APROBADA' && r.accion!=='RECHAZADA' ? (
         '<div class="sep"></div>' +
         '<div class="dept-row"><span class="dept-label">Departamento:</span>' +
         '<select class="dept-select" id="dept-'+i+'" onchange="chk('+i+')"><option value="">— Selecciona —</option>' +
@@ -805,14 +924,19 @@ async function accion(i, tipo, numFac) {
   const res = await fetch('/aprobaciones-ap/api/accion',{method:'POST',headers:{'Content-Type':'application/json'},
     body: JSON.stringify({clave:clave,numero_factura:numFac,accion:tipo,comentario:c,departamento:dept})});
   const d = await res.json();
-  if(d.ok) {
+  if(d.ok && d.accion==='FIRMA_1') {
+    // primera de dos firmas: la factura se queda, con su badge, esperando a otra persona
+    cargarHist();
+    showToast('✍ Primera firma guardada: falta la de otra persona', '#d97706');
+    loadData();
+  } else if(d.ok) {
     const card = document.getElementById('card-'+i);
     card.style.transition='opacity .3s,transform .3s';
     card.style.opacity='0';
     card.style.transform='translateX('+(tipo==='APROBADA'?'20px':'-20px')+')';
     setTimeout(()=>{card.style.display='none'},300);
     cargarHist();
-    showToast(tipo==='APROBADA'?'✓ Aprobada y guardada':'✗ Rechazada y guardada', tipo==='APROBADA'?'#16a34a':'#dc2626');
+    showToast(tipo==='APROBADA'?(d.doble_firma?'✓ Segunda firma: aprobada y guardada':'✓ Aprobada y guardada'):'✗ Rechazada y guardada', tipo==='APROBADA'?'#16a34a':'#dc2626');
     loadData();
   } else {
     showToast('✗ '+(d.error||'No se ha podido guardar'), '#dc2626');
@@ -833,6 +957,7 @@ function renderHist() {
   document.getElementById('hist-empty').style.display=historial.length?'none':'';
   el.innerHTML=historial.map((h,i)=>{
     const ap = h.accion==='APROBADA';
+    const f1 = h.accion==='FIRMA_1';
     // una entrada rectificada despues deja de ser la que manda: se dice
     const viejo = (h.vigente===false) ? ' <span class="hist-old">rectificada</span>' : '';
     const f = h.factura;                       // null si la factura ya no esta
@@ -860,7 +985,7 @@ function renderHist() {
       '<div class="hist-info"><div class="n">'+txt(h.numero_factura)+viejo+'</div>' +
         '<div class="d">'+txt(h.fecha_hora)+(h.departamento?' · '+txt(h.departamento):'')+
         (h.comentario?' · '+txt(h.comentario):'')+'</div></div>' +
-      '<span class="hist-accion '+(ap?'a':'r')+'">'+txt(h.accion)+'</span>' +
+      '<span class="hist-accion '+(ap?'a':(f1?'f':'r'))+'">'+(f1?'PRIMERA FIRMA':txt(h.accion))+'</span>' +
       flecha + det + '</div>';
   }).join('');
 }

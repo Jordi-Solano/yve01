@@ -22,6 +22,7 @@
   "ap.importe": "IMPORTO TOTALE",
   "ap.loteCero": "Nessuna fattura approvata: {c} senza riscontro corretto, {d} già decise",
   "ap.loteEnCurso": "Verifica di quali fatture quadrano...",
+  "ap.loteFirma": "{p} con prima firma (oltre {u} €: serve un’altra persona)",
   "ap.loteNada": "Nessuna fattura in attesa di approvazione",
   "ap.loteOk": "{n} fatture approvate (riscontro corretto)",
   "ap.matchOk": "CORRISPONDENZE OK",

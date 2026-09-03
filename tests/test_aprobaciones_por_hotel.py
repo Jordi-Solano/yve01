@@ -183,6 +183,19 @@ def test_la_aprobacion_deja_constancia_del_hotel():
             "numero_factura": "CA-001", "clave": "CA-001", "accion": "APROBADA",
             "comentario": "ok banco de pruebas", "departamento": "F&B"})
         assert (r.get_json() or {}).get("ok"), f"la aprobacion ha fallado: {r.get_json()}"
+        # CA-001 son 1.210 EUR (> umbral de doble firma): la primera pulsacion
+        # deja FIRMA_1 y hace falta OTRA persona para que sea APROBADA.
+        assert (r.get_json() or {}).get("accion") == "FIRMA_1", f"esperaba FIRMA_1: {r.get_json()}"
+        import dashboard as D
+        c2 = D.app.test_client()
+        c2.post("/api/login", json={"username": "fc_user", "password": "hotel2024"})
+        with c2.session_transaction() as s:
+            s["tenant_id"] = "default"
+            s["hotel_activo"] = CA
+        r = c2.post("/aprobaciones-ap/api/accion", json={
+            "numero_factura": "CA-001", "clave": "CA-001", "accion": "APROBADA",
+            "comentario": "segunda firma", "departamento": "F&B"})
+        assert (r.get_json() or {}).get("accion") == "APROBADA", f"la segunda firma ha fallado: {r.get_json()}"
         ruta = os.path.join(aprobaciones_dir(), "aprobaciones_ap.xlsx")
         assert os.path.exists(ruta), "no se ha escrito aprobaciones_ap.xlsx"
         df = pd.read_excel(ruta)
@@ -192,7 +205,7 @@ def test_la_aprobacion_deja_constancia_del_hotel():
             f"que traer la factura aprobada. Columnas: {list(df.columns)}")
         assert "accion" in df.columns and "APROBADA" in set(df["accion"].astype(str)), \
             "la columna `accion` es el gate de Oracle: sin ella no se contabiliza nada"
-        assert "hotel_id" in df.columns and str(df["hotel_id"].iloc[0]) == CA, (
+        assert "hotel_id" in df.columns and set(df["hotel_id"].astype(str)) == {CA}, (
             f"la aprobacion no deja constancia del hotel: hotel_id="
             f"{df['hotel_id'].iloc[0] if 'hotel_id' in df.columns else '(no existe)'!r}. "
             "Una aprobacion sin saber de que hotel es no es auditable.")
