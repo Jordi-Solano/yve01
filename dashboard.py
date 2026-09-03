@@ -13976,17 +13976,19 @@ async function _cargarModoOracle() {
   return _oracleSim;
 }
 function procesarOracle() {
+  // Los ids del modal son los de HOY (`modal-icon`, `modal-title`, `btn-cl`,
+  // como en runPipeline): esta funcion se escribio contra un modal viejo
+  // (`spinner`, `btnLabel`, `modalIcon`...) y al pulsar el boton nuevo
+  // reventaba en la primera linea. Encontrado en produccion, no leyendo.
   const btn   = document.getElementById('btnOracle');
   const log   = document.getElementById('log');
-  const spin  = document.getElementById('spinner');
-  const lbl   = document.getElementById('btnLabel');
-  const icon  = document.getElementById('modalIcon');
-  const title = document.getElementById('modalTitle');
-  const btnCl = document.getElementById('btnClose');
+  const icon  = document.getElementById('modal-icon');
+  const title = document.getElementById('modal-title');
+  const btnCl = document.getElementById('btn-cl');
+  const lbl   = { set textContent(v) { if (btn) btn.textContent = v; } };
 
-  btn.disabled = true;
-  spin.style.display = 'block';
-  lbl.textContent = 'Contabilizando...';
+  if (btn) btn.disabled = true;
+  lbl.textContent = '⏳ ' + _tSSE('Contabilizando') + '...';
   log.innerHTML = '';
   btnCl.disabled = true;
   icon.textContent = '🔮';
@@ -14030,8 +14032,7 @@ function procesarOracle() {
       title.textContent = (ok && _oracleSim !== false)
         ? t('oracle.simOk', 'Simulación terminada: asientos en Excel, nada contabilizado en Oracle')
         : _tSSE(ok ? 'Oracle: contabilización completada' : 'Oracle: pipeline con errores');
-      btn.disabled = false;
-      spin.style.display = 'none';
+      if (btn) btn.disabled = false;
       lbl.textContent = _tSSE('🔮 Contabilizar en Oracle');
       btnCl.disabled = false;
       setTimeout(loadAP, 800);
@@ -14044,8 +14045,7 @@ function procesarOracle() {
     p.className = 'l-err';
     p.textContent = _tSSE('ERROR: conexión con servidor perdida');
     log.appendChild(p);
-    btn.disabled = false;
-    spin.style.display = 'none';
+    if (btn) btn.disabled = false;
     lbl.textContent = _tSSE('🔮 Contabilizar en Oracle');
     btnCl.disabled = false;
   };

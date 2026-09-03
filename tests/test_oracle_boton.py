@@ -79,6 +79,12 @@ def main():
        'el titulo final distingue simulacion de contabilizacion real')
     ok("t('oracle.avisoSim'" in cuerpo, 'antes de lanzar avisa de que es simulacion')
 
+    # ── 3b · cada getElementById de procesarOracle apunta a un id que EXISTE
+    # (la primera version usaba los ids de un modal viejo y reventaba al pulsar)
+    ids = set(re.findall(r"getElementById\('([^']+)'\)", cuerpo))
+    faltan = sorted(i for i in ids if f'id="{i}"' not in sin_js)
+    ok(ids and not faltan, f'todos los ids de procesarOracle existen en el HTML (faltan: {faltan})')
+
     # ── 4 · traducciones en los 6 idiomas ────────────────────────────
     for lang in ('en', 'ca', 'fr', 'de', 'it', 'pt'):
         with open(os.path.join(BASE, 'static', 'i18n', f'{lang}.json'), encoding='utf-8') as fh:
