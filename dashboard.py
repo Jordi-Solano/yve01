@@ -6541,6 +6541,15 @@ svg.yvi{width:1em;height:1em;vertical-align:-0.125em;flex-shrink:0;display:inlin
       <div class="card-title" data-i18n="cierre.recon">Reconciliación de cuentas</div>
       <div id="cierre-recon-body" style="font-size:13px;color:var(--mut)"><div class="empty"><p data-i18n="cierre.cargando">Montando el mes…</p></div></div>
     </div>
+    <div class="card" id="card-cierre-banco" style="margin-bottom:22px">
+      <div style="display:flex;align-items:center;justify-content:space-between;gap:12px;flex-wrap:wrap;margin-bottom:10px">
+        <div class="card-title" style="margin:0" data-i18n="cbanco.titulo">Cuadre de banco por pestañas</div>
+        <div style="display:flex;align-items:center;gap:10px"><span id="cbanco-saldo" style="font-size:12px;color:var(--mut)"></span>
+        <a id="cbanco-excel" href="/api/exportar/cuadre_banco" class="btn-ref" style="text-decoration:none;font-size:12px" data-i18n="cbanco.descargar">⬇️ Excel</a></div>
+      </div>
+      <div id="cbanco-pestanas" style="display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:8px;margin-bottom:12px"></div>
+      <div id="cbanco-body" style="font-size:12px;color:var(--mut);overflow-x:auto"><div class="empty"><p data-i18n="cierre.cargando">Montando el mes…</p></div></div>
+    </div>
     <div class="card" id="card-cierre-mayor" style="margin-bottom:22px">
       <div class="card-title" data-i18n="cierre.mayor">Mayor del mes (por cuenta)</div>
       <div id="cierre-mayor-body" style="font-size:13px;color:var(--mut)"></div>
@@ -13549,6 +13558,39 @@ var _CARGADORES = {
   cierre:      function(){ return loadCierre(); }
 };
 
+// ── Cuadre de banco por pestañas (Ola B·2) ───────────────────────────────
+var _cbFiltro = '';
+async function loadCuadreBanco(){
+  var inp = document.getElementById('cierre-mes'); if (!inp) return;
+  var mes = inp.value;
+  var ex = document.getElementById('cbanco-excel'); if (ex) ex.href = '/api/exportar/cuadre_banco?mes=' + encodeURIComponent(mes);
+  var pw = document.getElementById('cbanco-pestanas'), body = document.getElementById('cbanco-body'), sal = document.getElementById('cbanco-saldo');
+  try {
+    var r = await fetch('/api/cuadre_banco?mes=' + encodeURIComponent(mes));
+    var d = await r.json();
+    if (!d || !d.ok_api) { body.innerHTML = '<div class="empty"><p>' + _cEsc((d&&d.error)||'Error') + '</p></div>'; return; }
+    if (sal) sal.textContent = (d.saldo_final!=null ? t('cbanco.saldo','saldo del extracto {f}: {s}').replace('{f}', d.fecha_saldo).replace('{s}', _cEur(d.saldo_final)) + ' · ' : '') + t('cbanco.movs','{n} movimientos · {p} sin conciliar').replace('{n}', d.n).replace('{p}', d.sin_conciliar);
+    var LBL = {AR:t('cbanco.AR','AR · cobros'), AP:t('cbanco.AP','AP · pagos'), TARJETAS:t('cbanco.TARJETAS','Tarjetas'), CAJA:t('cbanco.CAJA','Income / caja'), VARIOS:t('cbanco.VARIOS','Varios'), SIN_CLASIFICAR:t('cbanco.SIN','Sin clasificar')};
+    var COL = {CUADRA:'#22c55e', PENDIENTE:'#f59e0b', INFO:'var(--dim)', SIN_DATO:'var(--mut)'};
+    var ST = {CUADRA:t('cierre.stCuadra','✓ cuadra'), PENDIENTE:t('cierre.stPend','pendiente'), INFO:'info', SIN_DATO:t('cierre.stSinDato','sin dato')};
+    var ps = d.pestanas || {};
+    pw.innerHTML = Object.keys(LBL).map(function(k){ var p = ps[k] || {}; var act = _cbFiltro===k;
+      return '<div class="card" onclick="_cbFiltro=(_cbFiltro===\'' + k + '\'?\'\':\'' + k + '\');loadCuadreBanco()" style="padding:10px;border-radius:10px;cursor:pointer;' + (act?'outline:2px solid var(--acc,#3b82f6);':'') + '"><div style="font-size:11px;color:var(--mut);text-transform:uppercase;letter-spacing:.4px">' + _cEsc(LBL[k]) + '</div><div style="font-size:15px;font-weight:700">' + _cEur(p.total) + '</div><div style="font-size:11px;color:var(--dim)">' + (p.n||0) + ' mov.' + (p.justificado!=null ? ' · ' + t('cierre.hJust','Justificado') + ' ' + _cEur(p.justificado) : '') + '</div><div style="font-size:11px;font-weight:700;color:' + (COL[p.estado]||'var(--mut)') + '">' + _cEsc(ST[p.estado]||p.estado||'') + '</div></div>'; }).join('');
+    var ms = (d.movimientos||[]).filter(function(m){ return !_cbFiltro || m.pestana===_cbFiltro; });
+    var opts = Object.keys(LBL).map(function(k){ return '<option value="' + k + '">' + _cEsc(LBL[k]) + '</option>'; }).join('');
+    body.innerHTML = ms.length ? '<table style="width:100%;border-collapse:collapse;font-size:11px"><thead><tr style="color:var(--dim);text-align:left"><th>' + t('cierre.hFecha','Fecha') + '</th><th>' + t('cierre.hConceptoD','Concepto') + '</th><th style="text-align:right">' + t('cbanco.importe','Importe') + '</th><th>' + t('cbanco.factura','Factura') + '</th><th>' + t('cbanco.pestana','Pestaña') + '</th></tr></thead><tbody>' +
+      ms.map(function(m){ return '<tr style="border-top:1px solid var(--s2)"><td style="padding:3px 4px;white-space:nowrap">' + _cEsc(m.fecha) + '</td><td style="padding:3px 4px">' + _cEsc(m.concepto) + '</td><td style="text-align:right;padding:3px 4px;color:' + (m.importe<0?'#f87171':'#22c55e') + '">' + _cEur(m.importe) + '</td><td style="padding:3px 4px;color:var(--dim)">' + _cEsc(m.factura_ref||'') + '</td><td style="padding:3px 4px"><select data-clave="' + _cEsc(m.clave) + '" onchange="_cbAsignar(this)" style="background:var(--bg);border:1px solid var(--s2);color:var(--tx);padding:3px;border-radius:6px;font-size:11px">' + opts.replace('value="' + m.pestana + '"', 'value="' + m.pestana + '" selected') + '</select>' + (m.via==='manual' ? ' <span title="manual">✎</span>' : '') + '</td></tr>'; }).join('') + '</tbody></table>' : '<div class="empty"><p>' + t('cbanco.vacio','Sin movimientos del extracto en este mes. Súbelo en la pestaña Banco.') + '</p></div>';
+  } catch(e) { if (body) body.innerHTML = '<div class="empty"><p>' + _cEsc(e.message) + '</p></div>'; }
+}
+async function _cbAsignar(sel){
+  try {
+    var r = await _postJson('/api/cuadre_banco/asignar', {clave: sel.getAttribute('data-clave'), pestana: sel.value});
+    var d = await r.json();
+    if (!d || !d.ok) showNotification('✗ ' + ((d&&d.error)||'No se pudo asignar'), 'error');
+    loadCuadreBanco();
+  } catch(e){ showNotification('✗ ' + e.message, 'error'); }
+}
+
 // ── Cierre de mes (Ola B) ─────────────────────────────────────────────────
 function _cEsc(s){ return String(s==null?'':s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;'); }
 function _cEur(v){ return (v==null||isNaN(Number(v))) ? '—' : Number(v).toLocaleString('es-ES',{minimumFractionDigits:2,maximumFractionDigits:2}) + ' €'; }
@@ -13559,6 +13601,7 @@ async function loadCierre(forzar){
   var mes = inp.value;
   var ex = document.getElementById('cierre-excel'); if (ex) ex.href = '/api/exportar/cierre?mes=' + encodeURIComponent(mes);
   var rb = document.getElementById('cierre-recon-body'), mb = document.getElementById('cierre-mayor-body'), db = document.getElementById('cierre-diario-body'), av = document.getElementById('cierre-avisos');
+  try { loadCuadreBanco(); } catch(e){}
   try {
     var r = await fetch('/api/cierre/asientos?mes=' + encodeURIComponent(mes));
     var d = await r.json();
