@@ -194,6 +194,7 @@ from app_conciliacion import bp as concil_bp
 from tab_fb_dashboard import fb_bp
 from tab_ar_real import ar_real_bp
 from reclamaciones_ota import recl_ota_bp
+from reclamaciones_ap import recl_ap_bp
 from oracle_export_dryrun import oracle_export_bp
 from pricing import pricing_bp
 from tab_multi_hotel import multi_hotel_bp
@@ -215,7 +216,7 @@ from about import about_bp
 from exportador_pdf import pdf_bp
 # pricing_bp estaba importado pero NO registrado: /precios daba 404 mientras la
 # landing, el blog y "Quienes somos" enlazaban a el (Ola A).
-for _bp in (auth_bp, config_bp, admin_bp, aprob_ar_bp, aprob_ap_bp, concil_bp, fb_bp, ar_real_bp, recl_ota_bp, multi_hotel_bp, self_service_bp, exportador_bp, demo_bp, demo_sim_bp, reportes_pdf_bp, blog_bp, billing_bp, asientos_bp, signup_bp, about_bp, pdf_bp, legal_bp, pricing_bp):
+for _bp in (auth_bp, config_bp, admin_bp, aprob_ar_bp, aprob_ap_bp, concil_bp, fb_bp, ar_real_bp, recl_ota_bp, recl_ap_bp, multi_hotel_bp, self_service_bp, exportador_bp, demo_bp, demo_sim_bp, reportes_pdf_bp, blog_bp, billing_bp, asientos_bp, signup_bp, about_bp, pdf_bp, legal_bp, pricing_bp):
     app.register_blueprint(_bp)
 
 
@@ -6331,6 +6332,15 @@ svg.yvi{width:1em;height:1em;vertical-align:-0.125em;flex-shrink:0;display:inlin
       <div id="aging-tramos" style="display:grid;grid-template-columns:repeat(auto-fit,minmax(110px,1fr));gap:8px;margin-bottom:12px"></div>
       <div id="aging-body" style="font-size:13px;color:var(--mut)"><div class="empty"><p data-i18n="aging.cargando">Calculando antigüedad…</p></div></div>
     </div>
+
+    <!-- Reclamar al proveedor (Ola A): factura rectificativa o abono. Nada sale sin "Aprobar y enviar". -->
+    <div class="card" id="card-recl-ap" style="margin-top:22px">
+      <div style="display:flex;align-items:center;justify-content:space-between;gap:12px;flex-wrap:wrap;margin-bottom:12px">
+        <div class="card-title" style="margin:0" data-i18n="reclap.titulo">Reclamar al proveedor (rectificativa / abono)</div>
+        <span id="ap-recl-resumen" style="font-size:12px;color:var(--mut)"></span>
+      </div>
+      <div id="ap-recl-list" style="display:flex;flex-direction:column;gap:12px"><div class="empty"><p data-i18n="reclap.cargando">Buscando facturas que reclamar…</p></div></div>
+    </div>
   </div><!-- /panel-ap -->
 
   <!-- PANEL DRR -->
@@ -10424,6 +10434,92 @@ async function _reclDescartar(i){
   if(!confirm('¿Descartar esta reclamación? No se enviará ningún email.')) return;
   try { await _postJson('/api/reclamaciones_ota/descartar', {id: it.id}); cargarReclamacionesOTA(); } catch(e){}
 }
+
+// ── Reclamar al PROVEEDOR (AP): rectificativa o abono. Mismo patron que la OTA. ──
+var _reclApItems = [];
+async function cargarReclamacionesAP(){
+  var wrap = document.getElementById('ap-recl-list');
+  var resumen = document.getElementById('ap-recl-resumen');
+  if (!wrap) return;
+  try {
+    var r = await fetch('/api/reclamaciones_ap/list');
+    var d = await r.json();
+    _reclApItems = (d && d.items) || [];
+    if (resumen) resumen.textContent = (d && d.n_pendientes)
+      ? t('reclap.resumen', '{n} pendiente(s) · {total} en disputa').replace('{n}', d.n_pendientes).replace('{total}', _reclMoney(d.total_en_disputa))
+      : '';
+    if (!_reclApItems.length) { wrap.innerHTML = _vacioCard(t('reclap.vacio', 'Cuando una factura no cuadre con el albarán/pedido o se rechace, aparecerá aquí para pedir al proveedor la rectificativa o el abono.')); return; }
+    wrap.innerHTML = _reclApItems.map(function(it,i){ return _reclApCard(it,i); }).join('');
+  } catch(e) {}
+}
+function _reclApCard(it, i){
+  var badge, bg, col;
+  if (it.estado==='ENVIADA'){ badge=t('reclap.enviada','✓ Enviada'); bg='rgba(34,197,94,.12)'; col='#22c55e'; }
+  else if (it.estado==='DESCARTADA'){ badge=t('reclap.descartada','Descartada'); bg='rgba(148,163,184,.12)'; col='var(--mut)'; }
+  else { badge=t('reclap.pendiente','Pendiente'); bg='rgba(245,158,11,.12)'; col='#f59e0b'; }
+  var tipo = it.tipo==='ABONO' ? t('reclap.tipoAbono','Pedir abono (rechazada)') : t('reclap.tipoCorreccion','Pedir rectificativa');
+  var motivo = it.detalle || it.comentario || it.estado_matching || '';
+  var head = '<div style="display:flex;align-items:center;justify-content:space-between;gap:8px;flex-wrap:wrap;margin-bottom:8px">' +
+    '<div style="min-width:0"><div style="font-weight:700;font-size:13px">' + _reclEsc(it.proveedor||'—') + ' · ' + t('reclap.factura','factura') + ' ' + _reclEsc(it.numero_factura||it.id) + (it.hotel?' · '+_reclEsc(it.hotel):'') + '</div>' +
+    '<div style="font-size:11px;color:var(--dim)">' + _reclEsc(tipo) + ' · <b style="color:#f87171">' + _reclMoney(it.total_factura) + '</b>' + (motivo?' · '+_reclEsc(motivo):'') + '</div></div>' +
+    '<span style="font-size:11px;font-weight:700;padding:3px 10px;border-radius:20px;background:'+bg+';color:'+col+'">'+_reclEsc(badge)+'</span></div>';
+  if (it.estado==='ENVIADA'){
+    return '<div class="card" style="padding:12px;border-radius:12px;opacity:.85">' + head +
+      '<div style="font-size:12px;color:var(--mut)">' + t('reclap.enviadaA','Enviada a') + ' ' + _reclEsc(it.destinatario) + ' · ' + _reclEsc(it.fecha_enviada) + '</div></div>';
+  }
+  if (it.estado==='DESCARTADA'){
+    return '<div class="card" style="padding:12px;border-radius:12px;opacity:.55">' + head + '</div>';
+  }
+  var body;
+  if (!it.tiene_borrador){
+    body = '<button onclick="_reclApGenerar('+i+',this)" class="btn-run" style="font-size:12px">' + t('reclap.redactar','✍️ Redactar') + '</button>';
+  } else {
+    body = '<div style="display:flex;flex-direction:column;gap:8px">' +
+      '<label style="font-size:10px;color:var(--mut);text-transform:uppercase;letter-spacing:.4px">' + t('reclap.enviarA','Enviar a') + '</label>' +
+      '<input id="reclap-dest-'+i+'" value="'+_reclEsc(it.destinatario)+'" placeholder="' + t('reclap.emailProveedor','email del proveedor') + '" style="background:var(--bg);border:1px solid var(--s2);color:var(--tx);padding:8px;border-radius:8px;font-size:12px">' +
+      '<input id="reclap-asunto-'+i+'" value="'+_reclEsc(it.asunto)+'" style="background:var(--bg);border:1px solid var(--s2);color:var(--tx);padding:8px;border-radius:8px;font-size:12px;font-weight:600">' +
+      '<textarea id="reclap-cuerpo-'+i+'" rows="9" style="background:var(--bg);border:1px solid var(--s2);color:var(--tx);padding:8px;border-radius:8px;font-size:12px;font-family:inherit;line-height:1.5;resize:vertical">'+_reclEsc(it.cuerpo)+'</textarea>' +
+      '<div style="display:flex;gap:8px;flex-wrap:wrap">' +
+        '<button onclick="_reclApEnviar('+i+',this)" class="btn-run" style="font-size:12px">' + t('reclap.aprobarEnviar','✅ Aprobar y enviar') + '</button>' +
+        '<button onclick="_reclApGenerar('+i+',this)" class="btn-ref" style="font-size:12px">' + t('reclap.regenerar','🔄 Regenerar') + '</button>' +
+        '<button onclick="_reclApDescartar('+i+')" class="btn-ref" style="font-size:12px">' + t('reclap.descartar','🗑 Descartar') + '</button>' +
+      '</div></div>';
+  }
+  return '<div class="card" style="padding:12px;border-radius:12px">' + head + body + '</div>';
+}
+async function _reclApGenerar(i, btn){
+  var it=_reclApItems[i]; if(!it) return;
+  var txt = btn ? btn.textContent : '';
+  if(btn){ btn.disabled=true; btn.textContent=t('reclap.redactando','✍️ Redactando…'); }
+  try {
+    var r = await _postJson('/api/reclamaciones_ap/generar', {id: it.id, idioma: (typeof _i18nLang==='string' && _i18nLang==='en') ? 'en' : 'es'});
+    var d = await r.json();
+    if (d && d.ok){ cargarReclamacionesAP(); }
+    else { showNotification('✗ ' + ((d&&d.error)||t('reclap.noRedacta','No se pudo redactar')), 'error'); if(btn){btn.disabled=false;btn.textContent=txt;} }
+  } catch(e){ showNotification('✗ '+e.message,'error'); if(btn){btn.disabled=false;btn.textContent=txt;} }
+}
+async function _reclApEnviar(i, btn){
+  var it=_reclApItems[i]; if(!it) return;
+  var dest=(document.getElementById('reclap-dest-'+i)||{}).value||'';
+  var asunto=(document.getElementById('reclap-asunto-'+i)||{}).value||'';
+  var cuerpo=(document.getElementById('reclap-cuerpo-'+i)||{}).value||'';
+  if(!dest || dest.indexOf('@')<0){ showNotification(t('reclap.emailInvalido','Introduce un email de destino válido'),'error'); return; }
+  if(!confirm(t('reclap.confirmar','¿Enviar la reclamación a {dest}?').replace('{dest}', dest))) return;
+  var txt = btn ? btn.textContent : '';
+  if(btn){ btn.disabled=true; btn.textContent=t('reclap.enviando','Enviando…'); }
+  try {
+    var r = await _postJson('/api/reclamaciones_ap/aprobar_enviar', {id: it.id, destinatario: dest, asunto: asunto, cuerpo: cuerpo});
+    var d = await r.json();
+    if (d && d.ok){ showNotification(t('reclap.ok','✓ Reclamación enviada a {dest}').replace('{dest}', dest),'success'); cargarReclamacionesAP(); }
+    else if (d && d.ya_enviada){ showNotification('ℹ '+d.error,'info'); cargarReclamacionesAP(); }
+    else { showNotification('✗ '+((d&&d.error)||t('reclap.noEnvia','No se pudo enviar')),'error'); if(btn){btn.disabled=false;btn.textContent=txt;} }
+  } catch(e){ showNotification('✗ '+e.message,'error'); if(btn){btn.disabled=false;btn.textContent=txt;} }
+}
+async function _reclApDescartar(i){
+  var it=_reclApItems[i]; if(!it) return;
+  if(!confirm(t('reclap.confirmarDescartar','¿Descartar esta reclamación? No se enviará ningún email.'))) return;
+  try { await _postJson('/api/reclamaciones_ap/descartar', {id: it.id}); cargarReclamacionesAP(); } catch(e){}
+}
 // ─────────────────────────────────────────────────────────────────────────────
 
 // ── Skeleton helpers ───────────────────────────────
@@ -13986,6 +14082,7 @@ async function loadAP() {
   if (_oracleSim === null) _cargarModoOracle();
   loadProvisiones();
   loadAgingAP();
+  cargarReclamacionesAP();
   try {
     const [stats, facts] = await Promise.all([
       fetch('/api/stats_ap').then(r=>r.json()),
