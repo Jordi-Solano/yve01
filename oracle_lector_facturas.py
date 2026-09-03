@@ -96,16 +96,18 @@ def cargar_facturas_contabilizadas():
     except Exception:
         pass
     if df is None or df.empty:
-        raise FileNotFoundError(
-            "No se encontró facturas_contabilizadas_*.xlsx. "
-            "Ejecuta primero asignador_cuentas.py"
-        )
+        # Cero facturas NO es un error del pipeline: es "nada que contabilizar".
+        # Antes se lanzaba FileNotFoundError y el boton acababa en
+        # "pipeline con errores" con el disco recien vaciado por un deploy.
+        print("  Facturas contabilizadas: 0 (no hay facturas procesadas todavia)")
+        df = pd.DataFrame()
     archivos = sorted(
         glob.glob(str(PROCESADAS_DIR / "facturas_contabilizadas_*.xlsx")),
         reverse=True,
     )
     ruta = archivos[0] if archivos else str(PROCESADAS_DIR / "facturas_contabilizadas.xlsx")
-    print(f"  Facturas contabilizadas: {len(df)} filas de todos los días")
+    if not df.empty:
+        print(f"  Facturas contabilizadas: {len(df)} filas de todos los días")
     if _ileg:
         # El aviso que faltaba: un fichero ilegible era un print perdido en el
         # stdout de un subproceso. Aquí importa, porque puede llevarse por
@@ -235,21 +237,26 @@ def preparar_facturas_para_oracle(bypass_aprobacion: bool = False) -> tuple:
     Carga facturas aprobadas y prepara batches para Oracle.
     Returns:
         (batches: list[dict], bloqueadas: list[dict], df_facturas: DataFrame)
-    bypass_aprobacion: si True (modo simulación), procesa todas aunque no haya aprobación
+    bypass_aprobacion: si True, procesa todas aunque no haya aprobación. SOLO
+    para pruebas explícitas: la simulación ya NO lo activa sola (decisión de
+    Jordi, 3 sep 2026): la puerta APROBADA se respeta igual que en producción,
+    si no la doble firma y el panel de aprobación no se ven hasta tener Oracle real.
     """
     df, archivo = cargar_facturas_contabilizadas()
     aprobadas_set, df_apro = cargar_aprobaciones_ap()
 
     print(f"  Facturas aprobadas en aprobaciones_ap.xlsx: {len(aprobadas_set)}")
     if is_simulation():
-        print("  ℹ  MODO SIMULACIÓN — se procesarán todas las facturas (ignora aprobación)")
+        print("  ℹ  MODO SIMULACIÓN — la puerta APROBADA se respeta igual que en producción")
+    if bypass_aprobacion:
+        print("  ⚠  bypass_aprobacion=True: se procesan facturas SIN aprobar (solo pruebas)")
 
     batches   = []
     bloqueadas = []
 
     # Evitar contabilizar dos veces
     ya_contabilizadas = set()
-    if "oracle_status" in df.columns:
+    if not df.empty and "oracle_status" in df.columns:
         ya_contabilizadas = set(
             df.loc[df["oracle_status"].astype(str).str.upper() == "CONTABILIZADA",
                    "numero_factura"].astype(str)
@@ -276,7 +283,7 @@ def preparar_facturas_para_oracle(bypass_aprobacion: bool = False) -> tuple:
     except Exception as _er:
         print(f"  ⚠  no se pudo leer el registro de contabilizadas: {str(_er)[:70]}")
 
-    for _, row in df.iterrows():
+    for _, row in (df.iterrows() if not df.empty else []):
         num_fac = str(row.get("numero_factura", "")).strip()
         estado_asig = str(row.get("estado_asignacion", "")).strip().upper()
 
@@ -296,7 +303,7 @@ def preparar_facturas_para_oracle(bypass_aprobacion: bool = False) -> tuple:
 
         # Verificar aprobación
         aprobada = (num_fac in aprobadas_set)
-        if not aprobada and not bypass_aprobacion and not is_simulation():
+        if not aprobada and not bypass_aprobacion:
             bloqueadas.append({
                 "numero_factura": num_fac,
                 "motivo": "Factura no aprobada por cabeza de departamento",

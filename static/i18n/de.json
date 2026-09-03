@@ -349,6 +349,7 @@
   "oracle.avisoSim": "Simulationsmodus: Die Buchungen werden in einer Test-Excel erzeugt. In ein echtes Oracle wird nichts geschrieben.",
   "oracle.chipReal": "echtes Oracle verbunden",
   "oracle.chipSim": "Simulation · kein echtes Oracle",
+  "oracle.exportGl": "⬇️ GL-Buchungen",
   "oracle.simOk": "Simulation beendet: Buchungen in Excel, nichts in Oracle gebucht",
   "oracle.titleReal": "Freigegebene Rechnungen in Oracle Fusion buchen",
   "oracle.titleSim": "Simulationsmodus: erzeugt die Buchungen in einer Excel-Datei; nichts wird in ein echtes Oracle gebucht",

@@ -81,14 +81,87 @@ def apuntar_en_registro(resultados: list) -> int:
     return nuevas
 
 
-def cargar_facturas() -> tuple:
-    """Carga el último facturas_contabilizadas_*.xlsx."""
-    archivos = sorted(
-        glob.glob(str(PROCESADAS_DIR / "facturas_contabilizadas_*.xlsx")),
-        reverse=True,
+ASIENTOS_FILE = BASE_DIR / "reportes" / "oracle_asientos_producidos.json"
+
+
+def guardar_asientos_producidos(resultados: list) -> int:
+    """Guarda en crudo los asientos que el pipeline acaba de producir.
+
+    Un fichero unico, de solo anadir, con las lineas de cada asiento tal cual
+    salieron (simulacion o produccion, con su estado). Es lo que exporta
+    `oracle_export_dryrun`: si aqui no hay nada, no se exporta nada.
+    """
+    import json
+    if not resultados:
+        return 0
+    try:
+        with open(ASIENTOS_FILE, "r", encoding="utf-8") as f:
+            reg = json.load(f)
+        if not isinstance(reg, list):
+            reg = []
+    except Exception:
+        reg = []
+    nuevos = 0
+    for r in resultados:
+        if not r.get("journal_lines"):
+            continue
+        reg.append({
+            "numero_factura":   str(r.get("numero_factura", "")),
+            "nombre_proveedor": str(r.get("nombre_proveedor", "")),
+            "fecha":            str(r.get("fecha", "")),
+            "total_factura":    float(r.get("total_factura") or 0),
+            "batch_name":       str(r.get("batch_name", "")),
+            "oracle_id":        str(r.get("oracle_id", "")),
+            "estado":           str(r.get("estado", "")),
+            "modo":             str(r.get("modo", "")),
+            "timestamp":        str(r.get("timestamp", "")),
+            "journal_lines":    [{k: l.get(k) for k in ("line_number", "type", "entity", "department",
+                                                       "account", "combination", "debit", "credit",
+                                                       "description", "reference", "accounting_date")}
+                                 for l in r.get("journal_lines") or []],
+        })
+        nuevos += 1
+    if not nuevos:
+        return 0
+    os.makedirs(os.path.dirname(str(ASIENTOS_FILE)), exist_ok=True)
+    tmp = str(ASIENTOS_FILE) + ".tmp"
+    with open(tmp, "w", encoding="utf-8") as f:
+        json.dump(reg, f, ensure_ascii=False, indent=1)
+    os.replace(tmp, str(ASIENTOS_FILE))
+    return nuevos
+
+
+def asientos_producidos() -> list:
+    """Todo lo que el pipeline ha producido hasta hoy (lista, mas antiguo primero)."""
+    import json
+    try:
+        with open(ASIENTOS_FILE, "r", encoding="utf-8") as f:
+            reg = json.load(f)
+        return reg if isinstance(reg, list) else []
+    except Exception:
+        return []
+
+
+def _ficheros_facturas() -> list:
+    """Todos los Excel donde puede vivir una factura, el mas reciente primero.
+
+    Antes solo se miraba `facturas_contabilizadas_*.xlsx` (lo que deja el
+    asignador). Las facturas que entran por el lote del panel viven en
+    `facturas_ap_*.xlsx` y el paso 4/4 fallaba con "No se encontro ..." aunque
+    el paso 2/4 las hubiera leido perfectamente (almacen_datos lee los dos).
+    """
+    return sorted(
+        glob.glob(str(PROCESADAS_DIR / "facturas_contabilizadas_*.xlsx"))
+        + glob.glob(str(PROCESADAS_DIR / "facturas_ap_*.xlsx")),
+        key=os.path.getmtime, reverse=True,
     )
+
+
+def cargar_facturas() -> tuple:
+    """Carga el Excel de facturas mas reciente. Sin ninguno: (df vacio, '')."""
+    archivos = _ficheros_facturas()
     if not archivos:
-        raise FileNotFoundError("No se encontró facturas_contabilizadas_*.xlsx")
+        return pd.DataFrame(), ""
     df = pd.read_excel(archivos[0])
     return df, archivos[0]
 
@@ -105,22 +178,41 @@ def actualizar_estados(resultados: list) -> tuple:
     if _n_reg:
         print(f"  \U0001f4d2 {_n_reg} apuntada(s) en el registro de contabilizadas")
 
-    df, ruta_original = cargar_facturas()
+    stats = {"actualizadas": 0, "errores": 0, "ya_contabilizadas": 0, "sin_excel": 0}
+    archivos = _ficheros_facturas()
+    if not archivos:
+        # Sin ningun Excel de facturas (disco recien vaciado, o cero facturas)
+        # no hay nada que marcar: el registro de arriba ya guarda lo que se
+        # contabilizo de verdad. No es un error del pipeline.
+        print("  ℹ  No hay ningún Excel de facturas que marcar (el registro aparte queda actualizado)")
+        stats["sin_excel"] = len(resultados or [])
+        return pd.DataFrame(), "", stats
 
-    # Asegurar que existen las columnas Oracle
-    for col in ("oracle_status", "oracle_id", "fecha_contabilizacion"):
-        if col not in df.columns:
-            df[col] = ""
-
-    stats = {"actualizadas": 0, "errores": 0, "ya_contabilizadas": 0}
+    # Cada factura se marca EN EL EXCEL DONDE VIVE (puede haber varios).
+    dfs = {}
+    for ruta in archivos:
+        try:
+            dfs[ruta] = pd.read_excel(ruta)
+        except Exception as e:
+            print(f"  ⚠  no se pudo abrir {Path(ruta).name}: {str(e)[:60]}")
+    tocados = set()
 
     for res in resultados:
         num_fac = str(res.get("numero_factura", "")).strip()
-        mask    = df["numero_factura"].astype(str).str.strip() == num_fac
-
-        if not mask.any():
-            print(f"  ⚠  {num_fac} no encontrada en el Excel de facturas")
+        df = ruta_original = None
+        for ruta, d in dfs.items():
+            if "numero_factura" in d.columns and (d["numero_factura"].astype(str).str.strip() == num_fac).any():
+                df, ruta_original = d, ruta
+                break
+        if df is None:
+            print(f"  ⚠  {num_fac} no encontrada en ningún Excel de facturas")
+            stats["sin_excel"] += 1
             continue
+        for col in ("oracle_status", "oracle_id", "fecha_contabilizacion"):
+            if col not in df.columns:
+                df[col] = ""
+        mask = df["numero_factura"].astype(str).str.strip() == num_fac
+        tocados.add(ruta_original)
 
         estado_actual = str(df.loc[mask, "oracle_status"].iloc[0]).upper()
         if estado_actual == "CONTABILIZADA":
@@ -140,17 +232,19 @@ def actualizar_estados(resultados: list) -> tuple:
             print(f"  ✗  {num_fac} → ERROR: {res.get('error','')[:60]}")
             stats["errores"] += 1
 
-    # Guardar en mismo archivo (sobrescribir)
-    df.to_excel(ruta_original, index=False)
-    print(f"  💾 Excel actualizado: {Path(ruta_original).name}")
+    # Guardar cada Excel tocado en su mismo sitio (sobrescribir)
+    for ruta in sorted(tocados):
+        dfs[ruta].to_excel(ruta, index=False)
+        print(f"  💾 Excel actualizado: {Path(ruta).name}")
 
-    return df, ruta_original, stats
+    df_todo = pd.concat(list(dfs.values()), ignore_index=True) if dfs else pd.DataFrame()
+    return df_todo, (archivos[0] if archivos else ""), stats
 
 
 def mostrar_resumen_oracle(df: pd.DataFrame):
     """Muestra en consola el resumen del estado Oracle de todas las facturas."""
-    if "oracle_status" not in df.columns:
-        print("  (sin columna oracle_status)")
+    if df is None or df.empty or "oracle_status" not in df.columns:
+        print("  (sin facturas con estado Oracle)")
         return
 
     conteo = df["oracle_status"].fillna("PENDIENTE").value_counts()

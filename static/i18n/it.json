@@ -349,6 +349,7 @@
   "oracle.avisoSim": "Modalità simulazione: le scritture vengono generate in un Excel di prova. Non viene scritto nulla in un Oracle reale.",
   "oracle.chipReal": "Oracle reale collegato",
   "oracle.chipSim": "simulazione · nessun Oracle reale",
+  "oracle.exportGl": "⬇️ Scritture GL",
   "oracle.simOk": "Simulazione terminata: scritture in Excel, nulla contabilizzato in Oracle",
   "oracle.titleReal": "Contabilizza le fatture approvate in Oracle Fusion",
   "oracle.titleSim": "Modalità simulazione: genera le scritture in un Excel; non contabilizza in nessun Oracle reale",

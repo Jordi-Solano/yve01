@@ -140,6 +140,16 @@ def run_pipeline(dry_run: bool = False) -> dict:
         stats["errores"] += 1
         return stats
 
+    # Lo que el pipeline ha producido DE VERDAD, en crudo: es la unica fuente
+    # del exportador GL (oracle_export_dryrun). Nunca asientos inventados.
+    try:
+        from oracle_actualizar_estado import guardar_asientos_producidos
+        _n_as = guardar_asientos_producidos(resultados)
+        if _n_as:
+            log(f"Asientos guardados para el exportador GL: {_n_as}", "OK")
+    except Exception as _ea:
+        log(f"No se pudieron guardar los asientos para el exportador: {str(_ea)[:70]}", "WARN")
+
     ok_results  = [r for r in resultados if "CONTABILIZADA" in r.get("estado","")]
     err_results = [r for r in resultados if "CONTABILIZADA" not in r.get("estado","")]
 

@@ -349,6 +349,7 @@
   "oracle.avisoSim": "Modo simulação: os lançamentos são gerados num Excel de teste. Nada é escrito num Oracle real.",
   "oracle.chipReal": "Oracle real ligado",
   "oracle.chipSim": "simulação · sem Oracle real",
+  "oracle.exportGl": "⬇️ Lançamentos GL",
   "oracle.simOk": "Simulação terminada: lançamentos em Excel, nada contabilizado no Oracle",
   "oracle.titleReal": "Contabilizar as faturas aprovadas no Oracle Fusion",
   "oracle.titleSim": "Modo simulação: gera os lançamentos num Excel; não contabiliza em nenhum Oracle real",

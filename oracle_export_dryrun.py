@@ -1,20 +1,28 @@
 """
 oracle_export_dryrun.py — Yve.01
-Genera asientos contables en formato Oracle GL sin necesidad de credenciales.
-Exporta a Excel para importación manual.
+Exporta a formato Oracle GL (GL_INTERFACE) los asientos que el pipeline de
+Oracle ha PRODUCIDO DE VERDAD, para importarlos a mano cuando no hay conexion.
+
+Fuente unica: reportes/oracle_asientos_producidos.json, que escribe
+oracle_pipeline en cada ejecucion (simulacion o produccion). Si el pipeline no
+ha corrido, aqui no hay nada que exportar y se dice.
+
+Decision de Jordi (3 sep 2026): este blueprint solo se registra porque exporta
+lo producido; NUNCA asientos inventados (la version anterior se inventaba
+asientos desde proveedores.xlsx cuando no habia informes — por eso estuvo sin
+registrar).
 """
-import os, json
-import pandas as pd
-from datetime import datetime, date
-from flask import Blueprint, jsonify, send_file, request
+import os
+from datetime import date
 from io import BytesIO
 
-oracle_export_bp = Blueprint('oracle_export', __name__)
-BASE_DIR   = os.path.dirname(os.path.abspath(__file__))
-DATOS      = os.path.join(BASE_DIR, 'datos-referencia')
-REPORTES   = os.path.join(BASE_DIR, 'reportes')
+import pandas as pd
+from flask import Blueprint, jsonify, request, send_file
 
-# Oracle GL column mapping (Fusion format)
+oracle_export_bp = Blueprint('oracle_export', __name__)
+BASE_DIR = os.path.dirname(os.path.abspath(__file__))
+
+# Oracle GL column mapping (Fusion GL_INTERFACE)
 GL_COLUMNS = [
     'STATUS', 'LEDGER_NAME', 'ACCOUNTING_DATE', 'CURRENCY_CODE',
     'USER_JE_CATEGORY_NAME', 'USER_JE_SOURCE_NAME', 'REFERENCE_DATE',
@@ -23,21 +31,36 @@ GL_COLUMNS = [
     'DESCRIPTION', 'ATTRIBUTE1', 'ATTRIBUTE2', 'CONVERSION_TYPE',
     'CONVERSION_RATE', 'PERIOD_NAME'
 ]
+ESTADOS_EXPORTABLES = ('CONTABILIZADA', 'CONTABILIZADA_SIM')
 
-def _get_config():
-    cfg_path = os.path.join(DATOS, 'hotel_config.json')
-    if os.path.exists(cfg_path):
-        with open(cfg_path) as f: return json.load(f)
-    return {'hotel_nombre': 'Hotel Demo', 'hotel_habitaciones': 142}
+
+def _ledger():
+    try:
+        from oracle_auth import ORACLE_LEDGER_NAME
+        return ORACLE_LEDGER_NAME
+    except Exception:
+        return 'Yve Ledger'
+
 
 def _period_name(dt):
-    """Format date as Oracle period: MAY-26"""
-    months = ['JAN','FEB','MAR','APR','MAY','JUN','JUL','AUG','SEP','OCT','NOV','DEC']
+    """Fecha -> periodo Oracle: MAY-26."""
+    months = ['JAN', 'FEB', 'MAR', 'APR', 'MAY', 'JUN', 'JUL', 'AUG', 'SEP', 'OCT', 'NOV', 'DEC']
     d = pd.Timestamp(dt)
-    return f"{months[d.month-1]}-{str(d.year)[2:]}"
+    return f"{months[d.month - 1]}-{str(d.year)[2:]}"
+
+
+def _fecha(v):
+    s = str(v or '').strip()
+    try:
+        d = pd.to_datetime(s, dayfirst=not (len(s) >= 10 and s[4] == '-'), errors='coerce')
+        if pd.isna(d):
+            return date.today().isoformat()
+        return d.date().isoformat()
+    except Exception:
+        return date.today().isoformat()
+
 
 def _make_gl_row(ledger, date_str, cat, seg1, seg2, seg3, seg4, dr, cr, desc, ref1='', ref2=''):
-    period = _period_name(date_str)
     return {
         'STATUS': 'NEW',
         'LEDGER_NAME': ledger,
@@ -52,101 +75,94 @@ def _make_gl_row(ledger, date_str, cat, seg1, seg2, seg3, seg4, dr, cr, desc, re
         'ENTERED_CR': round(cr, 2) if cr else '',
         'ACCOUNTED_DR': round(dr, 2) if dr else '',
         'ACCOUNTED_CR': round(cr, 2) if cr else '',
-        'DESCRIPTION': desc[:240],
+        'DESCRIPTION': str(desc)[:240],
         'ATTRIBUTE1': ref1, 'ATTRIBUTE2': ref2,
         'CONVERSION_TYPE': 'User', 'CONVERSION_RATE': 1.0,
-        'PERIOD_NAME': period
+        'PERIOD_NAME': _period_name(date_str),
     }
 
-def _generate_journal_from_ap():
-    """Generate Oracle GL journal entries from AP matching reports."""
-    import glob as _g
-    cfg = _get_config()
-    ledger = cfg.get('ledger_name', f"{cfg.get('hotel_nombre','Hotel')} Ledger")
-    
+
+def asientos_exportables(solo_estados=ESTADOS_EXPORTABLES):
+    """Los asientos producidos, uno por factura (la ultima ejecucion manda)."""
+    from oracle_actualizar_estado import asientos_producidos
+    ultimo = {}
+    for a in asientos_producidos():
+        num = str(a.get('numero_factura') or '').strip()
+        if not num:
+            continue
+        ultimo[num] = a                      # el mas reciente pisa al anterior
+    out = [a for a in ultimo.values() if str(a.get('estado', '')).upper() in solo_estados]
+    out.sort(key=lambda a: (a.get('timestamp', ''), a.get('numero_factura', '')))
+    return out
+
+
+def gl_rows(asientos):
+    """Lineas GL_INTERFACE a partir de los asientos producidos. Sin inventar nada."""
+    ledger = _ledger()
     rows = []
-    hits = _g.glob(os.path.join(REPORTES, 'matching_*.xlsx'))
-    
-    if not hits:
-        # Generate demo entries from proveedores.xlsx
-        ruta = os.path.join(DATOS, 'proveedores.xlsx')
-        if not os.path.exists(ruta): return []
-        df = pd.read_excel(ruta)
-        today = date.today().isoformat()
-        for _, prov in df.iterrows():
-            importe = float(prov.get('importe_mensual_estimado', 5000) or 5000)
-            base    = round(importe / 1.10, 2)
-            iva     = round(importe - base, 2)
-            cuenta  = str(prov.get('cuenta_contable', '6000'))
-            nombre  = str(prov.get('nombre', 'Proveedor'))
-            
-            # DEBE: Gasto
-            rows.append(_make_gl_row(ledger, today, 'Accounts Payable',
-                '01', '1000', cuenta, '0000',
-                dr=base, cr=0, desc=f'Gasto {nombre}', ref1=nombre))
-            # DEBE: IVA soportado
-            rows.append(_make_gl_row(ledger, today, 'Accounts Payable',
-                '01', '1000', '4720', '0000',
-                dr=iva, cr=0, desc=f'IVA soportado {nombre}', ref1=nombre))
-            # HABER: Proveedor
-            rows.append(_make_gl_row(ledger, today, 'Accounts Payable',
-                '01', '1000', '4000', '0000',
-                dr=0, cr=importe, desc=f'Factura {nombre}', ref1=nombre))
-        return rows
-    
-    for ruta in hits[:3]:  # Max 3 report files
-        df = pd.read_excel(ruta)
-        for _, row in df.iterrows():
-            if str(row.get('aprobacion','')) != 'APROBADA': continue
-            importe = float(row.get('importe_con_iva', 0) or 0)
-            base    = round(importe / 1.10, 2)
-            iva     = round(importe - base, 2)
-            cuenta  = str(row.get('cuenta_contable', '6000'))
-            prov    = str(row.get('proveedor', 'Proveedor'))[:30]
-            num_fac = str(row.get('numero_factura', ''))[:20]
-            fecha   = str(row.get('fecha_factura', date.today()))[:10]
-            
-            rows.append(_make_gl_row(ledger, fecha, 'Accounts Payable',
-                '01', '1000', cuenta, '0000', dr=base, cr=0,
-                desc=f'GASTO {prov}', ref1=num_fac, ref2=prov))
-            rows.append(_make_gl_row(ledger, fecha, 'Accounts Payable',
-                '01', '1000', '4720', '0000', dr=iva, cr=0,
-                desc=f'IVA {prov}', ref1=num_fac))
-            rows.append(_make_gl_row(ledger, fecha, 'Accounts Payable',
-                '01', '1000', '4000', '0000', dr=0, cr=importe,
-                desc=f'PROV {prov}', ref1=num_fac, ref2=prov))
+    for a in asientos:
+        num = str(a.get('numero_factura', ''))
+        fecha = _fecha(a.get('fecha'))
+        for l in a.get('journal_lines') or []:
+            comb = str(l.get('combination') or '')
+            partes = comb.split('.') if comb else []
+            seg1 = str(l.get('entity') or (partes[0] if len(partes) > 0 else ''))
+            seg2 = str(l.get('department') or (partes[1] if len(partes) > 1 else ''))
+            seg3 = str(l.get('account') or (partes[2] if len(partes) > 2 else ''))
+            dr = float(l.get('debit') or 0)
+            cr = float(l.get('credit') or 0)
+            if not dr and not cr:
+                continue
+            rows.append(_make_gl_row(ledger, _fecha(l.get('accounting_date') or fecha),
+                                     'Purchase Invoices', seg1, seg2, seg3, '0000',
+                                     dr, cr, l.get('description') or '', num,
+                                     str(a.get('oracle_id') or '')))
     return rows
+
 
 @oracle_export_bp.route('/api/oracle/dryrun')
 def api_oracle_dryrun():
-    """Preview Oracle journal entries as JSON."""
-    rows = _generate_journal_from_ap()
+    """Vista previa: que se exportaria (JSON)."""
+    asientos = asientos_exportables()
+    rows = gl_rows(asientos)
     total_dr = sum(float(r.get('ENTERED_DR') or 0) for r in rows)
     total_cr = sum(float(r.get('ENTERED_CR') or 0) for r in rows)
     return jsonify({
         'ok': True,
-        'mode': 'dry_run',
+        'mode': 'producido_por_el_pipeline',
+        'facturas': len(asientos),
         'entries': len(rows),
         'total_debe': round(total_dr, 2),
         'total_haber': round(total_cr, 2),
         'balanced': abs(total_dr - total_cr) < 0.01,
         'sample': rows[:5],
+        'nota': ('Solo asientos que el pipeline de Oracle ha producido (simulacion o real). '
+                 'Sin ejecucion del pipeline no hay nada que exportar.'),
     })
+
 
 @oracle_export_bp.route('/api/oracle/export_excel')
 def api_oracle_export_excel():
-    """Export Oracle GL journal entries as Excel for manual import."""
-    rows = _generate_journal_from_ap()
+    """Excel GL_INTERFACE con lo producido por el pipeline, para importar a mano."""
+    asientos = asientos_exportables()
+    rows = gl_rows(asientos)
     if not rows:
-        return jsonify({'error': 'Sin asientos que exportar'}), 404
-    
+        return jsonify({'ok': False,
+                        'error': 'Sin asientos que exportar: el pipeline de Oracle no ha producido ninguno todavia.'}), 404
+
     df = pd.DataFrame(rows, columns=GL_COLUMNS)
-    
+    origen = pd.DataFrame([{
+        'numero_factura': a.get('numero_factura'), 'proveedor': a.get('nombre_proveedor'),
+        'fecha': a.get('fecha'), 'total_factura': a.get('total_factura'),
+        'estado': a.get('estado'), 'modo': a.get('modo'), 'oracle_id': a.get('oracle_id'),
+        'batch': a.get('batch_name'), 'producido': a.get('timestamp'),
+    } for a in asientos])
+
     buf = BytesIO()
     with pd.ExcelWriter(buf, engine='openpyxl') as writer:
         df.to_excel(writer, sheet_name='GL_INTERFACE', index=False)
+        origen.to_excel(writer, sheet_name='Origen', index=False)
         ws = writer.sheets['GL_INTERFACE']
-        # Style header
         from openpyxl.styles import PatternFill, Font, Alignment
         header_fill = PatternFill(start_color='0F172A', end_color='0F172A', fill_type='solid')
         for cell in ws[1]:
@@ -156,19 +172,8 @@ def api_oracle_export_excel():
         ws.freeze_panes = 'A2'
         for col in ws.columns:
             ws.column_dimensions[col[0].column_letter].width = 16
-    
+
     buf.seek(0)
     fname = f"oracle_gl_journal_{date.today().strftime('%Y%m%d')}.xlsx"
     return send_file(buf, mimetype='application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
                      as_attachment=True, download_name=fname)
-
-@oracle_export_bp.route('/api/oracle/status')
-def api_oracle_status():
-    """Check Oracle connectivity (sim vs real)."""
-    oracle_url = os.environ.get('ORACLE_BASE_URL', '')
-    return jsonify({
-        'mode': 'real' if oracle_url else 'simulation',
-        'connected': bool(oracle_url),
-        'message': 'Oracle Fusion conectado' if oracle_url else 'Modo simulación activo — exporta a Excel para importar manualmente',
-        'export_url': '/api/oracle/export_excel',
-    })

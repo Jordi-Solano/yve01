@@ -155,9 +155,9 @@ def main():
             fallos += 1
 
         # ── 5 · el candado de la Fase 0: nada sin APROBADA ──────────
-        # La simulacion IGNORA la aprobacion a proposito (`bypass` implicito),
-        # asi que para probar la puerta hay que apagarla: lo que se quiere
-        # comprobar es el camino de VERDAD, el que llega al libro mayor.
+        # Desde el 3 sep 2026 la simulacion respeta la puerta igual que el
+        # real; se sigue apagando is_simulation para probar el camino de
+        # VERDAD, el que llega al libro mayor, sin depender de esa igualdad.
         _sim = ORA.is_simulation
         ORA.is_simulation = lambda: False
         shutil.rmtree(raiz, ignore_errors=True)

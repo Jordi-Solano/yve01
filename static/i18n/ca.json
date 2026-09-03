@@ -349,6 +349,7 @@
   "oracle.avisoSim": "Mode simulació: es generen els assentaments en un Excel de prova. No s’escriu res en un Oracle real.",
   "oracle.chipReal": "Oracle real connectat",
   "oracle.chipSim": "simulació · sense Oracle real",
+  "oracle.exportGl": "⬇️ Assentaments GL",
   "oracle.simOk": "Simulació acabada: assentaments a Excel, res comptabilitzat a Oracle",
   "oracle.titleReal": "Comptabilitza les factures aprovades a Oracle Fusion",
   "oracle.titleSim": "Mode simulació: genera els assentaments en un Excel; no comptabilitza en cap Oracle real",

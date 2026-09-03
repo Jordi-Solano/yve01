@@ -195,6 +195,7 @@ from tab_fb_dashboard import fb_bp
 from tab_ar_real import ar_real_bp
 from reclamaciones_ota import recl_ota_bp
 from reclamaciones_ap import recl_ap_bp
+from oracle_export_dryrun import oracle_export_bp   # exporta SOLO lo producido por el pipeline
 from oracle_export_dryrun import oracle_export_bp
 from pricing import pricing_bp
 from tab_multi_hotel import multi_hotel_bp
@@ -216,7 +217,7 @@ from about import about_bp
 from exportador_pdf import pdf_bp
 # pricing_bp estaba importado pero NO registrado: /precios daba 404 mientras la
 # landing, el blog y "Quienes somos" enlazaban a el (Ola A).
-for _bp in (auth_bp, config_bp, admin_bp, aprob_ar_bp, aprob_ap_bp, concil_bp, fb_bp, ar_real_bp, recl_ota_bp, recl_ap_bp, multi_hotel_bp, self_service_bp, exportador_bp, demo_bp, demo_sim_bp, reportes_pdf_bp, blog_bp, billing_bp, asientos_bp, signup_bp, about_bp, pdf_bp, legal_bp, pricing_bp):
+for _bp in (auth_bp, config_bp, admin_bp, aprob_ar_bp, aprob_ap_bp, concil_bp, fb_bp, ar_real_bp, recl_ota_bp, recl_ap_bp, oracle_export_bp, multi_hotel_bp, self_service_bp, exportador_bp, demo_bp, demo_sim_bp, reportes_pdf_bp, blog_bp, billing_bp, asientos_bp, signup_bp, about_bp, pdf_bp, legal_bp, pricing_bp):
     app.register_blueprint(_bp)
 
 
@@ -6336,7 +6337,7 @@ svg.yvi{width:1em;height:1em;vertical-align:-0.125em;flex-shrink:0;display:inlin
   <div id="panel-ap" class="panel">
   <div style="display:flex;justify-content:flex-end;gap:12px;margin-bottom:14px"><a href="/api/exportar/ap" style="background:var(--acc);color:white;padding:8px 16px;border-radius:8px;text-decoration:none;font-weight:600;font-size:13px" data-i18n="btn.downloadExcel" data-i18n="btn.downloadExcel">⬇️ Descargar Excel</a><a href="/aprobaciones-ap/" class="btn-ref" style="text-decoration:none" title="Abrir panel de aprobaciones AP" data-i18n="btn.aprobarAP">📲 Aprobar facturas AP</a>
         <button class="btn-ref" onclick="aprobarMatchOK()" style="font-size:12px" title="Aprueba automáticamente todas las facturas con 3-way match correcto">✅ Aprobar Match OK</button>
-        <button class="btn-ref" id="btnOracle" onclick="procesarOracle()" style="font-size:12px" title="Genera los asientos de las facturas aprobadas">🔮 Contabilizar en Oracle</button><span id="oracle-modo-chip" style="display:none;font-size:11px;padding:3px 8px;border-radius:999px;background:rgba(245,158,11,.15);color:#f59e0b;border:1px solid rgba(245,158,11,.4);align-self:center"></span>
+        <button class="btn-ref" id="btnOracle" onclick="procesarOracle()" style="font-size:12px" title="Genera los asientos de las facturas aprobadas">🔮 Contabilizar en Oracle</button><span id="oracle-modo-chip" style="display:none;font-size:11px;padding:3px 8px;border-radius:999px;background:rgba(245,158,11,.15);color:#f59e0b;border:1px solid rgba(245,158,11,.4);align-self:center"></span><a href="/api/oracle/export_excel" class="btn-ref" style="text-decoration:none;font-size:12px" data-i18n="oracle.exportGl" title="GL_INTERFACE con los asientos que ha producido el pipeline (simulación o real)">⬇️ Asientos GL</a>
         <button class="btn-ref" onclick="filtrarAPPorEstado()" id="btn-filter-ap" style="font-size:12px">🔍 Filtrar</button>
         <select id="ap-estado-filter" onchange="filtrarAPPorEstado(this.value)" style="background:var(--s1);border:1px solid var(--s2);color:var(--tx);padding:6px 10px;border-radius:8px;font-size:12px;cursor:pointer">
           <option value="" data-i18n-opt="lbl.todos">Todos</option>
