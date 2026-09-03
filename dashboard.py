@@ -196,6 +196,7 @@ from tab_ar_real import ar_real_bp
 from reclamaciones_ota import recl_ota_bp
 from reclamaciones_ap import recl_ap_bp
 from oracle_export_dryrun import oracle_export_bp   # exporta SOLO lo producido por el pipeline
+from tab_cierre import cierre_bp
 from oracle_export_dryrun import oracle_export_bp
 from pricing import pricing_bp
 from tab_multi_hotel import multi_hotel_bp
@@ -217,7 +218,7 @@ from about import about_bp
 from exportador_pdf import pdf_bp
 # pricing_bp estaba importado pero NO registrado: /precios daba 404 mientras la
 # landing, el blog y "Quienes somos" enlazaban a el (Ola A).
-for _bp in (auth_bp, config_bp, admin_bp, aprob_ar_bp, aprob_ap_bp, concil_bp, fb_bp, ar_real_bp, recl_ota_bp, recl_ap_bp, oracle_export_bp, multi_hotel_bp, self_service_bp, exportador_bp, demo_bp, demo_sim_bp, reportes_pdf_bp, blog_bp, billing_bp, asientos_bp, signup_bp, about_bp, pdf_bp, legal_bp, pricing_bp):
+for _bp in (auth_bp, config_bp, admin_bp, aprob_ar_bp, aprob_ap_bp, concil_bp, fb_bp, ar_real_bp, recl_ota_bp, recl_ap_bp, oracle_export_bp, cierre_bp, multi_hotel_bp, self_service_bp, exportador_bp, demo_bp, demo_sim_bp, reportes_pdf_bp, blog_bp, billing_bp, asientos_bp, signup_bp, about_bp, pdf_bp, legal_bp, pricing_bp):
     app.register_blueprint(_bp)
 
 
@@ -6231,6 +6232,7 @@ svg.yvi{width:1em;height:1em;vertical-align:-0.125em;flex-shrink:0;display:inlin
     <button class="tab" onclick="switchTab('fb',this)" id="tab-fb" data-i18n="tab.fb">🍽️ F&amp;B Cost</button>
     <button class="tab" onclick="switchTab('ar_real',this)" id="tab-ar-real" data-i18n="tab.arreal">🏢 AR Real</button>
     <button class="tab" onclick="switchTab('multi_hotel',this)" id="tab-multi-hotel" data-i18n="tab.multihotel">🏨 Multi-Hotel</button>
+    <button class="tab" onclick="switchTab('cierre',this)" id="tab-cierre" data-i18n="tab.cierre">🧾 Cierre</button>
   </div>
 
   <div id="panel-ar" class="panel active">
@@ -6518,6 +6520,37 @@ svg.yvi{width:1em;height:1em;vertical-align:-0.125em;flex-shrink:0;display:inlin
       </div>
     </div>
   </div><!-- /panel-notif -->
+
+  <!-- PANEL CIERRE DE MES (Ola B). Solo lectura: asientos del mes + reconciliacion. -->
+  <div id="panel-cierre" class="panel">
+    <div style="display:flex;align-items:center;justify-content:space-between;gap:12px;flex-wrap:wrap;margin-bottom:14px">
+      <div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap">
+        <label for="cierre-mes" style="font-size:12px;color:var(--mut)" data-i18n="cierre.mes">Mes</label>
+        <input type="month" id="cierre-mes" onchange="loadCierre(true)" style="background:var(--bg);border:1px solid var(--s2);color:var(--tx);padding:6px 8px;border-radius:8px;font-size:12px">
+        <span id="cierre-hotel" style="font-size:12px;color:var(--dim)"></span>
+      </div>
+      <a id="cierre-excel" href="/api/exportar/cierre" class="btn-ref" style="text-decoration:none;font-size:12px" data-i18n="cierre.descargar">⬇️ Excel del cierre</a>
+    </div>
+    <div class="stats" id="cierre-stats" style="margin-bottom:14px">
+      <div class="stat"><div class="stat-label" data-i18n="cierre.kAsientos">Asientos</div><div class="stat-value" id="cierre-k-asientos">—</div></div>
+      <div class="stat"><div class="stat-label" data-i18n="cierre.kDebe">Debe</div><div class="stat-value" id="cierre-k-debe">—</div></div>
+      <div class="stat"><div class="stat-label" data-i18n="cierre.kHaber">Haber</div><div class="stat-value" id="cierre-k-haber">—</div></div>
+      <div class="stat"><div class="stat-label" data-i18n="cierre.kCuadre">Cuadre</div><div class="stat-value" id="cierre-k-cuadre">—</div></div>
+    </div>
+    <div class="card" id="card-cierre-recon" style="margin-bottom:22px">
+      <div class="card-title" data-i18n="cierre.recon">Reconciliación de cuentas</div>
+      <div id="cierre-recon-body" style="font-size:13px;color:var(--mut)"><div class="empty"><p data-i18n="cierre.cargando">Montando el mes…</p></div></div>
+    </div>
+    <div class="card" id="card-cierre-mayor" style="margin-bottom:22px">
+      <div class="card-title" data-i18n="cierre.mayor">Mayor del mes (por cuenta)</div>
+      <div id="cierre-mayor-body" style="font-size:13px;color:var(--mut)"></div>
+    </div>
+    <div class="card" id="card-cierre-diario">
+      <div class="card-title" data-i18n="cierre.diario">Libro Diario del mes</div>
+      <div id="cierre-avisos" style="font-size:12px;color:#f59e0b;margin-bottom:8px"></div>
+      <div id="cierre-diario-body" style="font-size:12px;color:var(--mut);overflow-x:auto"></div>
+    </div>
+  </div><!-- /panel-cierre -->
 
   <!-- PANEL F&B -->
 
@@ -13512,8 +13545,49 @@ var _CARGADORES = {
   drr:         function(){ return loadDRR(); },
   banco:       function(){ return loadBanco(); },
   notif:       function(){ return loadNotifConfig(); },
-  multi_hotel: function(){ return loadMultiHotel(); }
+  multi_hotel: function(){ return loadMultiHotel(); },
+  cierre:      function(){ return loadCierre(); }
 };
+
+// ── Cierre de mes (Ola B) ─────────────────────────────────────────────────
+function _cEsc(s){ return String(s==null?'':s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;'); }
+function _cEur(v){ return (v==null||isNaN(Number(v))) ? '—' : Number(v).toLocaleString('es-ES',{minimumFractionDigits:2,maximumFractionDigits:2}) + ' €'; }
+async function loadCierre(forzar){
+  var inp = document.getElementById('cierre-mes');
+  if (!inp) return;
+  if (!inp.value) { var d=new Date(); inp.value = d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0'); }
+  var mes = inp.value;
+  var ex = document.getElementById('cierre-excel'); if (ex) ex.href = '/api/exportar/cierre?mes=' + encodeURIComponent(mes);
+  var rb = document.getElementById('cierre-recon-body'), mb = document.getElementById('cierre-mayor-body'), db = document.getElementById('cierre-diario-body'), av = document.getElementById('cierre-avisos');
+  try {
+    var r = await fetch('/api/cierre/asientos?mes=' + encodeURIComponent(mes));
+    var d = await r.json();
+    if (!d || !d.ok) { rb.innerHTML = '<div class="empty"><p>' + _cEsc((d&&d.error)||'Error') + '</p></div>'; return; }
+    var hs = document.getElementById('cierre-hotel'); if (hs) hs.textContent = d.hotel ? '' : t('cierre.grupo','vista de grupo (todos los hoteles)');
+    document.getElementById('cierre-k-asientos').textContent = d.n_asientos;
+    document.getElementById('cierre-k-debe').textContent = _cEur(d.debe);
+    document.getElementById('cierre-k-haber').textContent = _cEur(d.haber);
+    var kc = document.getElementById('cierre-k-cuadre'); kc.textContent = d.cuadra ? t('cierre.cuadra','✓ cuadra') : t('cierre.noCuadra','✗ no cuadra'); kc.style.color = d.cuadra ? '#22c55e' : '#f87171';
+    var f = d.fuentes || {};
+    var fuentes = t('cierre.fuentes','{ap} facturas AP · {ota} comisiones OTA · {fb} días de TPV · {ar} facturas AR · {cob} cobros · {bk} mov. banco · {pv} provisiones')
+      .replace('{ap}', f.ap||0).replace('{ota}', f.ar_ota||0).replace('{fb}', f.ventas_fb||0).replace('{ar}', f.ar_facturas||0).replace('{cob}', f.ar_cobros||0).replace('{bk}', f.banco||0).replace('{pv}', f.provisiones||0);
+    av.innerHTML = '<div style="color:var(--dim)">' + _cEsc(fuentes) + '</div>' + (d.avisos||[]).map(function(a){ return '<div>⚠ ' + _cEsc(a) + '</div>'; }).join('');
+    // reconciliacion
+    var rec = d.reconciliacion || {}; var chk = rec.checks || [];
+    var COL = {CUADRA:'#22c55e', DIFERENCIA:'#f87171', PENDIENTE:'#f59e0b', SIN_DATO:'var(--mut)', REVISAR:'#f87171', INFO:'var(--dim)'};
+    var LBL = {CUADRA:t('cierre.stCuadra','✓ cuadra'), DIFERENCIA:t('cierre.stDif','⚠ diferencia'), PENDIENTE:t('cierre.stPend','pendiente'), SIN_DATO:t('cierre.stSinDato','sin dato'), REVISAR:t('cierre.stRevisar','revisar'), INFO:'info'};
+    rb.innerHTML = (chk.length ? '<div style="overflow-x:auto"><table style="width:100%;border-collapse:collapse;font-size:12px"><thead><tr style="color:var(--dim);text-align:left"><th>' + t('cierre.hCuenta','Cuenta') + '</th><th>' + t('cierre.hConcepto','Comprobación') + '</th><th style="text-align:right">' + t('cierre.hLibro','Libro') + '</th><th style="text-align:right">' + t('cierre.hJust','Justificado') + '</th><th style="text-align:right">' + t('cierre.hDif','Diferencia') + '</th><th></th></tr></thead><tbody>' +
+      chk.map(function(c){ return '<tr style="border-top:1px solid var(--s2)"><td style="padding:6px 4px;font-weight:700">' + _cEsc(c.cuenta) + '</td><td style="padding:6px 4px">' + _cEsc(c.concepto) + (c.nota ? '<div style="font-size:11px;color:var(--dim)">' + _cEsc(c.nota) + '</div>' : '') + '</td><td style="text-align:right;padding:6px 4px">' + _cEur(c.libro) + '</td><td style="text-align:right;padding:6px 4px">' + (c.justificado==null?'—':_cEur(c.justificado)) + '</td><td style="text-align:right;padding:6px 4px">' + (c.diferencia==null?'—':_cEur(c.diferencia)) + '</td><td style="padding:6px 4px;text-align:right"><span style="font-size:11px;font-weight:700;color:' + (COL[c.estado]||'var(--mut)') + '">' + _cEsc(LBL[c.estado]||c.estado) + '</span></td></tr>'; }).join('') + '</tbody></table></div>' : '<div class="empty"><p>' + t('cierre.vacio','Sin datos en este mes.') + '</p></div>');
+    // mayor
+    var my = d.mayor || [];
+    mb.innerHTML = my.length ? '<div style="overflow-x:auto"><table style="width:100%;border-collapse:collapse;font-size:12px"><thead><tr style="color:var(--dim);text-align:left"><th>' + t('cierre.hCuenta','Cuenta') + '</th><th></th><th style="text-align:right">' + t('cierre.kDebe','Debe') + '</th><th style="text-align:right">' + t('cierre.kHaber','Haber') + '</th><th style="text-align:right">' + t('cierre.hSaldo','Saldo') + '</th></tr></thead><tbody>' +
+      my.map(function(m){ return '<tr style="border-top:1px solid var(--s2)"><td style="padding:5px 4px;font-weight:700">' + _cEsc(m.cuenta) + '</td><td style="padding:5px 4px">' + _cEsc(m.descripcion) + '</td><td style="text-align:right;padding:5px 4px">' + _cEur(m.debe) + '</td><td style="text-align:right;padding:5px 4px">' + _cEur(m.haber) + '</td><td style="text-align:right;padding:5px 4px;font-weight:700">' + _cEur(m.saldo) + '</td></tr>'; }).join('') + '</tbody></table></div>' : '<div class="empty"><p>' + t('cierre.vacio','Sin datos en este mes.') + '</p></div>';
+    // diario
+    var as = d.asientos || [];
+    db.innerHTML = as.length ? '<table style="width:100%;border-collapse:collapse;font-size:11px"><thead><tr style="color:var(--dim);text-align:left"><th>#</th><th>' + t('cierre.hFecha','Fecha') + '</th><th>' + t('cierre.hCuenta','Cuenta') + '</th><th>' + t('cierre.hConceptoD','Concepto') + '</th><th style="text-align:right">' + t('cierre.kDebe','Debe') + '</th><th style="text-align:right">' + t('cierre.kHaber','Haber') + '</th><th>' + t('cierre.hOrigen','Origen') + '</th></tr></thead><tbody>' +
+      as.map(function(a){ return '<tr style="border-top:1px solid var(--s2)"><td style="padding:3px 4px">' + a.num + '</td><td style="padding:3px 4px;white-space:nowrap">' + _cEsc(a.fecha) + '</td><td style="padding:3px 4px;white-space:nowrap"><b>' + _cEsc(a.cuenta) + '</b> ' + _cEsc(a.desc_cuenta) + '</td><td style="padding:3px 4px">' + _cEsc(a.concepto) + '</td><td style="text-align:right;padding:3px 4px">' + (a.debe?_cEur(a.debe):'') + '</td><td style="text-align:right;padding:3px 4px">' + (a.haber?_cEur(a.haber):'') + '</td><td style="padding:3px 4px;color:var(--dim)">' + _cEsc(a.origen) + '</td></tr>'; }).join('') + '</tbody></table>' + (d.truncado ? '<div style="color:var(--dim);margin-top:6px">' + t('cierre.truncado','Se muestran las primeras líneas; el Excel lleva todas.') + '</div>' : '') : '<div class="empty"><p>' + t('cierre.vacio','Sin datos en este mes.') + '</p></div>';
+  } catch(e) { if (rb) rb.innerHTML = '<div class="empty"><p>' + _cEsc(e.message) + '</p></div>'; }
+}
 
 function _cargarPanel(tab, panel, forzar) {
   var fn = _CARGADORES[tab];
