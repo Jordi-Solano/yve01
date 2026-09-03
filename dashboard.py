@@ -731,8 +731,20 @@ def sitemap_xml():
 @app.route("/health")
 @app.route('/api/oracle/status')
 def api_oracle_status():
-    mode='real' if os.environ.get('ORACLE_BASE_URL') else 'simulation'
-    return jsonify({'mode':mode,'ok':True})
+    """Si Oracle esta en simulacion o de verdad.
+
+    BOMBA 2 — antes decidia por `ORACLE_BASE_URL` a secas, pero `oracle_auth`
+    (lo que ejecuta el pipeline) considera simulacion mientras falten
+    `ORACLE_CLIENT_ID` / `ORACLE_CLIENT_SECRET` o la URL sea la de plantilla.
+    Dos criterios = una pantalla que dice "real" mientras el pipeline simula.
+    Aqui manda `oracle_auth.is_simulation()`, y se consulta EN CADA peticion.
+    """
+    try:
+        from oracle_auth import is_simulation as _is_sim
+        sim = bool(_is_sim())
+    except Exception:
+        sim = True                       # ante la duda, nunca decir "real"
+    return jsonify({'mode': 'simulation' if sim else 'real', 'simulacion': sim, 'ok': True})
 
 # ── PWA: service worker servido desde la raíz para controlar todo el origen ──
 @app.route("/sw.js")
@@ -6188,6 +6200,7 @@ svg.yvi{width:1em;height:1em;vertical-align:-0.125em;flex-shrink:0;display:inlin
   <div id="panel-ap" class="panel">
   <div style="display:flex;justify-content:flex-end;gap:12px;margin-bottom:14px"><a href="/api/exportar/ap" style="background:var(--acc);color:white;padding:8px 16px;border-radius:8px;text-decoration:none;font-weight:600;font-size:13px" data-i18n="btn.downloadExcel" data-i18n="btn.downloadExcel">⬇️ Descargar Excel</a><a href="/aprobaciones-ap/" class="btn-ref" style="text-decoration:none" title="Abrir panel de aprobaciones AP" data-i18n="btn.aprobarAP">📲 Aprobar facturas AP</a>
         <button class="btn-ref" onclick="aprobarMatchOK()" style="font-size:12px" title="Aprueba automáticamente todas las facturas con 3-way match correcto">✅ Aprobar Match OK</button>
+        <button class="btn-ref" id="btnOracle" onclick="procesarOracle()" style="font-size:12px" title="Genera los asientos de las facturas aprobadas">🔮 Contabilizar en Oracle</button><span id="oracle-modo-chip" style="display:none;font-size:11px;padding:3px 8px;border-radius:999px;background:rgba(245,158,11,.15);color:#f59e0b;border:1px solid rgba(245,158,11,.4);align-self:center"></span>
         <button class="btn-ref" onclick="filtrarAPPorEstado()" id="btn-filter-ap" style="font-size:12px">🔍 Filtrar</button>
         <select id="ap-estado-filter" onchange="filtrarAPPorEstado(this.value)" style="background:var(--s1);border:1px solid var(--s2);color:var(--tx);padding:6px 10px;border-radius:8px;font-size:12px;cursor:pointer">
           <option value="" data-i18n-opt="lbl.todos">Todos</option>
@@ -13796,6 +13809,7 @@ function estadoBadgeAP(est) {
 
 async function loadAP() {
   _skelOn(['ap-total','ap-importe','ap-matches','ap-disc','ap-sinpo','ap-aprobadas']);
+  if (_oracleSim === null) _cargarModoOracle();
   try {
     const [stats, facts] = await Promise.all([
       fetch('/api/stats_ap').then(r=>r.json()),
@@ -13936,6 +13950,29 @@ function procesarAP() {
 // MÓDULO ORACLE — JavaScript
 // ══════════════════════════════════════════════════════════════
 
+// BOMBA 2: el boton de Oracle existia como funcion y no como boton. Ahora esta
+// en la barra de AP y dice en que modo trabaja. `_oracleSim` lo pone
+// `_cargarModoOracle()` desde /api/oracle/status (que lee oracle_auth): en
+// simulacion el pipeline genera un Excel de asientos y NO escribe en ningun
+// Oracle real, y eso hay que decirlo antes y despues de pulsar.
+var _oracleSim = null;
+async function _cargarModoOracle() {
+  try {
+    const d = await (await fetch('/api/oracle/status', {cache: 'no-store'})).json();
+    _oracleSim = !!d.simulacion;
+  } catch (e) { _oracleSim = true; }
+  const chip = document.getElementById('oracle-modo-chip');
+  const btn = document.getElementById('btnOracle');
+  if (chip) {
+    chip.style.display = 'inline-block';
+    chip.textContent = _oracleSim ? t('oracle.chipSim', 'simulación · sin Oracle real')
+                                  : t('oracle.chipReal', 'Oracle real conectado');
+  }
+  if (btn) btn.title = _oracleSim
+    ? t('oracle.titleSim', 'Modo simulación: genera los asientos en un Excel; no contabiliza en ningún Oracle real')
+    : t('oracle.titleReal', 'Contabiliza las facturas aprobadas en Oracle Fusion');
+  return _oracleSim;
+}
 function procesarOracle() {
   const btn   = document.getElementById('btnOracle');
   const log   = document.getElementById('log');
@@ -13953,6 +13990,12 @@ function procesarOracle() {
   icon.textContent = '🔮';
   title.textContent = _tSSE('Oracle Pipeline — Contabilizando...');
   document.getElementById('overlay').classList.add('on');
+  if (_oracleSim !== false) {
+    const aviso = document.createElement('p');
+    aviso.className = 'l-info';
+    aviso.textContent = '⚠ ' + t('oracle.avisoSim', 'Modo simulación: se generan los asientos en un Excel de prueba. No se escribe nada en un Oracle real.');
+    log.appendChild(aviso);
+  }
 
   const src = new EventSource('/api/procesar_oracle');
 
@@ -13982,7 +14025,9 @@ function procesarOracle() {
       src.close();
       const ok = txt === 'PIPELINE_COMPLETO';
       icon.textContent  = ok ? '✅' : '⚠️';
-      title.textContent = _tSSE(ok ? 'Oracle: contabilización completada' : 'Oracle: pipeline con errores');
+      title.textContent = (ok && _oracleSim !== false)
+        ? t('oracle.simOk', 'Simulación terminada: asientos en Excel, nada contabilizado en Oracle')
+        : _tSSE(ok ? 'Oracle: contabilización completada' : 'Oracle: pipeline con errores');
       btn.disabled = false;
       spin.style.display = 'none';
       lbl.textContent = _tSSE('🔮 Contabilizar en Oracle');
