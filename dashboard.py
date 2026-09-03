@@ -748,6 +748,38 @@ def api_oracle_status():
         sim = True                       # ante la duda, nunca decir "real"
     return jsonify({'mode': 'simulation' if sim else 'real', 'simulacion': sim, 'ok': True})
 
+# ── Provisiones de cierre (Ola A) ────────────────────────────────────────────
+def _provisiones_args():
+    mes = (request.args.get("mes") or "").strip()[:7] or None
+    hotel = censo_hoteles.activo() or None
+    return mes, hotel
+
+@app.route("/api/provisiones")
+@login_required
+def api_provisiones():
+    """Las dos provisiones del cierre: albaranes sin factura y comisiones OTA.
+
+    Solo lee (provisiones.py). Respeta el hotel activo como los paneles.
+    """
+    import provisiones as _pv
+    mes, hotel = _provisiones_args()
+    try:
+        alb = _pv.provision_albaranes(mes, hotel, _pdir(), _rdir(), _ddir())
+        com = _pv.provision_comisiones(mes, hotel, _rdir(), _ddir())
+        return jsonify({"ok": True, "mes": alb["mes"], "albaranes": alb, "comisiones": com})
+    except Exception as e:
+        return jsonify({"ok": False, "error": str(e)[:200]}), 500
+
+@app.route("/api/exportar/provisiones")
+@login_required
+def api_exportar_provisiones():
+    import provisiones as _pv
+    mes, hotel = _provisiones_args()
+    buf, nombre = _pv.exportar_excel(mes, hotel, procesadas_dir=_pdir(), reportes_dir=_rdir(),
+                                     datos_dir=_ddir())
+    return send_file(buf, as_attachment=True, download_name=nombre,
+                     mimetype="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet")
+
 # ── PWA: service worker servido desde la raíz para controlar todo el origen ──
 @app.route("/sw.js")
 def pwa_service_worker():
@@ -6228,6 +6260,18 @@ svg.yvi{width:1em;height:1em;vertical-align:-0.125em;flex-shrink:0;display:inlin
         </table>
       </div>
       <span id="ap-count" style="font-size:.75rem;color:var(--dim);margin-top:8px;display:block"></span>
+    </div>
+
+    <!-- Provisiones de cierre (Ola A): solo lectura, sale de lo que ya hay -->
+    <div class="card" id="card-provisiones" style="margin-top:22px">
+      <div style="display:flex;align-items:center;justify-content:space-between;gap:12px;flex-wrap:wrap;margin-bottom:12px">
+        <div class="card-title" style="margin:0" data-i18n="prov.titulo">Provisiones de cierre</div>
+        <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap">
+          <input type="month" id="prov-mes" onchange="loadProvisiones()" style="background:var(--s1);border:1px solid var(--s2);color:var(--tx);padding:6px 10px;border-radius:8px;font-size:12px">
+          <a id="prov-descarga" href="/api/exportar/provisiones" class="btn-ref" style="text-decoration:none;font-size:12px" data-i18n="prov.descargar">⬇️ Excel del cierre</a>
+        </div>
+      </div>
+      <div id="prov-body" style="font-size:13px;color:var(--mut)"><div class="empty"><p data-i18n="prov.cargando">Calculando provisiones…</p></div></div>
     </div>
   </div><!-- /panel-ap -->
 
@@ -13809,9 +13853,53 @@ function estadoBadgeAP(est) {
   return `<span class="ap-badge ${cls}">${est || 'PENDIENTE'}</span>`;
 }
 
+// ── Provisiones de cierre (Ola A) ─────────────────────────────────────
+function _provEsc(s){ return String(s==null?'':s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;'); }
+function _provFmt(v){ return (Number(v)||0).toLocaleString('es-ES',{minimumFractionDigits:2,maximumFractionDigits:2}) + ' €'; }
+async function loadProvisiones() {
+  const body = document.getElementById('prov-body');
+  if (!body) return;
+  const mesEl = document.getElementById('prov-mes');
+  if (mesEl && !mesEl.value) {
+    const d = new Date(); mesEl.value = d.getFullYear() + '-' + String(d.getMonth()+1).padStart(2,'0');
+  }
+  const mes = mesEl ? mesEl.value : '';
+  const dl = document.getElementById('prov-descarga');
+  if (dl) dl.href = '/api/exportar/provisiones?mes=' + encodeURIComponent(mes);
+  try {
+    const d = await (await fetch('/api/provisiones?mes=' + encodeURIComponent(mes), {cache:'no-store'})).json();
+    if (!d.ok) { body.innerHTML = '<div class="empty"><p>' + _provEsc(d.error || 'Error') + '</p></div>'; return; }
+    const a = d.albaranes, c = d.comisiones;
+    const bloque = (titulo, n, total, cuenta, filas, vacio, extra) =>
+      '<div style="margin-bottom:14px">' +
+        '<div style="display:flex;justify-content:space-between;align-items:baseline;gap:10px;flex-wrap:wrap">' +
+          '<strong style="color:var(--tx)">' + titulo + '</strong>' +
+          '<span>' + n + ' · <strong style="color:var(--tx)">' + _provFmt(total) + '</strong> · ' + t('prov.cuenta','cuenta') + ' <code>' + _provEsc(cuenta) + '</code></span>' +
+        '</div>' +
+        (filas.length ? '<div class="tbl-wrap" style="margin-top:6px"><table style="font-size:12px">' + filas.join('') + '</table></div>'
+                      : '<div style="font-size:12px;color:var(--dim);margin-top:4px">' + vacio + '</div>') +
+        (extra ? '<div style="font-size:11px;color:var(--dim);margin-top:4px">' + extra + '</div>' : '') +
+      '</div>';
+    const fa = a.por_proveedor.map(p => '<tr><td>' + _provEsc(p.nombre_proveedor) + '</td><td>' + p.n_albaranes + ' ' + t('prov.albaranes','albaranes') + '</td><td><code>' + _provEsc(p.cuenta_gasto) + '</code></td><td style="text-align:right">' + _provFmt(p.importe) + '</td></tr>');
+    const fc = c.por_ota.map(p => '<tr><td>' + _provEsc(p.nombre_ota) + '</td><td>' + p.n_facturas + ' ' + t('prov.liquidaciones','liquidaciones') + '</td><td>' + t('prov.facturado','facturado') + ' ' + _provFmt(p.importe_facturado) + '</td><td style="text-align:right">' + _provFmt(p.importe_provision) + '</td></tr>');
+    let extraA = '';
+    if (a.sin_cruzar) extraA += t('prov.sinCruzar','{n} albaranes sin cruzar todavía: no entran hasta que corra el cruce.').replace('{n}', a.sin_cruzar) + ' ';
+    if (a.sin_importe) extraA += t('prov.sinImporte','{n} sin importe legible (cuentan 0).').replace('{n}', a.sin_importe);
+    const extraC = c.n ? t('prov.basePactado','{p} de {n} provisionadas por el % pactado; el resto por lo facturado.').replace('{p}', c.n_pactado).replace('{n}', c.n) : '';
+    body.innerHTML =
+      bloque(t('prov.albSinFactura','Albaranes sin factura'), a.n + ' ' + t('prov.albaranes','albaranes'), a.total, a.cuenta_provision.codigo, fa,
+             t('prov.albVacio','Nada que provisionar: todo lo entregado hasta el corte tiene factura.'), extraA) +
+      bloque(t('prov.comisiones','Comisiones OTA del mes'), c.n + ' ' + t('prov.liquidaciones','liquidaciones'), c.total, c.cuenta_provision.codigo, fc,
+             t('prov.comVacio','Sin liquidaciones OTA con periodo en este mes.'), extraC) +
+      '<div style="font-size:11px;color:var(--dim)">' + t('prov.nota','Solo lectura: los asientos van en el Excel del cierre. Las comisiones devengadas sin liquidación necesitan la producción OTA del PMS.') + '</div>';
+    if (typeof _pintarYa === 'function') _pintarYa(body);
+  } catch(e) { body.innerHTML = '<div class="empty"><p>Error</p></div>'; }
+}
+
 async function loadAP() {
   _skelOn(['ap-total','ap-importe','ap-matches','ap-disc','ap-sinpo','ap-aprobadas']);
   if (_oracleSim === null) _cargarModoOracle();
+  loadProvisiones();
   try {
     const [stats, facts] = await Promise.all([
       fetch('/api/stats_ap').then(r=>r.json()),
