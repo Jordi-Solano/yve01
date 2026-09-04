@@ -6567,6 +6567,28 @@ svg.yvi{width:1em;height:1em;vertical-align:-0.125em;flex-shrink:0;display:inlin
       <div id="inv-resumen" style="display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:8px;margin-bottom:12px"></div>
       <div id="inv-body" style="font-size:12px;color:var(--mut);overflow-x:auto"><div class="empty"><p data-i18n="cierre.cargando">Montando el mes…</p></div></div>
     </div>
+    <div class="card" id="card-cierre-inm" style="margin-bottom:22px">
+      <div style="display:flex;align-items:center;justify-content:space-between;gap:12px;flex-wrap:wrap;margin-bottom:10px">
+        <div class="card-title" style="margin:0" data-i18n="inm.titulo">Inmovilizado y amortizaciones</div>
+        <div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap">
+          <button class="btn-ref" style="font-size:12px" onclick="_inmForm()" data-i18n="inm.alta">➕ Dar de alta</button>
+          <a id="inm-excel" href="/api/exportar/inmovilizado" class="btn-ref" style="text-decoration:none;font-size:12px" data-i18n="inm.descargar">⬇️ Excel</a>
+        </div>
+      </div>
+      <div id="inm-form" style="display:none;margin-bottom:12px;padding:10px;border:1px dashed var(--s2);border-radius:10px">
+        <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(160px,1fr));gap:8px">
+          <input id="inm-desc" placeholder="Descripción" style="background:var(--bg);border:1px solid var(--s2);color:var(--tx);padding:7px;border-radius:8px;font-size:12px">
+          <select id="inm-cat" style="background:var(--bg);border:1px solid var(--s2);color:var(--tx);padding:7px;border-radius:8px;font-size:12px"></select>
+          <input id="inm-fecha" type="date" style="background:var(--bg);border:1px solid var(--s2);color:var(--tx);padding:7px;border-radius:8px;font-size:12px">
+          <input id="inm-coste" type="number" step="0.01" placeholder="Coste (sin IVA)" style="background:var(--bg);border:1px solid var(--s2);color:var(--tx);padding:7px;border-radius:8px;font-size:12px">
+          <input id="inm-vida" type="number" step="0.5" placeholder="Vida útil (años)" style="background:var(--bg);border:1px solid var(--s2);color:var(--tx);padding:7px;border-radius:8px;font-size:12px">
+          <input id="inm-doc" placeholder="Nº factura" style="background:var(--bg);border:1px solid var(--s2);color:var(--tx);padding:7px;border-radius:8px;font-size:12px">
+        </div>
+        <div style="margin-top:8px;display:flex;gap:8px"><button class="btn-run" style="font-size:12px" onclick="_inmGuardar()" data-i18n="inm.guardar">Guardar</button><button class="btn-ref" style="font-size:12px" onclick="document.getElementById('inm-form').style.display='none'" data-i18n="inm.cancelar">Cancelar</button></div>
+      </div>
+      <div id="inm-resumen" style="display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:8px;margin-bottom:12px"></div>
+      <div id="inm-body" style="font-size:12px;color:var(--mut);overflow-x:auto"><div class="empty"><p data-i18n="cierre.cargando">Montando el mes…</p></div></div>
+    </div>
     <div class="card" id="card-cierre-mayor" style="margin-bottom:22px">
       <div class="card-title" data-i18n="cierre.mayor">Mayor del mes (por cuenta)</div>
       <div id="cierre-mayor-body" style="font-size:13px;color:var(--mut)"></div>
@@ -13651,6 +13673,60 @@ async function _invSubir(input){
   input.value = '';
 }
 
+// ── Inmovilizado y amortizaciones (Ola B·4) ──────────────────────────────
+var _inmCats = null;
+async function loadInmovilizado(){
+  var inp = document.getElementById('cierre-mes'); if (!inp) return;
+  var mes = inp.value;
+  var ex = document.getElementById('inm-excel'); if (ex) ex.href = '/api/exportar/inmovilizado?mes=' + encodeURIComponent(mes);
+  var rs = document.getElementById('inm-resumen'), body = document.getElementById('inm-body');
+  try {
+    var r = await fetch('/api/inmovilizado?mes=' + encodeURIComponent(mes));
+    var d = await r.json();
+    if (!d || !d.ok) { body.innerHTML = '<div class="empty"><p>' + _cEsc((d&&d.error)||'Error') + '</p></div>'; return; }
+    _inmCats = d.categorias || {};
+    var s = d.resumen || {};
+    var tile = function(l, v, sub){ return '<div class="card" style="padding:10px;border-radius:10px"><div style="font-size:11px;color:var(--mut);text-transform:uppercase;letter-spacing:.4px">' + _cEsc(l) + '</div><div style="font-size:15px;font-weight:700">' + v + '</div>' + (sub?'<div style="font-size:11px;color:var(--dim)">' + _cEsc(sub) + '</div>':'') + '</div>'; };
+    rs.innerHTML = tile(t('inm.kActivos','Activos'), s.n_activos||0, (s.n_en_curso||0) + ' ' + t('inm.enCurso','en curso') + ' · ' + (s.n_amortizados||0) + ' ' + t('inm.amortizados','amortizados')) +
+      tile(t('inm.kCoste','Coste total'), _cEur(s.coste_total)) + tile(t('inm.kAcum','Amortización acumulada'), _cEur(s.acumulada_total)) +
+      tile(t('inm.kVnc','Valor neto contable'), _cEur(s.vnc_total)) + tile(t('inm.kCuota','Cuota del mes'), _cEur(s.cuota_mes), (s.altas_pendientes ? s.altas_pendientes + ' ' + t('inm.altasPend','posibles altas sin registrar') : ''));
+    var acts = d.activos || [];
+    var EST = {EN_CURSO:t('inm.enCurso','en curso'), AMORTIZADO:t('inm.amortizado','amortizado'), BAJA:t('inm.baja','baja'), NO_ALTA:t('inm.noAlta','alta posterior'), ERROR:'error'};
+    var h = acts.length ? '<table style="width:100%;border-collapse:collapse;font-size:11px"><thead><tr style="color:var(--dim);text-align:left"><th>' + t('inm.hDesc','Activo') + '</th><th>' + t('inm.hCat','Categoría') + '</th><th>' + t('inm.hAlta','Alta') + '</th><th style="text-align:right">' + t('inm.hCoste','Coste') + '</th><th style="text-align:right">' + t('inm.hCuota','Cuota mes') + '</th><th style="text-align:right">' + t('inm.hAcum','Acumulada') + '</th><th style="text-align:right">VNC</th><th></th><th></th></tr></thead><tbody>' +
+      acts.map(function(a){ return '<tr style="border-top:1px solid var(--s2)"><td style="padding:4px">' + _cEsc(a.descripcion) + (a.error?'<div style="color:#f87171">' + _cEsc(a.error) + '</div>':'') + '</td><td style="padding:4px">' + _cEsc((_inmCats[a.categoria]||{}).nombre||a.categoria) + '</td><td style="padding:4px;white-space:nowrap">' + _cEsc(a.fecha_alta||'') + (a.fecha_baja?'<br><span style="color:#f87171">⤓ ' + _cEsc(a.fecha_baja) + '</span>':'') + '</td><td style="text-align:right;padding:4px">' + _cEur(a.coste) + '</td><td style="text-align:right;padding:4px">' + _cEur(a.cuota) + '</td><td style="text-align:right;padding:4px">' + _cEur(a.acumulada) + '</td><td style="text-align:right;padding:4px;font-weight:700">' + _cEur(a.vnc) + '</td><td style="padding:4px;color:var(--dim)">' + _cEsc(EST[a.estado]||a.estado) + '</td><td style="padding:4px">' + (a.estado==='EN_CURSO'||a.estado==='AMORTIZADO' ? '<button class="btn-ref" style="font-size:10px;padding:2px 6px" onclick="_inmBaja(\'' + _cEsc(a.id) + '\')">' + t('inm.darBaja','Baja') + '</button>' : '') + '</td></tr>'; }).join('') + '</tbody></table>' : '<div class="empty"><p>' + t('inm.vacio','Sin activos registrados. Da de alta el mobiliario, la maquinaria, los equipos… y Yve calcula la amortización de cada mes.') + '</p></div>';
+    var asi = d.asientos || [];
+    if (asi.length) h += '<div style="margin-top:10px;font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.5px;color:var(--mut)">' + t('inm.asiento','Asiento de amortización del mes') + '</div><table style="width:100%;border-collapse:collapse;font-size:11px">' + asi.map(function(a){ return '<tr style="border-top:1px solid var(--s2)"><td style="padding:3px 4px"><b>' + _cEsc(a.cuenta) + '</b> ' + _cEsc(a.desc_cuenta) + '</td><td style="padding:3px 4px">' + _cEsc(a.concepto) + '</td><td style="text-align:right;padding:3px 4px">' + (a.debe?_cEur(a.debe):'') + '</td><td style="text-align:right;padding:3px 4px">' + (a.haber?_cEur(a.haber):'') + '</td></tr>'; }).join('') + '</table>';
+    var pend = d.altas_pendientes || [];
+    if (pend.length) h += '<div style="margin-top:10px;font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.5px;color:#f59e0b">' + t('inm.pendTit','Facturas del mes que podrían ser un activo') + '</div><div style="font-size:11px">' + pend.slice(0,20).map(function(p){ return _cEsc(p.numero_factura) + ' · ' + _cEsc(p.proveedor) + ' · ' + _cEur(p.base) + ' · ' + _cEsc(p.motivo) + ' <a href="#" onclick="_inmForm({descripcion:\'' + _cEsc(p.proveedor) + ' ' + _cEsc(p.numero_factura) + '\',coste:' + (p.base||0) + ',fecha:\'' + _cEsc(p.fecha) + '\',doc:\'' + _cEsc(p.numero_factura) + '\'});return false;">' + t('inm.registrar','registrar') + '</a>'; }).join('<br>') + '</div>';
+    body.innerHTML = h;
+  } catch(e) { if (body) body.innerHTML = '<div class="empty"><p>' + _cEsc(e.message) + '</p></div>'; }
+}
+function _inmForm(pre){
+  var f = document.getElementById('inm-form'); if (!f) return;
+  var sel = document.getElementById('inm-cat');
+  if (sel && !sel.options.length && _inmCats) sel.innerHTML = Object.keys(_inmCats).map(function(k){ return '<option value="' + k + '">' + _cEsc(_inmCats[k].nombre) + ' (' + _inmCats[k].vida + ' a.)</option>'; }).join('');
+  pre = pre || {};
+  document.getElementById('inm-desc').value = pre.descripcion || '';
+  document.getElementById('inm-coste').value = pre.coste || '';
+  document.getElementById('inm-fecha').value = pre.fecha || '';
+  document.getElementById('inm-doc').value = pre.doc || '';
+  document.getElementById('inm-vida').value = '';
+  f.style.display = 'block';
+}
+async function _inmGuardar(){
+  var body = {descripcion: document.getElementById('inm-desc').value, categoria: document.getElementById('inm-cat').value, fecha_alta: document.getElementById('inm-fecha').value, coste: document.getElementById('inm-coste').value, vida_util_anios: document.getElementById('inm-vida').value, documento: document.getElementById('inm-doc').value};
+  try {
+    var r = await _postJson('/api/inmovilizado/alta', body); var d = await r.json();
+    if (d && d.ok) { showNotification(t('inm.ok','✓ Activo dado de alta'), 'success'); document.getElementById('inm-form').style.display='none'; loadInmovilizado(); }
+    else showNotification('✗ ' + ((d&&d.error)||'Error'), 'error');
+  } catch(e){ showNotification('✗ ' + e.message, 'error'); }
+}
+async function _inmBaja(id){
+  var f = prompt(t('inm.fechaBaja','Fecha de baja (aaaa-mm-dd):'), (document.getElementById('cierre-mes')||{}).value ? (document.getElementById('cierre-mes').value + '-01') : '');
+  if (!f) return;
+  try { var r = await _postJson('/api/inmovilizado/baja', {id: id, fecha_baja: f}); var d = await r.json(); if (!d || !d.ok) showNotification('✗ ' + ((d&&d.error)||'Error'), 'error'); loadInmovilizado(); } catch(e){ showNotification('✗ ' + e.message, 'error'); }
+}
+
 // ── Cierre de mes (Ola B) ─────────────────────────────────────────────────
 function _cEsc(s){ return String(s==null?'':s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;'); }
 function _cEur(v){ return (v==null||isNaN(Number(v))) ? '—' : Number(v).toLocaleString('es-ES',{minimumFractionDigits:2,maximumFractionDigits:2}) + ' €'; }
@@ -13663,6 +13739,7 @@ async function loadCierre(forzar){
   var rb = document.getElementById('cierre-recon-body'), mb = document.getElementById('cierre-mayor-body'), db = document.getElementById('cierre-diario-body'), av = document.getElementById('cierre-avisos');
   try { loadCuadreBanco(); } catch(e){}
   try { loadInventarios(); } catch(e){}
+  try { loadInmovilizado(); } catch(e){}
   try {
     var r = await fetch('/api/cierre/asientos?mes=' + encodeURIComponent(mes));
     var d = await r.json();

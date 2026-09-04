@@ -232,3 +232,112 @@ def api_subir_recuento():
     except Exception:
         pass
     return jsonify({'ok': True, 'contados': n, 'nuevos': nuevos, 'saltadas': saltadas})
+
+
+# ── Inmovilizado y amortizaciones (Ola B · bloque 4) ────────────────────────
+def _activos_df():
+    import pandas as pd
+    import inmovilizado as IM
+    ruta = os.path.join(str(_t_ddir()), IM.FICHERO)
+    if not os.path.exists(ruta):
+        return pd.DataFrame(columns=IM.COLUMNAS)
+    try:
+        return pd.read_excel(ruta)
+    except Exception:
+        return pd.DataFrame(columns=IM.COLUMNAS)
+
+
+def _guardar_activos(df):
+    import inmovilizado as IM
+    ruta = os.path.join(str(_t_ddir()), IM.FICHERO)
+    os.makedirs(os.path.dirname(ruta), exist_ok=True)
+    tmp = ruta + '.tmp.xlsx'
+    df.to_excel(tmp, index=False)
+    os.replace(tmp, ruta)
+
+
+def _inmovilizado(mes, hotel):
+    import inmovilizado as IM
+    import almacen_datos as ALM
+    df = _activos_df()
+    if hotel and not df.empty:
+        df = ALM._filtrar_hotel(df, hotel)
+    try:
+        ap = ALM.facturas_ap(str(_t_pdir()), str(_t_rdir()), hotel=hotel or None)
+    except Exception:
+        ap = None
+    return IM.amortizar_mes(mes, df, ap, IM.config(str(_t_ddir())))
+
+
+@cierre_bp.route('/api/inmovilizado')
+def api_inmovilizado():
+    mes, hotel = _args()
+    try:
+        res = _inmovilizado(mes, hotel)
+    except Exception as e:
+        return jsonify({'ok': False, 'error': str(e)[:200]}), 500
+    import inmovilizado as IM
+    return jsonify({'ok': True, 'hotel': hotel or '', 'categorias': {k: {'vida': v[0], 'cuenta': v[1], 'nombre': v[4]} for k, v in IM.CATEGORIAS.items()}, **res})
+
+
+@cierre_bp.route('/api/inmovilizado/alta', methods=['POST'])
+def api_inmovilizado_alta():
+    """Da de alta un activo (o lo actualiza si trae id)."""
+    import pandas as pd
+    import inmovilizado as IM
+    data = request.get_json(force=True, silent=True) or {}
+    try:
+        import censo_hoteles
+        data.setdefault('hotel_id', censo_hoteles.para_guardar())
+        act = IM.normalizar_activo(data, IM.config(str(_t_ddir())))
+    except ValueError as e:
+        return jsonify({'ok': False, 'error': str(e)}), 400
+    df = _activos_df()
+    if not act['id']:
+        from datetime import datetime
+        act['id'] = 'INM-' + datetime.now().strftime('%Y%m%d%H%M%S%f')[:17]
+    else:
+        df = df[df['id'].astype(str) != act['id']] if 'id' in df.columns else df
+    df = pd.concat([df, pd.DataFrame([act])], ignore_index=True)
+    _guardar_activos(df)
+    try:
+        from dashboard import _audit
+        from flask_login import current_user
+        _audit('INMOVILIZADO_ALTA', f"{act['id']} {act['descripcion']} {act['coste']} EUR", getattr(current_user, 'username', None) or 'sistema')
+    except Exception:
+        pass
+    return jsonify({'ok': True, 'activo': act})
+
+
+@cierre_bp.route('/api/inmovilizado/baja', methods=['POST'])
+def api_inmovilizado_baja():
+    """Fecha de baja de un activo (deja de amortizarse desde ese mes)."""
+    import inmovilizado as IM
+    from provisiones import _fecha
+    data = request.get_json(force=True, silent=True) or {}
+    aid = str(data.get('id') or '').strip()
+    fb = _fecha(data.get('fecha_baja'))
+    if not aid or fb is None:
+        return jsonify({'ok': False, 'error': 'Faltan id o fecha_baja'}), 400
+    df = _activos_df()
+    if df.empty or 'id' not in df.columns or not (df['id'].astype(str) == aid).any():
+        return jsonify({'ok': False, 'error': 'Activo no encontrado'}), 404
+    df['fecha_baja'] = df['fecha_baja'].astype(object) if 'fecha_baja' in df.columns else ''
+    df.loc[df['id'].astype(str) == aid, 'fecha_baja'] = fb.isoformat()
+    _guardar_activos(df)
+    try:
+        from dashboard import _audit
+        from flask_login import current_user
+        _audit('INMOVILIZADO_BAJA', f'{aid} baja {fb.isoformat()}', getattr(current_user, 'username', None) or 'sistema')
+    except Exception:
+        pass
+    return jsonify({'ok': True})
+
+
+@cierre_bp.route('/api/exportar/inmovilizado')
+def api_exportar_inmovilizado():
+    import inmovilizado as IM
+    mes, hotel = _args()
+    buf, nombre = IM.exportar_excel(_inmovilizado(mes, hotel))
+    return send_file(buf, as_attachment=True, download_name=nombre,
+                     mimetype='application/vnd.openxmlformats-officedocument.spreadsheetml.sheet')
