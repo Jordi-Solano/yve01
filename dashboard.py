@@ -2340,7 +2340,10 @@ def api_procesar_batch_stream():
                                 yield f'data: ✓ Banco {fname}: archivo copiado (formato {ext})\n\n'
                                 _mark(fname, 'BANK_OK')
                                 continue
-                            
+                            # Cabeceras a canonicas (Fecha/Concepto/Importe/Saldo, date/amount...):
+                            # sin esto un extracto con mayusculas se guardaba con SUS columnas y
+                            # la conciliacion y el cuadre lo veian como filas vacias.
+                            _df_bank = _normalize_cols(_df_bank, _BANK_COL_MAP)
                             _estampar_hotel_banco(_df_bank)   # modo por_hotel: marca las filas nuevas
                             # Integrar con extracto existente
                             banco_path = os.path.join(_ddir(), 'extracto_banco.xlsx')
