@@ -343,6 +343,40 @@ def api_exportar_inmovilizado():
                      mimetype='application/vnd.openxmlformats-officedocument.spreadsheetml.sheet')
 
 
+# ── Fiscal: 303, 349, SII (Ola B · bloque 6) ────────────────────────────────
+@cierre_bp.route('/api/fiscal')
+def api_fiscal():
+    import fiscal as FI
+    mes, hotel = _args()
+    try:
+        res = FI.fiscal_completo(mes, hotel, **_dirs())
+    except Exception as e:
+        return jsonify({'ok': False, 'error': str(e)[:200]}), 500
+    # cuadre con el libro del mes (477/472), protegido
+    try:
+        import cierre_mes as CM
+        asi, _ = CM.cierre_completo(mes, hotel, **_dirs())
+        rep = round(sum(a['haber'] - a['debe'] for a in asi['asientos'] if a['cuenta'] == '477'), 2)
+        sop = round(sum(a['debe'] - a['haber'] for a in asi['asientos'] if a['cuenta'] == '472'), 2)
+        res['libro'] = {'iva_repercutido_477': rep, 'iva_soportado_472': sop,
+                        'cuadra': abs(rep - res['m303']['c27_devengado']) <= 0.011 and abs(sop - res['m303']['c45_deducible']) <= 0.011}
+    except Exception:
+        res['libro'] = None
+    lim = int(request.args.get('limite') or 200)
+    res['sii']['expedidas'] = res['sii']['expedidas'][:lim]
+    res['sii']['recibidas'] = res['sii']['recibidas'][:lim]
+    return jsonify({'ok': True, 'hotel': hotel or '', **res})
+
+
+@cierre_bp.route('/api/exportar/fiscal')
+def api_exportar_fiscal():
+    import fiscal as FI
+    mes, hotel = _args()
+    buf, nombre = FI.exportar_excel(FI.fiscal_completo(mes, hotel, **_dirs()))
+    return send_file(buf, as_attachment=True, download_name=nombre,
+                     mimetype='application/vnd.openxmlformats-officedocument.spreadsheetml.sheet')
+
+
 # ── Archivo de fin de mes para la central (Ola B · bloque 5) ────────────────
 def _aging(hotel):
     try:
@@ -383,7 +417,7 @@ def _bloques(mes, hotel, con_fiscal=True):
     if con_fiscal:
         try:
             import fiscal as FI
-            out['fiscal'] = FI.resumen_para_paquete(mes, out.get('asientos'), out.get('reconciliacion'))
+            out['fiscal'] = FI.resumen_para_paquete(mes, out.get('asientos'), out.get('reconciliacion'), hotel, **_dirs())
         except Exception:
             out['fiscal'] = None
     return out

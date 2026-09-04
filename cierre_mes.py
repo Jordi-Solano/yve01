@@ -8,9 +8,12 @@ sin Flask; `recoger_fuentes` es la unica que toca disco.
 
 Fuentes y asientos (PGC espanol, cuentas de `datos-referencia/plan_cuentas.xlsx`):
   AP     factura de proveedor      6xx gasto (D) · 472 IVA soportado (D) · 400 Proveedores (H)
-  OTA    factura de comision       628 (D) · 410 Acreedores (H); IVA segun `ota_iva`:
-                                   "isp" (por defecto, inversion del sujeto pasivo: 472 D y 477 H
-                                   por el 21 %) o "incluido" (la comision lleva el IVA dentro)
+  OTA    factura de comision       628 (D) · 410 Acreedores (H); el IVA depende del REGIMEN de
+                                   la OTA (`regimen_ota`): "es" = OTA española, la comision lleva
+                                   el IVA dentro; "ue" / "no_ue" = inversion del sujeto pasivo
+                                   (472 D y 477 H por el 21 %). Defectos: Booking ue, Expedia
+                                   no_ue, HotelBeds/Hotusa es; lo desconocido se trata como "es"
+                                   (no se inventa una ISP). config_cierre.json "otas": {nombre: regimen}.
   F&B    ventas TPV del dia        570 Caja (D) · 700 Ventas F&B (H) · 477 IVA 10 % (H)
   AR     factura a credito emitida 430 Clientes (D) · 705 Alojamiento / 700 F&B (H) · 477 IVA 10 % (H)
   AR     cobro (fecha_cobro)       572 Banco (D) · 430 Clientes (H)
@@ -53,11 +56,28 @@ CUENTAS_BASE = {
     "705":  "Prestaciones de servicios — Alojamiento",
 }
 CONFIG_FILE = "config_cierre.json"
+REGIMEN_OTA_DEFECTO = {"booking": "ue", "expedia": "no_ue", "hotels.com": "no_ue", "agoda": "no_ue",
+                       "airbnb": "ue", "trivago": "ue", "hotelbeds": "es", "hotusa": "es", "despegar": "no_ue"}
+
+
+def regimen_ota(nombre, cfg=None):
+    """'es' (IVA incluido), 'ue' o 'no_ue' (inversion del sujeto pasivo)."""
+    n = _txt(nombre).lower()
+    tabla = dict(REGIMEN_OTA_DEFECTO)
+    for k, v in ((cfg or {}).get("otas") or {}).items():
+        if str(v).lower() in ("es", "ue", "no_ue"):
+            tabla[str(k).lower()] = str(v).lower()
+    if str((cfg or {}).get("ota_iva", "")).lower() == "incluido":
+        return "es"
+    for k, v in tabla.items():
+        if k in n:
+            return v
+    return "es"
 
 
 # ── configuracion y plan ─────────────────────────────────────────────────────
 def config_cierre(datos_dir=None):
-    cfg = {"ota_iva": "isp", "iva_fb": IVA_REDUCIDO, "iva_alojamiento": IVA_REDUCIDO}
+    cfg = {"ota_iva": "", "iva_fb": IVA_REDUCIDO, "iva_alojamiento": IVA_REDUCIDO, "otas": {}}
     ruta = os.path.join(datos_dir or os.path.join(BASE_DIR, "datos-referencia"), CONFIG_FILE)
     try:
         with open(ruta, encoding="utf-8") as fh:
@@ -132,7 +152,7 @@ def generar_asientos(mes, fuentes, plan=None, cfg=None):
     Devuelve {mes, asientos, resumen, fuentes, cuentas_fuera_plan, avisos}."""
     ini, fin, mes = _mes_a_rango(mes)
     plan = plan or dict(CUENTAS_BASE)
-    cfg = cfg or {"ota_iva": "isp", "iva_fb": IVA_REDUCIDO, "iva_alojamiento": IVA_REDUCIDO}
+    cfg = cfg or {"ota_iva": "", "iva_fb": IVA_REDUCIDO, "iva_alojamiento": IVA_REDUCIDO, "otas": {}}
     D = _Diario(plan)
     cont = {"ap": 0, "ar_ota": 0, "ventas_fb": 0, "ar_facturas": 0, "ar_cobros": 0,
             "banco": 0, "provisiones": 0}
@@ -172,6 +192,7 @@ def generar_asientos(mes, fuentes, plan=None, cfg=None):
                 saltados["ap_sin_cuadrar"] += 1
 
     # ── comisiones OTA ───────────────────────────────────────────────────
+    otas_isp = set()
     ar = fuentes.get("ar_ota")
     if ar is not None and not ar.empty:
         for _, r in ar.iterrows():
@@ -184,12 +205,14 @@ def generar_asientos(mes, fuentes, plan=None, cfg=None):
                 continue
             num = _txt(r.get("numero_factura")) or "s/n"
             ota = _txt(r.get("nombre_ota")) or "OTA"
-            if str(cfg.get("ota_iva", "isp")).lower() == "incluido":
+            reg = regimen_ota(ota, cfg)
+            if reg == "es":     # OTA española: la comision lleva el IVA dentro
                 base = _r(imp / (1 + IVA_GENERAL / 100)); iva = _r(imp - base)
                 lineas = [("628", base, 0), ("472", iva, 0), ("410", 0, imp)]
-            else:   # inversion del sujeto pasivo: la comision es la base; el IVA se autorrepercute
+            else:               # inversion del sujeto pasivo: la comision es la base; el IVA se autorrepercute
                 iva = _r(imp * IVA_GENERAL / 100)
                 lineas = [("628", imp, 0), ("472", iva, 0), ("477", 0, iva), ("410", 0, imp)]
+                otas_isp.add(ota)
             if D.nuevo(_fecha(fecha), f"Comision {ota} — {num}", num, "OTA", lineas, r.get("hotel_id")):
                 cont["ar_ota"] += 1
 
@@ -295,9 +318,9 @@ def generar_asientos(mes, fuentes, plan=None, cfg=None):
         avisos.append(f"{saltados['ap_sin_cuadrar']} factura(s) AP con base+IVA distinto del total: no se asientan")
     if D.cuentas_fuera_plan:
         avisos.append("Cuentas usadas que no estan en plan_cuentas.xlsx: " + ", ".join(sorted(D.cuentas_fuera_plan)))
-    if str(cfg.get("ota_iva", "isp")).lower() != "incluido":
-        avisos.append("Comisiones OTA asentadas con inversion del sujeto pasivo (472/477 al 21 %). "
-                      "Si tu OTA factura con IVA espanol, pon \"ota_iva\": \"incluido\" en config_cierre.json.")
+    if otas_isp:
+        avisos.append("Comisiones con inversion del sujeto pasivo (472/477 al 21 %): " + ", ".join(sorted(otas_isp))
+                      + ". Si alguna factura con IVA espanol, ponla como \"es\" en config_cierre.json (\"otas\").")
     return {
         "mes": mes, "desde": ini.isoformat(), "hasta": fin.isoformat(),
         "asientos": D.asientos, "n_asientos": D.num, "n_lineas": len(D.asientos),

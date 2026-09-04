@@ -85,8 +85,9 @@ def main():
     ok(any(a['cuenta'] == '629' and a['debe'] == 200.0 for a in f2) and any(a['cuenta'] == '472' and a['debe'] == 42.0 for a in f2), 'F-2 sin base: se deriva del total al 21 % y la cuenta 629.0 se lee como 629')
     bk1 = [a for a in A if a['documento'] == 'BK-1']
     ok(sorted((a['cuenta'], a['debe'], a['haber']) for a in bk1) == [('410', 0.0, 1000.0), ('472', 210.0, 0.0), ('477', 0.0, 210.0), ('628', 1000.0, 0.0)], f'OTA con inversion del sujeto pasivo: {sorted((a["cuenta"], a["debe"], a["haber"]) for a in bk1)}')
-    res_inc = CM.generar_asientos(MES, {'ar_ota': fuentes['ar_ota']}, plan, {'ota_iva': 'incluido'})
-    ok(any(a['cuenta'] == '628' and a['debe'] == 826.45 for a in res_inc['asientos']), 'ota_iva=incluido: base 826,45')
+    res_inc = CM.generar_asientos(MES, {'ar_ota': fuentes['ar_ota']}, plan, {'otas': {'booking': 'es'}})
+    ok(any(a['cuenta'] == '628' and a['debe'] == 826.45 for a in res_inc['asientos']), 'OTA marcada como española: IVA incluido, base 826,45')
+    ok(CM.regimen_ota('HotelBeds') == 'es' and CM.regimen_ota('Booking.com') == 'ue' and CM.regimen_ota('Expedia') == 'no_ue' and CM.regimen_ota('OTA rara') == 'es', 'regimen por OTA: lo desconocido es "es", no se inventa ISP')
     tpv = lineas('FB', '570')
     ok([a['debe'] for a in tpv] == [330.0, 55.0], f'TPV agrupado por dia: {[a["debe"] for a in tpv]}')
     ok(any(a['cuenta'] == '700' and a['haber'] == 300.0 for a in lineas('FB')) and any(a['cuenta'] == '477' and a['haber'] == 30.0 for a in lineas('FB')), 'ventas F&B al 10 %')

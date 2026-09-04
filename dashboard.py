@@ -6576,6 +6576,17 @@ svg.yvi{width:1em;height:1em;vertical-align:-0.125em;flex-shrink:0;display:inlin
       <div id="inv-resumen" style="display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:8px;margin-bottom:12px"></div>
       <div id="inv-body" style="font-size:12px;color:var(--mut);overflow-x:auto"><div class="empty"><p data-i18n="cierre.cargando">Montando el mes…</p></div></div>
     </div>
+    <div class="card" id="card-cierre-fiscal" style="margin-bottom:22px">
+      <div style="display:flex;align-items:center;justify-content:space-between;gap:12px;flex-wrap:wrap;margin-bottom:10px">
+        <div class="card-title" style="margin:0" data-i18n="fis.titulo">Fiscal: IVA 303, 349 y SII</div>
+        <div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap"><span id="fis-estado" style="font-size:12px;font-weight:700"></span>
+          <a id="fis-excel" href="/api/exportar/fiscal" class="btn-ref" style="text-decoration:none;font-size:12px" data-i18n="fis.descargar">⬇️ Excel</a>
+        </div>
+      </div>
+      <div style="font-size:12px;color:var(--mut);margin-bottom:10px" data-i18n="fis.ayuda">Preparado a partir de los mismos datos que los asientos del mes. Nada se envía a Hacienda: el envío del SII exige certificado digital y lo hace la gestoría.</div>
+      <div id="fis-resumen" style="display:grid;grid-template-columns:repeat(auto-fit,minmax(170px,1fr));gap:10px;margin-bottom:12px"></div>
+      <div id="fis-body"></div>
+    </div>
     <div class="card" id="card-cierre-inm" style="margin-bottom:22px">
       <div style="display:flex;align-items:center;justify-content:space-between;gap:12px;flex-wrap:wrap;margin-bottom:10px">
         <div class="card-title" style="margin:0" data-i18n="inm.titulo">Inmovilizado y amortizaciones</div>
@@ -13684,6 +13695,40 @@ async function _invSubir(input){
 
 // ── Inmovilizado y amortizaciones (Ola B·4) ──────────────────────────────
 var _inmCats = null;
+async function loadFiscal(){
+  var inp = document.getElementById('cierre-mes'); if (!inp) return;
+  var mes = inp.value;
+  var ex = document.getElementById('fis-excel'); if (ex) ex.href = '/api/exportar/fiscal?mes=' + encodeURIComponent(mes);
+  var rs = document.getElementById('fis-resumen'), body = document.getElementById('fis-body'), est = document.getElementById('fis-estado');
+  try {
+    var r = await fetch('/api/fiscal?mes=' + encodeURIComponent(mes));
+    var d = await r.json();
+    if (!d || !d.ok) { body.innerHTML = '<div class="empty"><p>' + _cEsc((d&&d.error)||'Error') + '</p></div>'; return; }
+    var m = d.m303 || {}, s3 = d.m349 || {}, sii = d.sii || {};
+    var col = {PREPARADO:'var(--ok)', PENDIENTE:'var(--warn)', SIN_DATO:'var(--mut)'}[d.estado] || 'var(--mut)';
+    est.innerHTML = '<span style="color:' + col + '">' + _cEsc(d.estado||'') + '</span>';
+    var tile = function(l, v, sub){ return '<div class="card" style="padding:10px;border-radius:10px"><div style="font-size:11px;color:var(--mut);text-transform:uppercase;letter-spacing:.4px">' + _cEsc(l) + '</div><div style="font-size:15px;font-weight:700">' + v + '</div>' + (sub?'<div style="font-size:11px;color:var(--dim)">' + _cEsc(sub) + '</div>':'') + '</div>'; };
+    var lib = d.libro;
+    rs.innerHTML = tile(t('fis.k303','303 · resultado'), _cEur(m.c46_resultado), (m.signo||'')) +
+      tile(t('fis.kDev','IVA devengado (27)'), _cEur(m.c27_devengado), lib ? (t('fis.libro','libro 477') + ' ' + _cEur(lib.iva_repercutido_477)) : '') +
+      tile(t('fis.kDed','IVA deducible (45)'), _cEur(m.c45_deducible), lib ? (t('fis.libro472','libro 472') + ' ' + _cEur(lib.iva_soportado_472)) : '') +
+      tile(t('fis.k349','349 · operadores UE'), (s3.n||0), _cEur(s3.total_base)) +
+      tile(t('fis.kSii','SII'), (sii.n_expedidas||0) + ' / ' + (sii.n_recibidas||0), t('fis.siiSub','expedidas / recibidas'));
+    var h = '';
+    if (lib && !lib.cuadra) h += '<div style="font-size:12px;color:var(--warn);margin-bottom:8px">⚠️ ' + _cEsc(t('fis.noCuadra','El 303 no cuadra con el libro del mes (477/472). Revisa los asientos antes de presentar.')) + '</div>';
+    if (!sii.n_expedidas && !sii.n_recibidas) { h += _vacioCard(t('fis.vacio','Sin facturas ni ventas en este mes: no hay nada que declarar.')); body.innerHTML = h; return; }
+    h += '<div style="overflow-x:auto"><table class="tbl" style="width:100%;font-size:12px"><thead><tr><th>' + _cEsc(t('fis.casilla','Casilla')) + '</th><th>' + _cEsc(t('fis.concepto','Concepto')) + '</th><th style="text-align:right">' + _cEsc(t('fis.base','Base')) + '</th><th style="text-align:right">' + _cEsc(t('fis.cuota','Cuota')) + '</th></tr></thead><tbody>';
+    (m.casillas||[]).forEach(function(c){ if (!c.base && !c.cuota) return; h += '<tr><td>' + _cEsc(c.casilla_base + ' / ' + c.casilla_cuota) + '</td><td>' + _cEsc(c.concepto) + '</td><td style="text-align:right">' + _cEur(c.base) + '</td><td style="text-align:right">' + _cEur(c.cuota) + '</td></tr>'; });
+    h += '<tr style="font-weight:700"><td>46</td><td>' + _cEsc(t('fis.resultado','Resultado')) + ' (' + _cEsc(m.signo||'') + ')</td><td></td><td style="text-align:right">' + _cEur(m.c46_resultado) + '</td></tr></tbody></table></div>';
+    if ((s3.filas||[]).length) {
+      h += '<div style="font-weight:700;font-size:12px;margin:12px 0 6px">' + _cEsc(t('fis.t349','Modelo 349 — operaciones intracomunitarias')) + '</div><div style="overflow-x:auto"><table class="tbl" style="width:100%;font-size:12px"><thead><tr><th>' + _cEsc(t('fis.operador','Operador')) + '</th><th>NIF-IVA</th><th>' + _cEsc(t('fis.clave','Clave')) + '</th><th style="text-align:right">' + _cEsc(t('fis.base','Base')) + '</th></tr></thead><tbody>';
+      s3.filas.forEach(function(f){ h += '<tr><td>' + _cEsc(f.operador) + '</td><td>' + (f.nif ? _cEsc(f.nif) : '<span style="color:var(--warn)">' + _cEsc(t('fis.nifPend','pendiente')) + '</span>') + '</td><td>' + _cEsc(f.clave) + '</td><td style="text-align:right">' + _cEur(f.base) + '</td></tr>'; });
+      h += '</tbody></table></div>';
+    }
+    if ((d.avisos||[]).length) h += '<div style="font-size:12px;color:var(--mut);margin-top:10px">' + d.avisos.map(function(a){ return '• ' + _cEsc(a); }).join('<br>') + '</div>';
+    body.innerHTML = h;
+  } catch(e) { body.innerHTML = '<div class="empty"><p>' + _cEsc(e.message) + '</p></div>'; }
+}
 async function loadInmovilizado(){
   var inp = document.getElementById('cierre-mes'); if (!inp) return;
   var mes = inp.value;
@@ -13785,6 +13830,7 @@ async function loadCierre(forzar){
   try { loadCuadreBanco(); } catch(e){}
   try { loadInventarios(); } catch(e){}
   try { loadInmovilizado(); } catch(e){}
+  try { loadFiscal(); } catch(e){}
   try { loadPaquete(); } catch(e){}
   try {
     var r = await fetch('/api/cierre/asientos?mes=' + encodeURIComponent(mes));
