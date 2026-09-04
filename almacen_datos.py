@@ -30,6 +30,8 @@ aprobaciones): esto es solo la capa de acceso a datos.
 """
 
 import os
+import json
+import datetime as _dt
 import glob
 import warnings
 
@@ -234,15 +236,126 @@ def _leer_etapas(etapas, procesadas_dir, reportes_dir, hoja=None):
     return pd.concat(trozos, ignore_index=True), rutas
 
 
-def _consolidar(df, campos_id):
+# ── Duplicados resueltos a mano (decision de Jordi, ronda 1) ─────────────
+# Dos DOCUMENTOS con el mismo numero+proveedor bloquean la aprobacion hasta
+# que alguien elige cual vale desde la pantalla de aprobar. La eleccion vive
+# en datos-referencia/duplicados_resueltos.json: {clave: {"buena": archivo,
+# "descartadas": [...], "usuario", "fecha"}}. La descartada desaparece de
+# TODO lo que lee por aqui (aging, provisiones, Oracle, paneles).
+DUPLICADOS_FILE = "duplicados_resueltos.json"
+
+
+def _ruta_duplicados(datos_dir=None):
+    if datos_dir is None:
+        try:
+            from tenant_dirs import datos_dir as _d
+            datos_dir = str(_d())
+        except Exception:
+            datos_dir = os.path.join(os.path.dirname(os.path.abspath(__file__)), "datos-referencia")
+    return os.path.join(str(datos_dir), DUPLICADOS_FILE)
+
+
+def duplicados_resueltos(datos_dir=None):
+    try:
+        with open(_ruta_duplicados(datos_dir), encoding="utf-8") as fh:
+            d = json.load(fh)
+        return d if isinstance(d, dict) else {}
+    except Exception:
+        return {}
+
+
+def resolver_duplicado(clave, archivo_bueno, usuario="", datos_dir=None, procesadas_dir=None, reportes_dir=None):
+    """Elige la factura buena de un grupo de duplicados. Devuelve el registro.
+
+    Valida que `archivo_bueno` sea uno de los documentos del grupo: no se
+    puede 'elegir' un fichero que no esta en conflicto."""
+    grupos = {g["clave"]: g for g in facturas_ap_duplicadas(procesadas_dir, reportes_dir, incluir_resueltos=True)}
+    g = grupos.get(clave)
+    if not g:
+        raise ValueError("no hay ningun duplicado con esa clave")
+    archivos = [d["archivo"] for d in g["documentos"]]
+    if archivo_bueno not in archivos:
+        raise ValueError("ese documento no forma parte del duplicado")
+    reg = {"buena": archivo_bueno, "descartadas": [a for a in archivos if a != archivo_bueno],
+           "usuario": usuario or "sistema", "fecha": _dt.datetime.now().strftime("%Y-%m-%d %H:%M:%S"),
+           "numero_factura": g["numero_factura"], "nombre_proveedor": g["nombre_proveedor"]}
+    d = duplicados_resueltos(datos_dir)
+    d[clave] = reg
+    ruta = _ruta_duplicados(datos_dir)
+    os.makedirs(os.path.dirname(ruta), exist_ok=True)
+    tmp = ruta + ".tmp"
+    with open(tmp, "w", encoding="utf-8") as fh:
+        json.dump(d, fh, ensure_ascii=False, indent=2)
+    os.replace(tmp, ruta)
+    return reg
+
+
+def facturas_ap_duplicadas(procesadas_dir=None, reportes_dir=None, hotel=None, incluir_resueltos=False, datos_dir=None):
+    """Grupos de facturas AP con el mismo numero+proveedor en DOS o mas
+    documentos distintos, con los documentos a la vista para elegir.
+    Devuelve [{clave, numero_factura, nombre_proveedor, hotel_id, documentos:[...]}]."""
+    p, r = _dirs(procesadas_dir, reportes_dir)
+    df, _rutas = _leer_etapas(_ETAPAS_AP, p, r)
+    if df.empty or "archivo" not in df.columns:
+        return []
+    df = _filtrar_hotel(df, hotel) if hotel else df
+    df = df.assign(_clave=[_clave_doc(f, _ID_AP) for f in df.to_dict("records")])
+    df = df[df["_clave"] != ""]
+    # solo la etapa cruda (la mas alta): ahi estan los dos documentos
+    df = df[df["_etapa"] == df["_etapa"].max()] if not df.empty else df
+    resueltos = {} if incluir_resueltos else duplicados_resueltos(datos_dir)
+    out = []
+    for clave, grp in df.groupby("_clave", sort=False):
+        docs = {}
+        for f in grp.to_dict("records"):
+            a = _raw(f.get("archivo"))
+            if not a or a in docs:
+                continue
+            docs[a] = {"archivo": a, "fecha": _raw(f.get("fecha_factura")) or _raw(f.get("fecha")),
+                       "base_imponible": _num_or_none(f.get("base_imponible")), "cuota_iva": _num_or_none(f.get("cuota_iva")),
+                       "total_factura": _num_or_none(f.get("total_factura")), "descripcion": _raw(f.get("descripcion_concepto")),
+                       "cuenta_contable": _raw(f.get("cuenta_contable")), "NIF_proveedor": _raw(f.get("NIF_proveedor"))}
+        if len(docs) < 2 or (clave in resueltos):
+            continue
+        f0 = grp.iloc[0]
+        out.append({"clave": clave, "numero_factura": _raw(f0.get("numero_factura")), "nombre_proveedor": _raw(f0.get("nombre_proveedor")),
+                    "hotel_id": _raw(f0.get(COL_HOTEL)), "documentos": sorted(docs.values(), key=lambda x: x["archivo"])})
+    return out
+
+
+def _raw(v):
+    """Texto tal cual (sin pasar a minusculas como _txt), '' si vacio/NaN."""
+    if v is None or (isinstance(v, float) and v != v):
+        return ""
+    s = str(v).strip()
+    return "" if s.lower() in ("nan", "none", "nat", "no_encontrado") else s
+
+
+def _num_or_none(v):
+    try:
+        x = pd.to_numeric(v, errors="coerce")
+        return None if x != x else round(float(x), 2)
+    except Exception:
+        return None
+
+
+def _consolidar(df, campos_id, resueltos=None):
     """Deduplica quedandose con la version de la etapa mas avanzada.
 
     Las filas sin identidad ('' como clave) se conservan TODAS.
+    `resueltos`: duplicados ya decididos a mano (ver resolver_duplicado); las
+    descartadas se quitan ANTES de deduplicar, asi nunca ganan.
     """
     if df.empty:
         return df
     claves = [_clave_doc(fila, campos_id) for fila in df.to_dict("records")]
     df = df.assign(_clave=claves)
+    if resueltos and "archivo" in df.columns:
+        _arch0 = df["archivo"].map(lambda v: "" if v is None or (isinstance(v, float) and v != v) else str(v))
+        _fuera = [(k in resueltos and a != resueltos[k].get("buena")) for k, a in zip(df["_clave"], _arch0)]
+        df = df[[not x for x in _fuera]]
+        if df.empty:
+            return df.drop(columns=[c for c in ("_clave", "_etapa") if c in df.columns])
 
     sin_id = df[df["_clave"] == ""]
     con_id = df[df["_clave"] != ""]
@@ -295,7 +408,7 @@ def facturas_ap(procesadas_dir=None, reportes_dir=None, hotel=None):
     """Todas las facturas AP del tenant, de TODOS los dias, deduplicadas."""
     p, r = _dirs(procesadas_dir, reportes_dir)
     df, rutas = _leer_etapas(_ETAPAS_AP, p, r)
-    return _filtrar_hotel(_consolidar(df, _ID_AP), hotel)
+    return _filtrar_hotel(_consolidar(df, _ID_AP, duplicados_resueltos()), hotel)
 
 
 def facturas_ar(procesadas_dir=None, reportes_dir=None, hotel=None):

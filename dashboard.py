@@ -3272,6 +3272,14 @@ def api_ap_aprobar_lote():
                 if est not in _ESTADOS_OK:
                     no_cuadran += 1
                     continue
+                # Duplicado sin resolver (dos documentos con el mismo numero):
+                # nadie aprueba hasta que se elija cual vale en /aprobaciones-ap/.
+                try:
+                    if int(pd.to_numeric(r.get("duplicados"), errors="coerce") or 0) > 1:
+                        no_cuadran += 1
+                        continue
+                except Exception:
+                    pass
                 if decididas.get(clave) in ("APROBADA", "RECHAZADA"):
                     ya_decididas += 1
                     continue

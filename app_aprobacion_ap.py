@@ -148,6 +148,15 @@ _ESTADOS_INCIDENCIA = ("DISCREPANCIA", "DISCREPANCIA_PO", "DIFERENCIA_IMPORTE",
                        "FACTURA_SIN_ALBARAN", "ALERTA_CONSUMO")
 
 
+def _n_dup(v):
+    try:
+        import pandas as _pd
+        x = _pd.to_numeric(v, errors="coerce")
+        return 0 if x != x else int(x)
+    except Exception:
+        return 0
+
+
 def clave_factura(fila):
     """Identidad de una factura en el panel. NUNCA vacia.
 
@@ -313,6 +322,8 @@ def facturas_a_lista(df):
             # las de tres hoteles salian mezcladas y con la misma cara.
             "hotel_id":          safe_str(r.get("hotel_id")),
             "hotel":             _nombre_hotel(r.get("hotel_id")),
+            "duplicados":        _n_dup(r.get("duplicados")),
+            "duplicado_de":      safe_str(r.get("duplicado_de")),
             "accion":            apro_map.get(_clave, ""),
             # doble firma: cuantas lleva y quien puso la primera
             "doble_firma":       _importe(r.get("total_factura")) > umbral,
@@ -430,6 +441,43 @@ def api_stats():
     })
 
 @login_required
+@bp.route("/api/duplicados")
+def api_duplicados():
+    """Grupos de facturas con el mismo numero+proveedor en dos documentos, sin resolver."""
+    import almacen_datos as _alm
+    try:
+        import censo_hoteles
+        hotel = censo_hoteles.activo() or None
+    except Exception:
+        hotel = None
+    try:
+        grupos = _alm.facturas_ap_duplicadas(str(PROCESADAS_DIR), str(REPORTES_DIR), hotel=hotel)
+    except Exception as e:
+        return jsonify({"ok": False, "error": str(e)[:200]}), 500
+    for g in grupos:
+        g["hotel"] = _nombre_hotel(g.get("hotel_id"))
+    return jsonify({"ok": True, "grupos": grupos, "n": len(grupos)})
+
+
+@login_required
+@bp.route("/api/duplicados/elegir", methods=["POST"])
+def api_duplicados_elegir():
+    """'Esta es la buena': la otra queda descartada y fuera de aging, provisiones y Oracle."""
+    import almacen_datos as _alm
+    data = request.get_json(force=True, silent=True) or {}
+    clave = safe_str(data.get("clave")); archivo = safe_str(data.get("archivo"))
+    if not clave or not archivo:
+        return jsonify({"ok": False, "error": "Faltan clave y archivo"}), 400
+    try:
+        reg = _alm.resolver_duplicado(clave, archivo, _usuario_actual(""), procesadas_dir=str(PROCESADAS_DIR), reportes_dir=str(REPORTES_DIR))
+    except ValueError as e:
+        return jsonify({"ok": False, "error": str(e)}), 404
+    except Exception as e:
+        return jsonify({"ok": False, "error": str(e)[:200]}), 500
+    return jsonify({"ok": True, **reg})
+
+
+@login_required
 @bp.route("/api/accion", methods=["POST"])
 def api_accion():
     data = request.get_json(force=True)
@@ -452,15 +500,23 @@ def api_accion():
     # existe) no se decide nada: antes se aprobaba con total 0, o sea sin
     # doble firma, cualquier factura que no se pudiera ver.
     total = None
+    dup = 0
     try:
         for f in facturas_a_lista(cargar_facturas_ap()):
             if f.get("clave") == clave:
                 total = _importe(f.get("total_factura"))
+                dup = int(f.get("duplicados") or 0)
                 break
     except Exception:
         total = None
     if total is None:
         return jsonify({"ok": False, "error": "La factura no esta en el panel (¿otro hotel?). No se registra nada."}), 404
+    if dup > 1:
+        # Decision de Jordi (ronda 1): dos documentos con el mismo numero y
+        # proveedor no se aprueban ni se rechazan hasta que alguien elige cual
+        # vale (tarjeta "Duplicados por resolver" de esta misma pantalla).
+        return jsonify({"ok": False, "duplicado": True,
+                        "error": f"Hay {dup} documentos con este número. Elige cuál vale en 'Duplicados por resolver' antes de aprobar."}), 409
     accion, info = decidir_accion(clave, total, accion, aprobador)
     if accion is None:
         return jsonify({"ok": False, **info}), 409
@@ -757,6 +813,7 @@ svg.yvi{width:1em;height:1em;vertical-align:-0.125em;flex-shrink:0;display:inlin
   <div id="aviso-sin-hotel" class="alerta-box warn" style="display:none;margin-bottom:14px"></div>
 
   <div id="tab-facturas">
+    <div id="duplicados"></div>
     <div id="lista"></div>
   </div>
 
@@ -859,6 +916,7 @@ async function loadData() {
       : '';
   }
 
+  try { cargarDuplicados(); } catch(e) {}
   const lista = document.getElementById('lista');
   if(!rows.length){lista.innerHTML='<div class="empty"><span class="emo">📭</span>'
     +'<div class="tit">No queda nada por aprobar</div>'
@@ -896,7 +954,8 @@ async function loadData() {
       alertHtml +
       (r.accion && r.accion!=='FIRMA_1' ? '<div class="estado-row"><span class="badge '+(r.accion==='APROBADA'?'b-apr':'b-rec')+'">'+(r.accion==='APROBADA'?'✓ ':'✗ ')+r.accion+'</span></div>' : '') +
       (r.doble_firma ? '<div class="estado-row"><span class="badge b-firma">'+(r.firmas===1 ? '✍ 1/2 firmas · firmó '+txt(r.firma1_por)+' · falta otra persona' : '🔒 Importe alto: necesita dos firmas')+'</span></div>' : '') +
-      (r.accion!=='APROBADA' && r.accion!=='RECHAZADA' ? (
+      (r.duplicados > 1 ? '<div class="alerta-box warn">⚠ Hay '+r.duplicados+' documentos con este número ('+txt(r.duplicado_de)+'). No se puede aprobar ni rechazar hasta elegir cuál vale, arriba en "Duplicados por resolver".</div>' : '') +
+      (r.accion!=='APROBADA' && r.accion!=='RECHAZADA' && !(r.duplicados > 1) ? (
         '<div class="sep"></div>' +
         '<div class="dept-row"><span class="dept-label">Departamento:</span>' +
         '<select class="dept-select" id="dept-'+i+'" onchange="chk('+i+')"><option value="">— Selecciona —</option>' +
@@ -911,6 +970,36 @@ async function loadData() {
       ) : '') +
     '</div>';
   }).join('');
+}
+
+async function cargarDuplicados() {
+  const box = document.getElementById('duplicados');
+  if (!box) return;
+  const r = await fetch('/aprobaciones-ap/api/duplicados'); const d = await r.json();
+  if (!d.ok || !d.n) { box.innerHTML = ''; return; }
+  const eur = v => (v==null||isNaN(Number(v))) ? '—' : Number(v).toLocaleString('es-ES',{minimumFractionDigits:2,maximumFractionDigits:2}) + ' €';
+  const attr = v => String(v==null?'':v).replace(/&/g,'&amp;').replace(/"/g,'&quot;').replace(/</g,'&lt;');
+  box.innerHTML = '<div class="card" style="border:1px solid rgba(249,115,22,.5);margin-bottom:14px">' +
+    '<div class="card-title" style="margin-bottom:6px">⚠ Duplicados por resolver (' + d.n + ')</div>' +
+    '<div style="font-size:12px;color:#94a3b8;margin-bottom:10px">Dos documentos con el mismo número y proveedor. Elige cuál vale: el otro queda descartado y fuera del aging, las provisiones y Oracle.</div>' +
+    d.grupos.map(g => '<div style="margin:10px 0;padding:10px;border-radius:10px;background:rgba(15,23,42,.6)">' +
+      '<div style="font-weight:700;margin-bottom:8px">' + txt(g.numero_factura) + ' · ' + txt(g.nombre_proveedor) + (g.hotel ? ' · ' + txt(g.hotel) : '') + '</div>' +
+      '<div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(240px,1fr));gap:10px">' +
+      g.documentos.map(x => '<div style="padding:10px;border:1px solid #334155;border-radius:9px">' +
+        '<div style="font-size:11px;color:#94a3b8;word-break:break-all">' + txt(x.archivo) + '</div>' +
+        '<div style="font-size:12px;margin:6px 0">Fecha ' + txt(x.fecha||'—') + ' · Base ' + eur(x.base_imponible) + ' · IVA ' + eur(x.cuota_iva) + '</div>' +
+        '<div style="font-size:15px;font-weight:800">' + eur(x.total_factura) + '</div>' +
+        (x.descripcion ? '<div style="font-size:11px;color:#94a3b8;margin-top:4px">' + txt(x.descripcion) + '</div>' : '') +
+        '<button class="btn ok" style="margin-top:8px" data-clave="' + attr(g.clave) + '" data-archivo="' + attr(x.archivo) + '" onclick="elegirDuplicado(this)">✓ Esta es la buena</button>' +
+      '</div>').join('') + '</div></div>').join('') + '</div>';
+}
+async function elegirDuplicado(btn) {
+  const clave = btn.getAttribute('data-clave'), archivo = btn.getAttribute('data-archivo');
+  if (!confirm('¿Confirmas que "' + archivo + '" es la factura buena? La otra quedará descartada.')) return;
+  const r = await fetch('/aprobaciones-ap/api/duplicados/elegir', {method:'POST', headers:{'Content-Type':'application/json', 'X-CSRF-Token': (window._csrf||'')}, body: JSON.stringify({clave, archivo})});
+  const d = await r.json();
+  if (!d.ok) { alert(d.error || 'No se ha podido guardar'); return; }
+  loadData();
 }
 
 function chk(i) {
