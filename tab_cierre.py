@@ -341,3 +341,100 @@ def api_exportar_inmovilizado():
     buf, nombre = IM.exportar_excel(_inmovilizado(mes, hotel))
     return send_file(buf, as_attachment=True, download_name=nombre,
                      mimetype='application/vnd.openxmlformats-officedocument.spreadsheetml.sheet')
+
+
+# ── Archivo de fin de mes para la central (Ola B · bloque 5) ────────────────
+def _aging(hotel):
+    try:
+        import aging_ap as AG
+        import almacen_datos as ALM
+        from dashboard import cargar_datos_ap, cargar_datos
+        df_ap = cargar_datos_ap()
+        df_ar, _ = cargar_datos()
+        bk, _ = ALM.movimientos_banco(datos_dir=str(_t_ddir()), reportes_dir=str(_t_rdir()))
+        return AG.calcular_aging(df_ap, df_ar, bk)
+    except Exception:
+        return None
+
+
+def _bloques(mes, hotel, con_fiscal=True):
+    """Todos los bloques del cierre, cada uno protegido: uno que falle no tumba el paquete."""
+    import cierre_mes as CM
+    out = {}
+    try:
+        out['asientos'], out['reconciliacion'] = CM.cierre_completo(mes, hotel, **_dirs())
+        out['drr'] = CM.drr_del_mes(out['asientos']['mes'], hotel)
+    except Exception:
+        out['asientos'] = out['reconciliacion'] = out['drr'] = None
+    for clave, fn in (('banco', lambda: _cuadre(mes, hotel)), ('inventarios', lambda: _inventarios(mes, hotel)),
+                      ('inmovilizado', lambda: _inmovilizado(mes, hotel)), ('aging', lambda: _aging(hotel))):
+        try:
+            out[clave] = fn()
+        except Exception:
+            out[clave] = None
+    try:
+        import provisiones as PV
+        d = _dirs()
+        out['provisiones'] = [PV.provision_albaranes(mes, hotel, d['procesadas_dir'], d['reportes_dir'], d['datos_dir']),
+                              PV.provision_comisiones(mes, hotel, d['reportes_dir'], d['datos_dir'])]
+    except Exception:
+        out['provisiones'] = None
+    out['fiscal'] = None
+    if con_fiscal:
+        try:
+            import fiscal as FI
+            out['fiscal'] = FI.resumen_para_paquete(mes, out.get('asientos'), out.get('reconciliacion'))
+        except Exception:
+            out['fiscal'] = None
+    return out
+
+
+@cierre_bp.route('/api/cierre/paquete')
+def api_cierre_paquete():
+    import paquete_cierre as PQ
+    from provisiones import _mes_a_rango
+    mes, hotel = _args()
+    _, _, mes = _mes_a_rango(mes)
+    b = _bloques(mes, hotel)
+    paq = PQ.montar(mes, b['asientos'], b['reconciliacion'], b['banco'], b['provisiones'], b['inventarios'],
+                    b['inmovilizado'], b['aging'], b['fiscal'], PQ.comentarios(mes, str(_t_ddir())), b['drr'])
+    return jsonify({'ok': True, 'hotel': hotel or '', **paq})
+
+
+@cierre_bp.route('/api/cierre/comentario', methods=['POST'])
+def api_cierre_comentario():
+    import paquete_cierre as PQ
+    data = request.get_json(force=True, silent=True) or {}
+    mes = str(data.get('mes') or '').strip()[:7]
+    if len(mes) != 7:
+        return jsonify({'ok': False, 'error': 'mes invalido (aaaa-mm)'}), 400
+    try:
+        from flask_login import current_user
+        usuario = getattr(current_user, 'username', None) or 'sistema'
+    except Exception:
+        usuario = 'sistema'
+    try:
+        m = PQ.guardar_comentario(mes, str(data.get('seccion') or ''), str(data.get('texto') or ''), usuario, str(_t_ddir()))
+    except ValueError as e:
+        return jsonify({'ok': False, 'error': str(e)}), 400
+    try:
+        from dashboard import _audit
+        _audit('CIERRE_COMENTARIO', f"{mes} {data.get('seccion')}", usuario)
+    except Exception:
+        pass
+    return jsonify({'ok': True, 'comentarios': m})
+
+
+@cierre_bp.route('/api/exportar/cierre_paquete')
+def api_exportar_cierre_paquete():
+    import paquete_cierre as PQ
+    from provisiones import _mes_a_rango
+    mes, hotel = _args()
+    _, _, mes = _mes_a_rango(mes)
+    b = _bloques(mes, hotel)
+    paq = PQ.montar(mes, b['asientos'], b['reconciliacion'], b['banco'], b['provisiones'], b['inventarios'],
+                    b['inmovilizado'], b['aging'], b['fiscal'], PQ.comentarios(mes, str(_t_ddir())), b['drr'])
+    buf, nombre = PQ.exportar_excel(paq, b['asientos'], b['reconciliacion'], b['banco'], b['provisiones'],
+                                    b['inventarios'], b['inmovilizado'], b['aging'], b['fiscal'])
+    return send_file(buf, as_attachment=True, download_name=nombre,
+                     mimetype='application/vnd.openxmlformats-officedocument.spreadsheetml.sheet')

@@ -6542,6 +6542,15 @@ svg.yvi{width:1em;height:1em;vertical-align:-0.125em;flex-shrink:0;display:inlin
       <div class="stat"><div class="stat-label" data-i18n="cierre.kHaber">Haber</div><div class="stat-value" id="cierre-k-haber">—</div></div>
       <div class="stat"><div class="stat-label" data-i18n="cierre.kCuadre">Cuadre</div><div class="stat-value" id="cierre-k-cuadre">—</div></div>
     </div>
+    <div class="card" id="card-cierre-paquete" style="margin-bottom:22px">
+      <div style="display:flex;align-items:center;justify-content:space-between;gap:12px;flex-wrap:wrap;margin-bottom:10px">
+        <div class="card-title" style="margin:0" data-i18n="paq.titulo">Archivo de fin de mes para la central</div>
+        <div style="display:flex;align-items:center;gap:8px"><span id="paq-estado" style="font-size:12px;font-weight:700"></span>
+        <a id="paq-excel" href="/api/exportar/cierre_paquete" class="btn-ref" style="text-decoration:none;font-size:12px" data-i18n="paq.descargar">📦 Descargar paquete</a></div>
+      </div>
+      <div id="paq-resultado" style="display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:8px;margin-bottom:12px"></div>
+      <div id="paq-body" style="font-size:12px;color:var(--mut)"><div class="empty"><p data-i18n="cierre.cargando">Montando el mes…</p></div></div>
+    </div>
     <div class="card" id="card-cierre-recon" style="margin-bottom:22px">
       <div class="card-title" data-i18n="cierre.recon">Reconciliación de cuentas</div>
       <div id="cierre-recon-body" style="font-size:13px;color:var(--mut)"><div class="empty"><p data-i18n="cierre.cargando">Montando el mes…</p></div></div>
@@ -13727,6 +13736,42 @@ async function _inmBaja(id){
   try { var r = await _postJson('/api/inmovilizado/baja', {id: id, fecha_baja: f}); var d = await r.json(); if (!d || !d.ok) showNotification('✗ ' + ((d&&d.error)||'Error'), 'error'); loadInmovilizado(); } catch(e){ showNotification('✗ ' + e.message, 'error'); }
 }
 
+// ── Archivo de fin de mes para la central (Ola B·5) ──────────────────────
+async function loadPaquete(){
+  var inp = document.getElementById('cierre-mes'); if (!inp) return;
+  var mes = inp.value;
+  var ex = document.getElementById('paq-excel'); if (ex) ex.href = '/api/exportar/cierre_paquete?mes=' + encodeURIComponent(mes);
+  var rs = document.getElementById('paq-resultado'), body = document.getElementById('paq-body'), est = document.getElementById('paq-estado');
+  try {
+    var r = await fetch('/api/cierre/paquete?mes=' + encodeURIComponent(mes));
+    var d = await r.json();
+    if (!d || !d.ok) { body.innerHTML = '<div class="empty"><p>' + _cEsc((d&&d.error)||'Error') + '</p></div>'; return; }
+    if (est) { est.textContent = d.listo ? t('paq.listo','✓ listo para la central') : t('paq.pendiente','{n} bloque(s) pendiente(s)').replace('{n}', (d.resumen_checklist||{}).PENDIENTE||0); est.style.color = d.listo ? '#22c55e' : '#f59e0b'; }
+    var rr = d.resultado || {};
+    var tile = function(l, v, col){ return '<div class="card" style="padding:10px;border-radius:10px"><div style="font-size:11px;color:var(--mut);text-transform:uppercase;letter-spacing:.4px">' + _cEsc(l) + '</div><div style="font-size:15px;font-weight:700;color:' + (col||'var(--tx)') + '">' + v + '</div></div>'; };
+    rs.innerHTML = tile(t('paq.ingresos','Ingresos asentados'), _cEur(rr.ingresos)) + tile(t('paq.gastos','Gastos asentados'), _cEur(rr.gastos)) + tile(t('paq.resultado','Resultado (según documentos)'), _cEur(rr.resultado), (rr.resultado||0) >= 0 ? '#22c55e' : '#f87171') + (rr.drr_rooms_revenue!=null ? tile(t('paq.drr','Rooms Revenue DRR (MTD)'), _cEur(rr.drr_rooms_revenue)) : '');
+    var COL = {OK:'#22c55e', PENDIENTE:'#f59e0b', SIN_DATO:'var(--mut)'};
+    var LBL = {OK:'✓ OK', PENDIENTE:t('cierre.stPend','pendiente'), SIN_DATO:t('cierre.stSinDato','sin dato')};
+    var h = '<div style="margin-bottom:8px"><label style="font-size:10px;color:var(--mut);text-transform:uppercase;letter-spacing:.4px">' + t('paq.comentarioGeneral','Comentario general para la central') + '</label><textarea id="paq-com-resumen" rows="2" style="width:100%;box-sizing:border-box;background:var(--bg);border:1px solid var(--s2);color:var(--tx);padding:6px;border-radius:8px;font-size:12px;font-family:inherit">' + _cEsc(d.comentario_general||'') + '</textarea><button class="btn-ref" style="font-size:11px;margin-top:4px" onclick="_paqGuardar(\'resumen\')">' + t('paq.guardar','Guardar comentario') + '</button></div>';
+    h += '<table style="width:100%;border-collapse:collapse;font-size:12px"><tbody>' + (d.checklist||[]).map(function(c){
+      return '<tr style="border-top:1px solid var(--s2)"><td style="padding:6px 4px;width:34%"><b>' + _cEsc(c.titulo) + '</b><div style="font-size:11px;color:var(--dim)">' + _cEsc(c.cifra||'') + (c.detalle ? '<br>' + _cEsc(c.detalle) : '') + '</div></td>' +
+        '<td style="padding:6px 4px;width:90px;font-weight:700;color:' + (COL[c.estado]||'var(--mut)') + '">' + _cEsc(LBL[c.estado]||c.estado) + '</td>' +
+        '<td style="padding:6px 4px"><textarea id="paq-com-' + _cEsc(c.clave) + '" rows="1" placeholder="' + t('paq.comentario','comentario para la central') + '" style="width:100%;box-sizing:border-box;background:var(--bg);border:1px solid var(--s2);color:var(--tx);padding:5px;border-radius:8px;font-size:11px;font-family:inherit" onblur="_paqGuardar(\'' + _cEsc(c.clave) + '\')">' + _cEsc(c.comentario||'') + '</textarea></td></tr>'; }).join('') + '</tbody></table>';
+    h += '<div style="margin-top:8px;font-size:11px;color:var(--dim)">' + _cEsc(d.nota||'') + '</div>';
+    body.innerHTML = h;
+  } catch(e) { if (body) body.innerHTML = '<div class="empty"><p>' + _cEsc(e.message) + '</p></div>'; }
+}
+async function _paqGuardar(seccion){
+  var ta = document.getElementById('paq-com-' + seccion); if (!ta) return;
+  var mes = (document.getElementById('cierre-mes')||{}).value || '';
+  try {
+    var r = await _postJson('/api/cierre/comentario', {mes: mes, seccion: seccion, texto: ta.value});
+    var d = await r.json();
+    if (d && d.ok) { if (seccion === 'resumen') showNotification(t('paq.guardado','✓ Comentario guardado'), 'success'); }
+    else showNotification('✗ ' + ((d&&d.error)||'Error'), 'error');
+  } catch(e){ showNotification('✗ ' + e.message, 'error'); }
+}
+
 // ── Cierre de mes (Ola B) ─────────────────────────────────────────────────
 function _cEsc(s){ return String(s==null?'':s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;'); }
 function _cEur(v){ return (v==null||isNaN(Number(v))) ? '—' : Number(v).toLocaleString('es-ES',{minimumFractionDigits:2,maximumFractionDigits:2}) + ' €'; }
@@ -13740,6 +13785,7 @@ async function loadCierre(forzar){
   try { loadCuadreBanco(); } catch(e){}
   try { loadInventarios(); } catch(e){}
   try { loadInmovilizado(); } catch(e){}
+  try { loadPaquete(); } catch(e){}
   try {
     var r = await fetch('/api/cierre/asientos?mes=' + encodeURIComponent(mes));
     var d = await r.json();
