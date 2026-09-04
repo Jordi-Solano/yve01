@@ -819,6 +819,7 @@ function bMatch(m) {
     DIFERENCIA_IMPORTE:['b-disc','✗ Diferencia de importe'],
     DIFERENCIA_LINEA:['b-disc','✗ Diferencia en una línea'],
     FACTURA_SIN_ALBARAN:['b-nopo','⚠ Sin albarán'],
+    NO_REQUIERE_ALBARAN:['b-nopo','Servicio · sin albarán'],
     ALBARAN_SIN_FACTURAR:['b-alert','⚠ Albarán sin facturar'],
     ANTERIOR_AL_REGISTRO:['b-pen','· Anterior al registro'],
     PENDIENTE:['b-pen','· Sin cruzar'],

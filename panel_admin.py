@@ -253,14 +253,13 @@ input:focus,select:focus,textarea:focus{border-color:var(--acc);box-shadow:0 0 0
           <input id="hn-nombre" placeholder="Nombre del hotel" style="background:#1e293b;border:1px solid #334155;color:#f1f5f9;padding:8px;border-radius:7px;font-size:12px">
           <input id="hn-ciudad" placeholder="Ciudad" style="background:#1e293b;border:1px solid #334155;color:#f1f5f9;padding:8px;border-radius:7px;font-size:12px">
           <input id="hn-hab" placeholder="Habitaciones" type="number" value="100" style="background:#1e293b;border:1px solid #334155;color:#f1f5f9;padding:8px;border-radius:7px;font-size:12px">
-          <select id="hn-cat" style="background:#1e293b;border:1px solid #334155;color:#f1f5f9;padding:8px;border-radius:7px;font-size:12px">
-            <option>3★</option><option selected>4★</option><option>5★</option>
-          </select>
+          <input id="hn-grupo" list="hn-grupos" placeholder="Grupo / cadena (p. ej. Cadena Llevant)" style="background:#1e293b;border:1px solid #334155;color:#f1f5f9;padding:8px;border-radius:7px;font-size:12px">
+          <datalist id="hn-grupos"></datalist>
         </div>
         <button onclick="crearHotel()" class="btn bsm" style="font-size:12px;padding:6px 14px">Registrar hotel</button>
         <span id="hotel-msg" style="font-size:12px;margin-left:10px"></span>
       </div>
-      <table class="ut"><thead><tr><th>Hotel</th><th>Ciudad</th><th>Hab</th><th>Cat.</th><th></th></tr></thead>
+      <table class="ut"><thead><tr><th>Hotel</th><th>Ciudad</th><th>Hab</th><th>Grupo</th><th></th></tr></thead>
       <tbody id="htb"></tbody></table>
     </div>
     <div class="card" style="border-color:rgba(239,68,68,.2)">
@@ -316,7 +315,8 @@ input:focus,select:focus,textarea:focus{border-color:var(--acc);box-shadow:0 0 0
 <script>
 async function ls(){const r=await fetch('/admin/api/stats'),d=await r.json();['u','a','h','r','up','v'].forEach((k,i)=>{const el=document.getElementById('s'+k);if(el)el.textContent=[d.usuarios,d.usuarios_activos,d.hoteles,d.reportes_generados,d.uptime,d.version][i];});}
 async function lu(){const r=await fetch('/admin/api/usuarios'),us=await r.json();document.getElementById('utb').innerHTML=us.map(u=>'<tr><td><b>'+u.username+'</b></td><td>'+(u.nombre||'-')+'</td><td style="color:var(--acc2)">'+u.rol+'</td><td><span class="'+(u.activo!==false?'ok':'off')+'">'+(u.activo!==false?'Activo':'Inactivo')+'</span></td><td><button class="btn bd bsm" onclick="tU(\''+u.username+'\')">Toggle</button></td></tr>').join('');}
-async function lh(){const r=await fetch('/admin/api/hoteles'),d=await r.json();if(!d.ok)return;document.getElementById('htb').innerHTML=d.hoteles.map(h=>'<tr><td><b>'+h.nombre+'</b></td><td style="color:#94a3b8">'+(h.ciudad||'-')+'</td><td>'+(h.habitaciones||'-')+'</td><td style="color:#94a3b8">'+(h.categoria||'-')+'</td><td><button class="btn bd bsm" onclick="dH(\''+h.id+'\')">×</button></td></tr>').join('');}
+async function lh(){const r=await fetch('/admin/api/hoteles'),d=await r.json();if(!d.ok)return;document.getElementById('htb').innerHTML=d.hoteles.map(h=>'<tr><td><b>'+h.nombre+'</b></td><td style="color:#94a3b8">'+(h.ciudad||'-')+'</td><td>'+(h.habitaciones||'-')+'</td><td style="color:#94a3b8">'+(h.grupo||'-')+'</td><td><button class="btn bd bsm" onclick="dH(\''+h.id+'\')">×</button></td></tr>').join('');
+  const dl=document.getElementById('hn-grupos');if(dl)dl.innerHTML=[...new Set(d.hoteles.map(h=>h.grupo).filter(g=>g&&g!=='Principal'))].map(g=>'<option value="'+g.replace(/"/g,'&quot;')+'">').join('');}
 async function loadLeads() {
   const el = document.getElementById('leads-list');
   try {
@@ -379,7 +379,7 @@ async function dH(id){if(!confirm('Eliminar '+id+'?'))return;await fetch('/admin
 async function crearU(){const d={username:document.getElementById('nu').value.trim(),password:document.getElementById('np').value,nombre:document.getElementById('nn').value.trim(),email:document.getElementById('ne').value.trim(),rol:document.getElementById('nr').value};const m=document.getElementById('mu');if(!d.username||!d.password){m.style.color='#ef4444';m.textContent='Faltan campos.';return;}const r=await fetch('/admin/api/crear_usuario',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(d)});const res=await r.json();m.style.color=res.ok?'#22c55e':'#ef4444';m.textContent=res.ok?'Creado: '+d.username:(res.error||'Error');if(res.ok){lu();ls();}}
 async function crearHotel(){
   const d={nombre:document.getElementById('hn-nombre').value.trim(),ciudad:document.getElementById('hn-ciudad').value.trim(),
-    habitaciones:document.getElementById('hn-hab').value,categoria:document.getElementById('hn-cat').value};
+    habitaciones:document.getElementById('hn-hab').value,grupo:document.getElementById('hn-grupo').value.trim()};
   const m=document.getElementById('hotel-msg');
   if(!d.nombre){m.style.color='#ef4444';m.textContent='El nombre es obligatorio';return;}
   const r=await fetch('/admin/api/hoteles/crear',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(d)});
@@ -413,7 +413,7 @@ def api_crear_hotel():
     ciudad    = data.get("ciudad", "").strip()
     categoria = data.get("categoria", "4★")
     hab       = int(data.get("habitaciones", 100))
-    grupo     = data.get("grupo", "Principal")
+    grupo     = (data.get("grupo") or "").strip() or "Principal"
 
     if not nombre:
         return jsonify({"ok": False, "error": "El nombre es obligatorio"}), 400

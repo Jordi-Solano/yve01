@@ -520,6 +520,14 @@ def _lista_alb(pares):
     return "; ".join(f"{', '.join(nums)} ({nom})" for nom, nums in por_hotel.items())
 
 
+def _exige_albaran(fila):
+    try:
+        from cuentas_proveedor import exige_albaran
+        return exige_albaran(fila)
+    except Exception:
+        return True
+
+
 def analizar_factura(fila_f, indices_alb, df_alb, porque, i_f, cortes=None,
                      df_lin_f=None, df_lin_a=None, hay_hoteles=False,
                      bloqueados=None, con_albaran=None):
@@ -553,6 +561,12 @@ def analizar_factura(fila_f, indices_alb, df_alb, porque, i_f, cortes=None,
                        f"albarán registrado" + (f" en {_nombre_hotel(hot)}" if hot else "")
                        + f" ({corte.strftime('%d/%m/%Y')}): no se puede esperar que "
                        "tenga uno")
+        elif not _exige_albaran(fila_f):
+            # Un suministro o un servicio (luz, lavanderia, seguro, mantenimiento)
+            # no lleva albaran de entrega: no es una incidencia ni se reclama.
+            # Solo la mercancia (tipo FB / cuenta 60x) tiene que traer uno.
+            estado = "NO_REQUIERE_ALBARAN"
+            detalle = "servicio o suministro: no lleva albarán de entrega"
         else:
             estado = "FACTURA_SIN_ALBARAN"
             detalle = ("no se ha encontrado ninguna entrega que respalde esta factura "
@@ -593,7 +607,7 @@ def analizar_factura(fila_f, indices_alb, df_alb, porque, i_f, cortes=None,
     n_comp = n_sin_pareja = 0
     euros_linea = NF
     avisos_l = []
-    if albs and estado not in ("ANTERIOR_AL_REGISTRO", "FACTURA_SIN_ALBARAN"):
+    if albs and estado not in ("ANTERIOR_AL_REGISTRO", "FACTURA_SIN_ALBARAN", "NO_REQUIERE_ALBARAN"):
         lin_f = _lineas_de(df_lin_f, "archivo", [fila_f.get("archivo")], hot)
         if not lin_f:
             lin_f = _lineas_de(df_lin_f, "numero_factura",
@@ -705,7 +719,7 @@ _COLORES = {
     "MATCH_ALBARAN_OK": VERDE, "ALBARAN_FACTURADO": VERDE,
     "DIFERENCIA_IMPORTE": ROJO,
     "FACTURA_SIN_ALBARAN": AMARILLO, "ALBARAN_SIN_FACTURAR": AMARILLO,
-    "ANTERIOR_AL_REGISTRO": AZUL,
+    "ANTERIOR_AL_REGISTRO": AZUL, "NO_REQUIERE_ALBARAN": AZUL,
     "SIN_IMPORTE": AZUL,
 }
 
@@ -810,10 +824,11 @@ def main():
 
     iconos = {"MATCH_ALBARAN_OK": "✓", "DIFERENCIA_IMPORTE": "✗",
               "FACTURA_SIN_ALBARAN": "?", "SIN_IMPORTE": "~",
-              "ANTERIOR_AL_REGISTRO": "·", "DIFERENCIA_LINEA": "✗"}
+              "ANTERIOR_AL_REGISTRO": "·", "DIFERENCIA_LINEA": "✗",
+              "NO_REQUIERE_ALBARAN": "·"}
     for r in res_f:
         print(f"  [{iconos.get(r['estado_matching'], '·')}] {r['numero_factura']} → {r['estado_matching']}")
-        if r["estado_matching"] not in ("MATCH_ALBARAN_OK", "ANTERIOR_AL_REGISTRO"):
+        if r["estado_matching"] not in ("MATCH_ALBARAN_OK", "ANTERIOR_AL_REGISTRO", "NO_REQUIERE_ALBARAN"):
             print(f"       {r['detalle_matching']}")
     sin_facturar = [r for r in res_a if r["estado"] == "ALBARAN_SIN_FACTURAR"]
     for r in sin_facturar:

@@ -247,10 +247,45 @@ def _consolidar(df, campos_id):
     sin_id = df[df["_clave"] == ""]
     con_id = df[df["_clave"] != ""]
     if not con_id.empty:
-        # estable: ordenar por etapa (0 primero) y quedarse con la primera
-        con_id = (con_id.sort_values("_etapa", kind="stable")
-                        .drop_duplicates(subset=["_clave"], keep="first"))
+        # Dos DOCUMENTOS distintos con la misma identidad (mismo numero y
+        # proveedor, ficheros distintos) son un conflicto, no una actualizacion.
+        # Antes ganaba el ultimo subido, asi que el resultado dependia del ORDEN
+        # de subida. Ahora el desempate es determinista (fecha del documento
+        # mas reciente y, a igual fecha, nombre de fichero) y la fila que queda
+        # lleva `duplicados` (cuantos) y `duplicado_de` (los otros ficheros)
+        # para que se vea y se decida, en vez de perderse en silencio.
+        con_id = con_id.copy()
+        if "archivo" in con_id.columns:
+            _arch = con_id["archivo"].map(lambda v: "" if v is None or (isinstance(v, float) and v != v) else str(v))
+            _fec = None
+            for _c in ("fecha_factura", "fecha"):
+                if _c in con_id.columns:
+                    _fec = pd.to_datetime(con_id[_c].map(lambda v: str(v)[:10] if v is not None and str(v) not in ("nan", "None", "") else None),
+                                          dayfirst=True, errors="coerce")
+                    break
+            con_id["_arch"] = _arch
+            con_id["_fec"] = _fec if _fec is not None else pd.NaT
+            # los duplicados se cuentan en la etapa MENOS avanzada (el fichero
+            # crudo, prioridad mas alta), que es donde estan los dos documentos;
+            # a la etapa contabilizada suele llegar solo uno.
+            _max = con_id.groupby("_clave")["_etapa"].transform("max")
+            _base = con_id[con_id["_etapa"] == _max]
+            _dup = _base.groupby("_clave")["_arch"].agg(lambda x: sorted(set(v for v in x if v)))
+            con_id = con_id.sort_values(["_etapa", "_fec", "_arch"], ascending=[True, False, True], kind="stable")
+            con_id = con_id.drop_duplicates(subset=["_clave"], keep="first")
+            _n = con_id["_clave"].map(lambda k: len(_dup.get(k, [])))
+            con_id["duplicados"] = _n.where(_n > 1, 0).astype(int)
+            con_id["duplicado_de"] = [
+                ", ".join(a for a in _dup.get(k, []) if a != mio) if len(_dup.get(k, [])) > 1 else ""
+                for k, mio in zip(con_id["_clave"], con_id["_arch"])]
+            con_id = con_id.drop(columns=["_arch", "_fec"])
+        else:
+            con_id = (con_id.sort_values("_etapa", kind="stable")
+                            .drop_duplicates(subset=["_clave"], keep="first"))
     out = pd.concat([con_id, sin_id], ignore_index=True)
+    if "duplicados" in out.columns:
+        out["duplicados"] = pd.to_numeric(out["duplicados"], errors="coerce").fillna(0).astype(int)
+        out["duplicado_de"] = out["duplicado_de"].map(lambda v: "" if v is None or (isinstance(v, float) and v != v) else str(v))
     return out.drop(columns=[c for c in ("_clave", "_etapa") if c in out.columns])
 
 

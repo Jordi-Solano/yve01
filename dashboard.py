@@ -197,6 +197,7 @@ from reclamaciones_ota import recl_ota_bp
 from reclamaciones_ap import recl_ap_bp
 from oracle_export_dryrun import oracle_export_bp   # exporta SOLO lo producido por el pipeline
 from tab_cierre import cierre_bp
+from tab_albaranes import albaranes_bp
 from oracle_export_dryrun import oracle_export_bp
 from pricing import pricing_bp
 from tab_multi_hotel import multi_hotel_bp
@@ -218,7 +219,7 @@ from about import about_bp
 from exportador_pdf import pdf_bp
 # pricing_bp estaba importado pero NO registrado: /precios daba 404 mientras la
 # landing, el blog y "Quienes somos" enlazaban a el (Ola A).
-for _bp in (auth_bp, config_bp, admin_bp, aprob_ar_bp, aprob_ap_bp, concil_bp, fb_bp, ar_real_bp, recl_ota_bp, recl_ap_bp, oracle_export_bp, cierre_bp, multi_hotel_bp, self_service_bp, exportador_bp, demo_bp, demo_sim_bp, reportes_pdf_bp, blog_bp, billing_bp, asientos_bp, signup_bp, about_bp, pdf_bp, legal_bp, pricing_bp):
+for _bp in (auth_bp, config_bp, admin_bp, aprob_ar_bp, aprob_ap_bp, concil_bp, fb_bp, ar_real_bp, recl_ota_bp, recl_ap_bp, oracle_export_bp, cierre_bp, albaranes_bp, multi_hotel_bp, self_service_bp, exportador_bp, demo_bp, demo_sim_bp, reportes_pdf_bp, blog_bp, billing_bp, asientos_bp, signup_bp, about_bp, pdf_bp, legal_bp, pricing_bp):
     app.register_blueprint(_bp)
 
 
@@ -1371,6 +1372,15 @@ def _guardar_factura_ap(filas):
     from lector_facturas_ap import guardar_excel as _gx
     filas = [filas] if isinstance(filas, dict) else list(filas or [])
     _crudas = [f for f in filas if isinstance(f, dict)]
+    # Una cuenta y un tipo POR PROVEEDOR (cuentas_proveedor): el lector decide
+    # por una palabra del concepto de cada factura y salian dos cuentas para el
+    # mismo distribuidor y una lavanderia en 600. Se decide aqui, con las
+    # lineas a la vista, y se aprende para la siguiente factura del proveedor.
+    try:
+        import cuentas_proveedor as _CP
+        _CP.normalizar(_crudas, str(_ddir()))
+    except Exception as _e_cp:
+        print(f"[cuentas_proveedor] no aplicado: {_e_cp}")
     # las claves internas (_facturas, _skip, _lineas...) no son columnas de la
     # factura: se quitan de la hoja plana. `_crudas` las conserva porque las
     # lineas de la Fase 3c viajan justamente en una de ellas.
@@ -2720,7 +2730,9 @@ def api_procesar_batch_stream():
             # Rooming y documentos de evento se guardan, pero NO hay pantalla
             # donde consultarlos. Antes salian en "Consulta:" mandando a
             # pestañas que no existen; ahora se dice lo que hay.
-            _sin_pantalla = rooming_n + beo_n + alb_n + po_n
+            if alb_n:
+                yield f'data: 📋 {alb_n} albarán(es) guardado(s) — en AP → Albaranes, con sus líneas y su factura\n\n'
+            _sin_pantalla = rooming_n + beo_n + po_n
             if _sin_pantalla:
                 yield (f'data: ℹ {_sin_pantalla} documento(s) guardado(s) para cruces internos — '
                        f'todavia no hay pantalla donde consultarlos\n\n')
@@ -3982,6 +3994,8 @@ def df_ap_a_lista(df):
             "estado":            est.upper() or "PENDIENTE",
             "accion":            safe_str(r.get("accion")).upper(),
             "detalle_alerta":    safe_str(r.get("detalle_alerta")),
+            "duplicados":        int(pd.to_numeric(r.get("duplicados"), errors="coerce") or 0) if r.get("duplicados") is not None else 0,
+            "duplicado_de":      safe_str(r.get("duplicado_de")),
         })
     return rows
 
@@ -6398,6 +6412,17 @@ svg.yvi{width:1em;height:1em;vertical-align:-0.125em;flex-shrink:0;display:inlin
     </div>
 
     <!-- Reclamar al proveedor (Ola A): factura rectificativa o abono. Nada sale sin "Aprobar y enviar". -->
+    <div class="card" id="card-albaranes" style="margin-top:22px">
+      <div style="display:flex;align-items:center;justify-content:space-between;gap:12px;flex-wrap:wrap;margin-bottom:12px">
+        <div class="card-title" style="margin:0" data-i18n="alb.titulo">Albaranes de entrega</div>
+        <div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap">
+          <span id="alb-resumen" style="font-size:12px;color:var(--mut)"></span>
+          <a href="/api/exportar/albaranes" class="btn-ref" style="text-decoration:none;font-size:12px" data-i18n="alb.excel">⬇️ Excel</a>
+        </div>
+      </div>
+      <div style="font-size:12px;color:var(--mut);margin-bottom:10px" data-i18n="alb.ayuda">Cada entrega con sus líneas y la factura con la que ha cruzado. Pulsa una fila para ver las líneas.</div>
+      <div id="alb-list"></div>
+    </div>
     <div class="card" id="card-recl-ap" style="margin-top:22px">
       <div style="display:flex;align-items:center;justify-content:space-between;gap:12px;flex-wrap:wrap;margin-bottom:12px">
         <div class="card-title" style="margin:0" data-i18n="reclap.titulo">Reclamar al proveedor (rectificativa / abono)</div>
@@ -6939,7 +6964,7 @@ Gestoría Nord: Hotel Pirineus, Hotel Vall" style="width:100%;background:var(--b
         <button onclick="event.stopPropagation();document.getElementById('upload-file-input').click()"
                 data-i18n="upload.selArchivos"
                 style="background:var(--acc);border:none;color:#fff;padding:8px 18px;border-radius:9px;font-size:13px;font-weight:600;cursor:pointer">📄 Seleccionar archivos</button>
-        <button onclick="event.stopPropagation();document.getElementById('upload-photo-input').click()"
+        <button class="show-mobile" onclick="event.stopPropagation();document.getElementById('upload-photo-input').click()"
                 data-i18n="upload.selFotos"
                 style="background:var(--s2);border:1px solid var(--s3);color:var(--tx);padding:8px 18px;border-radius:9px;font-size:13px;font-weight:600;cursor:pointer">📸 Hacer o elegir fotos</button>
         <button class="hide-mobile" onclick="event.stopPropagation();document.getElementById('upload-folder-input').click()"
@@ -6951,7 +6976,7 @@ Gestoría Nord: Hotel Pirineus, Hotel Vall" style="width:100%;background:var(--b
          mezclaba documentos e `image/*`: en el movil eso hace que el sistema
          abra la GALERIA, asi que todo lo que se elegia acababa siendo una foto
          —y por eso salia "Foto" en todo y se ofrecia unir donde no tocaba. -->
-    <input id="upload-file-input" type="file" multiple accept=".pdf,.xlsm,.xlsx,.xls,.csv" style="display:none" onchange="handleUploadFiles(this.files, this)">
+    <input id="upload-file-input" type="file" multiple accept=".pdf,.xlsm,.xlsx,.xls,.csv,.jpg,.jpeg,.png,.webp,.heic" style="display:none" onchange="handleUploadFiles(this.files, this)">
     <input id="upload-photo-input" type="file" multiple accept="image/*" style="display:none" onchange="handleUploadFiles(this.files, this)">
     <input id="upload-folder-input" type="file" multiple webkitdirectory style="display:none" onchange="handleUploadFiles(this.files, this)">
     <!-- Nada se descarta en silencio. Va FUERA de #upload-file-list a
@@ -10605,6 +10630,36 @@ async function _reclDescartar(i){
 
 // ── Reclamar al PROVEEDOR (AP): rectificativa o abono. Mismo patron que la OTA. ──
 var _reclApItems = [];
+async function cargarAlbaranes(){
+  var wrap = document.getElementById('alb-list'), res = document.getElementById('alb-resumen');
+  if (!wrap) return;
+  try {
+    var r = await fetch('/api/albaranes'); var d = await r.json();
+    if (!d || !d.ok) { wrap.innerHTML = '<div class="empty"><p>' + _cEsc((d && d.error) || 'Error') + '</p></div>'; return; }
+    var s = d.resumen || {};
+    res.textContent = s.n ? (s.n + ' ' + t('alb.kN','albaranes') + ' · ' + (s.facturados||0) + ' ' + t('alb.kFact','facturados') + ' · ' + (s.sin_facturar||0) + ' ' + t('alb.kSin','sin facturar') + ' · ' + eur(s.total)) : '';
+    if (!s.n) { wrap.innerHTML = _vacioCard(t('alb.vacio','Todavía no hay albaranes. Súbelos con ⚡ Procesar archivos (PDF o foto) y aparecerán aquí con sus líneas.')); return; }
+    var est = {ALBARAN_FACTURADO:['ok', t('alb.eFact','Facturado')], ALBARAN_SIN_FACTURAR:['sinpo', t('alb.eSin','Sin facturar')], SIN_CRUZAR:['', t('alb.eSinCruzar','Sin cruzar aún')]};
+    var h = '<div class="tbl-wrap"><table class="tbl" style="width:100%;font-size:12px"><thead><tr><th>' + _cEsc(t('alb.cNum','Albarán')) + '</th><th>' + _cEsc(t('alb.cProv','Proveedor')) + '</th><th>' + _cEsc(t('alb.cFecha','Entrega')) + '</th><th style="text-align:right">' + _cEsc(t('alb.cTotal','Total sin IVA')) + '</th><th>' + _cEsc(t('alb.cEstado','Estado')) + '</th><th>' + _cEsc(t('alb.cFactura','Factura')) + '</th><th>' + _cEsc(t('alb.cLineas','Líneas')) + '</th></tr></thead><tbody>';
+    d.albaranes.forEach(function(a, i){
+      var e = est[a.estado] || ['', a.estado];
+      h += '<tr style="cursor:pointer" onclick="var x=document.getElementById(\'alb-lin-' + i + '\');x.style.display=x.style.display===\'none\'?\'\':\'none\'">' +
+        '<td><b>' + _cEsc(a.numero_albaran) + '</b>' + (a.referencia_pedido ? '<div style="font-size:11px;color:var(--mut)">' + _cEsc(t('alb.pedido','pedido')) + ' ' + _cEsc(a.referencia_pedido) + '</div>' : '') + '</td>' +
+        '<td>' + _cEsc(a.proveedor) + '</td><td>' + _cEsc(a.fecha_entrega || '—') + '</td><td style="text-align:right">' + eur(a.total) + '</td>' +
+        '<td><span class="ap-badge ' + e[0] + '">' + _cEsc(e[1]) + '</span></td>' +
+        '<td>' + (a.numero_factura ? '<b>' + _cEsc(a.numero_factura) + '</b>' : '<span style="color:var(--mut)">—</span>') + (a.detalle ? '<div style="font-size:11px;color:var(--mut)">' + _cEsc(a.detalle) + '</div>' : '') + '</td>' +
+        '<td>' + a.n_lineas + ' ▾</td></tr>';
+      h += '<tr id="alb-lin-' + i + '" style="display:none"><td colspan="7" style="padding:4px 10px 10px 24px;background:rgba(127,127,127,.06)">';
+      if (a.lineas.length) {
+        h += '<table style="width:100%;font-size:12px"><thead><tr><th>#</th><th>' + _cEsc(t('alb.lDesc','Artículo')) + '</th><th style="text-align:right">' + _cEsc(t('alb.lCant','Cantidad')) + '</th><th style="text-align:right">' + _cEsc(t('alb.lPrecio','Precio')) + '</th><th style="text-align:right">' + _cEsc(t('alb.lImp','Importe')) + '</th></tr></thead><tbody>';
+        a.lineas.forEach(function(l){ h += '<tr><td>' + l.n + '</td><td>' + _cEsc(l.descripcion) + '</td><td style="text-align:right">' + (l.cantidad==null?'—':l.cantidad + ' ' + _cEsc(l.unidad)) + '</td><td style="text-align:right">' + eur(l.precio_unitario) + '</td><td style="text-align:right">' + eur(l.importe) + '</td></tr>'; });
+        h += '</tbody></table>';
+      } else { h += '<span style="color:var(--mut);font-size:12px">' + _cEsc(t('alb.sinLineas','Sin líneas legibles en este albarán.')) + '</span>'; }
+      h += (a.archivo ? '<div style="font-size:11px;color:var(--dim);margin-top:6px">' + _cEsc(a.archivo) + '</div>' : '') + '</td></tr>';
+    });
+    wrap.innerHTML = h + '</tbody></table></div>';
+  } catch(e) { wrap.innerHTML = '<div class="empty"><p>' + _cEsc(e.message) + '</p></div>'; }
+}
 async function cargarReclamacionesAP(){
   var wrap = document.getElementById('ap-recl-list');
   var resumen = document.getElementById('ap-recl-resumen');
@@ -14405,7 +14460,7 @@ function _fcBar(label, pct, maxG, color) {
 
 function fmtEurAP(v) {
   if (!v && v !== 0) return '—';
-  return new Intl.NumberFormat('es-ES', {style:'currency',currency:'EUR',maximumFractionDigits:0}).format(v);
+  return new Intl.NumberFormat('es-ES', {minimumFractionDigits:2, maximumFractionDigits:2}).format(v) + ' €';
 }
 
 function estadoBadgeAP(est) {
@@ -14415,6 +14470,7 @@ function estadoBadgeAP(est) {
     'SIN_PO':'sinpo',
     'ALERTA_CONSUMO':'alerta',
     'REVISAR_MANUAL':'manual',
+    'NO_REQUIERE_ALBARAN':'sinpo',
     'PENDIENTE':''
   };
   const cls = m[est] || '';
@@ -14497,6 +14553,7 @@ async function loadAP() {
   loadProvisiones();
   loadAgingAP();
   cargarReclamacionesAP();
+  try { cargarAlbaranes(); } catch(e){}
   try {
     const [stats, facts] = await Promise.all([
       fetch('/api/stats_ap').then(r=>r.json()),
@@ -14550,8 +14607,11 @@ async function loadAP() {
         alertaHtml = `<div class="disc-box">${f.detalle_alerta}</div>`;
       }
 
+      const dupHtml = (f.duplicados > 1)
+        ? ` <span class="ap-badge disc" title="${(f.duplicado_de||'').replace(/"/g,'&quot;')}" style="cursor:help">⚠ ${f.duplicados} documentos con este número</span>`
+        : '';
       tr.innerHTML = `
-        <td><strong>${f.numero_factura}</strong></td>
+        <td><strong>${f.numero_factura}</strong>${dupHtml}</td>
         <td>${f.proveedor}</td>
         <td><span class="ap-badge ${tipoCls}">${f.tipo}</span></td>
         <td>${fmtEurAP(f.total)}</td>
