@@ -462,7 +462,11 @@ def api_resultados():
             })
 
         # Ventas diarias por categoría (últimos 30 días)
-        df_ven['fecha'] = pd.to_datetime(df_ven['fecha'])
+        # dd/mm/aaaa (lo que trae un TPV español): sin esto, un 13/08/2026
+        # tiraba el panel entero con "doesn't match format %m/%d/%Y".
+        from provisiones import _fecha as _fecha_es
+        df_ven['fecha'] = pd.to_datetime(df_ven['fecha'].map(_fecha_es), errors='coerce')
+        df_ven = df_ven[df_ven['fecha'].notna()]
         ventas_diarias = (df_ven.groupby(df_ven['fecha'].dt.strftime('%Y-%m-%d'))['total_venta']
                           .sum().reset_index().tail(30))
 
