@@ -325,7 +325,73 @@ def _ventas_con_receta(df_ven, recipes):
     return df, cobertura
 
 
-def resumen_fb(df_rec, df_inv, df_ven, df_mer):
+def _mes_de_ventas(df_ven):
+    """El mes con mas ventas del df (si no se pide uno). '' si no hay fechas."""
+    try:
+        from provisiones import _fecha
+        meses = df_ven['fecha'].map(lambda v: (lambda f: f"{f.year:04d}-{f.month:02d}" if f else "")(_fecha(v)))
+        meses = meses[meses != ""]
+        return str(meses.value_counts().idxmax()) if not meses.empty else ""
+    except Exception:
+        return ""
+
+
+def fc_real_mes(mes, df_inv, df_ven, df_mer, df_ap=None, cfg=None, coste_escandallo_mes=None):
+    """FC real de un mes, calculado de verdad (decision de Jordi, sep 2026).
+
+    Metodo 1 — 'inventario': consumo real = existencias iniciales + compras
+    F&B del mes (facturas AP de proveedores FB) - existencias finales, dividido
+    entre TODAS las ventas F&B del mes. Exige un recuento del mes con stock
+    inicial Y final. Las mermas ya estan dentro (es genero que se fue), y se
+    enseñan aparte: consumo real = escandallo x ventas + mermas registradas +
+    diferencia sin explicar.
+    Metodo 2 — 'escandallo+mermas': si no hay recuento del mes, coste teorico
+    + mermas registradas del mes, entre las ventas con receta. Es una
+    aproximacion y se dice.
+    Devuelve dict con fc_real_pct (None si no hay ventas), metodo, y el desglose.
+    """
+    from provisiones import _fecha, _mes_a_rango, _num
+    ini, fin, mes = _mes_a_rango(mes)
+    en_mes = lambda v: (lambda f: f is not None and ini <= f <= fin)(_fecha(v))
+    ventas_mes = 0.0
+    if df_ven is not None and not df_ven.empty and 'fecha' in df_ven.columns and 'total_venta' in df_ven.columns:
+        m = df_ven['fecha'].map(en_mes)
+        ventas_mes = float(pd.to_numeric(df_ven.loc[m, 'total_venta'], errors='coerce').fillna(0).sum())
+    mermas_mes = 0.0
+    if df_mer is not None and not df_mer.empty:
+        col = 'coste_merma' if 'coste_merma' in df_mer.columns else ('coste' if 'coste' in df_mer.columns else None)
+        if col:
+            m = df_mer['fecha'].map(en_mes) if 'fecha' in df_mer.columns else pd.Series([True] * len(df_mer), index=df_mer.index)
+            mermas_mes = float(pd.to_numeric(df_mer.loc[m, col], errors='coerce').fillna(0).sum())
+    out = {'mes': mes, 'ventas_mes': round(ventas_mes, 2), 'mermas_mes': round(mermas_mes, 2), 'metodo': None,
+           'fc_real_pct': None, 'consumo_real': None, 'existencias_ini': None, 'existencias_fin': None, 'compras_fb': None,
+           'sin_explicar': None}
+    try:
+        import inventarios as INV
+        res = INV.valorar(mes, df_inv, df_ap, None, cfg or {})
+        fb = [f for f in res['familias'] if f['familia'] in ('ALIMENTOS', 'BEBIDAS', 'LICORES')]
+        arts_fb = [a for a in res['articulos'] if a['familia'] in ('ALIMENTOS', 'BEBIDAS', 'LICORES')]
+        con_ini = any(a.get('stock_inicial') is not None for a in arts_fb)
+        con_fin = any(a.get('stock_final') is not None for a in arts_fb)
+        if fb and con_ini and con_fin and res['resumen'].get('consumo_real_fb') is not None:
+            out.update(metodo='inventario', consumo_real=res['resumen']['consumo_real_fb'],
+                       existencias_ini=round(sum(f['valor_inicial'] for f in fb), 2),
+                       existencias_fin=round(sum(f['valor_final'] for f in fb), 2),
+                       compras_fb=res['resumen'].get('compras_fb'))
+            if ventas_mes > 0:
+                out['fc_real_pct'] = round(out['consumo_real'] / ventas_mes * 100, 2)
+            if coste_escandallo_mes is not None:
+                out['sin_explicar'] = round(out['consumo_real'] - coste_escandallo_mes - mermas_mes, 2)
+            return out
+    except Exception:
+        pass
+    if coste_escandallo_mes is not None:
+        out['metodo'] = 'escandallo+mermas'
+        out['consumo_real'] = round(coste_escandallo_mes + mermas_mes, 2)
+    return out
+
+
+def resumen_fb(df_rec, df_inv, df_ven, df_mer, mes=None, df_ap=None, cfg=None):
     """Ventas, food cost, mermas y cobertura a partir de tablas YA acotadas.
 
     Funcion PURA: entran cuatro df, salen (df_ven enriquecido, recipe_map,
@@ -360,10 +426,7 @@ def resumen_fb(df_rec, df_inv, df_ven, df_mer):
         coste_real_sum += rec['coste_teorico'] * uds
 
     base_fc = cobertura['ventas_con_receta']
-    # fc_teorico y fc_real salen identicos por construccion (misma suma
-    # calculada de dos formas); esta en el cajon de pendientes.
     fc_teorico_global = round(coste_real_sum / base_fc * 100, 2) if base_fc > 0 else 0
-    fc_real_global    = fc_teorico_global
 
     # Mermas — normalizar columnas
     if 'coste_merma' not in df_mer.columns and 'coste' in df_mer.columns:
@@ -373,6 +436,35 @@ def resumen_fb(df_rec, df_inv, df_ven, df_mer):
     df_mer['coste_merma'] = pd.to_numeric(df_mer['coste_merma'], errors='coerce').fillna(0)
     coste_mermas = float(df_mer['coste_merma'].sum())
 
+    # FC real DE VERDAD (antes era una copia del teorico). Con recuento del mes:
+    # inicial + compras - final entre las ventas del mes. Sin recuento:
+    # escandallo + mermas, y se dice que es una aproximacion.
+    mes = mes or _mes_de_ventas(df_ven)
+    if mes:
+        # el escandallo del mes, no del periodo entero, para que el desglose compare lo mismo
+        from provisiones import _fecha as _f, _mes_a_rango as _rng
+        _ini, _fin, _ = _rng(mes)
+        esc_mes = 0.0
+        for sale in df_ven.to_dict('records'):
+            rec = recipe_map.get(sale.get('id_receta'))
+            fs = _f(sale.get('fecha'))
+            if rec and fs and _ini <= fs <= _fin:
+                try:
+                    esc_mes += rec['coste_teorico'] * float(sale.get('unidades_vendidas') or 0)
+                except (TypeError, ValueError):
+                    pass
+        real = fc_real_mes(mes, df_inv, df_ven, df_mer, df_ap, cfg, round(esc_mes, 2))
+    else:
+        real = fc_real_mes(None, df_inv, df_ven, df_mer, df_ap, cfg, round(coste_real_sum, 2))
+    if real['metodo'] == 'inventario' and real['fc_real_pct'] is not None:
+        fc_real_global = real['fc_real_pct']
+    elif real['metodo'] == 'escandallo+mermas' and base_fc > 0:
+        # aproximacion sobre las ventas con receta (misma base que el teorico)
+        _mer = real['mermas_mes'] if mes else coste_mermas
+        fc_real_global = round((coste_real_sum + _mer) / base_fc * 100, 2)
+    else:
+        fc_real_global = fc_teorico_global
+
     resumen = {
         'total_ventas':    round(total_ventas, 2),
         'coste_escandallo': round(coste_real_sum, 2),
@@ -381,6 +473,7 @@ def resumen_fb(df_rec, df_inv, df_ven, df_mer):
         'coste_mermas':    round(coste_mermas, 2),
         'alerta':          fc_real_global > fc_teorico_global + 3,
         'cobertura':       cobertura,
+        'fc_real_detalle': real,
     }
     return df_ven, recipe_map, resumen
 
@@ -413,7 +506,19 @@ def api_resultados():
         #
         # `df_ven` vuelve con id_receta y nombre_plato garantizados: sin eso el
         # tab entero se caia con KeyError cuando las ventas venian del TPV.
-        df_ven, recipe_map, resumen = resumen_fb(df_rec, df_inv, df_ven, df_mer)
+        _mes = request.args.get('mes') or None
+        try:
+            import almacen_datos as _ALM, censo_hoteles as _CH
+            from tenant_dirs import procesadas_dir as _pd_, reportes_dir as _rd_
+            _df_ap = _ALM.facturas_ap(str(_pd_()), str(_rd_()), hotel=_CH.activo() or None)
+        except Exception:
+            _df_ap = None
+        try:
+            import inventarios as _INV
+            _cfg = _INV.config_familias(str(_t_ddir()))
+        except Exception:
+            _cfg = None
+        df_ven, recipe_map, resumen = resumen_fb(df_rec, df_inv, df_ven, df_mer, mes=_mes, df_ap=_df_ap, cfg=_cfg)
         cobertura = resumen['cobertura']
 
         # Categorías

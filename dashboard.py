@@ -14235,9 +14235,19 @@ async function loadFBResumen() {
     html += '<div class="fb-kpi-grid" style="display:grid;grid-template-columns:repeat(4,1fr);gap:12px;margin-bottom:16px">';
     html += _fbKpi(t('fb.ventasFb', 'Ventas F&B'), _fmtEurES(r.total_ventas, 0), t('fb.periodoCompleto', 'período completo'), 'var(--acc2)');
     html += _fbKpi(t('fb.fcTeorico', 'FC Teórico'), r.fc_teorico_pct + '%', _fbSobre(cob), 'var(--grn)');
-    html += _fbKpi(t('fb.fcReal', 'FC Real'), r.fc_real_pct + '%', fcSign + fcDiff + ' ' + (t('fb.vsObjetivo', 'pp vs objetivo')), fcColor);
+    // De donde sale el FC real: con recuento del mes (inicial + compras − final) o aproximado (escandallo + mermas)
+    var fcd = r.fc_real_detalle || {};
+    var fcSub = fcSign + fcDiff + ' ' + (t('fb.vsObjetivo', 'pp vs objetivo'));
+    if (fcd.metodo === 'inventario') fcSub += ' · ' + t('fb.fcRealInv', 'recuento {mes}: inicial + compras − final').replace('{mes}', fcd.mes || '');
+    else if (fcd.metodo === 'escandallo+mermas') fcSub += ' · ' + t('fb.fcRealAprox', '≈ escandallo + mermas (sin recuento del mes)');
+    html += _fbKpi(t('fb.fcReal', 'FC Real'), r.fc_real_pct + '%', fcSub, fcColor);
+    var fcDesglose = '';
+    if (fcd.metodo === 'inventario' && fcd.sin_explicar != null) {
+      fcDesglose = '<div style="font-size:11px;color:var(--mut);margin:-8px 0 12px 2px">' + t('fb.desglose', 'Consumo real') + ' ' + _fmtEurES(fcd.consumo_real) + ' = ' + t('fb.escandallo', 'escandallo') + ' ' + _fmtEurES(r.coste_escandallo) + ' + ' + t('fb.mermasLabel', 'Mermas').toLowerCase() + ' ' + _fmtEurES(fcd.mermas_mes) + ' + ' + t('fb.sinExplicar', 'sin explicar') + ' <b style="color:' + (fcd.sin_explicar > 0 ? 'var(--ora)' : 'var(--grn)') + '">' + _fmtEurES(fcd.sin_explicar) + '</b></div>';
+    }
     html += _fbKpi(t('fb.mermasLabel', 'Mermas'), _fmtEurES(r.coste_mermas, 2), r.alerta ? t('fb.revisar', '⚠ Revisar') : t('fb.bajoControl', 'bajo control'), r.alerta ? 'var(--red)' : 'var(--mut)');
     html += '</div>';
+    html += fcDesglose;
     html += _fbAvisoCobertura(cob);
 
     // ── Fila: gráfico ventas (izq, ancho) + gauge FC% (der, estrecho) ──
