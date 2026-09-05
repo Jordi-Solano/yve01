@@ -250,3 +250,6 @@ tenants/
 # son fixtures de prueba, y hace falta negar tambien la carpeta — si no, la
 # linea de arriba la excluye entera y lo de dentro ya no se puede recuperar.
 !facturas-entrada/test_clasificador/
+
+# aprendido en runtime, no es codigo
+datos-referencia/proveedores_aprendidos.json

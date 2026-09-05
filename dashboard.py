@@ -6740,6 +6740,7 @@ svg.yvi{width:1em;height:1em;vertical-align:-0.125em;flex-shrink:0;display:inlin
         <button class="fb-sub" onclick="fbSub('recetas',this)" data-i18n="fb.recetas">📋 Recetas</button>
       </div>
       <div style="display:flex;gap:8px;align-items:center">
+        <label style="font-size:12px;color:var(--mut);display:flex;align-items:center;gap:6px"><span data-i18n="fb.mesLbl">Mes</span><input type="month" id="fb-mes" style="font-size:12px;padding:4px 6px;border-radius:6px;border:1px solid var(--s2);background:var(--s1);color:var(--tx)" onchange="fbCambiarMes()" title="Vacío = todo el periodo"></label>
         <label for="fb-upload-input" class="btn-ref" style="cursor:pointer;font-size:12px" data-i18n="btn.importarPos">📤 Importar ventas POS</label>
         <input type="file" id="fb-upload-input" accept=".xlsx,.xls,.csv" style="display:none" onchange="fbUploadPOS(this)">
         <label for="fb-rec-input" class="btn-ref" style="cursor:pointer;font-size:12px" data-i18n="btn.importarRecetario">📋 Importar recetario</label>
@@ -14151,6 +14152,15 @@ async function fbUploadPOS(input) {
   input.value = '';
 }
 
+// Mes seleccionado en F&B Cost ('' = todo el periodo). Filtra Resumen y Mermas (Jordi, sep 2026).
+function _fbMesQS() {
+  var i = document.getElementById('fb-mes');
+  return (i && i.value) ? '?mes=' + encodeURIComponent(i.value) : '';
+}
+function fbCambiarMes() {
+  _fbLoaded.resumen = false; _fbLoaded.mermas = false;
+  if (_fbActive === 'mermas') loadFBMermas(); else loadFBResumen();
+}
 function fbSub(sub, el) {
   _fbActive = sub;
   document.querySelectorAll('.fb-sub').forEach(b => b.classList.remove('active'));
@@ -14220,10 +14230,14 @@ async function loadFBResumen() {
   cont.innerHTML = skelCards(4, 'grid-template-columns:repeat(4,1fr)') +
     '<div style="margin-top:18px">' + skelTable(4) + '</div>';
   try {
-    const res = await fetch('/fb/api/resultados');
+    const res = await fetch('/fb/api/resultados' + _fbMesQS());
     const data = await res.json();
     if (!data.ok) {
       cont.innerHTML = _emptyState('🍽️', t('fb.vacioTitulo', 'Aún no hay datos de F&B'), t('fb.vacioSub', 'Sube ventas POS, inventario o mermas y Yve calculará el Food Cost automáticamente.'));
+      return;
+    }
+    if (data.vacio || !data.resumen) {
+      cont.innerHTML = _emptyState('🍽️', t('fb.sinVentasMes', 'Sin ventas F&B en {mes}').replace('{mes}', data.mes || ''), t('fb.sinVentasMesSub', 'Cambia el mes o déjalo vacío para ver todo el periodo.'));
       return;
     }
     const r = data.resumen;
@@ -14245,7 +14259,7 @@ async function loadFBResumen() {
 
     // ── KPIs: 4 cards en fila ──
     html += '<div class="fb-kpi-grid" style="display:grid;grid-template-columns:repeat(4,1fr);gap:12px;margin-bottom:16px">';
-    html += _fbKpi(t('fb.ventasFb', 'Ventas F&B'), _fmtEurES(r.total_ventas, 0), t('fb.periodoCompleto', 'período completo'), 'var(--acc2)');
+    html += _fbKpi(t('fb.ventasFb', 'Ventas F&B'), _fmtEurES(r.total_ventas, 0), (data.mes ? data.mes : t('fb.periodoCompleto', 'período completo')), 'var(--acc2)');
     html += _fbKpi(t('fb.fcTeorico', 'FC Teórico'), r.fc_teorico_pct + '%', _fbSobre(cob), 'var(--grn)');
     // De donde sale el FC real: con recuento del mes (inicial + compras − final) o aproximado (escandallo + mermas)
     var fcd = r.fc_real_detalle || {};
@@ -14382,7 +14396,7 @@ async function loadFBMermas() {
   if (!cont) return;
   cont.innerHTML = skelTable(6);
   try {
-    const res = await fetch('/fb/api/mermas');
+    const res = await fetch('/fb/api/mermas' + _fbMesQS());
     const data = await res.json();
     if (!data.ok) { cont.innerHTML = '<div class="empty"><p>Error mermas</p></div>'; return; }
     if (!data.mermas || !data.mermas.length) { cont.innerHTML = _emptyState('🗑️', t('fb.sinMermas', 'Sin mermas registradas.'), t('fb.merVacioSub', 'Cuando registres mermas o subas un archivo, aparecerán aquí con su coste y causa.')); return; }

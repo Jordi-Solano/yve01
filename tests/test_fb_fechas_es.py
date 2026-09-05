@@ -73,6 +73,16 @@ def main():
                 pth = os.path.join(BASE, dd, f)
                 if os.path.exists(pth):
                     os.remove(pth)
+        # y desregistrarlo: si queda en archivos_procesados.json, la SEGUNDA
+        # ejecucion dice "ya_procesado" y el test falla solo (regla 27)
+        try:
+            import json as _j
+            _reg = os.path.join(DD, 'archivos_procesados.json')
+            _d = _j.load(open(_reg, encoding='utf-8'))
+            if _d.pop('ventas_pos_test.xlsx', None) is not None:
+                _j.dump(_d, open(_reg, 'w', encoding='utf-8'), ensure_ascii=False, indent=2)
+        except Exception:
+            pass
     diff = subprocess.run(['git', 'diff', '--name-only', 'HEAD'], capture_output=True, text=True, cwd=BASE).stdout.split()
     ok(not [f for f in diff if f.startswith('oracle_') or f == 'lector_facturas_ap.py'], 'ni oracle_* ni clasificador')
     print()

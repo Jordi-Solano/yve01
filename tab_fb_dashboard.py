@@ -325,6 +325,16 @@ def _ventas_con_receta(df_ven, recipes):
     return df, cobertura
 
 
+def _solo_mes(df, mes, col='fecha'):
+    """Filas de `df` cuya `col` cae en el mes 'YYYY-MM'. Sin mes o sin columna: tal cual."""
+    if not mes or df is None or df.empty or col not in df.columns:
+        return df
+    from provisiones import _fecha, _mes_a_rango
+    ini, fin, _ = _mes_a_rango(mes)
+    m = df[col].map(lambda v: (lambda f: f is not None and ini <= f <= fin)(_fecha(v)))
+    return df[m]
+
+
 def _mes_de_ventas(df_ven):
     """El mes con mas ventas del df (si no se pide uno). '' si no hay fechas."""
     try:
@@ -499,6 +509,14 @@ def api_resultados():
         df_inv = _xlsx_hotel("inventario.xlsx")
         df_mer = _xlsx_hotel("mermas.xlsx")
         df_ven = _xlsx_hotel("ventas_fb_diarias.xlsx")
+        # con ?mes=, ventas y mermas del mes (KPIs, categorias, ranking y serie); sin mes, todo
+        _mes_sel = request.args.get('mes') or ''
+        if _mes_sel:
+            df_ven = _solo_mes(df_ven, _mes_sel)
+            df_mer = _solo_mes(df_mer, _mes_sel)
+            if df_ven is None or df_ven.empty:
+                return jsonify({"ok": True, "vacio": True, "mes": _mes_sel, "data": [], "chart": {"data": [], "labels": []},
+                                "total": 0, "fc_teorico": 0, "fc_real": 0, "mermas": 0, "meta": {}})
 
         # El calculo vive en `resumen_fb`, que es pura y la comparte el
         # agregador del grupo. Aqui queda lo que solo necesita el panel:
@@ -578,6 +596,7 @@ def api_resultados():
         return jsonify({
             'ok': True,
             'resumen': resumen,
+            'mes': _mes_sel,
             'cobertura': cobertura,
             'categorias': categorias,
             'ranking_top': ranking_top,
@@ -639,6 +658,11 @@ def api_mermas():
         if _df_mer_check.empty or len(_df_mer_check) < 1:
             return jsonify({'ok': True, 'mermas': [], 'total_coste': 0, 'por_categoria': {}, 'total': 0, 'por_causa': {}})
         df = _xlsx_hotel("mermas.xlsx")
+        # filtro de mes (Jordi, sep 2026): ?mes=YYYY-MM; sin mes, todo el periodo
+        _mes = request.args.get('mes') or ''
+        df = _solo_mes(df, _mes)
+        if df.empty:
+            return jsonify({'ok': True, 'mes': _mes, 'mermas': [], 'total_coste': 0, 'por_categoria': {}, 'total': 0, 'por_causa': {}})
         # Normalizar: Claude puede devolver 'coste' en vez de 'coste_merma'
         if 'coste_merma' not in df.columns and 'coste' in df.columns:
             df = df.rename(columns={'coste': 'coste_merma'})
@@ -666,7 +690,7 @@ def api_mermas():
         por_causa = {}
         for m in mermas:
             por_causa[m['causa']] = round(por_causa.get(m['causa'], 0) + m['coste'], 2)
-        return jsonify({'ok': True, 'mermas': mermas, 'total_coste': total_coste, 'por_categoria': por_categoria, 'total': total, 'por_causa': por_causa})
+        return jsonify({'ok': True, 'mes': _mes, 'mermas': mermas, 'total_coste': total_coste, 'por_categoria': por_categoria, 'total': total, 'por_causa': por_causa})
     except Exception as e:
         return jsonify({'ok': False, 'error': str(e)}), 500
 

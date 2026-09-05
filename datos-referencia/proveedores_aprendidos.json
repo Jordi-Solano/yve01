@@ -1,9 +1,0 @@
-{
-  "neteges test": {
-    "proveedor": "Neteges Test SL",
-    "tipo": "OTRAS",
-    "cuenta": "629",
-    "origen": "palabra clave de servicio",
-    "primera_factura": "CI-TEST-9"
-  }
-}

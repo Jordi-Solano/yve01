@@ -54,6 +54,11 @@ def main():
     copia = None
     if os.path.exists(ruta):
         copia = os.path.join(tmp, 'x.xlsx'); shutil.copy(ruta, copia)
+    # lo que el guardado APRENDE (proveedores_aprendidos.json) no debe quedar en el checkout
+    APR = os.path.join(BASE, 'datos-referencia', 'proveedores_aprendidos.json')
+    apr_copia = None
+    if os.path.exists(APR):
+        apr_copia = os.path.join(tmp, 'apr.json'); shutil.copy(APR, apr_copia)
     try:
         D._guardar_factura_ap([{"archivo": "ci_test.pdf", "numero_factura": "CI-TEST-9", "fecha": "10/08/2026", "nombre_proveedor": "Neteges Test SL",
                                 "base_imponible": 500.0, "porcentaje_iva": 21, "cuota_iva": 105.0, "total_factura": 650.0, "tipo_proveedor": "OTRAS",
@@ -87,6 +92,10 @@ def main():
             os.remove(ruta)
         if copia:
             shutil.copy(copia, ruta)
+        if os.path.exists(APR):
+            os.remove(APR)
+        if apr_copia:
+            shutil.copy(apr_copia, APR)
         shutil.rmtree(tmp, ignore_errors=True)
     diff = subprocess.run(['git', 'diff', '--name-only', 'HEAD'], capture_output=True, text=True, cwd=BASE).stdout.split()
     ok(not [f for f in diff if f.startswith('oracle_') or f == 'lector_facturas_ap.py'], 'ni oracle_* ni clasificador')
