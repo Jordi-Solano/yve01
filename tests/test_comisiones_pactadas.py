@@ -132,10 +132,15 @@ def test_sin_tarifa_no_se_da_por_bueno():
         f"una factura de un hotel sin tarifa propia sale como {otro['estado']!r}. "
         "Aplicarle el porcentaje pactado para otro establecimiento es reclamar "
         "de mas o de menos con cara de dato.")
-    # Y una OTA que no esta en la tabla no puede salir correcta jamas.
+    # Y una OTA que no esta en la tabla no puede salir correcta jamas. Desde
+    # sep 2026 (decision de Jordi) se distingue: OTA reconocida sin contrato =
+    # SIN_TARIFA_PACTADA; sin nombre de OTA = OTA_DESCONOCIDA. Ninguna es buena.
     desc = VC.verificar_factura(_factura("Agoda", "Hotel Plaza Mayor", 22.0), tar)
-    assert desc["estado"] == "OTA_DESCONOCIDA", \
-        f"una OTA sin tarifa sale como {desc['estado']!r}, no puede darse por buena"
+    assert desc["estado"] == "SIN_TARIFA_PACTADA", \
+        f"una OTA reconocida sin tarifa sale como {desc['estado']!r}, no puede darse por buena"
+    sinn = VC.verificar_factura(_factura("NO_ENCONTRADO", "Hotel Plaza Mayor", 22.0), tar)
+    assert sinn["estado"] == "OTA_DESCONOCIDA", \
+        f"una factura sin nombre de OTA sale como {sinn['estado']!r}"
     print("  ✔ sin tarifa con la que comparar, el veredicto no es 'correcto'")
 
 

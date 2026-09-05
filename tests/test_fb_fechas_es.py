@@ -54,7 +54,8 @@ def main():
                       {'fecha': '30/08/2026', 'plato': 'Tortilla', 'categoria': 'Entrantes', 'unidades': 4, 'precio_unitario': 7.5, 'total': 30.0}]).to_excel(ven, index=False)
         with open(ven, 'rb') as fh:
             cl.post('/api/upload_facturas', data={'files': [(fh, 'ventas_pos_test.xlsx')]}, content_type='multipart/form-data')
-        txt = cl.get('/api/procesar_batch_stream?archivos=' + urllib.parse.quote(json.dumps(['ventas_pos_test.xlsx']))).get_data(as_text=True)
+        _r = cl.get('/api/procesar_batch_stream?archivos=' + urllib.parse.quote(json.dumps(['ventas_pos_test.xlsx'])))
+        txt = _r.get_data(as_text=True); _r.close()
         ok('✓ F&B' in txt, 'ventas con dia 13 y 30 integradas por la capa 1')
         d = cl.get('/fb/api/resultados').get_json() or {}
         ok(d.get('ok') is True, f"/fb/api/resultados responde ok (error: {str(d.get('error'))[:80]})")
@@ -76,7 +77,8 @@ def main():
         # y desregistrarlo: si queda en archivos_procesados.json, la SEGUNDA
         # ejecucion dice "ya_procesado" y el test falla solo (regla 27)
         try:
-            import json as _j
+            import gc as _gc, json as _j
+            _gc.collect()          # el generador SSE guarda el log al cerrarse
             _reg = os.path.join(DD, 'archivos_procesados.json')
             _d = _j.load(open(_reg, encoding='utf-8'))
             if _d.pop('ventas_pos_test.xlsx', None) is not None:

@@ -55,6 +55,7 @@ def main():
                 cl.post('/api/upload_facturas', data={'files': [(fh, nombre)]}, content_type='multipart/form-data')
             r = cl.get('/api/procesar_batch_stream?archivos=' + urllib.parse.quote(json.dumps([nombre])))
             ok('✓ Banco' in r.get_data(as_text=True), f'{nombre}: la capa 1 lo integra como banco')
+            r.close()      # el generador SSE guarda el log al cerrarse: si no, reescribe despues de la limpieza
         import almacen_datos as ALM
         bk, info = ALM.movimientos_banco(datos_dir=os.path.join(BASE, 'datos-referencia'), reportes_dir=os.path.join(BASE, 'reportes'))
         ok(set(['fecha', 'concepto', 'importe']) <= set(bk.columns) and 'Fecha' not in bk.columns and 'Amount' not in bk.columns,
@@ -72,6 +73,18 @@ def main():
         for f in os.listdir(os.path.join(BASE, 'uploads')) if os.path.isdir(os.path.join(BASE, 'uploads')) else []:
             if f in ('extracto_mayusculas.xlsx', 'bank_statement_en.xlsx'):
                 os.remove(os.path.join(BASE, 'uploads', f))
+        # y dejar archivos_procesados.json como estaba (si no, queda en el checkout).
+        # gc.collect() antes: el generador SSE guarda el log al cerrarse.
+        try:
+            import gc as _gc, json as _j
+            _gc.collect()
+            _reg = os.path.join(BASE, 'datos-referencia', 'archivos_procesados.json')
+            _d = _j.load(open(_reg, encoding='utf-8'))
+            for k in ('extracto_mayusculas.xlsx', 'bank_statement_en.xlsx'):
+                _d.pop(k, None)
+            _j.dump(_d, open(_reg, 'w', encoding='utf-8'), ensure_ascii=False, indent=2)
+        except Exception:
+            pass
     diff = subprocess.run(['git', 'diff', '--name-only', 'HEAD'], capture_output=True, text=True, cwd=BASE).stdout.split()
     ok(not [f for f in diff if f.startswith('oracle_') or f == 'lector_facturas_ap.py'], 'ni oracle_* ni clasificador')
     print()
