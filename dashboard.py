@@ -8136,6 +8136,8 @@ var _i18nStrMap = {
     "Gestión completa de clientes corporativos: emite facturas, controla el aging (0-30 / 31-60 / +90 días), cobra con un clic y envía recordatorios automáticos por email.": "Full corporate client management: issue invoices, track aging (0-30 / 31-60 / +90 days), collect with one click and send automatic email reminders.",
     "🌍 Multi-Hotel — Vista de Grupo": "🌍 Multi-Hotel — Group View",
     "Para el Financial Controller del grupo: KPIs consolidados, ranking de performance por hotel, tendencia de 6 meses y alertas centralizadas. Una pantalla, todo el grupo.": "For the group's Financial Controller: consolidated KPIs, per-hotel performance ranking, 6-month trend and centralized alerts. One screen, the whole group.",
+    "🧾 Cierre — El mes contable": "🧾 Month-end — The accounting month",
+    "Yve monta los asientos del mes con lo que ya has subido: facturas, ventas, banco y provisiones. Mira que Debe y Haber cuadren, la reconciliación cuenta por cuenta y el 303 preparado. Lo que se lleva la gestoría sale del menú ⚙️ → Descargas → Cierre.": "Yve builds the month's entries from what you have already uploaded: invoices, sales, bank and accruals. Check that debit and credit balance, the account-by-account reconciliation and the VAT return ready. What the accountant takes comes from the ⚙️ menu → Downloads → Month-end.",
     "¡Ya conoces Yve.01!": "You now know Yve.01!",
     "Empezar con AR →": "Start with AR →",
     "Sin alertas bancarias pendientes.": "No pending bank alerts.",
@@ -8384,6 +8386,8 @@ var _i18nStrMap = {
     "Gestión completa de clientes corporativos: emite facturas, controla el aging (0-30 / 31-60 / +90 días), cobra con un clic y envía recordatorios automáticos por email.": "Gestió completa de clients corporatius: emet factures, controla l'aging (0-30 / 31-60 / +90 dies), cobra amb un clic i envia recordatoris automàtics per email.",
     "🌍 Multi-Hotel — Vista de Grupo": "🌍 Multi-Hotel — Vista de Grup",
     "Para el Financial Controller del grupo: KPIs consolidados, ranking de performance por hotel, tendencia de 6 meses y alertas centralizadas. Una pantalla, todo el grupo.": "Per al Financial Controller del grup: KPIs consolidats, rànquing de rendiment per hotel, tendència de 6 mesos i alertes centralitzades. Una pantalla, tot el grup.",
+    "🧾 Cierre — El mes contable": "🧾 Tancament — El mes comptable",
+    "Yve monta los asientos del mes con lo que ya has subido: facturas, ventas, banco y provisiones. Mira que Debe y Haber cuadren, la reconciliación cuenta por cuenta y el 303 preparado. Lo que se lleva la gestoría sale del menú ⚙️ → Descargas → Cierre.": "Yve munta els assentaments del mes amb el que ja has pujat: factures, vendes, banc i provisions. Mira que Deure i Haver quadrin, la reconciliació compte per compte i el 303 preparat. El que s'endú la gestoria surt del menú ⚙️ → Descàrregues → Tancament.",
     "¡Ya conoces Yve.01!": "Ja coneixes Yve.01!",
     "Empezar con AR →": "Començar amb AR →",
     "Sin alertas bancarias pendientes.": "Sense alertes bancàries pendents.",
@@ -8625,6 +8629,8 @@ var _i18nStrMap = {
     "Gestión completa de clientes corporativos: emite facturas, controla el aging (0-30 / 31-60 / +90 días), cobra con un clic y envía recordatorios automáticos por email.": "Gestion complète des clients corporate : émettez des factures, suivez l'aging (0-30 / 31-60 / +90 jours), encaissez en un clic et envoyez des rappels automatiques par email.",
     "🌍 Multi-Hotel — Vista de Grupo": "🌍 Multi-Hôtel — Vue Groupe",
     "Para el Financial Controller del grupo: KPIs consolidados, ranking de performance por hotel, tendencia de 6 meses y alertas centralizadas. Una pantalla, todo el grupo.": "Pour le Financial Controller du groupe : KPIs consolidés, classement de performance par hôtel, tendance sur 6 mois et alertes centralisées. Un écran, tout le groupe.",
+    "🧾 Cierre — El mes contable": "🧾 Clôture — Le mois comptable",
+    "Yve monta los asientos del mes con lo que ya has subido: facturas, ventas, banco y provisiones. Mira que Debe y Haber cuadren, la reconciliación cuenta por cuenta y el 303 preparado. Lo que se lleva la gestoría sale del menú ⚙️ → Descargas → Cierre.": "Yve construit les écritures du mois à partir de ce que vous avez déjà chargé : factures, ventes, banque et provisions. Vérifiez que débit et crédit s'équilibrent, la réconciliation compte par compte et la TVA préparée. Ce que prend le cabinet sort du menu ⚙️ → Téléchargements → Clôture.",
     "¡Ya conoces Yve.01!": "Vous connaissez Yve.01 !",
     "Empezar con AR →": "Commencer avec AR →",
     "Sin alertas bancarias pendientes.": "Aucune alerte bancaire en attente.",
@@ -8877,6 +8883,8 @@ var _i18nStrMap = {
     "Gestión completa de clientes corporativos: emite facturas, controla el aging (0-30 / 31-60 / +90 días), cobra con un clic y envía recordatorios automáticos por email.": "Komplette Verwaltung von Firmenkunden: Rechnungen ausstellen, Aging überwachen (0-30 / 31-60 / +90 Tage), mit einem Klick einziehen und automatische E-Mail-Erinnerungen senden.",
     "🌍 Multi-Hotel — Vista de Grupo": "🌍 Multi-Hotel — Gruppenansicht",
     "Para el Financial Controller del grupo: KPIs consolidados, ranking de performance por hotel, tendencia de 6 meses y alertas centralizadas. Una pantalla, todo el grupo.": "Für den Financial Controller der Gruppe: konsolidierte KPIs, Performance-Ranking pro Hotel, 6-Monats-Trend und zentrale Alerts. Ein Bildschirm, die ganze Gruppe.",
+    "🧾 Cierre — El mes contable": "🧾 Monatsabschluss — Der Buchungsmonat",
+    "Yve monta los asientos del mes con lo que ya has subido: facturas, ventas, banco y provisiones. Mira que Debe y Haber cuadren, la reconciliación cuenta por cuenta y el 303 preparado. Lo que se lleva la gestoría sale del menú ⚙️ → Descargas → Cierre.": "Yve erstellt die Buchungen des Monats aus dem, was Sie bereits hochgeladen haben: Rechnungen, Umsätze, Bank und Rückstellungen. Prüfen Sie, dass Soll und Haben stimmen, die Abstimmung Konto für Konto und die vorbereitete USt-Meldung. Was der Steuerberater bekommt, kommt aus dem Menü ⚙️ → Downloads → Abschluss.",
     "¡Ya conoces Yve.01!": "Du kennst jetzt Yve.01!",
     "Empezar con AR →": "Mit AR starten →",
     "Sin alertas bancarias pendientes.": "Keine offenen Bankwarnungen.",
@@ -9133,6 +9141,8 @@ var _i18nStrMap = {
     "Gestión completa de clientes corporativos: emite facturas, controla el aging (0-30 / 31-60 / +90 días), cobra con un clic y envía recordatorios automáticos por email.": "Gestione completa dei clienti corporate: emetti fatture, controlla l'aging (0-30 / 31-60 / +90 giorni), incassa con un clic e invia promemoria automatici via email.",
     "🌍 Multi-Hotel — Vista de Grupo": "🌍 Multi-Hotel — Vista di Gruppo",
     "Para el Financial Controller del grupo: KPIs consolidados, ranking de performance por hotel, tendencia de 6 meses y alertas centralizadas. Una pantalla, todo el grupo.": "Per il Financial Controller del gruppo: KPI consolidati, ranking di performance per hotel, trend a 6 mesi e avvisi centralizzati. Uno schermo, tutto il gruppo.",
+    "🧾 Cierre — El mes contable": "🧾 Chiusura — Il mese contabile",
+    "Yve monta los asientos del mes con lo que ya has subido: facturas, ventas, banco y provisiones. Mira que Debe y Haber cuadren, la reconciliación cuenta por cuenta y el 303 preparado. Lo que se lleva la gestoría sale del menú ⚙️ → Descargas → Cierre.": "Yve monta le scritture del mese con quello che hai già caricato: fatture, vendite, banca e accantonamenti. Controlla che Dare e Avere quadrino, la riconciliazione conto per conto e l'IVA preparata. Quello che si porta il commercialista esce dal menu ⚙️ → Download → Chiusura.",
     "¡Ya conoces Yve.01!": "Ora conosci Yve.01!",
     "Empezar con AR →": "Inizia con AR →",
     "Sin alertas bancarias pendientes.": "Nessun avviso bancario in sospeso.",
@@ -9379,6 +9389,8 @@ var _i18nStrMap = {
     "Gestión completa de clientes corporativos: emite facturas, controla el aging (0-30 / 31-60 / +90 días), cobra con un clic y envía recordatorios automáticos por email.": "Gestão completa de clientes corporativos: emita faturas, controle o aging (0-30 / 31-60 / +90 dias), cobre com um clique e envie lembretes automáticos por email.",
     "🌍 Multi-Hotel — Vista de Grupo": "🌍 Multi-Hotel — Visão de Grupo",
     "Para el Financial Controller del grupo: KPIs consolidados, ranking de performance por hotel, tendencia de 6 meses y alertas centralizadas. Una pantalla, todo el grupo.": "Para o Financial Controller do grupo: KPIs consolidados, ranking de desempenho por hotel, tendência de 6 meses e alertas centralizados. Uma tela, todo o grupo.",
+    "🧾 Cierre — El mes contable": "🧾 Fecho — O mês contabilístico",
+    "Yve monta los asientos del mes con lo que ya has subido: facturas, ventas, banco y provisiones. Mira que Debe y Haber cuadren, la reconciliación cuenta por cuenta y el 303 preparado. Lo que se lleva la gestoría sale del menú ⚙️ → Descargas → Cierre.": "A Yve monta os lançamentos do mês com o que já carregou: faturas, vendas, banco e provisões. Veja que Débito e Crédito batem, a reconciliação conta a conta e o IVA preparado. O que o contabilista leva sai do menu ⚙️ → Transferências → Fecho.",
     "¡Ya conoces Yve.01!": "Você já conhece o Yve.01!",
     "Empezar con AR →": "Começar com AR →",
     "Sin alertas bancarias pendientes.": "Sem alertas bancários pendentes.",
@@ -11413,7 +11425,7 @@ var _calLoaded = false;
 var _drrLoaded = false;
 var _fbLoaded = false;
 var _arRealLoaded = false;
-var _TOUR_VER = '3';  // increment to re-offer after updates
+var _TOUR_VER = '4';  // increment to re-offer after updates
 var _tourSteps = [
   {
     // Paso 1 — siempre centrado, no highlight
@@ -11455,6 +11467,12 @@ var _tourSteps = [
     el: '#ar-real-stats', tab: 'ar_real', pos: 'auto',
     title: '🏢 AR Real — Grupos Corporativos',
     text: 'Gestión completa de clientes corporativos: emite facturas, controla el aging (0-30 / 31-60 / +90 días), cobra con un clic y envía recordatorios automáticos por email.'
+  },
+  {
+    el: '#cierre-stats', tab: 'cierre', pos: 'auto',
+    title: '🧾 Cierre — El mes contable',
+    text: 'Yve monta los asientos del mes con lo que ya has subido: facturas, ventas, banco y provisiones. Mira que Debe y Haber cuadren, la reconciliación cuenta por cuenta y el 303 preparado. Lo que se lleva la gestoría sale del menú ⚙️ → Descargas → Cierre.',
+    action: function() { if (typeof loadCierre === 'function') loadCierre(true); }
   },
   {
     el: '#mh-kpis', tab: 'multi_hotel', pos: 'auto',
