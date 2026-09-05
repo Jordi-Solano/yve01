@@ -541,7 +541,14 @@ def analizar_factura(fila_f, indices_alb, df_alb, porque, i_f, cortes=None,
         f_fact = _fecha(fila_f.get("fecha"))
         diff = dif_pct = NF
         corte = (cortes or {}).get(hot)
-        if con_albaran is not None and hot not in con_albaran:
+        if not _exige_albaran(fila_f):
+            # Un servicio o suministro no lleva albaran, este el hotel donde
+            # este y sea la factura de cuando sea: va ANTES que "anterior al
+            # registro" para que la luz no salga con dos estados distintos
+            # segun la fecha del primer albaran del hotel.
+            estado = "NO_REQUIERE_ALBARAN"
+            detalle = "servicio o suministro: no lleva albarán de entrega"
+        elif con_albaran is not None and hot not in con_albaran:
             # Este hotel no ha registrado NI UN albaran. Es el equivalente por
             # hotel del "no hay albaranes todavia: nada que cruzar" con el que
             # sale el modulo entero, y por el mismo motivo: no se puede reclamar
@@ -561,12 +568,6 @@ def analizar_factura(fila_f, indices_alb, df_alb, porque, i_f, cortes=None,
                        f"albarán registrado" + (f" en {_nombre_hotel(hot)}" if hot else "")
                        + f" ({corte.strftime('%d/%m/%Y')}): no se puede esperar que "
                        "tenga uno")
-        elif not _exige_albaran(fila_f):
-            # Un suministro o un servicio (luz, lavanderia, seguro, mantenimiento)
-            # no lleva albaran de entrega: no es una incidencia ni se reclama.
-            # Solo la mercancia (tipo FB / cuenta 60x) tiene que traer uno.
-            estado = "NO_REQUIERE_ALBARAN"
-            detalle = "servicio o suministro: no lleva albarán de entrega"
         else:
             estado = "FACTURA_SIN_ALBARAN"
             detalle = ("no se ha encontrado ninguna entrega que respalde esta factura "
@@ -867,6 +868,11 @@ def main():
          "DIFERENCIA_LINEA"])).sum()) if not df_res_f.empty else 0
     _inc_a = len(sin_facturar)
     print(f"INCIDENCIAS: {_inc_f}|{_inc_a}")
+    # y CUALES son, para que el log del dashboard no deje adivinar
+    _det = [f"{r['numero_factura']}={r['estado_matching']}" for r in res_f
+            if r["estado_matching"] in ("FACTURA_SIN_ALBARAN", "DIFERENCIA_IMPORTE", "DIFERENCIA_LINEA")]
+    if _det:
+        print("INCIDENCIAS_DETALLE: " + ";".join(_det))
     print(f"\n✅ Reporte: {SALIDA}")
     print("=" * 60)
     return 0

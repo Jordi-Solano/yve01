@@ -1550,7 +1550,7 @@ def _resumen_po(cabecera, lineas):
     num = str(cabecera.get('numero_po') or '').strip() or 's/n'
     prov = str(cabecera.get('nombre_proveedor') or '').strip() or 'proveedor sin identificar'
     imp = cabecera.get('importe_aprobado')
-    eur = f' — €{imp:,.2f}' if isinstance(imp, (int, float)) else ''
+    eur = f' — {_eur_es(imp)}' if isinstance(imp, (int, float)) else ''
     dep = str(cabecera.get('departamento') or '').strip()
     # el IVA se dice SOLO cuando se sabe: adivinarlo es lo que hace falsos
     _iva = cabecera.get('iva_incluido')
@@ -1589,12 +1589,24 @@ def _guardar_bono(fila):
     df_new.to_excel(ruta, index=False)
 
 
+def _eur_es(v, dec=2):
+    """'1.175,80 €' — el mismo formato que el panel. Antes el log escribia €1,175.80."""
+    try:
+        x = float(v)
+    except (TypeError, ValueError):
+        return str(v)
+    if x != x:
+        return '—'
+    s = f"{x:,.{dec}f}".replace(",", "X").replace(".", ",").replace("X", ".")
+    return f"{s} €"
+
+
 def _resumen_bono(fila):
     num = str(fila.get('numero_bono') or '').strip() or 's/n'
     ag = str(fila.get('agencia') or '').strip() or 'pagador sin identificar'
     fe = str(fila.get('fecha_entrada') or '').strip()
     tot = fila.get('importe_total')
-    eur = f' — €{tot:,.2f}' if isinstance(tot, (int, float)) else ''
+    eur = f' — {_eur_es(tot)}' if isinstance(tot, (int, float)) else ''
     return f'{num} · {ag}' + (f' · entrada {fe}' if fe else '') + eur
 
 
@@ -1603,7 +1615,7 @@ def _resumen_albaran(cabecera, lineas):
     num = str(cabecera.get('numero_albaran') or '').strip() or 's/n'
     prov = str(cabecera.get('nombre_proveedor') or '').strip() or 'proveedor sin identificar'
     tot = cabecera.get('total_albaran')
-    eur = f' — €{tot:,.2f}' if isinstance(tot, (int, float)) else ''
+    eur = f' — {_eur_es(tot)}' if isinstance(tot, (int, float)) else ''
     return f'{num} · {prov} · {len(lineas)} línea(s){eur}'
 
 
@@ -1617,14 +1629,14 @@ def _resumen_factura_ap(filas):
     if len(filas) == 1:
         prov = str(filas[0].get('nombre_proveedor', '') or '')
         v = filas[0].get('total_factura')
-        return f'{prov} — €{v:,.2f}' if isinstance(v, (int, float)) else prov
+        return f'{prov} — {_eur_es(v)}' if isinstance(v, (int, float)) else prov
     provs = []
     for f in filas:
         p = str(f.get('nombre_proveedor') or '').strip()
         if p and p != 'NO_ENCONTRADO' and p not in provs:
             provs.append(p)
     quien = provs[0] if len(provs) == 1 else f'{len(provs)} proveedores'
-    return f'{len(filas)} facturas · {quien} — €{sum(_importe(f) for f in filas):,.2f}'
+    return f'{len(filas)} facturas · {quien} — {_eur_es(sum(_importe(f) for f in filas))}'
 
 
 def _hoja_a_texto(fpath, max_filas=200, max_chars=8000):
@@ -1862,7 +1874,7 @@ def _enrutar_tipo_doc(reg, fname, fpath=None):
             n_movs = len(reg['movimientos'])
             total_cargo = sum(float(m.get('importe',0) or 0) for m in reg['movimientos'] if float(m.get('importe',0) or 0) < 0)
             total_abono = sum(float(m.get('importe',0) or 0) for m in reg['movimientos'] if float(m.get('importe',0) or 0) > 0)
-            _msg = f'✓ Banco {fname}: {n_movs} movimientos (cargos €{abs(total_cargo):,.0f} / abonos €{total_abono:,.0f}) integrados'
+            _msg = f'✓ Banco {fname}: {n_movs} movimientos (cargos {_eur_es(abs(total_cargo), 0)} / abonos {_eur_es(total_abono, 0)}) integrados'
             _marca = 'BANK_OK'
         except Exception as _eb2:
             _msg = f'⚠ {fname}: extracto detectado pero error al guardar — {str(_eb2)[:60]}'
@@ -1878,11 +1890,11 @@ def _enrutar_tipo_doc(reg, fname, fpath=None):
                 if 'fecha' not in _df_ventas.columns:
                     _df_ventas['fecha'] = fecha
                 _df_ventas, _ = _guardar_fb_del_hotel(_df_ventas, 'ventas_fb_diarias.xlsx')
-                _msg = f'✓ F&B {fname}: {len(platos)} platos, €{total} integrados por IA'
+                _msg = f'✓ F&B {fname}: {len(platos)} platos, {_eur_es(total)} integrados por IA'
             else:
-                _msg = f'✓ F&B {fname}: ventas detectadas — €{total}'
+                _msg = f'✓ F&B {fname}: ventas detectadas — {_eur_es(total)}'
         except Exception as _efb2:
-            _msg = f'✓ F&B {fname}: ventas — €{total} (detalle no integrable: {str(_efb2)[:40]})'
+            _msg = f'✓ F&B {fname}: ventas — {_eur_es(total)} (detalle no integrable: {str(_efb2)[:40]})'
         _marca = 'FB_OK'
     elif _tipo_doc == 'COMISIONES_OTA':
         # Antes esta rama SOLO imprimia un mensaje: el dato se perdia y el
@@ -1957,8 +1969,8 @@ def _enrutar_tipo_doc(reg, fname, fpath=None):
             os.makedirs(_pdir(), exist_ok=True)
             _df_ota.to_excel(_ota_xlsx, index=False)
             _n_f = len(_facts) if _facts else 1
-            _com_txt = f'{float(comision):,.2f}' if isinstance(comision, (int, float)) else str(comision or '—')
-            _msg = f'✓ AR {fname}: {_n_f} factura(s) de {ota} — €{_com_txt} en comisiones, guardadas para verificar'
+            _com_txt = _eur_es(comision) if isinstance(comision, (int, float)) else str(comision or '—')
+            _msg = f'✓ AR {fname}: {_n_f} factura(s) de {ota} — {_com_txt} en comisiones, guardadas para verificar'
             # El documento trae su propio nombre de hotel. NO se usa para
             # asignar (una regex sobre un PDF no puede decidir la contabilidad
             # de nadie), pero si para avisar de que quiza te has equivocado de
@@ -2104,7 +2116,7 @@ def _enrutar_tipo_doc(reg, fname, fpath=None):
                 _df_mer = _normalize_cols(pd.DataFrame(merma_items), _MER_COL_MAP)
                 _df_mer, _ = _guardar_fb_del_hotel(_df_mer, 'mermas.xlsx')
                 total_merma = sum(float(m.get('coste_merma', m.get('coste', 0)) or 0) for m in merma_items)
-                _msg = f'✓ Mermas {fname}: {len(merma_items)} registros — €{total_merma:.2f} extraídos por IA'
+                _msg = f'✓ Mermas {fname}: {len(merma_items)} registros — {_eur_es(total_merma)} extraídos por IA'
             else:
                 _msg = f'ℹ {fname}: mermas detectadas (sin items extraíbles)'
         except Exception as _emer:
@@ -2159,7 +2171,7 @@ def _enrutar_tipo_doc(reg, fname, fpath=None):
             n_docs = len(docs_evento[0]['documentos']) if docs_evento else 1
             tipos_docs = ', '.join(docs_evento[0]['documentos'].keys()) if docs_evento else _tipo_doc
 
-            total_str = f' — €{total:,.2f}' if total else ''
+            total_str = f' — {_eur_es(total)}' if total else ''
             _msg = f'✓ {_tipo_doc} {fname}: {evento} ({cliente}){total_str} · {n_items} items · Evento tiene {n_docs} docs ({tipos_docs})'
             _marca = f'{_tipo_doc}_OK'
         except Exception as _eref:
@@ -2173,7 +2185,7 @@ def _enrutar_tipo_doc(reg, fname, fpath=None):
         tarifa = reg.get('tarifa_media', '')
         info_parts = [f'{habs} hab.']
         if checkin: info_parts.append(f'{checkin}→{checkout}')
-        if tarifa: info_parts.append(f'€{tarifa}/noche')
+        if tarifa: info_parts.append(f'{_eur_es(tarifa)}/noche')
         # Guardar datos de rooming
         try:
             rooming_path = os.path.join(_ddir(), 'rooming_grupos.json')
@@ -2626,7 +2638,7 @@ def api_procesar_batch_stream():
                                                     diff = abs(total_factura - doc_total)
                                                     diff_pct = diff / doc_total * 100 if doc_total > 0 else 0
                                                     if diff_pct > 5:  # Más de 5% de diferencia
-                                                        discrepancias.append(f'{doc_tipo} dice €{doc_total:,.2f} vs factura €{total_factura:,.2f} ({diff_pct:.0f}% diff)')
+                                                        discrepancias.append(f'{doc_tipo} dice {_eur_es(doc_total)} vs factura {_eur_es(total_factura)} ({diff_pct:.0f}% diff)')
                                             
                                             evento_nombre = match_found.get('evento', '—')
                                             if discrepancias:
@@ -2809,6 +2821,10 @@ def _generar_cierre(pasos):
                 # el modulo lo dice el mismo: contar lineas de su consola
                 # se comia tambien la fila del resumen y salian 2 donde habia 1
                 _n_fac = _n_alb = 0
+                _det = []
+                _NOMBRE_INC = {'FACTURA_SIN_ALBARAN': 'sin albarán que la respalde',
+                               'DIFERENCIA_IMPORTE': 'diferencia de importe con el albarán',
+                               'DIFERENCIA_LINEA': 'diferencia en alguna línea'}
                 for _ln in (_r_alb.stdout or '').splitlines():
                     if _ln.startswith('INCIDENCIAS:'):
                         try:
@@ -2816,11 +2832,20 @@ def _generar_cierre(pasos):
                             _n_fac, _n_alb = int(_a), int(_b)
                         except Exception:
                             pass
+                    elif _ln.startswith('INCIDENCIAS_DETALLE:'):
+                        for _par in _ln.split(':', 1)[1].strip().split(';'):
+                            if '=' in _par:
+                                _num, _est = _par.split('=', 1)
+                                _det.append(f'{_num.strip()} ({_NOMBRE_INC.get(_est.strip(), _est.strip().lower())})')
                 if _r_alb.returncode == 0:
                     _partes = []
                     if _n_fac:
-                        _partes.append(f'{_n_fac} factura(s) sin entrega que las respalde '
-                                       f'o con diferencia de importe')
+                        # Cuenta TODAS las facturas del hotel, no solo las de este
+                        # lote: por eso se dice cuales son, si no parece que la
+                        # incidencia es de lo que se acaba de subir.
+                        _partes.append(f'{_n_fac} factura(s) con incidencia de albarán: '
+                                       + (', '.join(_det[:6]) + (' …' if len(_det) > 6 else '') if _det else
+                                          'sin entrega que las respalde o con diferencia de importe'))
                     if _n_alb:
                         _partes.append(f'{_n_alb} albarán(es) entregado(s) sin facturar')
                     if _partes:
@@ -3039,10 +3064,10 @@ def api_scan_documento():
                     _df_v['fecha'] = fecha
                 _df_v, _ = _guardar_fb_del_hotel(_df_v, 'ventas_fb_diarias.xlsx')
                 items_count = len(platos)
-                mensaje = f'{items_count} platos, €{total} integrados'
+                mensaje = f'{items_count} platos, {_eur_es(total)} integrados'
                 guardado = True
             else:
-                mensaje = f'Ventas detectadas — €{total}'
+                mensaje = f'Ventas detectadas — {_eur_es(total)}'
                 guardado = False
                 
         elif tipo == 'INVENTARIO':
@@ -3065,7 +3090,7 @@ def api_scan_documento():
                 _df_m, _ = _guardar_fb_del_hotel(_df_m, 'mermas.xlsx')
                 items_count = len(merma_items)
                 total_merma = sum(float(m.get('coste_merma', m.get('coste', 0)) or 0) for m in merma_items)
-                mensaje = f'{items_count} registros — €{total_merma:.2f} integrados'
+                mensaje = f'{items_count} registros — {_eur_es(total_merma)} integrados'
                 guardado = True
             else:
                 mensaje = 'Mermas detectadas (sin registros extraíbles)'
