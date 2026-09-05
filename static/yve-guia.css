@@ -207,7 +207,9 @@ body input[type=month],body input[type=text],body input[type=email],body input[t
 /* un textarea dentro de una tabla tiene ancho minimo propio y ensanchaba la tabla (Cierre a 770-850 px) */
 body textarea{min-width:0;max-width:100%}
 body table td textarea{width:100%}
-body #paq-body table{table-layout:fixed}
+body #paq-body table{table-layout:fixed}.paq-lista .paq-tit{width:34%}
+/* en movil la lista del paquete se apila: titulo, estado, comentario (b65: las celdas se pisaban) */
+@media(max-width:768px){body .paq-lista,body .paq-lista tbody,body .paq-lista tr,body .paq-lista td{display:block;width:auto}body .paq-lista tr{border-bottom:1px solid var(--g-line);padding:8px 0}body .paq-lista td{padding:4px 6px;border:none;white-space:normal}body .paq-lista .paq-tit{width:auto}}
 /* table{min-width:800px} global de la app: cualquier tabla fuera de un marco con scroll desbordaba
    entre 769 y 850 px. Regla de la guia: solo las tablas dentro de un marco con scroll tienen ancho minimo. */
 body table{min-width:0}

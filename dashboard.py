@@ -11109,7 +11109,11 @@ if (localStorage.getItem('tour_done') !== _TOUR_VER && !localStorage.getItem('to
   setTimeout(function() {
     var n = document.createElement('div');
     n.id = 'tour-banner';
-    n.style.cssText = 'position:fixed;bottom:24px;left:50%;transform:translateX(-50%);' +
+    // por encima del fab del chat y de la barra de gestos (b65: se pisaban), y si
+    // en iPhone ya esta el aviso de instalar, encima de el
+    var _otro = document.getElementById('yve-install-banner');
+    var _alza = _otro ? (_otro.getBoundingClientRect().height + 12) : 0;
+    n.style.cssText = 'position:fixed;bottom:calc(' + (80 + _alza) + 'px + var(--sa-bottom));left:50%;transform:translateX(-50%);' +
       'background:var(--s1);border:1px solid rgba(var(--acc-r,59),var(--acc-g,130),var(--acc-b,246),.4);border-radius:16px;' +
       'padding:16px 20px;z-index:9000;display:flex;align-items:center;gap:16px;' +
       'box-shadow:0 8px 32px rgba(0,0,0,.5);max-width:420px;width:calc(100% - 32px)';
@@ -11239,7 +11243,8 @@ function yveShowBanner(id, htmlMsg, btnHtml, dismissFn, accent) {
   accent = accent || '#3b82f6';
   var bar = document.createElement('div');
   bar.id = id;
-  bar.style.cssText = 'position:fixed;left:50%;transform:translateX(-50%);bottom:calc(16px + var(--sa-bottom));z-index:10000;display:flex;align-items:center;gap:14px;max-width:min(560px,calc(100% - 24px));width:max-content;background:linear-gradient(135deg,' + accent + ',#2563eb);color:#fff;padding:12px 14px 12px 18px;border-radius:14px;box-shadow:0 10px 40px rgba(0,0,0,.35);font-size:13px;font-weight:500;animation:yveSlideUp .3s ease';
+  // por ENCIMA del fab del chat (b65: en iPhone el aviso de instalar y el fab se pisaban)
+  bar.style.cssText = 'position:fixed;left:50%;transform:translateX(-50%);bottom:calc(80px + var(--sa-bottom));z-index:10000;display:flex;align-items:center;gap:14px;max-width:min(560px,calc(100% - 24px));width:max-content;background:linear-gradient(135deg,' + accent + ',#2563eb);color:#fff;padding:12px 14px 12px 18px;border-radius:14px;box-shadow:0 10px 40px rgba(0,0,0,.35);font-size:13px;font-weight:500;animation:yveSlideUp .3s ease';
   var txt = document.createElement('div'); txt.style.cssText = 'flex:1;line-height:1.4'; txt.innerHTML = htmlMsg;
   bar.appendChild(txt);
   if (btnHtml) { var wrap = document.createElement('div'); wrap.innerHTML = btnHtml; if (wrap.firstChild) bar.appendChild(wrap.firstChild); }
@@ -14184,8 +14189,8 @@ async function loadPaquete(){
     var tile = function(l, v, col){ return _cTile(l, v, '', col==='#f87171' ? 'k-red' : col==='#22c55e' ? 'k-grn' : ''); };
     rs.innerHTML = tile(t('paq.ingresos','Ingresos asentados'), _cEur(rr.ingresos)) + tile(t('paq.gastos','Gastos asentados'), _cEur(rr.gastos)) + tile(t('paq.resultado','Resultado (según documentos)'), _cEur(rr.resultado), (rr.resultado||0) >= 0 ? '#22c55e' : '#f87171') + (rr.drr_rooms_revenue!=null ? tile(t('paq.drr','Rooms Revenue DRR (MTD)'), _cEur(rr.drr_rooms_revenue)) : '');
     var h = '<div class="g-field" style="margin-bottom:12px"><label>' + t('paq.comentarioGeneral','Comentario general para la central') + '</label><textarea id="paq-com-resumen" class="g-input" rows="2">' + _cEsc(d.comentario_general||'') + '</textarea><div><button class="g-btn g-secondary g-sm" onclick="_paqGuardar(\'resumen\')">' + t('paq.guardar','Guardar comentario') + '</button></div></div>';
-    h += '<div class="g-tbl-wrap"><table class="g-tbl"><tbody>' + (d.checklist||[]).map(function(c){
-      return '<tr><td style="width:34%"><b>' + _cEsc(c.titulo) + '</b><div class="g-note" style="margin-top:2px">' + _cEsc(c.cifra||'') + (c.detalle ? '<br>' + _cEsc(c.detalle) : '') + '</div></td>' +
+    h += '<div class="g-tbl-wrap"><table class="g-tbl paq-lista"><tbody>' + (d.checklist||[]).map(function(c){
+      return '<tr><td class="paq-tit"><b>' + _cEsc(c.titulo) + '</b><div class="g-note" style="margin-top:2px">' + _cEsc(c.cifra||'') + (c.detalle ? '<br>' + _cEsc(c.detalle) : '') + '</div></td>' +
         '<td>' + _cEstado(c.estado) + '</td>' +
         '<td><textarea id="paq-com-' + _cEsc(c.clave) + '" rows="1" class="g-input" placeholder="' + t('paq.comentario','comentario para la central') + '" onblur="_paqGuardar(\'' + _cEsc(c.clave) + '\')">' + _cEsc(c.comentario||'') + '</textarea></td></tr>'; }).join('') + '</tbody></table></div>';
     h += '<div class="g-note">' + _cEsc(d.nota||'') + '</div>';
