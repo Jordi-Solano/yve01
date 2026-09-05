@@ -78,6 +78,7 @@
   "ar.vacioTitulo": "No invoices yet",
   "billing.trialDays": "14-day free trial",
   "bk.conciliacionOk": "Reconciliation completed",
+  "bk.depPrevisto": "Expected deposit, not yet in the statement",
   "bk.dias": "days",
   "bk.sinConciliar": "unmatched:",
   "bk.sinFacturas": "no AP/AR invoices to match: process invoices first",

@@ -4827,6 +4827,40 @@ def api_run_conciliacion():
     except Exception as e:
         return jsonify({"ok": False, "error": str(e)[:300]}), 500
 
+def _depositos_previstos(hotel=""):
+    """Depositos de contratos de grupo que se ESPERAN y aun no estan en el extracto.
+
+    Viven en datos-referencia/depositos_previstos.xlsx (los escribe
+    lector_contratos_grupo). Se marcan 'EN_EXTRACTO' si hay un movimiento del
+    extracto con el mismo importe (±0,01) y fecha posterior al contrato; el
+    resto salen como previstos en la pestaña Banco.
+    """
+    try:
+        ruta = os.path.join(_ddir(), "depositos_previstos.xlsx")
+        if not os.path.exists(ruta):
+            return []
+        df = pd.read_excel(ruta)
+        if df.empty:
+            return []
+        if hotel and "hotel_id" in df.columns:
+            df = df[df["hotel_id"].map(safe_str) == str(hotel)]
+        try:
+            from almacen_datos import movimientos_banco as _mb
+            bk, _ = _mb(reportes_dir=_rdir())
+            importes = [safe_float(x) for x in (bk["importe"].tolist() if bk is not None and not bk.empty and "importe" in bk.columns else [])]
+        except Exception:
+            importes = []
+        out = []
+        for _, r in df.iterrows():
+            imp = safe_float(r.get("importe"))
+            en_extracto = any(abs(i - imp) <= 0.011 for i in importes)
+            out.append({"concepto": safe_str(r.get("concepto")), "importe": round(imp, 2), "evento": safe_str(r.get("evento")),
+                        "fecha_contrato": safe_str(r.get("fecha_contrato"))[:10], "estado": "EN_EXTRACTO" if en_extracto else "PREVISTO"})
+        return out
+    except Exception:
+        return []
+
+
 def stats_banco(df):
     """KPIs de banco a partir de los movimientos ya juntados por el almacen.
 
@@ -4949,6 +4983,7 @@ def api_stats_banco():
         return jsonify(dict(stats_banco(df),
                             modo=_modo or "grupo",
                             hotel=hotel,
+                            depositos_previstos=_depositos_previstos(hotel if _modo == "por_hotel" else ""),
                             sin_asignar=sin_asignar,
                             sin_conciliar=info.get("informe") is None,
                             archivo=info.get("informe"),
@@ -16219,6 +16254,11 @@ async function loadBanco() {
     var _html = (d.alertas && d.alertas.length)
       ? d.alertas.map(function(a) { return '<div class="act-item"><div class="adot r"></div><div class="atxt"><b>' + a.dias + ' ' + t('bk.dias', 'días') + '</b> ' + t('bk.sinConciliar', 'sin conciliar:') + ' ' + a.concepto + ' — ' + eur(a.importe) + '</div></div>'; }).join('')
       : '<div class="empty"><p>Sin alertas bancarias pendientes.</p></div>';
+    // Depositos previstos de contratos de grupo: NO son movimientos del banco, se avisan aparte
+    var _deps = (d.depositos_previstos || []).filter(function(x){ return x.estado !== 'EN_EXTRACTO'; });
+    if (_deps.length) {
+      _html = _deps.map(function(x) { return '<div class="act-item"><div class="adot" style="background:var(--acc2)"></div><div class="atxt"><b>' + t('bk.depPrevisto', 'Depósito previsto, aún no en el extracto') + ':</b> ' + _cEsc(x.concepto) + ' — ' + _fmtEurES(x.importe) + '</div></div>'; }).join('') + _html;
+    }
     // Modo por hotel: lo que no está asignado a ningún hotel NO se esconde, se avisa.
     if (modo === 'por_hotel' && d.sin_asignar) {
       _html = '<div class="act-item"><div class="adot" style="background:var(--ora)"></div><div class="atxt"><b>' + d.sin_asignar + '</b> movimiento(s) sin asignar a un hotel — súbelos dentro del hotel que corresponda</div></div>' + _html;

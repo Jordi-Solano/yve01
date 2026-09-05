@@ -372,9 +372,21 @@ def distribuir_contrato(datos, transformado, datos_dir=None):
     dep_pct = _f(dep.get("pct"))
     dep_imp = round(total_recv * dep_pct / 100, 2) if dep_pct else 0.0
     if dep_imp > 0:
+        # A SU fichero, no al extracto: un deposito PREVISTO no es un movimiento
+        # que el banco haya hecho. Antes se escribia como fila de
+        # extracto_banco.xlsx y la pestaña Banco enseñaba un ingreso inexistente
+        # (inventario honesto #14). La pestaña Banco lo enseña ahora como
+        # "deposito previsto, no en el extracto".
         concepto = "Depósito previsto " + str(int(dep_pct)) + "% · " + evento_nombre + (" (contrato " + contrato + ")" if contrato else "")
-        _append_xlsx(os.path.join(dd, "extracto_banco.xlsx"),
-                     {"fecha": hoy, "concepto": concepto, "importe": dep_imp, "saldo": ""},
+        try:
+            import censo_hoteles as _censo
+            _hid_dep = _censo.para_guardar()
+        except Exception:
+            _hid_dep = os.environ.get("YVE_HOTEL", "")
+        _append_xlsx(os.path.join(dd, "depositos_previstos.xlsx"),
+                     {"fecha_contrato": hoy, "concepto": concepto, "importe": dep_imp, "pct": dep_pct,
+                      "evento": evento_nombre, "contrato": contrato or "", "cliente": ((datos.get("cliente", {}) or {}).get("nombre") or ""),
+                      "estado": "PREVISTO", "hotel_id": _hid_dep},
                      dedup_col="concepto")
         res["banco"] = dep_imp
 

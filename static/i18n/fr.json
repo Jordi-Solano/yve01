@@ -78,6 +78,7 @@
   "ar.vacioTitulo": "Pas encore de factures",
   "billing.trialDays": "Essai gratuit 14 jours",
   "bk.conciliacionOk": "Rapprochement terminé",
+  "bk.depPrevisto": "Acompte prévu, pas encore sur le relevé",
   "bk.dias": "jours",
   "bk.sinConciliar": "non rapproché :",
   "bk.sinFacturas": "aucune facture AP/AR à rapprocher : traitez d'abord les factures",

@@ -78,6 +78,7 @@
   "ar.vacioTitulo": "Ancora nessuna fattura",
   "billing.trialDays": "14 giorni di prova gratuita",
   "bk.conciliacionOk": "Riconciliazione completata",
+  "bk.depPrevisto": "Deposito previsto, non ancora nell’estratto",
   "bk.dias": "giorni",
   "bk.sinConciliar": "non riconciliato:",
   "bk.sinFacturas": "nessuna fattura AP/AR da incrociare: elabora prima le fatture",
