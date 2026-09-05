@@ -54,7 +54,10 @@ def _fac(archivo, numero, prov, base, hotel, fecha="20/07/2026"):
             "nombre_proveedor": prov, "base_imponible": base,
             "porcentaje_iva": 21.0, "cuota_iva": round(base * 0.21, 2),
             "total_factura": round(base * 1.21, 2),
-            "descripcion_concepto": "", "hotel_id": hotel}
+            # Desde b23 (ronda de pruebas) solo la MERCANCIA exige albaran: las
+            # facturas de este banco son todas de mercancia (FB / 600).
+            "descripcion_concepto": "", "hotel_id": hotel,
+            "tipo_proveedor": "FB", "cuenta_contable": "600"}
 
 
 def _alb(numero, prov, total, hotel, entrega="15/07/2026"):
@@ -166,8 +169,8 @@ if SABOTAJE:
             # y el corte vuelve a ser global, sin la excepcion del hotel nuevo:
             ("        corte = (cortes or {}).get(hot)",
              "        corte = min((cortes or {}).values(), default=None)"),
-            ("        if con_albaran is not None and hot not in con_albaran:",
-             "        if False:")):
+            ("        elif con_albaran is not None and hot not in con_albaran:",
+             "        elif False:")):
         assert _src.count(_viejo) == 1, (
             f"el sabotaje ya no encuentra {_viejo!r} en {MODULO}: el test ha "
             "dejado de saber que romper y hay que ponerlo al dia")

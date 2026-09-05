@@ -31,7 +31,13 @@ os.environ.pop("YVE_HOTEL", None)
 
 import tenant_dirs                                     # noqa: E402
 
-FIXTURES = "/home/claude/drr"
+# Los DRR de prueba se generan aqui mismo (antes venian de /home/claude/drr,
+# una carpeta de otro sandbox: el test no podia correr en ningun otro sitio).
+import tempfile as _tf
+FIXTURES = _tf.mkdtemp(prefix="drr_fase_e_")
+os.environ["YVE_FIXTURES_DRR"] = FIXTURES
+import fixtures_drr_fase_e as _fx                       # noqa: E402
+_fx.main()
 HOTELES = [
     ("HCOSTA1", "Hotel Costa Azul",  "DRR-COSTA-AZUL.xlsm"),
     ("HPLAZA2", "Hotel Plaza Mayor", "DRR-PLAZA-MAYOR.xlsm"),

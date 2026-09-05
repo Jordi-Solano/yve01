@@ -126,6 +126,8 @@ class FormData { append() {} }
 async function _comprimirImagen(f) { return f; }
 async function _procesarImagenes(grupo, addLine, cierre) { reprocesadas += grupo.length; return 0; }
 function addLine(t) { lineas.push(String(t)); }
+// desde b24 el resumen del contrato formatea con el formateador unico del panel
+function _fmtEurES(v, dec) { return Number(v).toFixed(dec === undefined ? 2 : dec).replace('.', ',') + ' €'; }
 async function fetch() {
   if (RESPUESTA === 'RED') throw new Error('Failed to fetch');
   return { json: async () => RESPUESTA };

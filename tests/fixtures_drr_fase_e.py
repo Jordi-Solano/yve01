@@ -18,10 +18,29 @@ El hotel de 20 habitaciones no puede pesar lo mismo que el de 400.
 
 Nombres genericos: esto se ve en la web.
 """
+import os
 import sys
-sys.path.insert(0, __import__("os").path.dirname(__file__))
-from crear import construir
+sys.path.insert(0, os.path.dirname(__file__))
+from crear_drr import construir as _construir_drr       # el generador que vive en tests/
 from datetime import datetime
+
+
+def construir(nombre, fecha, metricas, dias, carpeta=None):
+    """Adaptador al `crear_drr.construir` del repo (antes se importaba un
+    `crear.py` de una carpeta externa del sandbox, /home/claude/drr, que ya no
+    existe: el test estaba atado a una maquina). Devuelve la ruta escrita."""
+    carpeta = carpeta or os.environ.get("YVE_FIXTURES_DRR") or os.path.join(os.path.dirname(__file__), "_drr_fase_e")
+    hotel = nombre.replace("DRR-", "").replace(".xlsm", "").replace("-", " ").title()
+    dias_tb = []
+    for n, f, cuentas, descuadre in dias:
+        rev_hab, rev_rest, rev_bar, g1, g2, g3 = cuentas
+        dias_tb.append((n, f.strftime("%Y-%m-%d"), [
+            ("INCOME", "Room Revenue", 0.0, rev_hab), ("INCOME", "Restaurant Revenue", 0.0, rev_rest),
+            ("INCOME", "Bar Revenue", 0.0, rev_bar), ("EXPENSES", "Salaries", g1, 0.0),
+            ("EXPENSES", "Supplies", g2, 0.0), ("EXPENSES", "Energy", g3, 0.0),
+            ("ASSETS", "Cash", rev_hab + rev_rest + rev_bar - g1 - g2 - g3, 0.0)], descuadre))
+    return _construir_drr(os.path.join(carpeta, nombre), metricas, dias_tb, hotel=hotel,
+                          fecha_informe=fecha.strftime("%Y-%m-%d"))
 
 FECHA = datetime(2026, 7, 29)
 

@@ -49,9 +49,21 @@ def factura(i):
             'fecha_factura': '2026-08-03'}
 
 
+APRENDIDOS = os.path.join(os.path.dirname(RUTA), '..', 'datos-referencia', 'proveedores_aprendidos.json')
+
+
 def limpiar():
     if os.path.exists(RUTA):
         os.remove(RUTA)
+    # Lo que el guardado APRENDE (cuentas_proveedor) cambia el `origen_cuenta`
+    # de la segunda pasada ("aprendido" en vez de "sin pista"): el fichero
+    # salia distinto por eso, no por el candado. Se parte de cero cada vez.
+    try:
+        _a = os.path.abspath(APRENDIDOS)
+        if os.path.exists(_a):
+            os.remove(_a)
+    except Exception:
+        pass
 
 
 def a_la_vez(n_facturas, a_la_vez_n, desde=0):
