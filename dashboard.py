@@ -4448,10 +4448,27 @@ def num_drr(s):
     t = str(s).strip()
     if t in ("", "N/D", "nan", "None", "NaT"):
         return None
-    # Fuera moneda, porcentaje y separador de millares. El productor es codigo
-    # nuestro y siempre usa la coma como millar, asi que no hay ambiguedad.
-    t = t.replace("€", "").replace("%", "").replace(",", "")
-    t = t.replace("EUR", "").replace("eur", "").strip()
+    # Fuera moneda y porcentaje. Entiende las TRES formas que producen nuestros
+    # propios ficheros: la antigua del panel '€16,360' / '83.70', la del
+    # lector_drr '40,130 EUR' / '40,130.50 EUR', y la española (desde sep 2026,
+    # pedida por Jordi) '16.360 €' / '83,70 €' / '40.130,50 €'. Regla: si hay
+    # punto y coma, el ULTIMO es el decimal; si solo hay uno, tres digitos
+    # detras = millar, uno o dos = decimal. El productor es codigo nuestro:
+    # nunca escribe tres decimales.
+    t = t.replace("€", "").replace("%", "").replace("EUR", "").replace("eur", "").replace("~", "").replace("\xa0", "").replace(" ", "").strip()
+    if not t:
+        return None
+    import re as _re
+    lc, ld = t.rfind(","), t.rfind(".")
+    if lc >= 0 and ld >= 0:
+        t = (t.replace(".", "").replace(",", ".")) if lc > ld else t.replace(",", "")
+    elif lc >= 0 or ld >= 0:
+        sep = "," if lc >= 0 else "."
+        grupos = t.split(sep)
+        if all(len(g) == 3 for g in grupos[1:]) and grupos[0] and len(grupos[0]) <= 3 and not _re.search(r"[^\d\-]", grupos[0]):
+            t = t.replace(sep, "")          # 16,360 / 16.360 / 1,234,567 → millares
+        else:
+            t = t.replace(sep, ".")         # 83,70 / 83.70 → decimal
     try:
         return float(t)
     except ValueError:
@@ -4494,8 +4511,8 @@ def _leer_drr_stats(ruta):
         if es_conteo:
             return f"{f:,.0f}"
         if is_eur:
-            return f"€{f:,.{dec}f}"
-        return f"{f:,.{dec}f}" if dec else s
+            return _eur_es(f, dec)           # '16.360 €' / '83,70 €' (formato español, como el resto del panel)
+        return f"{f:,.{dec}f}".replace(",", "X").replace(".", ",").replace("X", ".") if dec else s
 
     # El parser vive fuera (`num_drr`) para que el agregador del grupo use
     # EXACTAMENTE el mismo. Con dos copias, la del grupo entendia un formato y
@@ -4596,7 +4613,7 @@ def _leer_drr_stats(ruta):
                 continue
 
             p = pct / 100 if pct > 1 else pct
-            metricas.setdefault("GOP", {})[period]   = f"€{rev_val*p:,.0f} ~"
+            metricas.setdefault("GOP", {})[period]   = f"{_eur_es(rev_val*p, 0)} ~"
             metricas.setdefault("GOP %", {})[period] = f"{p*100:.1f}% ~"
             procedencia[period] = "derivado"
             procedencia[period + "_origen"] = origen

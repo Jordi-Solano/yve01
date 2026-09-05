@@ -281,12 +281,13 @@ def test_el_revpar_conserva_sus_decimales():
     m = st.get("metricas") or {}
 
     revpar = (m.get("Revenue PAR") or {})
-    assert revpar.get("mtd") == "€79.20", (
-        f"el RevPAR MTD sale «{revpar.get('mtd')}» y tiene que ser «€79.20» "
+    # Sep 2026 (Jordi): el DRR en formato español, como el resto del panel
+    assert revpar.get("mtd") == "79,20 €", (
+        f"el RevPAR MTD sale «{revpar.get('mtd')}» y tiene que ser «79,20 €» "
         "(950.400 / 12.000). Con «€79» se pierden 20 centimos por habitacion "
         "disponible, y el agregador del grupo hereda el error.")
-    assert revpar.get("today") == "€83.70", \
-        f"el RevPAR de hoy sale «{revpar.get('today')}», esperaba «€83.70»"
+    assert revpar.get("today") == "83,70 €", \
+        f"el RevPAR de hoy sale «{revpar.get('today')}», esperaba «83,70 €»"
 
     # y el recuento de habitaciones no lleva decimales ni moneda
     ocup = (m.get("Rooms Occupied") or {})
@@ -298,7 +299,7 @@ def test_el_revpar_conserva_sus_decimales():
     assert D.num_drr(revpar["mtd"]) == 79.20, (
         f"`num_drr` no sabe releer «{revpar['mtd']}» ({D.num_drr(revpar['mtd'])}). "
         "Si no, el RevPAR ponderado del grupo se calcula con otro numero.")
-    print("  ✔ RevPAR €79.20 y €83.70, habitaciones 7,200, y el agregador los relee")
+    print("  ✔ RevPAR 79,20 € y 83,70 €, habitaciones 7,200, y el agregador los relee")
 
 
 PRUEBAS = [test_el_revenue_diario_sale_con_las_dos_grafias,

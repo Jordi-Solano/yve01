@@ -153,8 +153,8 @@ def test_mirar_el_vacio_no_contamina_al_que_tiene():
     st = c.get("/api/stats_drr").get_json()
     assert st, "tras mirar el hotel vacio, el que tiene DRR ha dejado de devolverlo"
     rev = (st.get("metricas", {}).get("Revenue PAR", {}) or {}).get("mtd")
-    assert rev == "€79.20", (
-        f"el RevPAR del hotel CON DRR sale «{rev}», esperaba «€79.20»: la vuelta "
+    assert rev == "79,20 €", (
+        f"el RevPAR del hotel CON DRR sale «{rev}», esperaba «79,20 €»: la vuelta "
         "no debe cambiar sus numeros")
     print("  ✔ tras el hotel vacio, Costa Azul sigue mostrando el suyo")
 
