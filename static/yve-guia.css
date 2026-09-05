@@ -328,3 +328,13 @@ body .g-subtabs .fb-sub.active{background:var(--s2);color:var(--tx)}
 /* Zona segura del telefono (b64): a pantalla completa, la cabecera del chat baja
    por debajo de la hora/barra de estado; el fab respeta la barra de gestos. */
 @media(max-width:768px){body #chat-header{padding-top:calc(16px + var(--sa-top))}}
+
+/* Estado vacio unico (b67): icono + "Sin datos todavia" + frase + Procesar archivos */
+.g-empty .g-empty-ico{font-size:26px;line-height:1;margin-bottom:8px;opacity:.85}
+.g-empty-lg .g-empty-ico{font-size:40px;margin-bottom:10px}
+.g-empty>b{display:block;color:var(--tx);font-size:14px;margin-bottom:4px}
+.g-empty-sub{max-width:380px;margin:0 auto;font-size:12.5px;line-height:1.5;color:var(--mut)}
+.g-empty-cta{margin-top:14px}
+.g-empty.g-cargando{border-style:solid;border-color:transparent;color:var(--dim);padding:24px 20px}
+.g-empty.is-ok{border-style:solid;border-color:var(--g-line);padding:18px}
+.g-kpi.is-empty::before{opacity:0}.g-kpi.is-empty .g-kpi-val{color:var(--dim)}.g-kpi.is-empty .g-kpi-sub{visibility:hidden}

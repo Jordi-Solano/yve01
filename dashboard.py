@@ -6666,7 +6666,7 @@ svg.yvi{width:1em;height:1em;vertical-align:-0.125em;flex-shrink:0;display:inlin
       </div>
       <div class="g-card">
         <div class="g-card-head"><div><div class="g-card-title" data-i18n="card.resumen">Resumen de estados</div><div class="g-sub" data-i18n="ar.resumenSub">Lo que ha encontrado el cruce con el contrato.</div></div></div>
-        <div id="activity" class="hide-lite"><div class="g-empty" data-i18n="ar.vacio">Sin datos. Pulsa ⚡ Procesar Archivos.</div></div>
+        <div id="activity" class="hide-lite"><div class="g-empty g-cargando" data-i18n="lbl.cargando">Cargando…</div></div>
       </div>
     </div>
 
@@ -6690,7 +6690,7 @@ svg.yvi{width:1em;height:1em;vertical-align:-0.125em;flex-shrink:0;display:inlin
             </tr>
           </thead>
           <tbody id="tbl-body">
-            <tr><td colspan="11"><div class="g-empty" data-i18n="ar.vacioTabla">Sin datos. Pulsa ⚡ Procesar Archivos para empezar.</div></td></tr>
+            <tr><td colspan="11"><div class="g-empty g-cargando" data-i18n="lbl.cargando">Cargando…</div></td></tr>
           </tbody>
         </table>
       </div>
@@ -6703,7 +6703,7 @@ svg.yvi{width:1em;height:1em;vertical-align:-0.125em;flex-shrink:0;display:inlin
         <div id="ar-recl-resumen" class="g-small"></div>
       </div>
       <div id="ar-recl-list" class="g-inline-list">
-        <div class="g-empty" data-i18n="recl.vacio">Cuando Yve detecte comisiones cobradas por encima del contrato, aparecerán aquí para reclamar.</div>
+        <div class="g-empty g-cargando" data-i18n="lbl.cargando">Cargando…</div>
       </div>
     </div>
   </div><!-- /panel-ar -->
@@ -6741,7 +6741,7 @@ svg.yvi{width:1em;height:1em;vertical-align:-0.125em;flex-shrink:0;display:inlin
       <div class="g-tbl-wrap">
         <table class="g-tbl">
           <thead><tr><th>Factura</th><th data-i18n="th.proveedor">Proveedor</th><th data-i18n="th.tipo">Tipo</th><th class="num">Total</th><th data-i18n="th.cuenta">Cuenta</th><th data-i18n="th.matching">Matching</th><th data-i18n="th.aprobacion">Aprobación</th></tr></thead>
-          <tbody id="ap-tbody"><tr><td colspan="7"><div class="g-empty" data-i18n="ap.vacio">Sin datos AP.</div></td></tr></tbody>
+          <tbody id="ap-tbody"><tr><td colspan="7"><div class="g-empty g-cargando" data-i18n="lbl.cargando">Cargando…</div></td></tr></tbody>
         </table>
       </div>
     </div>
@@ -6753,7 +6753,7 @@ svg.yvi{width:1em;height:1em;vertical-align:-0.125em;flex-shrink:0;display:inlin
           <div><div class="g-card-title" data-i18n="prov.titulo">Provisiones de cierre</div><div class="g-sub" data-i18n="prov.sub">Albaranes sin factura y comisiones pendientes.</div></div>
           <input type="month" id="prov-mes" class="g-input" onchange="loadProvisiones()">
         </div>
-        <div id="prov-body" class="g-small"><div class="g-empty" data-i18n="prov.cargando">Calculando provisiones…</div></div>
+        <div id="prov-body" class="g-small"><div class="g-empty g-cargando" data-i18n="prov.cargando">Calculando provisiones…</div></div>
       </div>
       <!-- Aging AP (Ola A): a quien debemos y desde cuando. Solo lectura. -->
       <div class="g-card" id="card-aging-ap">
@@ -6761,7 +6761,7 @@ svg.yvi{width:1em;height:1em;vertical-align:-0.125em;flex-shrink:0;display:inlin
           <div><div class="g-card-title" data-i18n="aging.titulo">Antigüedad de la deuda (aging AP)</div><div class="g-sub" data-i18n="aging.sub">A quién debemos y desde cuándo.</div></div>
         </div>
         <div id="aging-tramos" class="g-tiles" style="grid-template-columns:repeat(auto-fit,minmax(110px,1fr));gap:8px;margin-bottom:12px"></div>
-        <div id="aging-body" class="g-small"><div class="g-empty" data-i18n="aging.cargando">Calculando antigüedad…</div></div>
+        <div id="aging-body" class="g-small"><div class="g-empty g-cargando" data-i18n="aging.cargando">Calculando antigüedad…</div></div>
       </div>
     </div>
 
@@ -6778,7 +6778,7 @@ svg.yvi{width:1em;height:1em;vertical-align:-0.125em;flex-shrink:0;display:inlin
         <div><div class="g-card-title" data-i18n="reclap.titulo">Reclamar al proveedor (rectificativa / abono)</div><div class="g-sub" data-i18n="reclap.sub">Nada sale sin «Aprobar y enviar».</div></div>
         <span id="ap-recl-resumen" class="g-small"></span>
       </div>
-      <div id="ap-recl-list" class="g-inline-list"><div class="g-empty" data-i18n="reclap.cargando">Buscando facturas que reclamar…</div></div>
+      <div id="ap-recl-list" class="g-inline-list"><div class="g-empty g-cargando" data-i18n="reclap.cargando">Buscando facturas que reclamar…</div></div>
     </div>
   </div><!-- /panel-ap -->
 
@@ -6828,7 +6828,7 @@ svg.yvi{width:1em;height:1em;vertical-align:-0.125em;flex-shrink:0;display:inlin
     </div>
     <div class="g-card">
       <div class="g-card-head"><div><div class="g-card-title" data-i18n="card.alertasBanco">Alertas Bancarias</div><div class="g-sub" data-i18n="bk.alertasSub">Movimientos que llevan días sin conciliar, depósitos previstos y lo que falta por asignar a un hotel.</div></div></div>
-      <div id="bk-alertas" class="g-inline-list"><div class="g-empty">—</div></div>
+      <div id="bk-alertas" class="g-inline-list"><div class="g-empty g-cargando" data-i18n="lbl.cargando">Cargando…</div></div>
     </div>
 
     <!-- Modal de primera vez: ¿cómo funciona el banco de esta empresa? Resuelve
@@ -6883,7 +6883,7 @@ svg.yvi{width:1em;height:1em;vertical-align:-0.125em;flex-shrink:0;display:inlin
       <div class="g-tbl-wrap">
         <table class="g-tbl">
           <thead><tr><th data-i18n="lbl.fecha">Fecha</th><th data-i18n="th.tipo">Tipo</th><th data-i18n="notif.asunto">Asunto</th><th data-i18n="notif.destinatario">Destinatario</th><th data-i18n="th.estado">Estado</th></tr></thead>
-          <tbody id="notif-tbody"><tr><td colspan="5"><div class="g-empty" data-i18n="notif.vacio">Sin notificaciones.</div></td></tr></tbody>
+          <tbody id="notif-tbody"><tr><td colspan="5"><div class="g-empty g-cargando" data-i18n="lbl.cargando">Cargando…</div></td></tr></tbody>
         </table>
       </div>
     </div>
@@ -6911,11 +6911,11 @@ svg.yvi{width:1em;height:1em;vertical-align:-0.125em;flex-shrink:0;display:inlin
         <span id="paq-estado"></span>
       </div>
       <div id="paq-resultado" class="g-tiles g-tiles-sm"></div>
-      <div id="paq-body" class="g-small"><div class="g-empty" data-i18n="cierre.cargando">Montando el mes…</div></div>
+      <div id="paq-body" class="g-small"><div class="g-empty g-cargando" data-i18n="cierre.cargando">Montando el mes…</div></div>
     </div>
     <div class="g-card" id="card-cierre-recon">
       <div class="g-card-head"><div><div class="g-card-title" data-i18n="cierre.recon">Reconciliación de cuentas</div><div class="g-sub" data-i18n="cierre.reconSub">Cada cuenta del libro contra lo que la justifica.</div></div></div>
-      <div id="cierre-recon-body" class="g-small"><div class="g-empty" data-i18n="cierre.cargando">Montando el mes…</div></div>
+      <div id="cierre-recon-body" class="g-small"><div class="g-empty g-cargando" data-i18n="cierre.cargando">Montando el mes…</div></div>
     </div>
     <div class="g-card" id="card-cierre-banco">
       <div class="g-card-head">
@@ -6923,7 +6923,7 @@ svg.yvi{width:1em;height:1em;vertical-align:-0.125em;flex-shrink:0;display:inlin
         <span id="cbanco-saldo" class="g-small"></span>
       </div>
       <div id="cbanco-pestanas" class="g-tiles g-tiles-sm"></div>
-      <div id="cbanco-body" class="g-small"><div class="g-empty" data-i18n="cierre.cargando">Montando el mes…</div></div>
+      <div id="cbanco-body" class="g-small"><div class="g-empty g-cargando" data-i18n="cierre.cargando">Montando el mes…</div></div>
     </div>
     <div class="g-card" id="card-cierre-inv">
       <div class="g-card-head">
@@ -6931,7 +6931,7 @@ svg.yvi{width:1em;height:1em;vertical-align:-0.125em;flex-shrink:0;display:inlin
         <button class="g-btn g-secondary g-sm" onclick="openUploadModal()" data-i18n="inv.subir">📤 Subir recuento (Procesar archivos)</button>
       </div>
       <div id="inv-resumen" class="g-tiles g-tiles-sm"></div>
-      <div id="inv-body" class="g-small"><div class="g-empty" data-i18n="cierre.cargando">Montando el mes…</div></div>
+      <div id="inv-body" class="g-small"><div class="g-empty g-cargando" data-i18n="cierre.cargando">Montando el mes…</div></div>
     </div>
     <div class="g-card" id="card-cierre-fiscal">
       <div class="g-card-head">
@@ -6958,7 +6958,7 @@ svg.yvi{width:1em;height:1em;vertical-align:-0.125em;flex-shrink:0;display:inlin
         <div style="flex-basis:100%;display:flex;gap:8px;margin-top:4px"><button class="g-btn g-primary g-sm" onclick="_inmGuardar()" data-i18n="inm.guardar">Guardar</button><button class="g-btn g-secondary g-sm" onclick="document.getElementById('inm-form').style.display='none'" data-i18n="btn.cancelar">Cancelar</button></div>
       </div>
       <div id="inm-resumen" class="g-tiles g-tiles-sm"></div>
-      <div id="inm-body" class="g-small"><div class="g-empty" data-i18n="cierre.cargando">Montando el mes…</div></div>
+      <div id="inm-body" class="g-small"><div class="g-empty g-cargando" data-i18n="cierre.cargando">Montando el mes…</div></div>
     </div>
     <div class="g-card" id="card-cierre-mayor">
       <div class="g-card-head"><div><div class="g-card-title" data-i18n="cierre.mayor">Mayor del mes (por cuenta)</div></div></div>
@@ -6988,7 +6988,7 @@ svg.yvi{width:1em;height:1em;vertical-align:-0.125em;flex-shrink:0;display:inlin
       <button class="fb-sub" onclick="fbSub('mermas',this)" data-i18n="fb.mermas">⚠️ Mermas</button>
       <button class="fb-sub" onclick="fbSub('recetas',this)" data-i18n="fb.recetas">📋 Recetas</button>
     </div>
-    <div id="fb-resumen" class="lite-visible"><div class="g-empty">Cargando...</div></div>
+    <div id="fb-resumen" class="lite-visible"><div class="g-empty g-cargando" data-i18n="lbl.cargando">Cargando…</div></div>
     <div id="fb-inventario" style="display:none"></div>
     <div id="fb-mermas-panel" style="display:none"></div>
     <div id="fb-recetas" style="display:none"></div>
@@ -7044,7 +7044,7 @@ svg.yvi{width:1em;height:1em;vertical-align:-0.125em;flex-shrink:0;display:inlin
               <th data-i18n="arreal.thAcciones">Acciones</th>
             </tr></thead>
             <tbody id="ar-facturas-tbody">
-              <tr><td colspan="5"><div class="g-empty"><b data-i18n="arreal.vacioTitulo">Sin facturas AR todavía</b><span data-i18n="arreal.vacioSub">Usa Nueva factura para emitir a clientes corporativos, grupos o agencias.</span></div></td></tr>
+              <tr><td colspan="5"><div class="g-empty g-cargando" data-i18n="lbl.cargando">Cargando…</div></td></tr>
             </tbody>
           </table>
         </div>
@@ -7089,7 +7089,7 @@ svg.yvi{width:1em;height:1em;vertical-align:-0.125em;flex-shrink:0;display:inlin
         <div><div class="g-card-title" data-i18n="bonos.titulo">Direct bill: factura vs bono de agencia</div><div class="g-sub" data-i18n="bonos.sub">Cada bono (voucher) con la factura a crédito que lo respalda, y las facturas sin bono.</div></div>
         <span id="ar-bonos-resumen" class="g-small"></span>
       </div>
-      <div id="ar-bonos-list" class="g-inline-list"><div class="g-empty" data-i18n="bonos.cargando">Cotejando bonos…</div></div>
+      <div id="ar-bonos-list" class="g-inline-list"><div class="g-empty g-cargando" data-i18n="bonos.cargando">Cotejando bonos…</div></div>
     </div>
 
     <!-- BEOs generados automáticamente desde contratos -->
@@ -7098,7 +7098,7 @@ svg.yvi{width:1em;height:1em;vertical-align:-0.125em;flex-shrink:0;display:inlin
         <div><div class="g-card-title"><span data-i18n="beos.titulo">BEOs desde contratos</span> <span id="ar-beos-count" class="g-small"></span></div><div class="g-sub" data-i18n="beos.sub">Yve crea el BEO (partidas e importes) desde el contrato de grupo y coteja la factura contra él.</div></div>
       </div>
       <div id="ar-beos-list" class="g-inline-list">
-        <div class="g-empty" data-i18n="beos.vacio">Procesa un contrato de grupo en <b>Procesar Archivos</b> y aquí verás su BEO con el cotejo de la factura.</div>
+        <div class="g-empty g-cargando" data-i18n="lbl.cargando">Cargando…</div>
       </div>
     </div>
 
@@ -7601,18 +7601,23 @@ function renderStats(s) {
   document.getElementById('s-di').textContent   = s.di_pendientes ?? '—';
   document.getElementById('s-pend').textContent = s.sin_accion ?? '—';
   document.getElementById('s-pend-sub').textContent = (s.aprobadas ?? 0) + ' apr · ' + (s.rechazadas ?? 0) + ' rec';
+  _tilesVacios('ar-stats-section', !(s.total > 0));
   setTimeout(() => injectSparklines(AR_SPARKS), 60);
 }
 
 function renderChart(ch) {
+  // El vacio va ANTES de mirar si Chart.js ha llegado: sin datos no hay nada que dibujar
+  if (!ch || !ch.labels || !ch.labels.length) { _graficoVacio('ota-chart', true, t('ar.vacioGrafico', 'Con facturas de OTAs verás aquí cuántas hay por agencia.')); }
   if (typeof Chart === 'undefined') { console.warn('Chart.js aún no cargado'); return; }
   // Mismo fallo que en las reclamaciones: sin datos se salia sin tocar nada y
   // el grafico del hotel ANTERIOR se quedaba pintado. Al cambiar a un hotel
   // sin facturas seguias viendo la barra de Booking del otro.
   if (!ch || !ch.labels || !ch.labels.length) {
     if (otaChart) { otaChart.destroy(); otaChart = null; }
+    _graficoVacio('ota-chart', true, t('ar.vacioGrafico', 'Con facturas de OTAs verás aquí cuántas hay por agencia.'));
     return;
   }
+  _graficoVacio('ota-chart', false);
   const ctx = document.getElementById('ota-chart').getContext('2d');
   const palette = ['#3b82f6','#8b5cf6','#06b6d4','#10b981','#f59e0b','#ef4444','#ec4899'];
   const cols = ch.labels.map((_, i) => palette[i % palette.length]);
@@ -7666,7 +7671,7 @@ function renderTable(rows) {
   const tbody = document.getElementById('tbl-body');
   document.getElementById('tbl-count').textContent = rows.length ? rows.length + ' ' + (t('lbl.registros', 'registros')) : '';
   if (!rows.length) {
-    tbody.innerHTML = '<tr><td colspan="11"><div class="g-empty"><b>' + t('ar.sinFacturas', 'Sin facturas de OTAs') + '</b>' + t('ar.vacioTabla', 'Sin datos. Pulsa ⚡ Procesar Archivos para empezar.') + '</div></td></tr>';
+    tbody.innerHTML = '<tr><td colspan="11">' + _vacio(t('ar.vacioTabla', 'Sube las facturas de comisiones de las OTAs (Booking, Expedia…) y Yve las cruzará con el contrato.')) + '</td></tr>';
     return;
   }
   tbody.innerHTML = rows.map((r, i) => {
@@ -7692,7 +7697,7 @@ function renderTable(rows) {
 function renderActivity(rows) {
   const el = document.getElementById('activity');
   if (!rows.length) {
-    el.innerHTML = '<div class="g-empty">' + t('ar.vacio', 'Sin datos. Pulsa ⚡ Procesar Archivos.') + '</div>';
+    el.innerHTML = _vacio(t('ar.vacio', 'Con facturas de OTAs verás aquí el resumen por estado y por agencia.'), {cta:false});
     return;
   }
   const c = {}, d = {};
@@ -10907,7 +10912,7 @@ async function cargarAlbaranes(){
   if (!wrap) return;
   try {
     var r = await fetch('/api/albaranes'); var d = await r.json();
-    if (!d || !d.ok) { wrap.innerHTML = '<div class="g-empty">' + _cEsc((d && d.error) || 'Error') + '</div>'; return; }
+    if (!d || !d.ok) { wrap.innerHTML = _gError(_cEsc((d && d.error) || 'Error')); return; }
     var s = d.resumen || {};
     res.textContent = s.n ? (s.n + ' ' + t('alb.kN','albaranes') + ' · ' + (s.facturados||0) + ' ' + t('alb.kFact','facturados') + ' · ' + (s.sin_facturar||0) + ' ' + t('alb.kSin','sin facturar') + ' · ' + eur(s.total)) : '';
     if (!s.n) { wrap.innerHTML = _gVacio(t('alb.vacio','Todavía no hay albaranes. Súbelos con ⚡ Procesar archivos (PDF o foto) y aparecerán aquí con sus líneas.')); return; }
@@ -10931,7 +10936,7 @@ async function cargarAlbaranes(){
       h += (a.archivo ? '<div class="g-note">' + _cEsc(a.archivo) + '</div>' : '') + '</td></tr>';
     });
     wrap.innerHTML = h + '</tbody></table></div>';
-  } catch(e) { wrap.innerHTML = '<div class="g-empty">' + _cEsc(e.message) + '</div>'; }
+  } catch(e) { wrap.innerHTML = _gError(_cEsc(e.message)); }
 }
 async function cargarReclamacionesAP(){
   var wrap = document.getElementById('ap-recl-list');
@@ -10983,7 +10988,39 @@ function _reclApCard(it, i){
   }
   return '<div class="g-row" style="display:block">' + head + body + '</div>';
 }
-function _gVacio(texto){ return '<div class="g-empty">' + texto + '</div>'; }
+// ── Estado vacio UNICO (b67) ──────────────────────────────────────────────
+// Mismo icono, mismo titulo, mismo boton en los 9 apartados. Solo cambia la
+// frase de debajo (que hay que subir para que aparezca). `cta:false` para lo
+// que no viene de un fichero (notificaciones, alta manual).
+function _vacio(sub, o){
+  o = o || {};
+  return '<div class="g-empty' + (o.lg ? ' g-empty-lg' : '') + '">' +
+    '<div class="g-empty-ico">📂</div>' +
+    '<b>' + t('vacio.titulo', 'Sin datos todavía') + '</b>' +
+    (sub ? '<div class="g-empty-sub">' + sub + '</div>' : '') +
+    (o.cta === false ? '' : '<div class="g-empty-cta"><button class="g-btn g-secondary g-sm" onclick="openUploadModal()">' + t('nav.procesar', '⚡ Procesar Archivos') + '</button></div>') +
+  '</div>';
+}
+function _gVacio(texto, o){ return _vacio(texto, o); }
+// "no hay nada QUE HACER" no es "no hay datos": va en verde, sin boton
+function _todoOk(texto){ return '<div class="g-empty is-ok">' + gBadge('g-ok', texto) + '</div>'; }
+function _gError(msg){ return '<div class="g-alert err">⚠ <span>' + msg + '</span></div>'; }
+function _cargando(txt){ return '<div class="g-empty g-cargando">' + (txt || t('lbl.cargando', 'Cargando…')) + '</div>'; }
+// Tiles: sin informacion se quedan en "—", sin color y sin subtitulo. Acepta un
+// contenedor (id o nodo) o una lista de ids de valores.
+function _tilesVacios(que, vacio){
+  var vals = [];
+  if (Array.isArray(que)) { que.forEach(function(id){ var e = document.getElementById(id); if (e) vals.push(e); }); }
+  else { var c = typeof que === 'string' ? document.getElementById(que) : que; if (c) vals = Array.prototype.slice.call(c.querySelectorAll('.g-kpi-val')); }
+  vals.forEach(function(v){ var k = v.closest('.g-kpi'); if (!k) return; k.classList.toggle('is-empty', !!vacio); if (vacio) { v.textContent = '—'; v.classList.remove('skeleton'); } });
+}
+// Graficos: sin datos, el lienzo se esconde y en su sitio va el mismo vacio
+function _graficoVacio(canvasId, vacio, sub){
+  var cv = document.getElementById(canvasId); if (!cv) return;
+  var ph = cv.parentNode.querySelector('[data-vacio-de="' + canvasId + '"]');
+  if (vacio) { cv.style.display = 'none'; if (!ph) cv.insertAdjacentHTML('afterend', _vacio(sub, {cta:false}).replace('<div class="g-empty">', '<div class="g-empty" data-vacio-de="' + canvasId + '">')); }
+  else { cv.style.display = ''; if (ph) ph.remove(); }
+}
 async function _reclApGenerar(i, btn){
   var it=_reclApItems[i]; if(!it) return;
   var txt = btn ? btn.textContent : '';
@@ -14075,17 +14112,18 @@ async function loadCuadreBanco(){
   try {
     var r = await fetch('/api/cuadre_banco?mes=' + encodeURIComponent(mes));
     var d = await r.json();
-    if (!d || !d.ok_api) { body.innerHTML = '<div class=\"g-empty\">' + _cEsc((d&&d.error)||'Error') + '</div>'; return; }
+    if (!d || !d.ok_api) { body.innerHTML = _gError(_cEsc((d&&d.error)||'Error')); return; }
     if (sal) sal.textContent = (d.saldo_final!=null ? t('cbanco.saldo','saldo del extracto {f}: {s}').replace('{f}', d.fecha_saldo).replace('{s}', _cEur(d.saldo_final)) + ' · ' : '') + t('cbanco.movs','{n} movimientos · {p} sin conciliar').replace('{n}', d.n).replace('{p}', d.sin_conciliar);
     var LBL = {AR:t('cbanco.AR','AR · cobros'), AP:t('cbanco.AP','AP · pagos'), TARJETAS:t('cbanco.TARJETAS','Tarjetas'), CAJA:t('cbanco.CAJA','Income / caja'), VARIOS:t('cbanco.VARIOS','Varios'), SIN_CLASIFICAR:t('cbanco.SIN','Sin clasificar')};
     var ps = d.pestanas || {};
     pw.innerHTML = Object.keys(LBL).map(function(k){ var p = ps[k] || {}; var act = _cbFiltro===k;
       return '<div class="g-kpi g-kpi-sm g-kpi-btn' + (act?' is-on':'') + '" onclick="_cbFiltro=(_cbFiltro===\'' + k + '\'?\'\':\'' + k + '\');loadCuadreBanco()"><div class="g-kpi-lbl">' + _cEsc(LBL[k]) + '</div><div class="g-kpi-val g-num">' + _cEur(p.total) + '</div><div class="g-kpi-sub">' + (p.n||0) + ' mov.' + (p.justificado!=null ? ' · ' + t('cierre.hJust','Justificado') + ' ' + _cEur(p.justificado) : '') + '</div><div class="g-kpi-sub">' + (p.estado ? _cEstado(p.estado) : '') + '</div></div>'; }).join('');
+    _tilesVacios(pw, !d.n);
     var ms = (d.movimientos||[]).filter(function(m){ return !_cbFiltro || m.pestana===_cbFiltro; });
     var opts = Object.keys(LBL).map(function(k){ return '<option value="' + k + '">' + _cEsc(LBL[k]) + '</option>'; }).join('');
     body.innerHTML = ms.length ? '<div class="g-tbl-wrap"><table class="g-tbl"><thead><tr><th>' + t('cierre.hFecha','Fecha') + '</th><th>' + t('cierre.hConceptoD','Concepto') + '</th><th class="num">' + t('cbanco.importe','Importe') + '</th><th>' + t('cbanco.factura','Factura') + '</th><th>' + t('cbanco.pestana','Pestaña') + '</th></tr></thead><tbody>' +
-      ms.map(function(m){ return '<tr><td style="white-space:nowrap">' + _cEsc(m.fecha) + '</td><td>' + _cEsc(m.concepto) + '</td><td class="num" style="color:' + _cSigno(m.importe) + '">' + _cEur(m.importe) + '</td><td class="g-small">' + _cEsc(m.factura_ref||'') + '</td><td><select class="g-input" data-clave="' + _cEsc(m.clave) + '" onchange="_cbAsignar(this)">' + opts.replace('value="' + m.pestana + '"', 'value="' + m.pestana + '" selected') + '</select>' + (m.via==='manual' ? ' <span title="manual">✎</span>' : '') + '</td></tr>'; }).join('') + '</tbody></table></div>' : '<div class=\"g-empty\">' + t('cbanco.vacio','Sin movimientos del extracto en este mes. Súbelo en la pestaña Banco.') + '</div>';
-  } catch(e) { if (body) body.innerHTML = '<div class=\"g-empty\">' + _cEsc(e.message) + '</div>'; }
+      ms.map(function(m){ return '<tr><td style="white-space:nowrap">' + _cEsc(m.fecha) + '</td><td>' + _cEsc(m.concepto) + '</td><td class="num" style="color:' + _cSigno(m.importe) + '">' + _cEur(m.importe) + '</td><td class="g-small">' + _cEsc(m.factura_ref||'') + '</td><td><select class="g-input" data-clave="' + _cEsc(m.clave) + '" onchange="_cbAsignar(this)">' + opts.replace('value="' + m.pestana + '"', 'value="' + m.pestana + '" selected') + '</select>' + (m.via==='manual' ? ' <span title="manual">✎</span>' : '') + '</td></tr>'; }).join('') + '</tbody></table></div>' : _vacio(t('cbanco.vacio','Sube el extracto del banco de este mes y Yve lo reparte por pestañas.'));
+  } catch(e) { if (body) body.innerHTML = _gError(_cEsc(e.message)); }
 }
 async function _cbAsignar(sel){
   try {
@@ -14104,7 +14142,7 @@ async function loadInventarios(){
   try {
     var r = await fetch('/api/inventarios?mes=' + encodeURIComponent(mes));
     var d = await r.json();
-    if (!d || !d.ok) { body.innerHTML = '<div class=\"g-empty\">' + _cEsc((d&&d.error)||'Error') + '</div>'; return; }
+    if (!d || !d.ok) { body.innerHTML = _gError(_cEsc((d&&d.error)||'Error')); return; }
     var s = d.resumen || {};
     var tile = function(l, v, sub, col){ return _cTile(l, v, sub, col==='#f87171'||col==='var(--red)' ? 'k-red' : col==='#22c55e'||col==='var(--grn)' ? 'k-grn' : ''); };
     rs.innerHTML = tile(t('inv.kFinal','Existencias finales'), _cEur(s.valor_final), s.n_articulos + ' ' + t('inv.articulos','artículos')) +
@@ -14113,16 +14151,17 @@ async function loadInventarios(){
       tile(t('inv.kTeorico','Consumo teórico'), s.consumo_teorico_fb==null?t('inv.sinDato','sin dato'):_cEur(s.consumo_teorico_fb), t('inv.escandallo','escandallo × ventas')) +
       tile(t('inv.kDesv','Desviación'), s.desviacion_fb==null?'—':_cEur(s.desviacion_fb) + (s.desviacion_pct!=null?' (' + s.desviacion_pct + ' %)':''), s.n_revisar ? s.n_revisar + ' ' + t('inv.revisar','artículos a revisar') : '', s.desviacion_fb==null?'var(--tx)':(Math.abs(s.desviacion_pct||0)>5?'#f87171':'#22c55e'));
     var fams = d.familias || [];
+    _tilesVacios(rs, !fams.length);
     var LBL = {ALIMENTOS:t('inv.ALIMENTOS','Alimentos'), BEBIDAS:t('inv.BEBIDAS','Bebidas'), LICORES:t('inv.LICORES','Licores'), GUEST_SUPPLIES:t('inv.GUEST','Guest supplies'), OTROS:t('inv.OTROS','Otros')};
     var h = fams.length ? '<div class="g-tbl-wrap"><table class="g-tbl"><thead><tr><th>' + t('inv.familia','Familia') + '</th><th class="num">' + t('inv.articulos','artículos') + '</th><th class="num">' + t('inv.inicial','Inicial') + '</th><th class="num">' + t('inv.final','Final') + '</th><th class="num">' + t('inv.variacion','Variación') + '</th><th class="num">' + t('inv.revisar','a revisar') + '</th></tr></thead><tbody>' +
-      fams.map(function(f){ return '<tr><td><b>' + _cEsc(LBL[f.familia]||f.familia) + '</b></td><td class="num">' + f.n + '</td><td class="num">' + _cEur(f.valor_inicial) + '</td><td class="num">' + _cEur(f.valor_final) + '</td><td class="num" style="color:' + _cSigno(f.variacion) + '">' + _cEur(f.variacion) + '</td><td class="num">' + (f.revisar||0) + '</td></tr>'; }).join('') + '</tbody></table></div>' : '<div class=\"g-empty\">' + t('inv.vacio','Sin inventario. Descarga la hoja de recuento, cuéntalo y súbela, o procesa un inventario en Procesar Archivos.') + '</div>';
+      fams.map(function(f){ return '<tr><td><b>' + _cEsc(LBL[f.familia]||f.familia) + '</b></td><td class="num">' + f.n + '</td><td class="num">' + _cEur(f.valor_inicial) + '</td><td class="num">' + _cEur(f.valor_final) + '</td><td class="num" style="color:' + _cSigno(f.variacion) + '">' + _cEur(f.variacion) + '</td><td class="num">' + (f.revisar||0) + '</td></tr>'; }).join('') + '</tbody></table></div>' : _vacio(t('inv.vacio','Descarga la hoja de recuento (menú ⚙️), cuéntalo y súbela; o sube el inventario que ya tengas.'));
     var asi = d.asientos || [];
     if (asi.length) h += '<div class="g-label" style="margin:14px 0 8px">' + t('inv.asientos','Asiento de variación de existencias') + '</div><div class="g-tbl-wrap"><table class="g-tbl"><tbody>' + asi.map(function(a){ return '<tr><td><b>' + _cEsc(a.cuenta) + '</b> ' + _cEsc(a.desc_cuenta) + '</td><td>' + _cEsc(a.concepto) + '</td><td class="num">' + (a.debe?_cEur(a.debe):'') + '</td><td class="num">' + (a.haber?_cEur(a.haber):'') + '</td></tr>'; }).join('') + '</tbody></table></div>';
     var rev = d.revisar || [];
     if (rev.length) h += '<div class="g-label" style="margin:14px 0 8px;color:var(--ora)">' + t('inv.revisarTit','Artículos a revisar') + '</div><div class="g-small">' + rev.slice(0,30).map(function(a){ return _cEsc(a.articulo) + ' — ' + _cEsc(a.motivo); }).join('<br>') + '</div>';
     if (s.nota) h += '<div class="g-note">' + _cEsc(s.nota) + '</div>';
     body.innerHTML = h;
-  } catch(e) { if (body) body.innerHTML = '<div class=\"g-empty\">' + _cEsc(e.message) + '</div>'; }
+  } catch(e) { if (body) body.innerHTML = _gError(_cEsc(e.message)); }
 }
 
 // ── Inmovilizado y amortizaciones (Ola B·4) ──────────────────────────────
@@ -14134,7 +14173,7 @@ async function loadFiscal(){
   try {
     var r = await fetch('/api/fiscal?mes=' + encodeURIComponent(mes));
     var d = await r.json();
-    if (!d || !d.ok) { body.innerHTML = '<div class=\"g-empty\">' + _cEsc((d&&d.error)||'Error') + '</div>'; return; }
+    if (!d || !d.ok) { body.innerHTML = _gError(_cEsc((d&&d.error)||'Error')); return; }
     var m = d.m303 || {}, s3 = d.m349 || {}, sii = d.sii || {};
     est.innerHTML = d.estado ? _cEstado(d.estado) : '';
     var tile = function(l, v, sub){ return _cTile(l, v, sub); };
@@ -14146,7 +14185,8 @@ async function loadFiscal(){
       tile(t('fis.kSii','SII'), (sii.n_expedidas||0) + ' / ' + (sii.n_recibidas||0), t('fis.siiSub','expedidas / recibidas'));
     var h = '';
     if (lib && !lib.cuadra) h += '<div class="g-alert warn" style="margin-bottom:10px">⚠ <span>' + _cEsc(t('fis.noCuadra','El 303 no cuadra con el libro del mes (477/472). Revisa los asientos antes de presentar.')) + '</span></div>';
-    if (!sii.n_expedidas && !sii.n_recibidas) { h += _gVacio(t('fis.vacio','Sin facturas ni ventas en este mes: no hay nada que declarar.')); body.innerHTML = h; return; }
+    _tilesVacios(rs, !sii.n_expedidas && !sii.n_recibidas);
+    if (!sii.n_expedidas && !sii.n_recibidas) { h += _vacio(t('fis.vacio','Con facturas y ventas del mes, Yve prepara aquí el 303, el 349 y el SII.')); body.innerHTML = h; return; }
     h += '<div class="g-tbl-wrap"><table class="g-tbl"><thead><tr><th>' + _cEsc(t('fis.casilla','Casilla')) + '</th><th>' + _cEsc(t('fis.concepto','Concepto')) + '</th><th class="num">' + _cEsc(t('fis.base','Base')) + '</th><th class="num">' + _cEsc(t('fis.cuota','Cuota')) + '</th></tr></thead><tbody>';
     (m.casillas||[]).forEach(function(c){ if (!c.base && !c.cuota) return; h += '<tr><td>' + _cEsc(c.casilla_base + ' / ' + c.casilla_cuota) + '</td><td>' + _cEsc(c.concepto) + '</td><td class="num">' + _cEur(c.base) + '</td><td class="num">' + _cEur(c.cuota) + '</td></tr>'; });
     h += '<tr class="is-total"><td>46</td><td>' + _cEsc(t('fis.resultado','Resultado')) + ' (' + _cEsc(m.signo||'') + ')</td><td></td><td class="num">' + _cEur(m.c46_resultado) + '</td></tr></tbody></table></div>';
@@ -14157,7 +14197,7 @@ async function loadFiscal(){
     }
     if ((d.avisos||[]).length) h += '<div class="g-note" style="margin-top:10px">' + d.avisos.map(function(a){ return '• ' + _cEsc(a); }).join('<br>') + '</div>';
     body.innerHTML = h;
-  } catch(e) { body.innerHTML = '<div class=\"g-empty\">' + _cEsc(e.message) + '</div>'; }
+  } catch(e) { body.innerHTML = _gError(_cEsc(e.message)); }
 }
 async function loadInmovilizado(){
   var inp = document.getElementById('cierre-mes'); if (!inp) return;
@@ -14166,7 +14206,7 @@ async function loadInmovilizado(){
   try {
     var r = await fetch('/api/inmovilizado?mes=' + encodeURIComponent(mes));
     var d = await r.json();
-    if (!d || !d.ok) { body.innerHTML = '<div class=\"g-empty\">' + _cEsc((d&&d.error)||'Error') + '</div>'; return; }
+    if (!d || !d.ok) { body.innerHTML = _gError(_cEsc((d&&d.error)||'Error')); return; }
     _inmCats = d.categorias || {};
     var s = d.resumen || {};
     var tile = function(l, v, sub){ return _cTile(l, v, sub); };
@@ -14174,15 +14214,16 @@ async function loadInmovilizado(){
       tile(t('inm.kCoste','Coste total'), _cEur(s.coste_total)) + tile(t('inm.kAcum','Amortización acumulada'), _cEur(s.acumulada_total)) +
       tile(t('inm.kVnc','Valor neto contable'), _cEur(s.vnc_total)) + tile(t('inm.kCuota','Cuota del mes'), _cEur(s.cuota_mes), (s.altas_pendientes ? s.altas_pendientes + ' ' + t('inm.altasPend','posibles altas sin registrar') : ''));
     var acts = d.activos || [];
+    _tilesVacios(rs, !acts.length);
     var EST = {EN_CURSO:t('inm.enCurso','en curso'), AMORTIZADO:t('inm.amortizado','amortizado'), BAJA:t('inm.baja','baja'), NO_ALTA:t('inm.noAlta','alta posterior'), ERROR:'error'};
     var h = acts.length ? '<div class="g-tbl-wrap"><table class="g-tbl"><thead><tr><th>' + t('inm.hDesc','Activo') + '</th><th>' + t('inm.hCat','Categoría') + '</th><th>' + t('inm.hAlta','Alta') + '</th><th class="num">' + t('inm.hCoste','Coste') + '</th><th class="num">' + t('inm.hCuota','Cuota mes') + '</th><th class="num">' + t('inm.hAcum','Acumulada') + '</th><th class="num">VNC</th><th></th><th></th></tr></thead><tbody>' +
-      acts.map(function(a){ return '<tr><td>' + _cEsc(a.descripcion) + (a.error?'<div class="g-note" style="color:var(--red)">' + _cEsc(a.error) + '</div>':'') + '</td><td>' + _cEsc((_inmCats[a.categoria]||{}).nombre||a.categoria) + '</td><td style="white-space:nowrap">' + _cEsc(a.fecha_alta||'') + (a.fecha_baja?'<br><span style="color:var(--red)">⤓ ' + _cEsc(a.fecha_baja) + '</span>':'') + '</td><td class="num">' + _cEur(a.coste) + '</td><td class="num">' + _cEur(a.cuota) + '</td><td class="num">' + _cEur(a.acumulada) + '</td><td class="num"><b>' + _cEur(a.vnc) + '</b></td><td>' + gBadge(a.estado==='EN_CURSO'?'g-info':a.estado==='AMORTIZADO'?'g-ok':a.estado==='ERROR'?'g-err':'g-mute', _cEsc(EST[a.estado]||a.estado)) + '</td><td>' + (a.estado==='EN_CURSO'||a.estado==='AMORTIZADO' ? '<button class="g-btn g-ghost g-sm" onclick="_inmBaja(\'' + _cEsc(a.id) + '\')">' + t('inm.darBaja','Baja') + '</button>' : '') + '</td></tr>'; }).join('') + '</tbody></table></div>' : '<div class=\"g-empty\">' + t('inm.vacio','Sin activos registrados. Da de alta el mobiliario, la maquinaria, los equipos… y Yve calcula la amortización de cada mes.') + '</div>';
+      acts.map(function(a){ return '<tr><td>' + _cEsc(a.descripcion) + (a.error?'<div class="g-note" style="color:var(--red)">' + _cEsc(a.error) + '</div>':'') + '</td><td>' + _cEsc((_inmCats[a.categoria]||{}).nombre||a.categoria) + '</td><td style="white-space:nowrap">' + _cEsc(a.fecha_alta||'') + (a.fecha_baja?'<br><span style="color:var(--red)">⤓ ' + _cEsc(a.fecha_baja) + '</span>':'') + '</td><td class="num">' + _cEur(a.coste) + '</td><td class="num">' + _cEur(a.cuota) + '</td><td class="num">' + _cEur(a.acumulada) + '</td><td class="num"><b>' + _cEur(a.vnc) + '</b></td><td>' + gBadge(a.estado==='EN_CURSO'?'g-info':a.estado==='AMORTIZADO'?'g-ok':a.estado==='ERROR'?'g-err':'g-mute', _cEsc(EST[a.estado]||a.estado)) + '</td><td>' + (a.estado==='EN_CURSO'||a.estado==='AMORTIZADO' ? '<button class="g-btn g-ghost g-sm" onclick="_inmBaja(\'' + _cEsc(a.id) + '\')">' + t('inm.darBaja','Baja') + '</button>' : '') + '</td></tr>'; }).join('') + '</tbody></table></div>' : _vacio(t('inm.vacio','Da de alta el mobiliario, la maquinaria, los equipos… (botón Dar de alta) o sube sus facturas, y Yve calcula la amortización de cada mes.'));
     var asi = d.asientos || [];
     if (asi.length) h += '<div class="g-label" style="margin:14px 0 8px">' + t('inm.asiento','Asiento de amortización del mes') + '</div><div class="g-tbl-wrap"><table class="g-tbl"><tbody>' + asi.map(function(a){ return '<tr><td><b>' + _cEsc(a.cuenta) + '</b> ' + _cEsc(a.desc_cuenta) + '</td><td>' + _cEsc(a.concepto) + '</td><td class="num">' + (a.debe?_cEur(a.debe):'') + '</td><td class="num">' + (a.haber?_cEur(a.haber):'') + '</td></tr>'; }).join('') + '</tbody></table></div>';
     var pend = d.altas_pendientes || [];
     if (pend.length) h += '<div class="g-label" style="margin:14px 0 8px;color:var(--ora)">' + t('inm.pendTit','Facturas del mes que podrían ser un activo') + '</div><div class="g-small">' + pend.slice(0,20).map(function(p){ return _cEsc(p.numero_factura) + ' · ' + _cEsc(p.proveedor) + ' · ' + _cEur(p.base) + ' · ' + _cEsc(p.motivo) + ' <a href="#" onclick="_inmForm({descripcion:\'' + _cEsc(p.proveedor) + ' ' + _cEsc(p.numero_factura) + '\',coste:' + (p.base||0) + ',fecha:\'' + _cEsc(p.fecha) + '\',doc:\'' + _cEsc(p.numero_factura) + '\'});return false;">' + t('inm.registrar','registrar') + '</a>'; }).join('<br>') + '</div>';
     body.innerHTML = h;
-  } catch(e) { if (body) body.innerHTML = '<div class=\"g-empty\">' + _cEsc(e.message) + '</div>'; }
+  } catch(e) { if (body) body.innerHTML = _gError(_cEsc(e.message)); }
 }
 function _inmForm(pre){
   var f = document.getElementById('inm-form'); if (!f) return;
@@ -14218,11 +14259,12 @@ async function loadPaquete(){
   try {
     var r = await fetch('/api/cierre/paquete?mes=' + encodeURIComponent(mes));
     var d = await r.json();
-    if (!d || !d.ok) { body.innerHTML = '<div class=\"g-empty\">' + _cEsc((d&&d.error)||'Error') + '</div>'; return; }
+    if (!d || !d.ok) { body.innerHTML = _gError(_cEsc((d&&d.error)||'Error')); return; }
     if (est) { est.innerHTML = d.listo ? gBadge('g-ok', t('paq.listo','Listo para la central')) : (d.sin_datos ? gBadge('g-mute', t('paq.sinDatos','Sin datos de este mes')) : gBadge('g-warn', t('paq.pendiente','{n} bloque(s) pendiente(s)').replace('{n}', (d.resumen_checklist||{}).PENDIENTE||0))); }
     var rr = d.resultado || {};
     var tile = function(l, v, col){ return _cTile(l, v, '', col==='#f87171' ? 'k-red' : col==='#22c55e' ? 'k-grn' : ''); };
     rs.innerHTML = tile(t('paq.ingresos','Ingresos asentados'), _cEur(rr.ingresos)) + tile(t('paq.gastos','Gastos asentados'), _cEur(rr.gastos)) + tile(t('paq.resultado','Resultado (según documentos)'), _cEur(rr.resultado), (rr.resultado||0) >= 0 ? '#22c55e' : '#f87171') + (rr.drr_rooms_revenue!=null ? tile(t('paq.drr','Rooms Revenue DRR (MTD)'), _cEur(rr.drr_rooms_revenue)) : '');
+    _tilesVacios(rs, !!d.sin_datos);
     var h = '<div class="g-field" style="margin-bottom:12px"><label>' + t('paq.comentarioGeneral','Comentario general para la central') + '</label><textarea id="paq-com-resumen" class="g-input" rows="2">' + _cEsc(d.comentario_general||'') + '</textarea><div><button class="g-btn g-secondary g-sm" onclick="_paqGuardar(\'resumen\')">' + t('paq.guardar','Guardar comentario') + '</button></div></div>';
     h += '<div class="g-tbl-wrap"><table class="g-tbl paq-lista"><tbody>' + (d.checklist||[]).map(function(c){
       return '<tr><td class="paq-tit"><b>' + _cEsc(c.titulo) + '</b><div class="g-note" style="margin-top:2px">' + _cEsc(c.cifra||'') + (c.detalle ? '<br>' + _cEsc(c.detalle) : '') + '</div></td>' +
@@ -14230,7 +14272,7 @@ async function loadPaquete(){
         '<td><textarea id="paq-com-' + _cEsc(c.clave) + '" rows="1" class="g-input" placeholder="' + t('paq.comentario','comentario para la central') + '" onblur="_paqGuardar(\'' + _cEsc(c.clave) + '\')">' + _cEsc(c.comentario||'') + '</textarea></td></tr>'; }).join('') + '</tbody></table></div>';
     h += '<div class="g-note">' + _cEsc(d.nota||'') + '</div>';
     body.innerHTML = h;
-  } catch(e) { if (body) body.innerHTML = '<div class=\"g-empty\">' + _cEsc(e.message) + '</div>'; }
+  } catch(e) { if (body) body.innerHTML = _gError(_cEsc(e.message)); }
 }
 async function _paqGuardar(seccion){
   var ta = document.getElementById('paq-com-' + seccion); if (!ta) return;
@@ -14260,12 +14302,13 @@ async function loadCierre(forzar){
   try {
     var r = await fetch('/api/cierre/asientos?mes=' + encodeURIComponent(mes));
     var d = await r.json();
-    if (!d || !d.ok) { rb.innerHTML = '<div class=\"g-empty\">' + _cEsc((d&&d.error)||'Error') + '</div>'; return; }
+    if (!d || !d.ok) { rb.innerHTML = _gError(_cEsc((d&&d.error)||'Error')); return; }
     var hs = document.getElementById('cierre-hotel'); if (hs) hs.textContent = d.hotel ? '' : t('cierre.grupo','vista de grupo (todos los hoteles)');
     document.getElementById('cierre-k-asientos').textContent = d.n_asientos;
     document.getElementById('cierre-k-debe').textContent = _cEur(d.debe);
     document.getElementById('cierre-k-haber').textContent = _cEur(d.haber);
-    var kc = document.getElementById('cierre-k-cuadre'); kc.innerHTML = d.cuadra ? gBadge('g-ok', t('cierre.stCuadra','Cuadra')) : gBadge('g-err', t('cierre.noCuadra','No cuadra'));
+    var kc = document.getElementById('cierre-k-cuadre'); kc.innerHTML = !d.n_asientos ? '—' : d.cuadra ? gBadge('g-ok', t('cierre.stCuadra','Cuadra')) : gBadge('g-err', t('cierre.noCuadra','No cuadra'));
+    _tilesVacios('cierre-stats', !d.n_asientos);
     var f = d.fuentes || {};
     var fuentes = t('cierre.fuentes','{ap} facturas AP · {ota} comisiones OTA · {fb} días de TPV · {ar} facturas AR · {cob} cobros · {bk} mov. banco · {pv} provisiones')
       .replace('{ap}', f.ap||0).replace('{ota}', f.ar_ota||0).replace('{fb}', f.ventas_fb||0).replace('{ar}', f.ar_facturas||0).replace('{cob}', f.ar_cobros||0).replace('{bk}', f.banco||0).replace('{pv}', f.provisiones||0);
@@ -14273,16 +14316,16 @@ async function loadCierre(forzar){
     // reconciliacion
     var rec = d.reconciliacion || {}; var chk = rec.checks || [];
     rb.innerHTML = (chk.length ? '<div class="g-tbl-wrap"><table class="g-tbl"><thead><tr><th>' + t('cierre.hCuenta','Cuenta') + '</th><th>' + t('cierre.hConcepto','Comprobación') + '</th><th class="num">' + t('cierre.hLibro','Libro') + '</th><th class="num">' + t('cierre.hJust','Justificado') + '</th><th class="num">' + t('cierre.hDif','Diferencia') + '</th><th></th></tr></thead><tbody>' +
-      chk.map(function(c){ return '<tr><td><b>' + _cEsc(c.cuenta) + '</b></td><td>' + _cEsc(c.concepto) + (c.nota ? '<div class="g-note" style="margin-top:2px">' + _cEsc(c.nota) + '</div>' : '') + '</td><td class="num">' + _cEur(c.libro) + '</td><td class="num">' + (c.justificado==null?'—':_cEur(c.justificado)) + '</td><td class="num">' + (c.diferencia==null?'—':_cEur(c.diferencia)) + '</td><td class="num">' + _cEstado(c.estado) + '</td></tr>'; }).join('') + '</tbody></table></div>' : '<div class=\"g-empty\">' + t('cierre.vacio','Sin datos en este mes.') + '</div>');
+      chk.map(function(c){ return '<tr><td><b>' + _cEsc(c.cuenta) + '</b></td><td>' + _cEsc(c.concepto) + (c.nota ? '<div class="g-note" style="margin-top:2px">' + _cEsc(c.nota) + '</div>' : '') + '</td><td class="num">' + _cEur(c.libro) + '</td><td class="num">' + (c.justificado==null?'—':_cEur(c.justificado)) + '</td><td class="num">' + (c.diferencia==null?'—':_cEur(c.diferencia)) + '</td><td class="num">' + _cEstado(c.estado) + '</td></tr>'; }).join('') + '</tbody></table></div>' : _vacio(t('cierre.vacio','Con facturas, ventas y banco del mes, Yve monta aquí los asientos.')));
     // mayor
     var my = d.mayor || [];
     mb.innerHTML = my.length ? '<div class="g-tbl-wrap"><table class="g-tbl"><thead><tr><th>' + t('cierre.hCuenta','Cuenta') + '</th><th></th><th class="num">' + t('cierre.kDebe','Debe') + '</th><th class="num">' + t('cierre.kHaber','Haber') + '</th><th class="num">' + t('cierre.hSaldo','Saldo') + '</th></tr></thead><tbody>' +
-      my.map(function(m){ return '<tr><td><b>' + _cEsc(m.cuenta) + '</b></td><td>' + _cEsc(m.descripcion) + '</td><td class="num">' + _cEur(m.debe) + '</td><td class="num">' + _cEur(m.haber) + '</td><td class="num"><b>' + _cEur(m.saldo) + '</b></td></tr>'; }).join('') + '</tbody></table></div>' : '<div class=\"g-empty\">' + t('cierre.vacio','Sin datos en este mes.') + '</div>';
+      my.map(function(m){ return '<tr><td><b>' + _cEsc(m.cuenta) + '</b></td><td>' + _cEsc(m.descripcion) + '</td><td class="num">' + _cEur(m.debe) + '</td><td class="num">' + _cEur(m.haber) + '</td><td class="num"><b>' + _cEur(m.saldo) + '</b></td></tr>'; }).join('') + '</tbody></table></div>' : _vacio(t('cierre.vacio','Con facturas, ventas y banco del mes, Yve monta aquí los asientos.'));
     // diario
     var as = d.asientos || [];
     db.innerHTML = as.length ? '<div class="g-tbl-wrap"><table class="g-tbl"><thead><tr><th>#</th><th>' + t('cierre.hFecha','Fecha') + '</th><th>' + t('cierre.hCuenta','Cuenta') + '</th><th>' + t('cierre.hConceptoD','Concepto') + '</th><th class="num">' + t('cierre.kDebe','Debe') + '</th><th class="num">' + t('cierre.kHaber','Haber') + '</th><th>' + t('cierre.hOrigen','Origen') + '</th></tr></thead><tbody>' +
-      as.map(function(a){ return '<tr><td>' + a.num + '</td><td style="white-space:nowrap">' + _cEsc(a.fecha) + '</td><td style="white-space:nowrap"><b>' + _cEsc(a.cuenta) + '</b> ' + _cEsc(a.desc_cuenta) + '</td><td>' + _cEsc(a.concepto) + '</td><td class="num">' + (a.debe?_cEur(a.debe):'') + '</td><td class="num">' + (a.haber?_cEur(a.haber):'') + '</td><td class="g-small">' + _cEsc(a.origen) + '</td></tr>'; }).join('') + '</tbody></table></div>' + (d.truncado ? '<div class="g-note">' + t('cierre.truncado','Se muestran las primeras líneas; el Excel lleva todas.') + '</div>' : '') : '<div class=\"g-empty\">' + t('cierre.vacio','Sin datos en este mes.') + '</div>';
-  } catch(e) { if (rb) rb.innerHTML = '<div class=\"g-empty\">' + _cEsc(e.message) + '</div>'; }
+      as.map(function(a){ return '<tr><td>' + a.num + '</td><td style="white-space:nowrap">' + _cEsc(a.fecha) + '</td><td style="white-space:nowrap"><b>' + _cEsc(a.cuenta) + '</b> ' + _cEsc(a.desc_cuenta) + '</td><td>' + _cEsc(a.concepto) + '</td><td class="num">' + (a.debe?_cEur(a.debe):'') + '</td><td class="num">' + (a.haber?_cEur(a.haber):'') + '</td><td class="g-small">' + _cEsc(a.origen) + '</td></tr>'; }).join('') + '</tbody></table></div>' + (d.truncado ? '<div class="g-note">' + t('cierre.truncado','Se muestran las primeras líneas; el Excel lleva todas.') + '</div>' : '') : _vacio(t('cierre.vacio','Con facturas, ventas y banco del mes, Yve monta aquí los asientos.'));
+  } catch(e) { if (rb) rb.innerHTML = _gError(_cEsc(e.message)); }
 }
 
 function _cargarPanel(tab, panel, forzar) {
@@ -14512,6 +14555,7 @@ async function loadFBResumen() {
     // Ventas chart
     setTimeout(() => {
       const cv = document.getElementById('fb-ventas-chart');
+      _graficoVacio('fb-ventas-chart', !(data.ventas_diarias.fechas.length), t('fb.vacioGrafico', 'Con las ventas diarias del TPV verás aquí la evolución del mes.'));
       if (cv && window.Chart && data.ventas_diarias.fechas.length) {
         new Chart(cv, {
           type: 'bar',
@@ -14534,7 +14578,7 @@ async function loadFBResumen() {
         });
       }
     }, 100);
-  } catch(e) { cont.innerHTML = '<div class="g-empty">Error: ' + e.message + '</div>'; }
+  } catch(e) { cont.innerHTML = _gError('Error: ' + e.message); }
 }
 
 async function loadFBInventario() {
@@ -14545,7 +14589,7 @@ async function loadFBInventario() {
   try {
     const res = await fetch('/fb/api/inventario');
     const data = await res.json();
-    if (!data.ok) { cont.innerHTML = '<div class="g-empty">Error inventario</div>'; return; }
+    if (!data.ok) { cont.innerHTML = _gError('Error inventario'); return; }
     if (!data.items || !data.items.length) { cont.innerHTML = _emptyState('📦', t('fb.invVacioTitulo', 'Inventario vacío'), t('fb.sinInventario', 'Sin datos de inventario. Sube un inventario con ⚡ Procesar Archivos.')); return; }
 
     const alertas = data.items.filter(i => i.alerta);
@@ -14580,7 +14624,7 @@ async function loadFBInventario() {
     });
     html += '</tbody></table></div></div>';
     cont.innerHTML = html;
-  } catch(e) { cont.innerHTML = '<div class="g-empty">Error: ' + e.message + '</div>'; }
+  } catch(e) { cont.innerHTML = _gError('Error: ' + e.message); }
   if (_i18nLang && _i18nLang !== "es") applyI18n(_i18nData);
 }
 
@@ -14592,7 +14636,7 @@ async function loadFBMermas() {
   try {
     const res = await fetch('/fb/api/mermas' + _fbMesQS());
     const data = await res.json();
-    if (!data.ok) { cont.innerHTML = '<div class="g-empty">Error mermas</div>'; return; }
+    if (!data.ok) { cont.innerHTML = _gError('Error mermas'); return; }
     if (!data.mermas || !data.mermas.length) { cont.innerHTML = _emptyState('🗑️', t('fb.sinMermas', 'Sin mermas registradas.'), t('fb.merVacioSub', 'Cuando registres mermas o subas un archivo, aparecerán aquí con su coste y causa.')); return; }
 
     // Add summary KPI if total available
@@ -14661,7 +14705,7 @@ async function loadFBMermas() {
     });
     html += '</tbody></table></div></div>';
     cont.innerHTML = html;
-  } catch(e) { cont.innerHTML = '<div class="g-empty">Error: ' + e.message + '</div>'; }
+  } catch(e) { cont.innerHTML = _gError('Error: ' + e.message); }
 }
 
 function _fbField(id, label, type, ph) {
@@ -14692,7 +14736,7 @@ async function loadFBRecetas() {
   try {
     const res = await fetch('/fb/api/recetas');
     const data = await res.json();
-    if (!data.ok) { cont.innerHTML = '<div class="g-empty">Error recetas</div>'; return; }
+    if (!data.ok) { cont.innerHTML = _gError('Error recetas'); return; }
     if (!data.recetas || !data.recetas.length) { cont.innerHTML = _emptyState('📖', t('fb.recVacioTitulo', 'Sin recetas cargadas'), t('fb.sinRecetas', 'Aún no hay recetario. Súbelo con ⚡ Procesar archivos: una fila por ingrediente (receta, ingrediente, cantidad, coste) y Yve calcula el food cost de cada plato.')); return; }
 
     const avg = data.recetas.length ? data.recetas.reduce((a,r)=>a+r.fc_pct,0)/data.recetas.length : 0;
@@ -14725,16 +14769,13 @@ async function loadFBRecetas() {
     });
     html += '</tbody></table></div></div>';
     cont.innerHTML = html;
-  } catch(e) { cont.innerHTML = '<div class="g-empty">Error: ' + e.message + '</div>'; }
+  } catch(e) { cont.innerHTML = _gError('Error: ' + e.message); }
 }
 
+// (b67) el titulo y el icono ya no se eligen por apartado: son los de `_vacio`.
+// El titulo antiguo pasa a ser parte de la frase si aporta algo.
 function _emptyState(emoji, titulo, sub, conCta) {
-  return '<div class="g-empty g-empty-lg">' +
-    '<div class="g-empty-ico">' + emoji + '</div>' +
-    '<b>' + titulo + '</b>' +
-    '<div class="g-small" style="max-width:340px;margin:0 auto">' + sub + '</div>' +
-    (conCta !== false ? '<div style="margin-top:16px"><button class="g-btn g-secondary g-sm" onclick="openUploadModal()">' + t('nav.procesar', '⚡ Procesar Archivos') + '</button></div>' : '') +
-    '</div>';
+  return _vacio(sub || titulo, {lg: true, cta: conCta !== false});
 }
 
 function _fbSobre(cob) {
@@ -14816,7 +14857,7 @@ async function loadProvisiones() {
   const mes = mesEl ? mesEl.value : '';
   try {
     const d = await (await fetch('/api/provisiones?mes=' + encodeURIComponent(mes), {cache:'no-store'})).json();
-    if (!d.ok) { body.innerHTML = '<div class="g-empty">' + _provEsc(d.error || 'Error') + '</div>'; return; }
+    if (!d.ok) { body.innerHTML = _gError(_provEsc(d.error || 'Error')); return; }
     const a = d.albaranes, c = d.comisiones;
     const bloque = (titulo, n, total, cuenta, filas, vacio, extra) =>
       '<div style="margin-bottom:14px">' +
@@ -14841,7 +14882,7 @@ async function loadProvisiones() {
              t('prov.comVacio','Sin liquidaciones OTA con periodo en este mes.'), extraC) +
       '<div class="g-note">' + t('prov.nota','Solo lectura: los asientos van en el Excel del cierre. Las comisiones devengadas sin liquidación necesitan la producción OTA del PMS.') + '</div>';
     if (typeof _pintarYa === 'function') _pintarYa(body);
-  } catch(e) { body.innerHTML = '<div class="g-empty">Error</div>'; }
+  } catch(e) { body.innerHTML = _gError('Error'); }
 }
 
 // ── Aging AP (Ola A) ─────────────────────────────────────────────────
@@ -14850,7 +14891,7 @@ async function loadAgingAP() {
   if (!body || !tr) return;
   try {
     const d = await (await fetch('/api/aging_ap', {cache:'no-store'})).json();
-    if (!d.ok) { body.innerHTML = '<div class="g-empty">' + _provEsc(d.error || 'Error') + '</div>'; return; }
+    if (!d.ok) { body.innerHTML = _gError(_provEsc(d.error || 'Error')); return; }
     const orden = ['0-30','31-60','61-90','>90','sin fecha'];
     // colores de significado: verde al dia, ambar a revisar, rojo vencido; el mismo criterio que los badges
     const kcls = {'0-30':'k-grn','31-60':'','61-90':'k-ora','>90':'k-red','sin fecha':'is-empty'};
@@ -14859,7 +14900,8 @@ async function loadAgingAP() {
       '<div class="g-kpi-val" style="font-size:18px">' + _provFmt(d.tramos[k]) + '</div></div>').join('') +
       '<div class="g-kpi" style="padding:10px 12px"><div class="g-kpi-lbl">' + t('aging.total','pendiente') + '</div><div class="g-kpi-val" style="font-size:18px">' + _provFmt(d.total) + '</div><div class="g-kpi-sub">' + d.n + ' ' + t('lbl.facturas','facturas') + '</div></div>';
     if (!d.por_acreedor.length) {
-      body.innerHTML = '<div class="g-note">' + t('aging.vacio','Nada pendiente de pago.') + '</div>';
+      _tilesVacios(tr, true);
+      body.innerHTML = d.n ? _todoOk(t('aging.vacio','Nada pendiente de pago')) : _vacio(t('aging.sinFacturas','Con facturas de proveedores verás aquí a quién se debe y desde cuándo.'), {cta:false});
       return;
     }
     body.innerHTML = '<div class="g-tbl-wrap"><table class="g-tbl" style="font-size:12px"><thead><tr><th>' + t('aging.acreedor','Acreedor') + '</th><th>' + t('aging.masAntigua','Más antigua') + '</th><th class="num">0-30</th><th class="num">31-60</th><th class="num">61-90</th><th class="num">&gt;90</th><th class="num">' + t('aging.total','pendiente') + '</th></tr></thead><tbody>' +
@@ -14869,7 +14911,7 @@ async function loadAgingAP() {
         '<td class="num"><strong>' + _provFmt(p.importe) + '</strong></td></tr>').join('') +
       '</tbody></table></div><div class="g-note">' + t('aging.nota','Pendiente = sin conciliar en el extracto bancario; sin extracto, todo cuenta como pendiente.') + '</div>';
     if (typeof _pintarYa === 'function') _pintarYa(body);
-  } catch(e) { body.innerHTML = '<div class="g-empty">Error</div>'; }
+  } catch(e) { body.innerHTML = _gError('Error'); }
 }
 
 async function loadAP() {
@@ -14896,10 +14938,11 @@ async function loadAP() {
     if (el('ap-manual')) el('ap-manual').textContent = stats.manual ?? '—';
     if (el('ap-aprobadas')) el('ap-aprobadas').textContent = stats.aprobadas ?? '—';
     _skelOff(['ap-total','ap-importe','ap-matches','ap-disc','ap-sinpo','ap-aprobadas']);
+    _tilesVacios(['ap-total','ap-importe','ap-matches','ap-disc','ap-sinpo','ap-aprobadas','ap-alertas','ap-manual'], !(stats.total > 0));
     setTimeout(() => injectSparklines(AP_SPARKS), 60);
 
     const tbody = el('ap-tbody');
-    if (tbody) tbody.innerHTML = '';
+    if (tbody) tbody.innerHTML = facts.length ? '' : '<tr><td colspan="7">' + _vacio(t('ap.vacio', 'Sube las facturas de proveedores (PDF o foto) y Yve las cruzará con albarán y pedido.')) + '</td></tr>';
     document.getElementById('ap-count').textContent = facts.length + ' ' + (t('lbl.facturas', 'facturas'));
 
     facts.forEach(f => {
@@ -15245,9 +15288,8 @@ async function renderDRR(s) {
   // DRR del hotel anterior — Ribera/Faro ensenaban el de Costa Azul. El backend
   // ya filtra bien (drr_del_hotel devuelve None); el agujero era de repintado.
   if (!s || s.error) {
-    const _msg = (s && s.error) ? ('Error: ' + s.error) : 'Sin DRR para este hotel.';
     if (body) body.innerHTML = '<div class="drr-metrics" id="drr-metrics">'
-      + '<div class="g-empty">' + _msg + '</div></div>';
+      + ((s && s.error) ? _gError(s.error) : _vacio(t('drr.vacio', 'Sube el DRR (Daily Revenue Report) del PMS y verás ocupación, ADR, RevPAR y los días fuera de balance.'), {lg:true})) + '</div>';
     if (statusEl) statusEl.textContent = '';
     window._drrChartData = null;
     try { if (_drrChart) { _drrChart.destroy(); _drrChart = null; } } catch(e) {}
@@ -15342,7 +15384,7 @@ async function renderDRR(s) {
       + '<div class="rd-dc-st">' + (d.oob ? gBadge('g-err', t('drr.descuadre', 'Descuadre') + ' ' + _eur(Math.abs(d.diff || 0))) : gBadge('g-ok', t('drr.cuadra', 'Cuadra'))) + '</div></div>';
   }).join('');
   const trialCard = '<div class="g-card"><div class="g-card-head"><div><div class="g-card-title">' + t('drr.estadoDiario', 'Estado diario · Trial Balance') + '</div><div class="g-sub">' + t('drr.estadoDiarioSub', 'Un día por tarjeta; en rojo los que no cuadran y por cuánto.') + '</div></div></div>'
-    + '<div class="rd-daywrap">' + (dcards || '<div class="g-empty">' + t('drr.sinDias', 'Sin días con datos.') + '</div>') + '</div></div>';
+    + '<div class="rd-daywrap">' + (dcards || _vacio(t('drr.sinDias', 'El DRR no trae días con datos.'), {cta:false})) + '</div></div>';
 
   body.innerHTML = groups + chartCard + trialCard;
 
@@ -15672,7 +15714,7 @@ async function loadNotif() {
     const tbody = document.getElementById('notif-tbody');
     const count = document.getElementById('notif-count');
     if (!data || !data.length) {
-      tbody.innerHTML = '<tr><td colspan="5"><div class="g-empty">' + t('notif.vacio', 'Sin notificaciones.') + '</div></td></tr>';
+      tbody.innerHTML = '<tr><td colspan="5">' + _vacio(t('notif.vacio', 'Cuando haya discrepancias, certificados pendientes o movimientos sin conciliar, las alertas aparecerán aquí.'), {cta:false}) + '</td></tr>';
       count.textContent = '';
       return;
     }
@@ -16110,8 +16152,7 @@ async function loadMultiHotel() {
     var esEstadoVacio = _msg.indexOf('Sin hoteles') >= 0 || _msg.indexOf('Sin datos') >= 0;
     if (el) {
       if (esEstadoVacio) {
-        el.innerHTML = _emptyState('🏨', 'Todavia no hay nada que consolidar',
-          'Da de alta los hoteles del grupo y sube sus documentos: aqui veras lo que hay por pagar, lo reclamable a las OTAs, lo pendiente de cobro y las ventas de F&B, hotel por hotel.', false);
+        el.innerHTML = _vacio(t('mh.vacioSub', 'Da de alta los hoteles del grupo y sube sus documentos: aquí verás lo que hay por pagar, lo reclamable a las OTAs, lo pendiente de cobro y las ventas de F&B, hotel por hotel.'), {lg:true});
       } else {
         el.innerHTML = '<div class="g-alert err">⚠ <span>Error cargando datos: ' + _msg + '</span></div>';
       }
@@ -16159,7 +16200,7 @@ function renderMHFinancieroClasico(data) {
         '<span class="mh-pos g-num">' + (i+1) + '</span>' +
         '<div class="g-who"><b>' + f.nombre + '</b></div>' +
         '<span class="g-num mh-cel-val is-ok">' + _mhEur(f.ar_ota.importe_reclamable) + '</span></div>';
-    }).join('') : _gVacio('Nada reclamable ahora mismo');
+    }).join('') : _todoOk('Nada reclamable ahora mismo');
   }
 
   var al = document.getElementById('mh-alertas');
@@ -16175,7 +16216,7 @@ function renderMHFinancieroClasico(data) {
     al.innerHTML = avisos.length ? avisos.slice(0,8).map(function(a) {
       return '<div class="g-row mh-aviso"><span class="mh-tri">▲</span>' +
         '<div class="g-who"><b>' + a.h + '</b><span>' + a.m + '</span></div></div>';
-    }).join('') : '<div class="g-empty">' + gBadge('g-ok', 'Sin incidencias') + '</div>';
+    }).join('') : _todoOk('Sin incidencias');
   }
 
   // La tabla, con las columnas que Yve SI sabe.
@@ -16282,13 +16323,15 @@ async function loadBanco() {
   try {
     var r = await fetch('/api/stats_banco');
     var d = await r.json();
-    if (!d) {
-      ['bk-total','bk-conc','bk-pend','bk-diff'].forEach(function(id){ var e=document.getElementById(id); if(e) e.textContent='0'; });
-      var ip = document.getElementById('bk-imp-pend'); if (ip) ip.textContent = '—';
-      var ba0 = document.getElementById('bk-alertas'); if (ba0) ba0.innerHTML = '<div class="g-empty">' + t('bk.sinMovs', 'Sin movimientos bancarios.') + '</div>';
+    if (!d || !(d.total > 0)) {
+      // sin extracto: tiles en "—" (no ceros), sin barra, y el vacio unico
+      _tilesVacios(['bk-total','bk-conc','bk-pend','bk-diff'], true);
+      var ip = document.getElementById('bk-imp-pend'); if (ip) ip.textContent = '';
+      var ba0 = document.getElementById('bk-alertas'); if (ba0) ba0.innerHTML = _vacio(t('bk.sinMovs', 'Sube el extracto del banco (Excel o CSV) y Yve lo conciliará con facturas y cobros.'));
       var pb0 = document.getElementById('banco-progress-bar'); if (pb0) pb0.style.display = 'none';
       return;
     }
+    _tilesVacios(['bk-total','bk-conc','bk-pend','bk-diff'], false);
     document.getElementById('bk-total').textContent = d.total || '0';
     document.getElementById('bk-conc').textContent = d.conciliados || '0';
     var _bT = d.total||0, _bC = d.conciliados||0, _pEl = document.getElementById('banco-progress-bar');
@@ -16301,7 +16344,7 @@ async function loadBanco() {
     var el = document.getElementById('bk-alertas');
     var _html = (d.alertas && d.alertas.length)
       ? d.alertas.map(function(a) { return '<div class="g-row">' + gBadge('g-err', a.dias + ' ' + t('bk.dias', 'días')) + '<div class="g-who"><b>' + _cEsc(a.concepto) + '</b><span>' + t('bk.sinConciliar', 'sin conciliar:') + ' ' + eur(a.importe) + '</span></div></div>'; }).join('')
-      : '<div class="g-empty">' + t('bk.sinAlertas', 'Sin alertas bancarias pendientes.') + '</div>';
+      : _todoOk(t('bk.sinAlertas', 'Sin alertas bancarias pendientes'));
     // Depositos previstos de contratos de grupo: NO son movimientos del banco, se avisan aparte
     var _deps = (d.depositos_previstos || []).filter(function(x){ return x.estado !== 'EN_EXTRACTO'; });
     if (_deps.length) {
@@ -16315,8 +16358,8 @@ async function loadBanco() {
   } catch(e) {
     console.warn('Error banco:', e);
     var el2 = document.getElementById('bk-alertas');
-    if (el2 && el2.innerHTML.includes('—')) el2.innerHTML = '<div class="g-empty">' + t('bk.sinAlertas', 'Sin alertas bancarias pendientes.') + '</div>';
-    ['bk-total','bk-conc','bk-pend','bk-diff'].forEach(function(id){ var e=document.getElementById(id); if (e && e.textContent === '—') e.textContent = '0'; });
+    if (el2 && el2.innerHTML.includes('—')) el2.innerHTML = _gError(t('bk.error', 'No se ha podido leer el banco.'));
+    _tilesVacios(['bk-total','bk-conc','bk-pend','bk-diff'], true);
   }
 }
 
@@ -16620,10 +16663,13 @@ async function cargarARRealData() {
       _setText('arp-cobrado',   fmt(s.cobrado_mes));
       _setText('arp-nclientes', dc.ok ? dc.clientes.length + ' ' + tt('ar.registrados', 'registrados') : '—');
       _skelOff(['arp-pendiente','arp-vencido','arp-cobrado','arp-nclientes']);
+      _tilesVacios(['arp-pendiente','arp-vencido','arp-cobrado'], !((df.facturas || []).length));
+      _tilesVacios(['arp-nclientes'], !(dc.ok && dc.clientes.length));
 
       // Aging bar
       const agingEl = document.getElementById('ar-aging-bar');
-      if (agingEl && s.aging) {
+      if (agingEl && (!s.aging || !(df.facturas || []).length)) { agingEl.style.display = 'none'; agingEl.innerHTML = ''; }
+      else if (agingEl && s.aging) {
         const total = Object.values(s.aging).reduce((a,b) => a+b, 0) || 1;
         const colors = {'0-30 días':'var(--grn)','31-60 días':'var(--ora)','61-90 días':'var(--red)','>90 días (VENCIDA)':'var(--red)'};
         agingEl.style.display = 'block';
@@ -16640,6 +16686,10 @@ async function cargarARRealData() {
     }
 
     // Render client cards
+    if (dc.ok && !dc.clientes.length) {
+      const listEl0 = document.getElementById('ar-clientes-list');
+      if (listEl0) { _arClientesCache = []; listEl0.innerHTML = _vacio(t('arreal.clientesVacio', 'Crea el primer cliente de crédito con “Nuevo cliente” o procesa un contrato de grupo.'), {cta:false}); }
+    }
     if (dc.ok && dc.clientes.length) {
       const listEl = document.getElementById('ar-clientes-list');
       if (listEl) {
@@ -16695,7 +16745,7 @@ function _renderFacturasAR(facturas, stats) {
   const display = estado_filter ? facturas.filter(f => f.estado === estado_filter) : facturas;
 
   if (!display.length) {
-    tbody.innerHTML = '<tr><td colspan="5">' + _emptyState('📋', tt('ar.vacioTitulo', 'Sin facturas todavía'), tt('ar.vacioSub', 'Crea una factura con “Nueva factura” o procesa documentos de grupos y aparecerán aquí.'), false) + '</td></tr>';
+    tbody.innerHTML = '<tr><td colspan="5">' + _emptyState('📋', tt('ar.vacioTitulo', 'Sin facturas todavía'), tt('ar.vacioSub', 'Crea una factura con “Nueva factura” o procesa documentos de grupos y aparecerán aquí.'), true) + '</td></tr>';
     return;
   }
 
