@@ -29,9 +29,36 @@ REPORTES_DIR   = BASE_DIR / "reportes"
 EMAILS_DIR     = REPORTES_DIR / "emails_pendientes_ap"
 FACTURAS_DIR   = BASE_DIR / "facturas-procesadas"
 HOY            = datetime.now().strftime("%Y%m%d")
-HOTEL_NOMBRE   = "Hilton Barcelona"
-HOTEL_EMAIL    = "finanzas@hiltonbarcelona.com"
 FIRMANTE       = "Departamento de Finanzas"
+
+
+def _identidad_hotel():
+    """(nombre, email) de QUIEN escribe el email. Nunca un hotel a fuego.
+
+    Orden: hotel_config.json del tenant (`hotel_nombre`, `hotel_email`) → el
+    hotel activo del censo (YVE_HOTEL, que es como llegan los scripts lanzados
+    por el dashboard) → 'el hotel' y sin email. Antes llevaba un hotel concreto
+    y su email a fuego en cada reclamacion a un proveedor.
+    """
+    nombre, email = "", ""
+    try:
+        from tenant_dirs import datos_dir as _t_ddir
+        with open(os.path.join(str(_t_ddir()), "hotel_config.json"), encoding="utf-8") as fh:
+            cfg = json.load(fh) or {}
+        nombre = str(cfg.get("hotel_nombre") or "").strip()
+        email = str(cfg.get("hotel_email") or "").strip()
+    except Exception:
+        pass
+    if not nombre:
+        try:
+            import censo_hoteles as _censo
+            nombre = _censo.nombre_de(_censo.activo()) or ""
+        except Exception:
+            pass
+    return (nombre or "el hotel"), email
+
+
+HOTEL_NOMBRE, HOTEL_EMAIL = _identidad_hotel()
 
 EMAILS_DIR.mkdir(parents=True, exist_ok=True)
 
@@ -87,7 +114,7 @@ Por este motivo, les solicitamos amablemente que emitan una factura rectificativ
 por el importe correspondiente a la Orden de Compra aprobada, o bien que nos \
 remitan la documentación justificativa que ampare la diferencia indicada.
 
-En caso de cualquier duda, pueden contactarnos en {HOTEL_EMAIL}.
+{("En caso de cualquier duda, pueden contactarnos en " + HOTEL_EMAIL + ".") if HOTEL_EMAIL else "Quedamos a su disposición para cualquier duda."}
 
 Agradecemos su comprensión y colaboración.
 
@@ -129,7 +156,7 @@ faciliten el nombre del responsable que les autorizó para solicitar la OC \
 de forma retroactiva.
   - Si existe un contrato marco, por favor remítannos el número de referencia.
 
-En caso de cualquier duda, pueden contactarnos en {HOTEL_EMAIL}.
+{("En caso de cualquier duda, pueden contactarnos en " + HOTEL_EMAIL + ".") if HOTEL_EMAIL else "Quedamos a su disposición para cualquier duda."}
 
 Quedamos a su disposición para resolver esta situación a la mayor brevedad posible.
 
@@ -181,7 +208,7 @@ Les rogamos que nos remitan a la mayor brevedad:
 En caso de que la discrepancia corresponda a un error en nuestra parte, \
 procederemos a corregir los registros internos.
 
-Pueden contactarnos en {HOTEL_EMAIL} para cualquier aclaración.
+{("Pueden contactarnos en " + HOTEL_EMAIL + " para cualquier aclaración.") if HOTEL_EMAIL else "Quedamos a su disposición para cualquier aclaración."}
 
 Gracias por su colaboración.
 
