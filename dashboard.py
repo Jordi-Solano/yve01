@@ -6644,7 +6644,7 @@ svg.yvi{width:1em;height:1em;vertical-align:-0.125em;flex-shrink:0;display:inlin
   <div id="panel-ar" class="panel active g-panel">
     <!-- Guia de estilo (b55). Ids de siempre: el JS no cambia, solo lo que pinta. -->
     <div class="g-head">
-      <div><div class="g-h1" data-i18n="tab.ar">📥 AR — OTAs</div><div class="g-sub" data-i18n="ar.subtitulo">Liquidaciones de comisiones de las OTAs: cruce con el contrato, certificado DI y aprobación.</div></div>
+      <div><div class="g-h1" data-i18n="tab.ar" title="Liquidaciones de comisiones de las OTAs: cruce con el contrato, certificado DI y aprobación." data-i18n-title="ar.subtitulo">📥 AR — OTAs</div></div>
       <div class="g-actions">
         <button id="btn-export-selected" class="g-btn g-ghost g-sm" style="display:none" onclick="exportarSeleccionados()">📤 Exportar selección</button>
         <a href="/aprobaciones-ar/" class="g-btn g-primary g-sm" title="Abrir panel de aprobaciones AR" data-i18n="btn.aprobarARp">📲 Aprobar facturas AR</a>
@@ -6661,17 +6661,17 @@ svg.yvi{width:1em;height:1em;vertical-align:-0.125em;flex-shrink:0;display:inlin
 
     <div class="g-grid2 g-mid">
       <div class="g-card">
-        <div class="g-card-head"><div><div class="g-card-title" data-i18n="card.porOta">Facturas por OTA</div><div class="g-sub" data-i18n="ar.porOtaSub">Cuántas liquidaciones ha mandado cada canal este ciclo.</div></div></div>
+        <div class="g-card-head"><div><div class="g-card-title" data-i18n="card.porOta" title="Cuántas liquidaciones ha mandado cada canal este ciclo." data-i18n-title="ar.porOtaSub">Facturas por OTA</div></div></div>
         <div class="chart-wrap"><canvas id="ota-chart"></canvas></div>
       </div>
       <div class="g-card">
-        <div class="g-card-head"><div><div class="g-card-title" data-i18n="card.resumen">Resumen de estados</div><div class="g-sub" data-i18n="ar.resumenSub">Lo que ha encontrado el cruce con el contrato.</div></div></div>
+        <div class="g-card-head"><div><div class="g-card-title" data-i18n="card.resumen" title="Lo que ha encontrado el cruce con el contrato." data-i18n-title="ar.resumenSub">Resumen de estados</div></div></div>
         <div id="activity" class="hide-lite"><div class="g-empty g-cargando" data-i18n="lbl.cargando">Cargando…</div></div>
       </div>
     </div>
 
     <div class="g-card">
-      <div class="g-card-head"><div><div class="g-card-title" data-i18n="ar.todas">Todas las facturas del ciclo</div><div class="g-sub" data-i18n="ar.tablaAyuda">Pulsa una fila para ver el detalle; marca filas para exportarlas.</div></div><span id="tbl-count" class="g-small"></span></div>
+      <div class="g-card-head"><div><div class="g-card-title" data-i18n="ar.todas" title="Pulsa una fila para ver el detalle; marca filas para exportarlas." data-i18n-title="ar.tablaAyuda">Todas las facturas del ciclo</div></div><span id="tbl-count" class="g-small"></span></div>
       <div class="g-tbl-wrap">
         <table class="g-tbl">
           <thead>
@@ -6699,7 +6699,7 @@ svg.yvi{width:1em;height:1em;vertical-align:-0.125em;flex-shrink:0;display:inlin
     <!-- ── Reclamaciones OTA (loop de reclamación automática) ── -->
     <div class="g-card" id="ar-recl-section">
       <div class="g-card-head">
-        <div><div class="g-card-title" data-i18n="recl.titulo">Reclamaciones OTA pendientes de aprobar</div><div class="g-sub" data-i18n="recl.sub">Comisiones cobradas por encima del contrato: Yve redacta el email y tú lo apruebas. Nada se envía sin tu OK.</div></div>
+        <div><div class="g-card-title" data-i18n="recl.titulo" title="Comisiones cobradas por encima del contrato: Yve redacta el email y tú lo apruebas. Nada se envía sin tu OK." data-i18n-title="recl.sub">Reclamaciones OTA pendientes de aprobar</div></div>
         <div id="ar-recl-resumen" class="g-small"></div>
       </div>
       <div id="ar-recl-list" class="g-inline-list">
@@ -6713,7 +6713,7 @@ svg.yvi{width:1em;height:1em;vertical-align:-0.125em;flex-shrink:0;display:inlin
     <!-- Guia de estilo (b53): cabecera con titulo + acciones (UN primario), tiles,
          tabla, y cuatro tarjetas iguales. Los ids son los de siempre: el JS no cambia. -->
     <div class="g-head">
-      <div><div class="g-h1" data-i18n="tab.ap">📦 AP — Proveedores</div><div class="g-sub" data-i18n="ap.subtitulo">Facturas recibidas, cruce con albarán y PO, aprobación y contabilización.</div></div>
+      <div><div class="g-h1" data-i18n="tab.ap" title="Facturas recibidas, cruce con albarán y PO, aprobación y contabilización." data-i18n-title="ap.subtitulo">📦 AP — Proveedores</div></div>
       <div class="g-actions">
         <select id="ap-estado-filter" class="g-input" onchange="filtrarAPPorEstado(this.value)">
           <option value="" data-i18n-opt="lbl.todos">Todos</option>
@@ -6737,7 +6737,7 @@ svg.yvi{width:1em;height:1em;vertical-align:-0.125em;flex-shrink:0;display:inlin
       <div class="g-kpi k-pur"><div class="g-kpi-lbl" data-i18n="ap.aprobadas">Aprobadas</div><div class="g-kpi-val" id="ap-aprobadas">—</div><div class="g-kpi-sub" data-i18n="ap.firmadas">firmadas</div></div>
     </div>
     <div class="g-card">
-      <div class="g-card-head"><div><div class="g-card-title" data-i18n="card.facturasAP">Facturas AP</div><div class="g-sub" data-i18n="ap.tablaAyuda">Pulsa una fila para ver el detalle.</div></div><span class="g-small" id="ap-count"></span></div>
+      <div class="g-card-head"><div><div class="g-card-title" data-i18n="card.facturasAP" title="Pulsa una fila para ver el detalle." data-i18n-title="ap.tablaAyuda">Facturas AP</div></div><span class="g-small" id="ap-count"></span></div>
       <div class="g-tbl-wrap">
         <table class="g-tbl">
           <thead><tr><th>Factura</th><th data-i18n="th.proveedor">Proveedor</th><th data-i18n="th.tipo">Tipo</th><th class="num">Total</th><th data-i18n="th.cuenta">Cuenta</th><th data-i18n="th.matching">Matching</th><th data-i18n="th.aprobacion">Aprobación</th></tr></thead>
@@ -6750,7 +6750,7 @@ svg.yvi{width:1em;height:1em;vertical-align:-0.125em;flex-shrink:0;display:inlin
       <!-- Provisiones de cierre (Ola A): solo lectura, sale de lo que ya hay -->
       <div class="g-card" id="card-provisiones">
         <div class="g-card-head">
-          <div><div class="g-card-title" data-i18n="prov.titulo">Provisiones de cierre</div><div class="g-sub" data-i18n="prov.sub">Albaranes sin factura y comisiones pendientes.</div></div>
+          <div><div class="g-card-title" data-i18n="prov.titulo" title="Albaranes sin factura y comisiones pendientes." data-i18n-title="prov.sub">Provisiones de cierre</div></div>
           <input type="month" id="prov-mes" class="g-input" onchange="loadProvisiones()">
         </div>
         <div id="prov-body" class="g-small"><div class="g-empty g-cargando" data-i18n="prov.cargando">Calculando provisiones…</div></div>
@@ -6758,7 +6758,7 @@ svg.yvi{width:1em;height:1em;vertical-align:-0.125em;flex-shrink:0;display:inlin
       <!-- Aging AP (Ola A): a quien debemos y desde cuando. Solo lectura. -->
       <div class="g-card" id="card-aging-ap">
         <div class="g-card-head">
-          <div><div class="g-card-title" data-i18n="aging.titulo">Antigüedad de la deuda (aging AP)</div><div class="g-sub" data-i18n="aging.sub">A quién debemos y desde cuándo.</div></div>
+          <div><div class="g-card-title" data-i18n="aging.titulo" title="A quién debemos y desde cuándo." data-i18n-title="aging.sub">Antigüedad de la deuda (aging AP)</div></div>
         </div>
         <div id="aging-tramos" class="g-tiles" style="grid-template-columns:repeat(auto-fit,minmax(110px,1fr));gap:8px;margin-bottom:12px"></div>
         <div id="aging-body" class="g-small"><div class="g-empty g-cargando" data-i18n="aging.cargando">Calculando antigüedad…</div></div>
@@ -6767,7 +6767,7 @@ svg.yvi{width:1em;height:1em;vertical-align:-0.125em;flex-shrink:0;display:inlin
 
     <div class="g-card" id="card-albaranes">
       <div class="g-card-head">
-        <div><div class="g-card-title" data-i18n="alb.titulo">Albaranes de entrega</div><div class="g-sub" data-i18n="alb.ayuda">Cada entrega con sus líneas y la factura con la que ha cruzado. Pulsa una fila para ver las líneas.</div></div>
+        <div><div class="g-card-title" data-i18n="alb.titulo" title="Cada entrega con sus líneas y la factura con la que ha cruzado. Pulsa una fila para ver las líneas." data-i18n-title="alb.ayuda">Albaranes de entrega</div></div>
         <span id="alb-resumen" class="g-small"></span>
       </div>
       <div id="alb-list"></div>
@@ -6775,7 +6775,7 @@ svg.yvi{width:1em;height:1em;vertical-align:-0.125em;flex-shrink:0;display:inlin
     <!-- Reclamar al proveedor (Ola A): factura rectificativa o abono. Nada sale sin "Aprobar y enviar". -->
     <div class="g-card" id="card-recl-ap">
       <div class="g-card-head">
-        <div><div class="g-card-title" data-i18n="reclap.titulo">Reclamar al proveedor (rectificativa / abono)</div><div class="g-sub" data-i18n="reclap.sub">Nada sale sin «Aprobar y enviar».</div></div>
+        <div><div class="g-card-title" data-i18n="reclap.titulo" title="Nada sale sin «Aprobar y enviar»." data-i18n-title="reclap.sub">Reclamar al proveedor (rectificativa / abono)</div></div>
         <span id="ap-recl-resumen" class="g-small"></span>
       </div>
       <div id="ap-recl-list" class="g-inline-list"><div class="g-empty g-cargando" data-i18n="reclap.cargando">Buscando facturas que reclamar…</div></div>
@@ -6786,7 +6786,7 @@ svg.yvi{width:1em;height:1em;vertical-align:-0.125em;flex-shrink:0;display:inlin
   <div id="panel-drr" class="panel g-panel">
     <!-- Guia de estilo (b57). El estado va oculto (lo leen la subida y el onboarding). -->
     <div class="g-head">
-      <div><div class="g-h1" data-i18n="tab.drr">📊 DRR</div><div class="g-sub" data-i18n="drr.subtitulo">El Daily Revenue Report del hotel: ocupación, tarifa, ingresos, beneficio y el cuadre diario.</div></div>
+      <div><div class="g-h1" data-i18n="tab.drr" title="El Daily Revenue Report del hotel: ocupación, tarifa, ingresos, beneficio y el cuadre diario." data-i18n-title="drr.subtitulo">📊 DRR</div></div>
       <div class="g-actions"><button class="g-btn g-primary g-sm" onclick="openUploadModal()" data-i18n="drr.subirBoton">📊 Subir DRR</button></div>
     </div>
     <span class="drr-status" id="drr-status" style="display:none" data-i18n="drr.sinArchivo">Sin archivo cargado</span>
@@ -6811,7 +6811,7 @@ svg.yvi{width:1em;height:1em;vertical-align:-0.125em;flex-shrink:0;display:inlin
   <div id="panel-banco" class="panel g-panel">
     <!-- Guia de estilo (b56). Ids de siempre. -->
     <div class="g-head">
-      <div><div class="g-h1" data-i18n="tab.banco">🏦 Banco</div><div class="g-sub" data-i18n="bk.subtitulo">El extracto cruzado con las facturas: qué está conciliado, qué falta y qué no cuadra.</div></div>
+      <div><div class="g-h1" data-i18n="tab.banco" title="El extracto cruzado con las facturas: qué está conciliado, qué falta y qué no cuadra." data-i18n-title="bk.subtitulo">🏦 Banco</div></div>
       <div class="g-actions">
         <span id="banco-modo-chip" class="g-badge g-info" style="display:none"></span>
         <button id="banco-modo-cambiar" class="g-btn g-ghost g-sm" onclick="abrirModoBanco()" style="display:none" data-i18n="bk.cambiarModo">⚙ Cambiar cómo funciona el banco</button>
@@ -6827,7 +6827,7 @@ svg.yvi{width:1em;height:1em;vertical-align:-0.125em;flex-shrink:0;display:inlin
       <div class="g-kpi k-red"><div class="g-kpi-lbl" data-i18n="sc.diferencias">Diferencias</div><div class="g-kpi-val" id="bk-diff">—</div><div class="g-kpi-sub" data-i18n="sc.importeNoCuadra">importe no cuadra</div></div>
     </div>
     <div class="g-card">
-      <div class="g-card-head"><div><div class="g-card-title" data-i18n="card.alertasBanco">Alertas Bancarias</div><div class="g-sub" data-i18n="bk.alertasSub">Movimientos que llevan días sin conciliar, depósitos previstos y lo que falta por asignar a un hotel.</div></div></div>
+      <div class="g-card-head"><div><div class="g-card-title" data-i18n="card.alertasBanco" title="Movimientos que llevan días sin conciliar, depósitos previstos y lo que falta por asignar a un hotel." data-i18n-title="bk.alertasSub">Alertas Bancarias</div></div></div>
       <div id="bk-alertas" class="g-inline-list"><div class="g-empty g-cargando" data-i18n="lbl.cargando">Cargando…</div></div>
     </div>
 
@@ -6836,7 +6836,7 @@ svg.yvi{width:1em;height:1em;vertical-align:-0.125em;flex-shrink:0;display:inlin
          La elección se guarda en el servidor (config_banco.json) y gobierna todo. -->
     <div id="modal-banco-config" class="g-overlay" style="display:none">
       <div class="g-modal" style="max-width:600px">
-        <div class="g-modal-head"><div><div class="g-modal-title">🏦 ¿Cómo funciona el banco de tu empresa?</div><div class="g-sub">Un extracto bancario no dice a qué hotel es cada movimiento, así que lo eliges tú una vez. Se guarda en tu empresa (funciona igual desde el móvil y el PC) y puedes cambiarlo cuando quieras.</div></div></div>
+        <div class="g-modal-head"><div><div class="g-modal-title">🏦 ¿Cómo funciona el banco de tu empresa?</div></div></div>
         <div class="g-grid2">
           <button type="button" class="g-choice" onclick="elegirModoBanco('grupo')">
             <b>🏛️ Una cuenta del grupo</b>
@@ -6856,7 +6856,7 @@ svg.yvi{width:1em;height:1em;vertical-align:-0.125em;flex-shrink:0;display:inlin
   <div id="panel-notif" class="panel g-panel">
     <!-- Guia de estilo (b58). Ids de siempre. -->
     <div class="g-head">
-      <div><div class="g-h1" data-i18n="tab.notif">🔔 Notificaciones</div><div class="g-sub" data-i18n="notif.subtitulo">Por dónde te avisa Yve y de qué; y el historial de lo enviado.</div></div>
+      <div><div class="g-h1" data-i18n="tab.notif" title="Por dónde te avisa Yve y de qué; y el historial de lo enviado." data-i18n-title="notif.subtitulo">🔔 Notificaciones</div></div>
       <div class="g-actions">
         <button class="g-btn g-secondary g-sm" onclick="probarNotif()" data-i18n="btn.test">🔔 Probar</button>
         <button class="g-btn g-primary g-sm" id="btn-send-notif" onclick="enviarNotificaciones()"><span data-i18n="notif.enviar">🔔 Enviar notificaciones pendientes</span></button>
@@ -6867,7 +6867,7 @@ svg.yvi{width:1em;height:1em;vertical-align:-0.125em;flex-shrink:0;display:inlin
     <!-- Configuración de canales -->
     <div class="g-card">
       <div class="g-card-head">
-        <div><div class="g-card-title" data-i18n="notif.canales">Canales de notificación</div><div class="g-sub" data-i18n="notif.canalesSub">Pulsa un canal para activarlo o apagarlo; rellena sus datos debajo.</div></div>
+        <div><div class="g-card-title" data-i18n="notif.canales" title="Pulsa un canal para activarlo o apagarlo; rellena sus datos debajo." data-i18n-title="notif.canalesSub">Canales de notificación</div></div>
         <button class="g-btn g-secondary g-sm" onclick="guardarNotifConfig()" id="btn-save-notif" data-i18n="notif.guardar">💾 Guardar configuración</button>
       </div>
       <div class="g-canales" id="notif-canales"></div>
@@ -6879,7 +6879,7 @@ svg.yvi{width:1em;height:1em;vertical-align:-0.125em;flex-shrink:0;display:inlin
 
     <!-- Historial -->
     <div class="g-card">
-      <div class="g-card-head"><div><div class="g-card-title" data-i18n="notif.historial">Historial de Notificaciones</div><div class="g-sub" data-i18n="notif.historialSub">Una alerta enviada por varios canales cuenta una vez.</div></div><span id="notif-count" class="g-small"></span></div>
+      <div class="g-card-head"><div><div class="g-card-title" data-i18n="notif.historial" title="Una alerta enviada por varios canales cuenta una vez." data-i18n-title="notif.historialSub">Historial de Notificaciones</div></div><span id="notif-count" class="g-small"></span></div>
       <div class="g-tbl-wrap">
         <table class="g-tbl">
           <thead><tr><th data-i18n="lbl.fecha">Fecha</th><th data-i18n="th.tipo">Tipo</th><th data-i18n="notif.asunto">Asunto</th><th data-i18n="notif.destinatario">Destinatario</th><th data-i18n="th.estado">Estado</th></tr></thead>
@@ -6893,7 +6893,7 @@ svg.yvi{width:1em;height:1em;vertical-align:-0.125em;flex-shrink:0;display:inlin
   <div id="panel-cierre" class="panel g-panel">
     <!-- Guia de estilo (b61). Ids de siempre. -->
     <div class="g-head">
-      <div><div class="g-h1" data-i18n="tab.cierre">🧾 Cierre</div><div class="g-sub" data-i18n="cierre.subtitulo">El mes contable: asientos, reconciliación, cuadre de banco, inventarios, fiscal, inmovilizado y el archivo para la central.</div></div>
+      <div><div class="g-h1" data-i18n="tab.cierre" title="El mes contable: asientos, reconciliación, cuadre de banco, inventarios, fiscal, inmovilizado y el archivo para la central." data-i18n-title="cierre.subtitulo">🧾 Cierre</div></div>
       <div class="g-actions">
         <label class="g-field g-inline"><span data-i18n="cierre.mes">Mes</span><input type="month" id="cierre-mes" class="g-input" onchange="loadCierre(true)"></label>
         <span id="cierre-hotel" class="g-small"></span>
@@ -6907,19 +6907,19 @@ svg.yvi{width:1em;height:1em;vertical-align:-0.125em;flex-shrink:0;display:inlin
     </div>
     <div class="g-card" id="card-cierre-paquete">
       <div class="g-card-head">
-        <div><div class="g-card-title" data-i18n="paq.titulo">Archivo de fin de mes para la central</div><div class="g-sub" data-i18n="paq.sub">Lo que se manda a la central: cada bloque con su estado y tu comentario.</div></div>
+        <div><div class="g-card-title" data-i18n="paq.titulo" title="Lo que se manda a la central: cada bloque con su estado y tu comentario." data-i18n-title="paq.sub">Archivo de fin de mes para la central</div></div>
         <span id="paq-estado"></span>
       </div>
       <div id="paq-resultado" class="g-tiles g-tiles-sm"></div>
       <div id="paq-body" class="g-small"><div class="g-empty g-cargando" data-i18n="cierre.cargando">Montando el mes…</div></div>
     </div>
     <div class="g-card" id="card-cierre-recon">
-      <div class="g-card-head"><div><div class="g-card-title" data-i18n="cierre.recon">Reconciliación de cuentas</div><div class="g-sub" data-i18n="cierre.reconSub">Cada cuenta del libro contra lo que la justifica.</div></div></div>
+      <div class="g-card-head"><div><div class="g-card-title" data-i18n="cierre.recon" title="Cada cuenta del libro contra lo que la justifica." data-i18n-title="cierre.reconSub">Reconciliación de cuentas</div></div></div>
       <div id="cierre-recon-body" class="g-small"><div class="g-empty g-cargando" data-i18n="cierre.cargando">Montando el mes…</div></div>
     </div>
     <div class="g-card" id="card-cierre-banco">
       <div class="g-card-head">
-        <div><div class="g-card-title" data-i18n="cbanco.titulo">Cuadre de banco por pestañas</div><div class="g-sub" data-i18n="cbanco.sub">Pulsa una pestaña para filtrar; cambia la pestaña de un movimiento desde su fila.</div></div>
+        <div><div class="g-card-title" data-i18n="cbanco.titulo" title="Pulsa una pestaña para filtrar; cambia la pestaña de un movimiento desde su fila." data-i18n-title="cbanco.sub">Cuadre de banco por pestañas</div></div>
         <span id="cbanco-saldo" class="g-small"></span>
       </div>
       <div id="cbanco-pestanas" class="g-tiles g-tiles-sm"></div>
@@ -6927,7 +6927,7 @@ svg.yvi{width:1em;height:1em;vertical-align:-0.125em;flex-shrink:0;display:inlin
     </div>
     <div class="g-card" id="card-cierre-inv">
       <div class="g-card-head">
-        <div><div class="g-card-title" data-i18n="inv.titulo">Inventarios de cierre</div><div class="g-sub" data-i18n="inv.sub">Existencias iniciales y finales, compras del mes y la desviación frente al escandallo.</div></div>
+        <div><div class="g-card-title" data-i18n="inv.titulo" title="Existencias iniciales y finales, compras del mes y la desviación frente al escandallo." data-i18n-title="inv.sub">Inventarios de cierre</div></div>
         <button class="g-btn g-secondary g-sm" onclick="openUploadModal()" data-i18n="inv.subir">📤 Subir recuento (Procesar archivos)</button>
       </div>
       <div id="inv-resumen" class="g-tiles g-tiles-sm"></div>
@@ -6935,7 +6935,7 @@ svg.yvi{width:1em;height:1em;vertical-align:-0.125em;flex-shrink:0;display:inlin
     </div>
     <div class="g-card" id="card-cierre-fiscal">
       <div class="g-card-head">
-        <div><div class="g-card-title" data-i18n="fis.titulo">Fiscal: IVA 303, 349 y SII</div><div class="g-sub" data-i18n="fis.ayuda">Preparado a partir de los mismos datos que los asientos del mes. Nada se envía a Hacienda: el envío del SII exige certificado digital y lo hace la gestoría.</div></div>
+        <div><div class="g-card-title" data-i18n="fis.titulo" title="Preparado a partir de los mismos datos que los asientos del mes. Nada se envía a Hacienda: el envío del SII exige certificado digital y lo hace la gestoría." data-i18n-title="fis.ayuda">Fiscal: IVA 303, 349 y SII</div></div>
         <span id="fis-estado"></span>
       </div>
       <div id="fis-resumen" class="g-tiles g-tiles-sm"></div>
@@ -6943,7 +6943,7 @@ svg.yvi{width:1em;height:1em;vertical-align:-0.125em;flex-shrink:0;display:inlin
     </div>
     <div class="g-card" id="card-cierre-inm">
       <div class="g-card-head">
-        <div><div class="g-card-title" data-i18n="inm.titulo">Inmovilizado y amortizaciones</div><div class="g-sub" data-i18n="inm.sub">Los activos del hotel y la cuota de amortización de cada mes.</div></div>
+        <div><div class="g-card-title" data-i18n="inm.titulo" title="Los activos del hotel y la cuota de amortización de cada mes." data-i18n-title="inm.sub">Inmovilizado y amortizaciones</div></div>
         <button class="g-btn g-secondary g-sm" onclick="_inmForm()" data-i18n="inm.alta">➕ Dar de alta</button>
       </div>
       <div id="inm-form" class="g-row" style="display:none;margin-bottom:12px">
@@ -6976,7 +6976,7 @@ svg.yvi{width:1em;height:1em;vertical-align:-0.125em;flex-shrink:0;display:inlin
   <div id="panel-fb" class="panel g-panel">
     <!-- Guia de estilo (b59). Ids de siempre. -->
     <div class="g-head">
-      <div><div class="g-h1" data-i18n="tab.fb">🍽️ F&B Cost</div><div class="g-sub" data-i18n="fb.subtitulo">Ventas, escandallo, inventario y mermas: el food cost teórico y el real, por mes.</div></div>
+      <div><div class="g-h1" data-i18n="tab.fb" title="Ventas, escandallo, inventario y mermas: el food cost teórico y el real, por mes." data-i18n-title="fb.subtitulo">🍽️ F&B Cost</div></div>
       <div class="g-actions fb-acciones">
         <label class="g-field g-inline"><span data-i18n="fb.mesLbl">Mes</span><input type="month" id="fb-mes" class="g-input" onchange="fbCambiarMes()" title="Vacío = todo el periodo"></label>
         <button class="g-btn g-primary g-sm" onclick="openUploadModal()" data-i18n="btn.importarFB">📤 Subir ventas, inventario, mermas o recetas</button>
@@ -6998,7 +6998,7 @@ svg.yvi{width:1em;height:1em;vertical-align:-0.125em;flex-shrink:0;display:inlin
   <div id="panel-ar_real" class="panel g-panel">
     <!-- Guia de estilo (b60). Ids de siempre. -->
     <div class="g-head">
-      <div><div class="g-h1" data-i18n="tab.arreal">🏢 AR Real</div><div class="g-sub" data-i18n="arreal.subtitulo">Clientes de crédito, facturación corporativa y control de cobros: quién debe, desde cuándo y qué falta por emitir.</div></div>
+      <div><div class="g-h1" data-i18n="tab.arreal" title="Clientes de crédito, facturación corporativa y control de cobros: quién debe, desde cuándo y qué falta por emitir." data-i18n-title="arreal.subtitulo">🏢 AR Real</div></div>
       <div class="g-actions">
         <button class="g-btn g-ghost g-sm" onclick="loadARRealData()" data-i18n="btn.actualizar">🔄 Actualizar</button>
         <button class="g-btn g-secondary g-sm" onclick="abrirEmitirFactura()" data-i18n="arreal.nuevaFactura">📄 Nueva factura</button>
@@ -7017,7 +7017,7 @@ svg.yvi{width:1em;height:1em;vertical-align:-0.125em;flex-shrink:0;display:inlin
       <!-- Client list -->
       <div class="g-card">
         <div class="g-card-head">
-          <div><div class="g-card-title" data-i18n="arreal.clientes">Clientes</div><div class="g-sub" data-i18n="arreal.clientesSub">Pulsa uno para ver solo sus facturas.</div></div>
+          <div><div class="g-card-title" data-i18n="arreal.clientes" title="Pulsa uno para ver solo sus facturas." data-i18n-title="arreal.clientesSub">Clientes</div></div>
           <button onclick="abrirNuevoCliente()" class="g-btn g-secondary g-sm" data-i18n="ar.btnNuevoCliente">➕ Nuevo cliente</button>
         </div>
         <div id="ar-clientes-list" class="g-inline-list"></div>
@@ -7025,7 +7025,7 @@ svg.yvi{width:1em;height:1em;vertical-align:-0.125em;flex-shrink:0;display:inlin
       <!-- Invoices -->
       <div class="g-card">
         <div class="g-card-head">
-          <div><div class="g-card-title"><span data-i18n="arreal.facturas">Facturas</span> <span id="ar-facturas-count" class="g-small"></span></div><div class="g-sub" data-i18n="arreal.facturasSub">Emitidas, cobradas y pendientes de emitir.</div></div>
+          <div><div class="g-card-title" title="Emitidas, cobradas y pendientes de emitir." data-i18n-title="arreal.facturasSub"><span data-i18n="arreal.facturas">Facturas</span> <span id="ar-facturas-count" class="g-small"></span></div></div>
           <select id="ar-filter-estado" class="g-input" onchange="filtrarFacturasAR(this.value)">
             <option value="" data-i18n-opt="lbl.todas">Todas</option>
             <option value="PENDIENTE_FACTURA">Pendiente emitir</option>
@@ -7086,7 +7086,7 @@ svg.yvi{width:1em;height:1em;vertical-align:-0.125em;flex-shrink:0;display:inlin
     <!-- Direct bill: la factura a credito contra el bono de la agencia (Ola A). Solo lectura. -->
     <div id="ar-bonos-section" class="g-card">
       <div class="g-card-head">
-        <div><div class="g-card-title" data-i18n="bonos.titulo">Direct bill: factura vs bono de agencia</div><div class="g-sub" data-i18n="bonos.sub">Cada bono (voucher) con la factura a crédito que lo respalda, y las facturas sin bono.</div></div>
+        <div><div class="g-card-title" data-i18n="bonos.titulo" title="Cada bono (voucher) con la factura a crédito que lo respalda, y las facturas sin bono." data-i18n-title="bonos.sub">Direct bill: factura vs bono de agencia</div></div>
         <span id="ar-bonos-resumen" class="g-small"></span>
       </div>
       <div id="ar-bonos-list" class="g-inline-list"><div class="g-empty g-cargando" data-i18n="bonos.cargando">Cotejando bonos…</div></div>
@@ -7095,7 +7095,7 @@ svg.yvi{width:1em;height:1em;vertical-align:-0.125em;flex-shrink:0;display:inlin
     <!-- BEOs generados automáticamente desde contratos -->
     <div id="ar-beos-section" class="g-card">
       <div class="g-card-head">
-        <div><div class="g-card-title"><span data-i18n="beos.titulo">BEOs desde contratos</span> <span id="ar-beos-count" class="g-small"></span></div><div class="g-sub" data-i18n="beos.sub">Yve crea el BEO (partidas e importes) desde el contrato de grupo y coteja la factura contra él.</div></div>
+        <div><div class="g-card-title" title="Yve crea el BEO (partidas e importes) desde el contrato de grupo y coteja la factura contra él." data-i18n-title="beos.sub"><span data-i18n="beos.titulo">BEOs desde contratos</span> <span id="ar-beos-count" class="g-small"></span></div></div>
       </div>
       <div id="ar-beos-list" class="g-inline-list">
         <div class="g-empty g-cargando" data-i18n="lbl.cargando">Cargando…</div>
@@ -7111,7 +7111,7 @@ svg.yvi{width:1em;height:1em;vertical-align:-0.125em;flex-shrink:0;display:inlin
     <!-- Guia de estilo (b62): cabecera con titulo, selector de mes y las dos
          perspectivas como subpestañas. Ids y onclick, los de siempre. -->
     <div class="g-head">
-      <div><div class="g-h1">🌍 Multi-Hotel</div><div class="g-sub mh-sub">Vista consolidada del grupo · datos reales</div></div>
+      <div><div class="g-h1" title="Vista consolidada del grupo · datos reales">🌍 Multi-Hotel</div></div>
       <div class="g-actions">
         <select id="mh-mes-select" class="g-input" onchange="_mh_loaded=false;loadMultiHotel()">
           <option value="">Mes actual</option>
@@ -9799,6 +9799,10 @@ function _saveOriginals() {
     const k = el.getAttribute('data-i18n');
     if (!_i18nOriginal[k]) _i18nOriginal[k] = el.textContent;
   });
+  document.querySelectorAll('[data-i18n-title]').forEach(el => {
+    const k = el.getAttribute('data-i18n-title');
+    if (!_i18nOriginal[k]) _i18nOriginal[k] = el.title;
+  });
 }
 
 async function loadI18n(lang) {
@@ -10527,6 +10531,11 @@ function _applyI18nBase(data) {
   document.querySelectorAll('[data-i18n]').forEach(el => {
     const k = el.getAttribute('data-i18n');
     if (data[k] !== undefined) el.textContent = data[k];
+  });
+  // (b72) las frases de ayuda viven en el title (tooltip), no en pantalla
+  document.querySelectorAll('[data-i18n-title]').forEach(el => {
+    const k = el.getAttribute('data-i18n-title');
+    if (data[k] !== undefined) el.title = data[k];
   });
 }
 
@@ -14177,7 +14186,8 @@ async function loadInventarios(){
     if (asi.length) h += '<div class="g-label" style="margin:14px 0 8px">' + t('inv.asientos','Asiento de variación de existencias') + '</div><div class="g-tbl-wrap"><table class="g-tbl"><tbody>' + asi.map(function(a){ return '<tr><td><b>' + _cEsc(a.cuenta) + '</b> ' + _cEsc(a.desc_cuenta) + '</td><td>' + _cEsc(a.concepto) + '</td><td class="num">' + (a.debe?_cEur(a.debe):'') + '</td><td class="num">' + (a.haber?_cEur(a.haber):'') + '</td></tr>'; }).join('') + '</tbody></table></div>';
     var rev = d.revisar || [];
     if (rev.length) h += '<div class="g-label" style="margin:14px 0 8px;color:var(--ora)">' + t('inv.revisarTit','Artículos a revisar') + '</div><div class="g-small">' + rev.slice(0,30).map(function(a){ return _cEsc(a.articulo) + ' — ' + _cEsc(a.motivo); }).join('<br>') + '</div>';
-    if (s.nota) h += '<div class="g-note">' + _cEsc(s.nota) + '</div>';
+    // la nota del backend solo cuando avisa de un estado (sin recuento de ESTE mes); la formula, no
+    if (s.nota && !fams.length) h += '<div class="g-note">' + _cEsc(s.nota) + '</div>';
     body.innerHTML = h;
   } catch(e) { if (body) body.innerHTML = _gError(_cEsc(e.message)); }
 }
@@ -14288,7 +14298,6 @@ async function loadPaquete(){
       return '<tr><td class="paq-tit"><b>' + _cEsc(c.titulo) + '</b><div class="g-note" style="margin-top:2px">' + _cEsc(c.cifra||'') + (c.detalle ? '<br>' + _cEsc(c.detalle) : '') + '</div></td>' +
         '<td>' + _cEstado(c.estado) + '</td>' +
         '<td><textarea id="paq-com-' + _cEsc(c.clave) + '" rows="1" class="g-input" placeholder="' + t('paq.comentario','comentario para la central') + '" onblur="_paqGuardar(\'' + _cEsc(c.clave) + '\')">' + _cEsc(c.comentario||'') + '</textarea></td></tr>'; }).join('') + '</tbody></table></div>';
-    h += '<div class="g-note">' + _cEsc(d.nota||'') + '</div>';
     body.innerHTML = h;
   } catch(e) { if (body) body.innerHTML = _gError(_cEsc(e.message)); }
 }
@@ -14511,7 +14520,7 @@ async function loadFBResumen() {
 
     // ── Header: título a la izquierda, botón recalcular a la derecha ──
     let html = '<div class="g-card-head"><div><div class="g-card-title">' + t('fb.control', 'F&B Cost Control') + '</div>';
-    html += '<div class="g-sub">' + (t('fb.datosReales', 'Datos calculados desde ventas reales')) + ' · ' + data.ventas_diarias.fechas.length + ' ' + (t('fb.dias', 'días')) + '</div></div>';
+    html += '<div class="g-small">' + data.ventas_diarias.fechas.length + ' ' + (t('fb.dias', 'días')) + '</div></div>';
     html += '<button class="g-btn g-secondary g-sm" onclick="runFB()" data-i18n="btn.recalcular">↺ Recalcular</button>';
     html += '</div>';
 
@@ -14898,7 +14907,7 @@ async function loadProvisiones() {
              t('prov.albVacio','Nada que provisionar: todo lo entregado hasta el corte tiene factura.'), extraA) +
       bloque(t('prov.comisiones','Comisiones OTA del mes'), c.n + ' ' + t('prov.liquidaciones','liquidaciones'), c.total, c.cuenta_provision.codigo, fc,
              t('prov.comVacio','Sin liquidaciones OTA con periodo en este mes.'), extraC) +
-      '<div class="g-note">' + t('prov.nota','Solo lectura: los asientos van en el Excel del cierre. Las comisiones devengadas sin liquidación necesitan la producción OTA del PMS.') + '</div>';
+      '';
     if (typeof _pintarYa === 'function') _pintarYa(body);
   } catch(e) { body.innerHTML = _gError('Error'); }
 }
@@ -14927,7 +14936,7 @@ async function loadAgingAP() {
         '<td>' + (p.mas_antigua ? _provEsc(p.mas_antigua) + ' ' + gBadge(p.dias_max > 60 ? 'g-err' : 'g-mute', p.dias_max + ' ' + t('aging.dias','días')) : '—') + '</td>' +
         ['0-30','31-60','61-90','>90'].map(k => '<td class="num">' + (p[k] ? _provFmt(p[k]) : '—') + '</td>').join('') +
         '<td class="num"><strong>' + _provFmt(p.importe) + '</strong></td></tr>').join('') +
-      '</tbody></table></div><div class="g-note">' + t('aging.nota','Pendiente = sin conciliar en el extracto bancario; sin extracto, todo cuenta como pendiente.') + '</div>';
+      '</tbody></table></div>';
     if (typeof _pintarYa === 'function') _pintarYa(body);
   } catch(e) { body.innerHTML = _gError('Error'); }
 }
@@ -15377,7 +15386,7 @@ async function renderDRR(s) {
     +   '</div></div>';
 
   const chartCard = '<div class="g-card" id="drr-chart-card">'
-    + '<div class="g-card-head"><div><div class="g-card-title">' + t('drr.revenueDiario', 'Revenue Diario') + '</div><div class="g-sub">' + t('drr.revenueDiarioSub', 'Ingresos por día; los días descuadrados van marcados.') + '</div></div></div>'
+    + '<div class="g-card-head"><div><div class="g-card-title" title="' + _cEsc(t('drr.revenueDiarioSub', 'Ingresos por día; los días descuadrados van marcados.')) + '">' + t('drr.revenueDiario', 'Revenue Diario') + '</div></div></div>'
     + '<div class="chart-wrap" style="height:215px"><canvas id="drr-revenue-chart"></canvas></div>'
     + '<div id="drr-chart-vacio" class="g-note" style="display:none"></div>'
     + '<div class="g-note" style="display:flex;gap:14px;flex-wrap:wrap;align-items:center">'
@@ -15401,7 +15410,7 @@ async function renderDRR(s) {
       + '<div class="rd-dc-sub">' + t('drr.revenueDelDia', 'revenue del día') + '</div>'
       + '<div class="rd-dc-st">' + (d.oob ? gBadge('g-err', t('drr.descuadre', 'Descuadre') + ' ' + _eur(Math.abs(d.diff || 0))) : gBadge('g-ok', t('drr.cuadra', 'Cuadra'))) + '</div></div>';
   }).join('');
-  const trialCard = '<div class="g-card"><div class="g-card-head"><div><div class="g-card-title">' + t('drr.estadoDiario', 'Estado diario · Trial Balance') + '</div><div class="g-sub">' + t('drr.estadoDiarioSub', 'Un día por tarjeta; en rojo los que no cuadran y por cuánto.') + '</div></div></div>'
+  const trialCard = '<div class="g-card"><div class="g-card-head"><div><div class="g-card-title" title="' + _cEsc(t('drr.estadoDiarioSub', 'Un día por tarjeta; en rojo los que no cuadran y por cuánto.')) + '">' + t('drr.estadoDiario', 'Estado diario · Trial Balance') + '</div></div></div>'
     + '<div class="rd-daywrap">' + (dcards || _vacio(t('drr.sinDias', 'El DRR no trae días con datos.'), {cta:false})) + '</div></div>';
 
   body.innerHTML = groups + chartCard + trialCard;
@@ -16114,8 +16123,7 @@ async function loadMultiHotel() {
         trozos.push(
           '<div class="g-row mh-ins is-mute">' +
             '<div class="g-who"><b>🛏 Del DRR</b>' +
-            '<span>Ningún hotel ha subido su DRR todavía. ' +
-            'Ocupación, ADR, RevPAR y GOP llegan con él — no se estiman.</span></div>' +
+            '<span>Ningún hotel ha subido su DRR todavía.</span></div>' +
           '</div>');
       }
       if (b.hay_datos) {
@@ -16126,7 +16134,7 @@ async function loadMultiHotel() {
           '<div class="g-row mh-ins is-info">' +
             '<div class="g-who">' +
               '<b>🏦 Banco — del grupo, no por hotel</b>' +
-              '<span>El extracto es de la cuenta de la sociedad. Repartirlo entre hoteles seria inventar.</span>' +
+
             '</div>' +
             '<div class="mh-celdas mh-celdas-libre">' +
               '<div class="mh-cel"><div class="g-kpi-lbl">Sin conciliar</div>' +
