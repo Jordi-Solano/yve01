@@ -4572,12 +4572,29 @@ def _leer_drr_stats(ruta):
         # nadie: si mañana alguien añade otra estimacion de la nada, la regla de
         # no enseñarla ya esta puesta y escrita, no hay que acordarse de ella.
         procedencia = {}
+        # lo que el LECTOR ya derivo (fila "GOP (procedencia)" de la hoja): antes
+        # llegaba aqui como un numero mas y se etiquetaba "medido"
+        _der_lector = {}
+        for _, row in df_res.iterrows():
+            if str(row.iloc[0]).strip() == "GOP (procedencia)":
+                for _i, _p in ((1, "today"), (2, "mtd")):
+                    _v = str(row.iloc[_i]).strip() if len(row) > _i and pd.notna(row.iloc[_i]) else ""
+                    if _v.startswith("derivado"):
+                        _der_lector[_p] = _v.split(":", 1)[1].strip() if ":" in _v else "el DRR"
 
         for period in ("today", "mtd", "forecast"):
             gop_val  = metricas.get("GOP",   {}).get(period, "N/D")
             gpct_val = metricas.get("GOP %", {}).get(period, "N/D")
             rev_val  = _num(metricas.get("Total Revenue", {}).get(period, "N/D"))
 
+            if gop_val != "N/D" and period in _der_lector:
+                procedencia[period] = "derivado"
+                procedencia[period + "_origen"] = _der_lector[period]
+                if not str(gop_val).endswith("~"):
+                    metricas["GOP"][period] = f"{gop_val} ~"
+                if gpct_val != "N/D" and not str(gpct_val).endswith("~"):
+                    metricas["GOP %"][period] = f"{gpct_val} ~"
+                continue
             if gop_val != "N/D":
                 procedencia[period] = "medido"
                 # Falta solo el porcentaje: se saca del euro medido y los

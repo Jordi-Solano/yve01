@@ -158,10 +158,16 @@ def leer_daily_master(wb):
         if pct_decimal is not None:
             rev_today = _sf(_rev.get("today"))
             rev_mtd   = _sf(_rev.get("mtd"))
+            # Se deja constancia de que el GOP se ha DERIVADO (no medido): el
+            # panel lo etiquetaba "Medido" porque el lector lo rellenaba en
+            # silencio (inventario honesto #24).
+            _der = metricas.setdefault("__gop_derivado", {})
             if _gop.get("today") is None and rev_today:
                 metricas["GOP"]["today"] = rev_today * pct_decimal
+                _der["today"] = "el GOP% del forecast del DRR"
             if _gop.get("mtd") is None and rev_mtd:
                 metricas["GOP"]["mtd"] = rev_mtd * pct_decimal
+                _der["mtd"] = "el GOP% del forecast del DRR"
             if _gop_pct.get("today") is None:
                 metricas.setdefault("GOP %", {})["today"] = pct_decimal
             if _gop_pct.get("mtd") is None:
@@ -190,10 +196,13 @@ def leer_daily_master(wb):
                 p = _sf(gop_bgt) / _sf(rev_bgt)
                 rev_today = _sf(_rev.get("today"))
                 rev_mtd   = _sf(_rev.get("mtd"))
+                _der = metricas.setdefault("__gop_derivado", {})
                 if metricas.get("GOP", {}).get("today") is None and rev_today:
                     metricas.setdefault("GOP", {})["today"] = rev_today * p
+                    _der["today"] = "el GOP% del presupuesto del DRR"
                 if metricas.get("GOP", {}).get("mtd") is None and rev_mtd:
                     metricas.setdefault("GOP", {})["mtd"] = rev_mtd * p
+                    _der["mtd"] = "el GOP% del presupuesto del DRR"
                 if metricas.get("GOP %", {}).get("today") is None:
                     metricas.setdefault("GOP %", {})["today"] = p
                 if metricas.get("GOP %", {}).get("mtd") is None:
@@ -440,6 +449,14 @@ def escribir_hoja_resumen(ws_out, metricas):
                     "Total Revenue", "GOP", "Telephone / Other", "F&B Other"}
 
     row_num = 5
+    # la procedencia del GOP viaja en la hoja como una fila mas, para que el
+    # panel no tenga que adivinarla: "GOP (procedencia)" | today | mtd
+    _der = metricas.get("__gop_derivado") or {}
+    if _der:
+        metricas = dict(metricas)
+        metricas["GOP (procedencia)"] = {"today": ("derivado: " + _der["today"]) if _der.get("today") else "medido",
+                                         "mtd": ("derivado: " + _der["mtd"]) if _der.get("mtd") else "medido",
+                                         "forecast": None, "budget": None}
     for nombre, vals in metricas.items():
         if nombre.startswith("__"):
             continue
@@ -459,6 +476,8 @@ def escribir_hoja_resumen(ws_out, metricas):
                 f = _sf(v)
                 return f"{f:,.0f} EUR" if f is not None else "N/D"
             else:
+                if nm == "GOP (procedencia)":
+                    return str(v)
                 f = _sf(v)
                 return f"{f:,.2f}" if f is not None else str(v)
 
