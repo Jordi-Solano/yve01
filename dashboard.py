@@ -5840,7 +5840,6 @@ body::before{
   
   #cal-grid{grid-template-columns:1fr!important}
   /* Multi-hotel table */
-  #mh-kpis .sc-lbl{font-size:9px}
   /* Status bar */
   .status-bar{font-size:10px;padding:5px 10px}
   /* Demo banner */
@@ -6257,8 +6256,6 @@ tr:hover td{background:rgba(255,255,255,.025)}
   
 
   /* Multi-hotel KPIs 4col → 2col */
-  #mh-kpis{grid-template-columns:repeat(2,1fr)!important}
-  #mh-status{grid-template-columns:1fr!important}
 
   /* Modal full screen */
   .overlay{padding:0;align-items:flex-end}
@@ -6276,7 +6273,6 @@ tr:hover td{background:rgba(255,255,255,.025)}
   .stats{grid-template-columns:repeat(3,1fr)!important;gap:10px}
   .mid{grid-template-columns:1fr!important}
   #cal-hoteles{grid-template-columns:1fr!important}
-  #mh-kpis{grid-template-columns:repeat(4,1fr)!important}
   #panel-ar_real [style*="grid-template-columns:1fr 1fr"]{
     grid-template-columns:1fr!important
   }
@@ -7073,79 +7069,44 @@ svg.yvi{width:1em;height:1em;vertical-align:-0.125em;flex-shrink:0;display:inlin
 
 
 
-  <div id="panel-multi_hotel" class="panel" style="overflow-x:hidden">
-
-    <!-- Header -->
-    <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:22px;flex-wrap:wrap;gap:12px">
-      <div>
-        <h2 style="font-size:20px;font-weight:800;margin:0">🌍 Multi-Hotel Dashboard</h2>
-        <div style="font-size:12px;color:var(--mut);margin-top:3px">Vista consolidada del grupo</div>
-      </div>
-      <!-- Month selector + perspective toggle + export -->
-      <div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap">
-        <select id="mh-mes-select" onchange="_mh_loaded=false;loadMultiHotel()"
-          style="background:var(--s1);border:1px solid var(--s2);color:var(--txt);padding:7px 10px;border-radius:9px;font-size:12px;cursor:pointer;outline:none">
+  <div id="panel-multi_hotel" class="panel g-panel">
+    <!-- Guia de estilo (b62): cabecera con titulo, selector de mes y las dos
+         perspectivas como subpestañas. Ids y onclick, los de siempre. -->
+    <div class="g-head">
+      <div><div class="g-h1">🌍 Multi-Hotel</div><div class="g-sub mh-sub">Vista consolidada del grupo · datos reales</div></div>
+      <div class="g-actions">
+        <select id="mh-mes-select" class="g-input" onchange="_mh_loaded=false;loadMultiHotel()">
           <option value="">Mes actual</option>
         </select>
-      <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap">
-      </div>
-        <!-- Perspectiva toggle -->
-        <div style="display:inline-flex;background:var(--s1);border:1px solid var(--s2);border-radius:9px;padding:3px;gap:2px">
-          <button id="mh-view-cards" onclick="setMHView('cards')" style="background:var(--acc2);color:#fff;border:none;padding:6px 13px;border-radius:6px;font-size:12px;cursor:pointer;font-weight:500;transition:background-color .15s,border-color .15s,color .15s,box-shadow .15s,transform .15s,opacity .15s">📊 Resumen</button>
-          <button id="mh-view-ranking" onclick="setMHView('ranking')" style="background:transparent;color:var(--mut);border:none;padding:6px 13px;border-radius:6px;font-size:12px;cursor:pointer;font-weight:500;transition:background-color .15s,border-color .15s,color .15s,box-shadow .15s,transform .15s,opacity .15s">🏆 Ranking</button>
+        <div class="g-subtabs" id="mh-subtabs">
+          <button id="mh-view-cards" class="fb-sub active" onclick="setMHView('cards')">📊 Resumen</button>
+          <button id="mh-view-ranking" class="fb-sub" onclick="setMHView('ranking')">🏆 Ranking</button>
         </div>
       </div>
     </div>
 
-    <!-- ═══ VISTA RESUMEN (cards + gráficos) ═══ -->
+    <!-- ═══ VISTA RESUMEN ═══ -->
     <div id="mh-view-resumen">
-      <!-- KPI Cards 2x2 -->
-      <div id="mh-kpis" class="lite-visible" style="margin-bottom:20px"></div>
-
-      <!-- Smart Insights row -->
-      <div id="mh-insights" style="margin-bottom:20px"></div>
-
-      <!-- Trend charts 2 col -->
-      <div id="mh-trend-row" style="display:grid;grid-template-columns:1fr 1fr;gap:16px;margin-bottom:20px">
-        <div class="card">
-          <div class="card-title" style="font-size:11px;letter-spacing:.5px;text-transform:uppercase">GOP% — 6 Month Trend</div>
-          <div id="mh-gop-chart" style="height:140px;position:relative"></div>
-        </div>
-        <div class="card">
-          <div class="card-title" style="font-size:11px;letter-spacing:.5px;text-transform:uppercase">Revenue — 6 Month Trend</div>
-          <div id="mh-rev-chart" style="height:140px;position:relative"></div>
-        </div>
+      <div id="mh-kpis" class="g-tiles lite-visible"></div>
+      <div id="mh-insights" class="g-stack"></div>
+      <div id="mh-trend-row" class="g-grid2 g-mb" style="display:none">
+        <div class="g-card"><div class="g-card-title">GOP% — 6 Month Trend</div><div id="mh-gop-chart" class="mh-chart"></div></div>
+        <div class="g-card"><div class="g-card-title">Revenue — 6 Month Trend</div><div id="mh-rev-chart" class="mh-chart"></div></div>
       </div>
-
-      <!-- Hotel cards grid -->
-      <div id="mh-hotel-cards" style="display:grid;grid-template-columns:repeat(auto-fit,minmax(min(290px,100%),1fr));gap:16px;overflow:hidden"></div>
+      <div id="mh-hotel-cards" class="mh-cards"></div>
     </div>
 
-    <!-- ═══ VISTA RANKING (clásica: status + top performers + tabla) ═══ -->
+    <!-- ═══ VISTA RANKING ═══ -->
     <div id="mh-view-clasica" style="display:none">
-      <!-- Status cards -->
-      <div id="mh-status" style="display:grid;grid-template-columns:repeat(3,1fr);gap:12px;margin-bottom:20px"></div>
-
-      <!-- Top performers + Alertas -->
-      <div style="display:grid;grid-template-columns:1fr 1fr;gap:16px;margin-bottom:20px">
-        <div class="card">
-          <div class="card-title">🏆 Top Performers (RevPAR)</div>
-          <div id="mh-rankings"></div>
-        </div>
-        <div class="card">
-          <div class="card-title">⚠️ Alertas activas</div>
-          <div id="mh-alertas"></div>
-        </div>
+      <div id="mh-status" class="g-tiles"></div>
+      <div class="g-grid2 g-mb">
+        <div class="g-card"><div class="g-card-title g-mb-sm">💰 Más reclamable a las OTAs</div><div id="mh-rankings"></div></div>
+        <div class="g-card"><div class="g-card-title g-mb-sm">⚠️ Alertas activas</div><div id="mh-alertas"></div></div>
       </div>
-
-      <!-- Full table -->
-      <div class="card">
-        <div class="card-title">Todos los hoteles</div>
-        <div class="tbl-wrap"><table style="width:100%"><thead><tr>
-          <th>Hotel</th><th>Categoría</th><th style="text-align:right">Hab.</th>
-          <th style="text-align:right">Ocup.</th><th style="text-align:right">ADR</th>
-          <th style="text-align:right">RevPAR</th><th style="text-align:right">Revenue</th>
-          <th style="text-align:right">GOP%</th><th style="text-align:center">Estado</th>
+      <div class="g-card">
+        <div class="g-card-title g-mb-sm">Todos los hoteles</div>
+        <div class="g-tbl-wrap"><table class="g-tbl"><thead><tr>
+          <th>Hotel</th><th class="num">AP €</th><th class="num">Fact. AP</th><th class="num">Reclamable OTAs</th><th class="num">Por cobrar</th><th class="num">Ventas F&B</th><th class="num">Food cost</th><th>Estado</th>
         </tr></thead><tbody id="mh-tbody-full"></tbody></table></div>
       </div>
     </div>
@@ -15778,14 +15739,14 @@ function setMHView(view) {
   if (view === 'ranking') {
     if (resumen) resumen.style.display = 'none';
     if (clasica) clasica.style.display = 'block';
-    if (btnC) { btnC.style.background = 'transparent'; btnC.style.color = 'var(--mut)'; }
-    if (btnR) { btnR.style.background = 'var(--acc2)'; btnR.style.color = '#fff'; }
+    if (btnC) btnC.classList.remove('active');
+    if (btnR) btnR.classList.add('active');
     loadMHClasica();
   } else {
     if (resumen) resumen.style.display = 'block';
     if (clasica) clasica.style.display = 'none';
-    if (btnC) { btnC.style.background = 'var(--acc2)'; btnC.style.color = '#fff'; }
-    if (btnR) { btnR.style.background = 'transparent'; btnR.style.color = 'var(--mut)'; }
+    if (btnC) btnC.classList.add('active');
+    if (btnR) btnR.classList.remove('active');
   }
 }
 
@@ -15837,11 +15798,18 @@ function _mhEur(n) {
   return _fmtEurES(n, 0);
 }
 
+// Guia de estilo (b62): un color de significado -> la clase del tile.
+function _mhK(color) {
+  return color === '#22c55e' || color === 'var(--grn)' ? 'k-grn'
+       : color === '#f59e0b' || color === 'var(--ora)' ? 'k-ora'
+       : color === '#ef4444' || color === 'var(--red)' ? 'k-red'
+       : color === '#a78bfa' ? 'k-pur' : color === 'var(--acc2)' ? 'k-acc' : '';
+}
 function _mhBloque(etiqueta, valor, pie, color) {
-  return '<div style="background:var(--bg);border-radius:8px;padding:9px 10px">' +
-    '<div style="font-size:9px;color:var(--mut);text-transform:uppercase;letter-spacing:.3px;margin-bottom:4px">' + etiqueta + '</div>' +
-    '<div style="font-size:16px;font-weight:800;line-height:1.15;color:' + (color || 'var(--txt)') + '">' + valor + '</div>' +
-    '<div style="font-size:10px;color:var(--dim);margin-top:2px">' + (pie || '&nbsp;') + '</div>' +
+  return '<div class="g-kpi g-kpi-sm ' + _mhK(color) + '">' +
+    '<div class="g-kpi-lbl">' + etiqueta + '</div>' +
+    '<div class="g-kpi-val g-num">' + valor + '</div>' +
+    '<div class="g-kpi-sub">' + (pie || '&nbsp;') + '</div>' +
   '</div>';
 }
 
@@ -15849,8 +15817,7 @@ function _mhBloque(etiqueta, valor, pie, color) {
 // hotel / sin_asignar / desconocido enseñan exactamente los mismos numeros.
 function _mhTarjeta(f, tipo) {
   var esHotel = (tipo === 'hotel');
-  var borde = esHotel ? '' :
-    'border-style:dashed;border-color:' + (tipo === 'desconocido' ? 'rgba(239,68,68,.45)' : 'rgba(148,163,184,.4)') + ';';
+  var clase = esHotel ? 'is-hotel' : (tipo === 'desconocido' ? 'is-desconocido' : 'is-sin-asignar');
   var titulo = f.nombre || '(sin nombre)';
   var sub;
   if (tipo === 'sin_asignar') {
@@ -15878,14 +15845,12 @@ function _mhTarjeta(f, tipo) {
   var fcColor = fc === 0 ? 'var(--dim)' : fc > 35 ? '#ef4444' : fc > 30 ? '#f59e0b' : '#22c55e';
   var recl = Number(f.ar_ota.importe_reclamable) || 0;
 
-  return '<div class="card"' + (esHotel ? ' style="padding:18px;cursor:pointer" title="Ver solo este hotel" onclick="seleccionarHotelActivo(\'' + String(f.hotel_id).replace(/'/g, "\\'") + '\', true)"' : ' style="padding:18px;' + borde + '"') + '>' +
-    '<div style="display:flex;align-items:flex-start;justify-content:space-between;margin-bottom:14px">' +
-      '<div>' +
-        '<div style="font-size:15px;font-weight:700">' + (tipo === 'hotel' ? '' : (tipo === 'desconocido' ? '⚠ ' : '📄 ')) + titulo + '</div>' +
-        '<div style="font-size:11px;color:var(--mut);margin-top:3px">' + sub + '</div>' +
-      '</div>' +
+  return '<div class="g-card mh-card ' + clase + '"' + (esHotel ? ' title="Ver solo este hotel" onclick="seleccionarHotelActivo(\'' + String(f.hotel_id).replace(/'/g, "\\'") + '\', true)"' : '') + '>' +
+    '<div class="mh-card-head">' +
+      '<div class="mh-card-title">' + (tipo === 'hotel' ? '' : (tipo === 'desconocido' ? '⚠ ' : '📄 ')) + titulo + '</div>' +
+      '<div class="g-small">' + sub + '</div>' +
     '</div>' +
-    '<div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:10px">' +
+    '<div class="g-tiles g-tiles-sm mh-bloques">' +
       _mhBloque('Por pagar · AP', _mhEur(f.ap.importe),
                 f.ap.facturas + ' fact.' + (f.ap.discrepancias ? ' · ' + f.ap.discrepancias + ' con incidencia' : ''),
                 f.ap.discrepancias ? '#f59e0b' : null) +
@@ -15909,40 +15874,36 @@ function _mhTarjeta(f, tipo) {
 // Tres estados, y los tres se DICEN. Un hueco mudo se lee como un cero, y un
 // hotel que no ha subido un papel no es un hotel que va mal.
 function _mhFilaHotelera(d) {
-  var linea = 'border-top:1px solid var(--s2);padding-top:10px;margin-top:2px;';
   if (!d || d.estado === 'sin_drr') {
-    return '<div style="' + linea + 'font-size:11px;color:var(--dim);display:flex;align-items:center;gap:6px">' +
-      '<span style="opacity:.7">📊</span>' +
-      '<span>Ocupación, ADR, RevPAR y GOP: <b style="color:var(--mut)">falta subir el DRR de este hotel</b></span>' +
-    '</div>';
+    return '<div class="mh-fila g-small">📊 Ocupación, ADR, RevPAR y GOP: <b>falta subir el DRR de este hotel</b></div>';
   }
   var celda = function(et, v, suf) {
-    return '<div style="text-align:center">' +
-      '<div style="font-size:9px;color:var(--mut);text-transform:uppercase;letter-spacing:.3px">' + et + '</div>' +
-      '<div style="font-size:14px;font-weight:700">' +
-        (v === null || v === undefined ? '<span style="color:var(--dim);font-weight:500">N/D</span>'
+    return '<div class="mh-cel">' +
+      '<div class="g-kpi-lbl">' + et + '</div>' +
+      '<div class="g-num mh-cel-val">' +
+        (v === null || v === undefined ? '<span class="g-small">N/D</span>'
                                        : (suf === '%' ? v + '%' : _fmtEurES(v, 0))) +
       '</div></div>';
   };
   // El GOP lleva su procedencia pegada: si es derivado se dice, y si no hay
   // GOP sale N/D en vez de un numero de relleno (fase D).
   var pg = d.gop_procedencia;
-  var notaGop = pg === 'derivado' ? ' <span style="color:#f59e0b">derivado</span>'
+  var notaGop = pg === 'derivado' ? ' ' + gBadge('g-warn', 'derivado')
               : pg === 'medido'   ? ''
-              : ' <span style="color:var(--dim)">el DRR no lo trae</span>';
+              : ' ' + gBadge('g-mute', 'el DRR no lo trae');
   var viejo = d.estado === 'drr_viejo'
-    ? '<span style="color:#f59e0b">⚠ DRR de hace ' + d.dias_drr + ' días</span>'
-    : '<span style="color:var(--dim)">DRR de hace ' + (d.dias_drr || 0) + ' días</span>';
+    ? gBadge('g-warn', 'DRR de hace ' + d.dias_drr + ' días')
+    : gBadge('g-mute', 'DRR de hace ' + (d.dias_drr || 0) + ' días');
 
-  return '<div style="' + linea + '">' +
-    '<div style="display:grid;grid-template-columns:repeat(4,1fr);gap:6px;margin-bottom:8px">' +
+  return '<div class="mh-fila">' +
+    '<div class="mh-celdas">' +
       celda('Ocupación', d.ocupacion_pct, '%') +
       celda('ADR', d.adr) +
       celda('RevPAR', d.revpar) +
       celda('GOP %', d.gop_pct, '%') +
     '</div>' +
-    '<div style="font-size:10px;color:var(--dim);display:flex;justify-content:space-between;gap:8px;flex-wrap:wrap">' +
-      '<span>' + viejo + (d.dias_oob ? ' · <span style="color:#ef4444">' + d.dias_oob + ' días fuera de balance</span>' : '') + '</span>' +
+    '<div class="mh-fila-pie g-small">' +
+      '<span>' + viejo + (d.dias_oob ? ' ' + gBadge('g-err', d.dias_oob + ' días fuera de balance') : '') + '</span>' +
       '<span>GOP ' + (d.gop === null || d.gop === undefined ? 'N/D' : _mhEur(d.gop)) + notaGop + '</span>' +
     '</div>' +
   '</div>';
@@ -15982,7 +15943,6 @@ async function loadMultiHotel() {
     // ── Cabecera: los cuatro numeros del grupo ────────────────────────────
     var kEl = document.getElementById('mh-kpis');
     if (kEl) kEl.innerHTML =
-      '<div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(min(200px,45%),1fr));gap:10px">' +
       [
         {l:'POR PAGAR · AP', v:_mhEur(g.ap.importe), c:'var(--acc2)',
          s:g.ap.facturas + ' facturas · ' + g.ap.discrepancias + ' con incidencia'},
@@ -15996,12 +15956,12 @@ async function loadMultiHotel() {
          // precio y el inventario del grupo aplanaria el coste al del ultimo.
          s: g.fb.food_cost_pct ? 'food cost ' + g.fb.food_cost_pct + '% (ponderado)' : 'sin escandallo'},
       ].map(function(c) {
-        return '<div class="sc">' +
-          '<div class="sc-lbl" style="font-size:9px;letter-spacing:.5px">' + c.l + '</div>' +
-          '<div class="sc-val" style="color:' + c.c + ';font-size:clamp(20px,4vw,32px);font-weight:900;line-height:1.1;margin:4px 0">' + c.v + '</div>' +
-          '<div class="sc-sub" style="font-size:10px;color:var(--dim)">' + c.s + '</div>' +
+        return '<div class="g-kpi ' + _mhK(c.c) + '">' +
+          '<div class="g-kpi-lbl">' + c.l + '</div>' +
+          '<div class="g-kpi-val g-num">' + c.v + '</div>' +
+          '<div class="g-kpi-sub">' + c.s + '</div>' +
         '</div>';
-      }).join('') + '</div>';
+      }).join('');
 
     // ── Banco, fila hotelera del grupo, y cuadre ─────────────────────────
     var iEl = document.getElementById('mh-insights');
@@ -16020,35 +15980,35 @@ async function loadMultiHotel() {
       var h = data.hotelero || {};
       if (h.con_datos) {
         var ce = function(et, v, suf) {
-          return '<div><div style="font-size:9px;color:var(--mut);text-transform:uppercase">' + et + '</div>' +
-            '<div style="font-size:18px;font-weight:800">' +
-            (v === null || v === undefined ? '<span style="color:var(--dim);font-size:14px">N/D</span>'
+          return '<div class="mh-cel"><div class="g-kpi-lbl">' + et + '</div>' +
+            '<div class="g-num mh-cel-val">' +
+            (v === null || v === undefined ? '<span class="g-small">N/D</span>'
                                            : (suf === '%' ? v + '%' : _fmtEurES(v, 0))) +
             '</div></div>';
         };
         trozos.push(
-          '<div class="card" style="border-left:3px solid #22c55e;padding:13px 16px;display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:14px">' +
-            '<div>' +
-              '<div style="font-size:9px;font-weight:700;letter-spacing:.6px;color:#22c55e;text-transform:uppercase">🛏 Del DRR — medias ponderadas por tamaño</div>' +
-              '<div style="font-size:11px;color:var(--dim);margin-top:3px">' +
-                'Sobre <b style="color:var(--mut)">' + h.con_datos + ' de ' + h.n_hoteles + '</b> hoteles' +
+          '<div class="g-row mh-ins is-ok">' +
+            '<div class="g-who">' +
+              '<b>🛏 Del DRR — medias ponderadas por tamaño</b>' +
+              '<span>' +
+                'Sobre <b>' + h.con_datos + ' de ' + h.n_hoteles + '</b> hoteles' +
                 (h.sin_drr ? ' · ' + h.sin_drr + ' sin DRR' : '') +
-                (h.viejos ? ' · <span style="color:#f59e0b">' + h.viejos + ' con DRR viejo</span>' : '') +
+                (h.viejos ? ' · ' + gBadge('g-warn', h.viejos + ' con DRR viejo') : '') +
                 (h.gop_sobre !== h.con_datos ? ' · GOP sobre ' + h.gop_sobre : '') +
-                (h.dias_oob ? ' · <span style="color:#ef4444">' + h.dias_oob + ' días fuera de balance</span>' : '') +
-              '</div>' +
+                (h.dias_oob ? ' · ' + gBadge('g-err', h.dias_oob + ' días fuera de balance') : '') +
+              '</span>' +
             '</div>' +
-            '<div style="display:flex;gap:20px;flex-wrap:wrap">' +
+            '<div class="mh-celdas mh-celdas-libre">' +
               ce('Ocupación', h.ocupacion_pct, '%') + ce('ADR', h.adr) +
               ce('RevPAR', h.revpar) + ce('GOP %', h.gop_pct, '%') +
             '</div>' +
           '</div>');
       } else if (h.n_hoteles) {
         trozos.push(
-          '<div class="card" style="border-left:3px solid var(--s2);padding:13px 16px">' +
-            '<div style="font-size:9px;font-weight:700;letter-spacing:.6px;color:var(--mut);text-transform:uppercase">🛏 Del DRR</div>' +
-            '<div style="font-size:12px;color:var(--dim);margin-top:4px">Ningún hotel ha subido su DRR todavía. ' +
-            'Ocupación, ADR, RevPAR y GOP llegan con él — no se estiman.</div>' +
+          '<div class="g-row mh-ins is-mute">' +
+            '<div class="g-who"><b>🛏 Del DRR</b>' +
+            '<span>Ningún hotel ha subido su DRR todavía. ' +
+            'Ocupación, ADR, RevPAR y GOP llegan con él — no se estiman.</span></div>' +
           '</div>');
       }
       if (b.hay_datos) {
@@ -16056,16 +16016,16 @@ async function loadMultiHotel() {
         // extracto es de la cuenta de la sociedad, no del hotel. Si estuviera
         // al lado de las tarjetas, se sumaria mentalmente.
         trozos.push(
-          '<div class="card" style="border-left:3px solid #60a5fa;padding:13px 16px;display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:10px">' +
-            '<div>' +
-              '<div style="font-size:9px;font-weight:700;letter-spacing:.6px;color:#60a5fa;text-transform:uppercase">🏦 Banco — del grupo, no por hotel</div>' +
-              '<div style="font-size:11px;color:var(--dim);margin-top:3px">El extracto es de la cuenta de la sociedad. Repartirlo entre hoteles seria inventar.</div>' +
+          '<div class="g-row mh-ins is-info">' +
+            '<div class="g-who">' +
+              '<b>🏦 Banco — del grupo, no por hotel</b>' +
+              '<span>El extracto es de la cuenta de la sociedad. Repartirlo entre hoteles seria inventar.</span>' +
             '</div>' +
-            '<div style="display:flex;gap:18px;flex-wrap:wrap">' +
-              '<div><div style="font-size:9px;color:var(--mut);text-transform:uppercase">Sin conciliar</div>' +
-              '<div style="font-size:18px;font-weight:800;color:' + (b.pendientes ? '#f59e0b' : '#22c55e') + '">' + _mhEur(b.importe_pendiente) + '</div></div>' +
-              '<div><div style="font-size:9px;color:var(--mut);text-transform:uppercase">Movimientos</div>' +
-              '<div style="font-size:18px;font-weight:800">' + b.conciliados + '/' + b.total + '</div></div>' +
+            '<div class="mh-celdas mh-celdas-libre">' +
+              '<div class="mh-cel"><div class="g-kpi-lbl">Sin conciliar</div>' +
+              '<div class="g-num mh-cel-val ' + (b.pendientes ? 'is-warn' : 'is-ok') + '">' + _mhEur(b.importe_pendiente) + '</div></div>' +
+              '<div class="mh-cel"><div class="g-kpi-lbl">Movimientos</div>' +
+              '<div class="g-num mh-cel-val">' + b.conciliados + '/' + b.total + '</div></div>' +
             '</div>' +
           '</div>');
       }
@@ -16075,10 +16035,7 @@ async function loadMultiHotel() {
         var malas = (data.cuadre || []).filter(function(c){ return !c.cuadra; })
                       .map(function(c){ return c.metrica + ' (' + c.diferencia + ')'; }).join(', ');
         trozos.push(
-          '<div class="card" style="border-left:3px solid #ef4444;padding:13px 16px">' +
-            '<div style="font-size:9px;font-weight:700;letter-spacing:.6px;color:#ef4444;text-transform:uppercase">⚠ La suma de los hoteles no cuadra con el total</div>' +
-            '<div style="font-size:12px;color:var(--mut);margin-top:4px">' + malas + '</div>' +
-          '</div>');
+          '<div class="g-alert err">⚠ <span><b>La suma de los hoteles no cuadra con el total.</b> ' + malas + '</span></div>');
       }
       iEl.innerHTML = trozos.join('');
       iEl.style.display = trozos.length ? '' : 'none';
@@ -16113,7 +16070,7 @@ async function loadMultiHotel() {
         el.innerHTML = _emptyState('🏨', 'Todavia no hay nada que consolidar',
           'Da de alta los hoteles del grupo y sube sus documentos: aqui veras lo que hay por pagar, lo reclamable a las OTAs, lo pendiente de cobro y las ventas de F&B, hotel por hotel.', false);
       } else {
-        el.innerHTML = '<div style="color:#ef4444;padding:20px;font-size:13px">⚠ Error cargando datos: ' + _msg + '</div>';
+        el.innerHTML = '<div class="g-alert err">⚠ <span>Error cargando datos: ' + _msg + '</span></div>';
       }
     }
     var cardsEl2 = document.getElementById('mh-hotel-cards');
@@ -16140,15 +16097,12 @@ function renderMHFinancieroClasico(data) {
     var ok = hs.filter(function(f){ return incidencias(f) === 0; }).length;
     var wa = hs.filter(function(f){ var n = incidencias(f); return n >= 1 && n <= 2; }).length;
     var cr = hs.filter(function(f){ return incidencias(f) > 2; }).length;
-    var caja = function(color, icono, n, etiqueta) {
-      return '<div style="background:rgba(' + color + ',.08);border:1px solid rgba(' + color + ',.25);border-radius:12px;padding:16px;display:flex;align-items:center;gap:12px">' +
-        '<span style="font-size:26px">' + icono + '</span>' +
-        '<div><div style="font-size:24px;font-weight:800;color:rgb(' + color + ')">' + n + '</div>' +
-        '<div style="font-size:12px;color:var(--mut)">' + etiqueta + '</div></div></div>';
+    var caja = function(cls, n, etiqueta) {
+      return '<div class="g-kpi ' + cls + (n ? '' : ' is-empty') + '"><div class="g-kpi-lbl">' + etiqueta + '</div><div class="g-kpi-val g-num">' + n + '</div></div>';
     };
-    st.innerHTML = caja('34,197,94', '✅', ok, 'Hoteles al dia') +
-                   caja('245,158,11', '⚠️', wa, 'Con incidencias') +
-                   caja('239,68,68', '🚨', cr, 'Criticos');
+    st.innerHTML = caja('k-grn', ok, 'Hoteles al día') +
+                   caja('k-ora', wa, 'Con incidencias') +
+                   caja('k-red', cr, 'Críticos');
   }
 
   // Top: por dinero reclamable a las OTAs, que es lo accionable de verdad.
@@ -16157,16 +16111,12 @@ function renderMHFinancieroClasico(data) {
     var orden = hs.slice().sort(function(a,b){
       return (b.ar_ota.importe_reclamable || 0) - (a.ar_ota.importe_reclamable || 0); });
     var conAlgo = orden.filter(function(f){ return (f.ar_ota.importe_reclamable || 0) > 0; });
-    var titulo = document.querySelector('#mh-view-clasica .card-title');
-    if (titulo) titulo.textContent = '💰 Mas reclamable a las OTAs';
     rk.innerHTML = conAlgo.length ? conAlgo.map(function(f, i) {
-      var medalla = i === 0 ? '#FFD700' : i === 1 ? '#C0C0C0' : i === 2 ? '#CD7F32' : 'var(--dim)';
-      return '<div style="display:flex;justify-content:space-between;align-items:center;padding:10px 0;border-bottom:1px solid var(--s2)">' +
-        '<div style="display:flex;align-items:center;gap:12px">' +
-          '<span style="font-size:17px;font-weight:800;color:' + medalla + ';min-width:20px">' + (i+1) + '</span>' +
-          '<div style="font-weight:600;font-size:13px">' + f.nombre + '</div></div>' +
-        '<div style="font-weight:700;color:#22c55e">' + _mhEur(f.ar_ota.importe_reclamable) + '</div></div>';
-    }).join('') : '<div style="color:var(--dim);font-size:13px;padding:8px">Nada reclamable ahora mismo</div>';
+      return '<div class="g-row mh-rank' + (i < 3 ? ' is-top' : '') + '">' +
+        '<span class="mh-pos g-num">' + (i+1) + '</span>' +
+        '<div class="g-who"><b>' + f.nombre + '</b></div>' +
+        '<span class="g-num mh-cel-val is-ok">' + _mhEur(f.ar_ota.importe_reclamable) + '</span></div>';
+    }).join('') : _gVacio('Nada reclamable ahora mismo');
   }
 
   var al = document.getElementById('mh-alertas');
@@ -16180,20 +16130,18 @@ function renderMHFinancieroClasico(data) {
       if (f.ar_real.vencido)  avisos.push({h:f.nombre, m:'cobro vencido: ' + _mhEur(f.ar_real.vencido)});
     });
     al.innerHTML = avisos.length ? avisos.slice(0,8).map(function(a) {
-      return '<div style="display:flex;align-items:center;gap:10px;padding:9px 0;border-bottom:1px solid var(--s2)">' +
-        '<span style="color:#f59e0b">▲</span>' +
-        '<div style="font-size:12px"><span style="font-weight:600">' + a.h + '</span> ' +
-        '<span style="color:var(--mut)">' + a.m + '</span></div></div>';
-    }).join('') : '<div style="color:#22c55e;font-size:13px;padding:8px">✓ Sin incidencias</div>';
+      return '<div class="g-row mh-aviso"><span class="mh-tri">▲</span>' +
+        '<div class="g-who"><b>' + a.h + '</b><span>' + a.m + '</span></div></div>';
+    }).join('') : '<div class="g-empty">' + gBadge('g-ok', 'Sin incidencias') + '</div>';
   }
 
   // La tabla, con las columnas que Yve SI sabe.
   var thead = document.querySelector('#mh-view-clasica table thead tr');
   if (thead) thead.innerHTML =
-    '<th>Hotel</th><th style="text-align:right">AP €</th><th style="text-align:right">Fact. AP</th>' +
-    '<th style="text-align:right">Reclamable OTAs</th><th style="text-align:right">Por cobrar</th>' +
-    '<th style="text-align:right">Ventas F&B</th><th style="text-align:right">Food cost</th>' +
-    '<th style="text-align:center">Estado</th>';
+    '<th>Hotel</th><th class="num">AP €</th><th class="num">Fact. AP</th>' +
+    '<th class="num">Reclamable OTAs</th><th class="num">Por cobrar</th>' +
+    '<th class="num">Ventas F&B</th><th class="num">Food cost</th>' +
+    '<th>Estado</th>';
 
   var tb = document.getElementById('mh-tbody-full');
   if (tb) {
@@ -16208,29 +16156,29 @@ function renderMHFinancieroClasico(data) {
     tb.innerHTML = filas.map(function(x) {
       var f = x.f, esp = x.tipo === 'especial';
       var n = incidencias(f);
-      var color = n === 0 ? '#22c55e' : n <= 2 ? '#f59e0b' : '#ef4444';
-      var icono = n === 0 ? '●' : n <= 2 ? '▲' : '■';
-      return '<tr style="' + (esp ? 'opacity:.75;font-style:italic' : 'cursor:pointer') + '"' +
+      // Mismos tres estados y mismos textos que los tiles de arriba.
+      var estado = n === 0 ? gBadge('g-ok', 'Al día') : n <= 2 ? gBadge('g-warn', 'Con incidencias') : gBadge('g-err', 'Crítico');
+      return '<tr class="' + (esp ? 'is-off' : 'is-link') + '"' +
         (esp ? '' : ' onclick="seleccionarHotelActivo(\'' + String(f.hotel_id).replace(/'/g, "\\'") + '\', true)"') + '>' +
-        '<td style="font-weight:600">' + f.nombre + '</td>' +
-        '<td style="text-align:right">' + _mhEur(f.ap.importe) + '</td>' +
-        '<td style="text-align:right">' + f.ap.facturas + '</td>' +
-        '<td style="text-align:right;font-weight:600;color:#22c55e">' + _mhEur(f.ar_ota.importe_reclamable) + '</td>' +
-        '<td style="text-align:right">' + _mhEur(f.ar_real.pendiente) + '</td>' +
-        '<td style="text-align:right">' + _mhEur(f.fb.ventas) + '</td>' +
-        '<td style="text-align:right">' + (f.fb.food_cost_pct ? f.fb.food_cost_pct + '%' : '—') + '</td>' +
-        '<td style="text-align:center;color:' + color + '">' + (esp ? '' : icono) + '</td></tr>';
+        '<td><b>' + f.nombre + '</b></td>' +
+        '<td class="num">' + _mhEur(f.ap.importe) + '</td>' +
+        '<td class="num">' + f.ap.facturas + '</td>' +
+        '<td class="num is-ok"><b>' + _mhEur(f.ar_ota.importe_reclamable) + '</b></td>' +
+        '<td class="num">' + _mhEur(f.ar_real.pendiente) + '</td>' +
+        '<td class="num">' + _mhEur(f.fb.ventas) + '</td>' +
+        '<td class="num">' + (f.fb.food_cost_pct ? f.fb.food_cost_pct + '%' : '—') + '</td>' +
+        '<td>' + (esp ? '' : estado) + '</td></tr>';
     }).join('') +
     // El total, del df entero. Va en la tabla para que se vea al lado de las
     // partes: si no cuadrase, se nota aqui antes que en ningun sitio.
-    '<tr style="border-top:2px solid var(--s2);font-weight:800">' +
+    '<tr class="is-total">' +
       '<td>GRUPO</td>' +
-      '<td style="text-align:right">' + _mhEur(g.ap.importe) + '</td>' +
-      '<td style="text-align:right">' + g.ap.facturas + '</td>' +
-      '<td style="text-align:right;color:#22c55e">' + _mhEur(g.ar_ota.importe_reclamable) + '</td>' +
-      '<td style="text-align:right">' + _mhEur(g.ar_real.pendiente) + '</td>' +
-      '<td style="text-align:right">' + _mhEur(g.fb.ventas) + '</td>' +
-      '<td style="text-align:right">' + (g.fb.food_cost_pct ? g.fb.food_cost_pct + '%' : '—') + '</td>' +
+      '<td class="num">' + _mhEur(g.ap.importe) + '</td>' +
+      '<td class="num">' + g.ap.facturas + '</td>' +
+      '<td class="num is-ok">' + _mhEur(g.ar_ota.importe_reclamable) + '</td>' +
+      '<td class="num">' + _mhEur(g.ar_real.pendiente) + '</td>' +
+      '<td class="num">' + _mhEur(g.fb.ventas) + '</td>' +
+      '<td class="num">' + (g.fb.food_cost_pct ? g.fb.food_cost_pct + '%' : '—') + '</td>' +
       '<td></td></tr>';
   }
 }

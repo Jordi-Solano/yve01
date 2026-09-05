@@ -38,8 +38,10 @@ PANELES = {
                       ['abrirEmitirFactura()', 'loadARRealData()', 'abrirNuevoCliente()', 'filtrarFacturasAR(this.value)', 'calcularFactura()', 'emitirFactura()', 'cerrarEmitirFactura()', 'href="/aprobaciones-ar/"'], 2),
     'panel-cierre': (['cierre-mes', 'cierre-hotel', 'cierre-stats', 'cierre-k-asientos', 'cierre-k-debe', 'cierre-k-haber', 'cierre-k-cuadre', 'cierre-avisos', 'paq-estado', 'paq-body', 'paq-resultado', 'cierre-recon-body', 'cbanco-saldo', 'cbanco-pestanas', 'cbanco-body', 'inv-resumen', 'inv-body', 'fis-estado', 'fis-resumen', 'fis-body', 'inm-resumen', 'inm-form', 'inm-desc', 'inm-cat', 'inm-fecha', 'inm-coste', 'inm-vida', 'inm-doc', 'inm-body', 'cierre-mayor-body', 'cierre-diario-body'],
                      ['loadCierre(true)', 'openUploadModal()', '_inmForm()', '_inmGuardar()'], 1),
+    'panel-multi_hotel': (['mh-mes-select', 'mh-view-cards', 'mh-view-ranking', 'mh-view-resumen', 'mh-kpis', 'mh-insights', 'mh-trend-row', 'mh-gop-chart', 'mh-rev-chart', 'mh-hotel-cards', 'mh-view-clasica', 'mh-status', 'mh-rankings', 'mh-alertas', 'mh-tbody-full'],
+                          ['_mh_loaded=false;loadMultiHotel()', "setMHView('cards')", "setMHView('ranking')"], 0),
 }
-FIN = {'panel-ap': '<!-- /panel-ap -->', 'panel-ar': '<!-- /panel-ar -->', 'panel-banco': '<!-- /panel-banco -->', 'panel-drr': '<!-- /panel-drr -->', 'panel-notif': '<!-- /panel-notif -->', 'panel-fb': '<!-- /panel-fb -->', 'panel-ar_real': '<!-- /panel-ar_real -->', 'panel-cierre': '<!-- /panel-cierre -->'}
+FIN = {'panel-ap': '<!-- /panel-ap -->', 'panel-ar': '<!-- /panel-ar -->', 'panel-banco': '<!-- /panel-banco -->', 'panel-drr': '<!-- /panel-drr -->', 'panel-notif': '<!-- /panel-notif -->', 'panel-fb': '<!-- /panel-fb -->', 'panel-ar_real': '<!-- /panel-ar_real -->', 'panel-cierre': '<!-- /panel-cierre -->', 'panel-multi_hotel': '<!-- /panel-multi_hotel -->'}
 
 # funciones de badges que se ejecutan con node: (nombre, [(argumento, texto esperado, clase esperada)])
 BADGES = [

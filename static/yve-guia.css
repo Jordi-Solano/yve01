@@ -298,3 +298,28 @@ body .g-subtabs .fb-sub.active{background:var(--s2);color:var(--tx)}
 .g-grid-auto{display:grid;grid-template-columns:repeat(auto-fit,minmax(160px,1fr));gap:8px;flex-basis:100%}
 .g-tbl tr.is-total td{font-weight:700}
 @media(max-width:768px){.g-tiles-sm{grid-template-columns:repeat(2,1fr)}}
+
+/* Multi-Hotel (b62) */
+.g-stack{display:grid;gap:10px;margin-bottom:20px}.g-stack:empty{display:none}
+.g-mb{margin-bottom:20px}.g-mb-sm{margin-bottom:12px}
+.g-actions .g-subtabs{margin-bottom:0}
+.mh-chart{height:140px;position:relative}
+.mh-cards{display:grid;grid-template-columns:repeat(auto-fit,minmax(min(300px,100%),1fr));gap:16px}
+.mh-card{padding:18px}.mh-card.is-hotel{cursor:pointer}.mh-card.is-hotel:hover{border-color:var(--acc)}
+.mh-card.is-sin-asignar{border-style:dashed}.mh-card.is-desconocido{border-style:dashed;border-color:rgba(239,68,68,.45)}
+.mh-card-head{margin-bottom:12px}.mh-card-title{font-size:15px;font-weight:700}
+.mh-bloques{margin-bottom:10px}
+.mh-fila{border-top:1px solid var(--g-line);padding-top:10px;margin-top:2px}
+.mh-celdas{display:grid;grid-template-columns:repeat(4,1fr);gap:6px;margin-bottom:8px}
+.mh-celdas-libre{display:flex;gap:18px;flex-wrap:wrap;margin-bottom:0}
+.mh-cel{text-align:center;min-width:0}.mh-celdas-libre .mh-cel{text-align:left}
+.mh-cel-val{font-family:var(--g-f-head);font-size:15px;font-weight:700}.mh-celdas-libre .mh-cel-val{font-size:18px}
+.mh-cel-val.is-ok,.g-tbl td.is-ok{color:var(--grn)}.mh-cel-val.is-warn{color:var(--ora)}
+.mh-fila-pie{display:flex;justify-content:space-between;gap:8px;flex-wrap:wrap}
+.mh-ins{border-left:3px solid var(--g-line)}.mh-ins.is-ok{border-left-color:var(--grn)}.mh-ins.is-info{border-left-color:var(--acc2)}.mh-ins.is-mute{border-left-color:var(--s3)}
+.mh-ins .g-who b{margin-bottom:2px}.mh-ins .g-who span b{display:inline;color:var(--mut)}
+.mh-pos{font-family:var(--g-f-head);font-size:17px;font-weight:700;min-width:22px;color:var(--dim)}.mh-rank.is-top .mh-pos{color:var(--acc2)}
+.g-tbl tr.is-off td{opacity:.7;font-style:italic}.g-tbl tr.is-link{cursor:pointer}
+@media(max-width:768px){.mh-celdas{grid-template-columns:repeat(2,1fr)}}
+@media(max-width:768px){.g-actions .g-subtabs{flex:1 1 100%}}
+.mh-tri{color:var(--ora);font-size:12px}
