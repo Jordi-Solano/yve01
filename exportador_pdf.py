@@ -334,25 +334,65 @@ def export_invoice_pdf(numero_factura):
     from io import BytesIO
     from datetime import datetime
 
-    ruta = _os.path.join(_os.path.dirname(__file__), 'datos-referencia', 'reservas_credito.xlsx')
-    ruta_c = _os.path.join(_os.path.dirname(__file__), 'datos-referencia', 'clientes_credito.xlsx')
-    
+    # Rutas del TENANT (antes iban a la raiz del repo: en otro tenant no
+    # encontraba nada) y lectura tolerante: un fichero vacio o sin columna daba
+    # KeyError → 500 en vez de "no encontrada".
+    try:
+        from tenant_dirs import datos_dir as _t_ddir
+        _dd = str(_t_ddir())
+    except Exception:
+        _dd = _os.path.join(_os.path.dirname(__file__), 'datos-referencia')
+    ruta = _os.path.join(_dd, 'reservas_credito.xlsx')
+    ruta_c = _os.path.join(_dd, 'clientes_credito.xlsx')
+
+    def _leer(r):
+        try:
+            return pd.read_excel(r)
+        except Exception:
+            return pd.DataFrame()
     # Las reservas van por hotel (fase 5); los clientes son del grupo, igual
-    # que proveedores y el recetario. Este informe es otro camino de lectura
-    # que leia el fichero entero.
-    df_r = _solo_hotel(pd.read_excel(ruta))
-    df_c = pd.read_excel(ruta_c)
-    
+    # que proveedores y el recetario.
+    df_r = _solo_hotel(_leer(ruta))
+    df_c = _leer(ruta_c)
+    if df_r is None or df_r.empty or 'numero_reserva' not in df_r.columns:
+        return None, f"Factura {numero_factura} no encontrada"
     row = df_r[df_r['numero_reserva'].astype(str) == str(numero_factura)]
     if row.empty:
         return None, f"Factura {numero_factura} no encontrada"
-    
+
     row = row.iloc[0]
     cliente = str(row.get('cliente', ''))
-    c_data = df_c[df_c['nombre_cliente'] == cliente]
-    nif = str(c_data.iloc[0].get('NIF','')) if len(c_data) else '—'
+    nif = '—'
+    if len(df_c) and 'nombre_cliente' in df_c.columns:
+        c_data = df_c[df_c['nombre_cliente'].astype(str).str.strip().str.lower() == cliente.strip().lower()]
+        if len(c_data):
+            for col in ('nif', 'NIF', 'cif'):
+                v = c_data.iloc[0].get(col)
+                if v is not None and str(v).strip() not in ('', 'nan', 'None'):
+                    nif = str(v).strip(); break
+    # Quien emite: el hotel activo (censo) y la razon social / NIF de config_fiscal.json
+    emisor_nombre, emisor_nif = 'Hotel', ''
+    try:
+        import censo_hoteles as _censo
+        emisor_nombre = _censo.nombre_de(_censo.activo()) or emisor_nombre
+    except Exception:
+        pass
+    try:
+        import json as _json
+        _cf = _json.load(open(_os.path.join(_dd, 'config_fiscal.json'), encoding='utf-8'))
+        emisor_nombre = str(_cf.get('razon_social') or emisor_nombre)
+        emisor_nif = str(_cf.get('nif_propio') or '')
+    except Exception:
+        pass
+
+    def _eur(x):
+        return f"{float(x or 0):,.2f}".replace(",", "X").replace(".", ",").replace("X", ".") + " €"
     
-    total = float(row.get('total', 0))
+    try:
+        total = float(row.get('total', 0))
+        total = 0.0 if total != total else total
+    except (TypeError, ValueError):
+        total = 0.0
     base = round(total / 1.10, 2)
     iva = round(total - base, 2)
     
@@ -377,7 +417,7 @@ def export_invoice_pdf(numero_factura):
              Paragraph(f'<font size="9" color="#64748b">FACTURA<br/><font size="18" color="#0f172a"><b>{numero_factura}</b></font></font>', s['Normal'])]
         ]
         ht = Table(header_data, colWidths=[10*cm, 5.5*cm])
-        ht.setStyle(TableStyle([('ALIGN',(1,0),'RIGHT'),('VALIGN',(0,0),'TOP'),('VALIGN',(1,0),'TOP')]))
+        ht.setStyle(TableStyle([('ALIGN',(1,0),(1,0),'RIGHT'),('VALIGN',(0,0),(-1,-1),'TOP')]))
         story.append(ht)
         story.append(HRFlowable(width="100%", thickness=1, color=colors.HexColor("#3b82f6")))
         story.append(Spacer(1, 0.5*cm))
@@ -389,11 +429,11 @@ def export_invoice_pdf(numero_factura):
         parties = [
             [Paragraph('<b><font color="#64748b" size="8">DE</font></b>', s['Normal']),
              Paragraph('<b><font color="#64748b" size="8">PARA</font></b>', s['Normal'])],
-            [Paragraph('<b>Hotel / Yve.01 Demo</b><br/><font size="8" color="#64748b">Barcelona, España</font>', s['Normal']),
+            [Paragraph(f'<b>{emisor_nombre}</b>' + (f'<br/><font size="8" color="#64748b">NIF: {emisor_nif}</font>' if emisor_nif else ''), s['Normal']),
              Paragraph(f'<b>{cliente}</b><br/><font size="8" color="#64748b">NIF: {nif}</font>', s['Normal'])],
         ]
         pt = Table(parties, colWidths=[7.75*cm, 7.75*cm])
-        pt.setStyle(TableStyle([('VALIGN',(0,0),'TOP'),('VALIGN',(1,0),'TOP'),('BOTTOMPADDING',(0,0),(-1,-1),4)]))
+        pt.setStyle(TableStyle([('VALIGN',(0,0),(-1,-1),'TOP'),('BOTTOMPADDING',(0,0),(-1,-1),4)]))
         story.append(pt)
         story.append(Spacer(1, 0.5*cm))
         
@@ -418,19 +458,25 @@ def export_invoice_pdf(numero_factura):
         # Line items
         items_header = [['Descripción', 'Importe']]
         items = []
-        hab = float(row.get('importe_habitaciones', 0))
-        fb  = float(row.get('importe_fb', 0))
-        ext = float(row.get('importe_extras', 0))
-        if hab > 0: items.append([f"Habitaciones ({row.get('habitaciones',1)} hab.)", f"€{hab:,.2f}"])
-        if fb > 0:  items.append(["F&B y restauración", f"€{fb:,.2f}"])
-        if ext > 0: items.append(["Extras y servicios", f"€{ext:,.2f}"])
-        
+        def _f(v):
+            try:
+                x = float(v); return 0.0 if x != x else x
+            except (TypeError, ValueError):
+                return 0.0
+        hab = _f(row.get('importe_habitaciones', 0))
+        fb  = _f(row.get('importe_fb', 0))
+        ext = _f(row.get('importe_extras', 0))
+        if hab > 0: items.append([f"Habitaciones ({row.get('habitaciones',1)} hab.)", _eur(hab)])
+        if fb > 0:  items.append(["F&B y restauración", _eur(fb)])
+        if ext > 0: items.append(["Extras y servicios", _eur(ext)])
+        if not items: items.append(["Estancia", _eur(base)])
+
         items_data = items_header + items + [
             ['', ''],
-            ['Base imponible:', f"€{base:,.2f}"],
-            ['IVA (10%):', f"€{iva:,.2f}"],
+            ['Base imponible:', _eur(base)],
+            ['IVA (10%):', _eur(iva)],
             ['', ''],
-            [Paragraph('<b>TOTAL</b>', s['Normal']), Paragraph(f'<b>€{total:,.2f}</b>', s['Normal'])],
+            [Paragraph('<b>TOTAL</b>', s['Normal']), Paragraph(f'<b>{_eur(total)}</b>', s['Normal'])],
         ]
         lw = Table(items_data, colWidths=[12*cm, 3.5*cm])
         lw.setStyle(TableStyle([
@@ -452,8 +498,8 @@ def export_invoice_pdf(numero_factura):
         
         # Footer
         story.append(Paragraph(
-            '<font size="8" color="#64748b">Factura emitida por Yve.01 — Sistema de gestión financiera hotelera · yve01.onrender.com<br/>'
-            'Condiciones: Pago según términos contractuales · En caso de discrepancia contacte a jordi@yve01.com</font>',
+            f'<font size="8" color="#64748b">Emitida con Yve.01 · {emisor_nombre}<br/>'
+            'Condiciones: pago según términos contractuales.</font>',
             s['Normal']))
         
         doc.build(story)
