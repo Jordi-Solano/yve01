@@ -22,9 +22,10 @@ Criterio (revisable por la gestoria — cada cifra lleva su casilla):
   · Bienes de inversion (30-31), importaciones (32-35) y prorrata (44): no se
     distinguen en los datos de Yve → 0 y aviso. Las compras de inmovilizado
     van hoy en 28-29 como corriente: la gestoria las mueve si toca.
-  · NIF: las fuentes de Yve no traen NIF de proveedor/cliente/OTA. Se deja
-    en blanco y se marca como pendiente; sin NIF el 349 y el SII no se pueden
-    presentar. Se pueden completar en config_fiscal.json ("nif": {"booking": "NL..."}).
+  · NIF: se conserva el que lee la IA (`NIF_proveedor` en AP, `nif_ota` en las
+    facturas OTA, `NIF_agencia` en los bonos) y la ficha de cliente. Lo que
+    falte se puede completar en config_fiscal.json ("nif": {"booking": "NL..."})
+    y se marca como pendiente; sin NIF el 349 y el SII no se pueden presentar.
 """
 import json
 import os
@@ -78,6 +79,49 @@ def _nif(nombre, cfg):
         if k and k in n:
             return v
     return ""
+
+
+def _col(r, *nombres):
+    """Valor de la primera columna que exista, sin distinguir mayusculas
+    (`NIF_proveedor` del lector vs `nif_proveedor`)."""
+    try:
+        keys = {str(k).lower(): k for k in r.keys()}
+    except Exception:
+        return ""
+    for n in nombres:
+        k = keys.get(n.lower())
+        if k is not None:
+            v = _txt(r.get(k))
+            if v:
+                return v
+    return ""
+
+
+def _limpia_nif(v):
+    s = _txt(v).upper().replace(" ", "").replace("-", "").replace(".", "")
+    return "" if s in ("", "NF", "NONE", "N/A", "NA") else s
+
+
+def _nif_cliente(nombre, fuentes, cfg):
+    """NIF de un cliente AR: la ficha de cliente > el bono de la misma agencia (lo leyo la IA) > config."""
+    n = _txt(nombre).lower()
+    if not n:
+        return ""
+    cl = fuentes.get("clientes")
+    if cl is not None and not cl.empty:
+        for _, c in cl.iterrows():
+            if _txt(c.get("nombre_cliente")).lower() == n:
+                v = _limpia_nif(_col(c, "nif", "cif"))
+                if v:
+                    return v
+    bo = fuentes.get("bonos")
+    if bo is not None and not bo.empty:
+        for _, b in bo.iterrows():
+            if _txt(b.get("agencia")).lower() == n:
+                v = _limpia_nif(_col(b, "NIF_agencia", "nif"))
+                if v:
+                    return v
+    return _nif(nombre, cfg)
 
 
 def _pct_key(pct):
@@ -158,7 +202,7 @@ def calcular(mes, fuentes, cfg=None, cfg_fiscal=None):
             dif = _r(total - (b_h + b_f + i_h + i_f)); i_h = _r(i_h + dif)
             num = _txt(r.get("numero_reserva")) or _txt(r.get("numero")) or "s/n"
             cli = _txt(r.get("cliente")) or "cliente"
-            nif = _txt(r.get("nif")) or _txt(r.get("cif")) or _nif(cli, cf)
+            nif = _limpia_nif(_col(r, "nif", "cif", "nif_cliente")) or _nif_cliente(cli, fuentes, cf)
             if not nif:
                 nif_pend.add(cli)
             if b_h:
@@ -183,7 +227,9 @@ def calcular(mes, fuentes, cfg=None, cfg_fiscal=None):
             base, cuota, pct = _desglose_ap(r)
             suma("ded_int", base, cuota)
             prov = _txt(r.get("nombre_proveedor")) or "proveedor"
-            nif = _txt(r.get("nif_proveedor")) or _txt(r.get("cif")) or _nif(prov, cf)
+            # el lector escribe `NIF_proveedor` (mayusculas): antes se buscaba en
+            # minusculas y el NIF que la IA habia leido se perdia
+            nif = _limpia_nif(_col(r, "NIF_proveedor", "nif", "cif")) or _nif(prov, cf)
             if not nif:
                 nif_pend.add(prov)
             rec.append({"tipo_factura": "F1", "fecha": f.isoformat(),
@@ -204,7 +250,10 @@ def calcular(mes, fuentes, cfg=None, cfg_fiscal=None):
                 continue
             ota = _txt(r.get("nombre_ota")) or "OTA"
             reg = regimen_ota(ota, cfg)
-            nif = _nif(ota, cf)
+            nif = _limpia_nif(_col(r, "nif_ota", "nif"))
+            if nif and nif == _limpia_nif(cf.get("nif_propio")):
+                nif = ""          # el lector ha pillado el NIF del propio hotel, no el de la OTA
+            nif = nif or _nif(ota, cf)
             if not nif:
                 nif_pend.add(ota)
             fila = {"tipo_factura": "F1", "fecha": f.isoformat(), "numero": _txt(r.get("numero_factura")) or "s/n",

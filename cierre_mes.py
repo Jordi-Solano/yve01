@@ -488,7 +488,8 @@ def recoger_fuentes(mes, hotel=None, procesadas_dir=None, reportes_dir=None, dat
     except Exception:
         f["ar_ota"] = pd.DataFrame()
     dd = datos_dir or os.path.join(BASE_DIR, "datos-referencia")
-    for clave, fichero in (("ventas_fb", "ventas_fb_diarias.xlsx"), ("reservas", "reservas_credito.xlsx")):
+    for clave, fichero in (("ventas_fb", "ventas_fb_diarias.xlsx"), ("reservas", "reservas_credito.xlsx"),
+                           ("clientes", "clientes_credito.xlsx"), ("bonos", "bonos_agencia.xlsx")):
         try:
             df = pd.read_excel(os.path.join(dd, fichero))
             if hotel:

@@ -66,6 +66,14 @@ PATRONES = {
         r"(?:invoice\s+date|date)[:\s]*(\d{1,2}\s+(?:january|february|march|april|may|june|july|august|september|october|november|december|enero|febrero|marzo|abril|mayo|junio|julio|agosto|septiembre|octubre|noviembre|diciembre)\s+\d{4})",
     ],
 
+    # ── NIF-IVA del emisor (Booking.com B.V. -> NL805734958B01) ─────────
+    # Alimenta el 349 y el SII (Jordi, sep 2026). Etiquetado ("VAT: ...",
+    # "NIF ...", "BTW ...") o suelto con formato de IVA intracomunitario.
+    "nif_ota": [
+        r"(?:NIF|CIF|VAT(?:\s*(?:ID|number|no\.?|reg(?:istration)?))?|BTW(?:\s*nr\.?)?|USt[-\s]?IdNr\.?|IVA)[:\s#]*((?:[A-Z]{2}\s?[0-9A-Z]{8,12})|(?:[A-Z]-?\d{7,8}-?[A-Z0-9]))\b",
+        r"\b(NL\d{9}B\d{2}|ES[A-Z0-9]\d{7}[A-Z0-9]|DE\d{9}|FR[A-Z0-9]{2}\d{9}|IE\d{7}[A-Z]{1,2}|LU\d{8}|PT\d{9}|IT\d{11})\b",
+    ],
+
     # ── Nombre OTA emisora ─────────────────────────────────────────────────
     "nombre_ota": [
         r"(Booking\.com|Booking\.es|Expedia|Hotels\.com|Despegar|Airbnb|Agoda|Trip\.com|Trivago|HRS)",
