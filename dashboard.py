@@ -6331,28 +6331,47 @@ svg.yvi{width:1em;height:1em;vertical-align:-0.125em;flex-shrink:0;display:inlin
 <!-- ── Pantalla de inicio (splash) al abrir la app — no saltable, precarga recursos ── -->
 <style>
 #yve-splash{position:fixed;inset:0;z-index:99999;display:flex;flex-direction:column;align-items:center;justify-content:center;
-  background:linear-gradient(180deg,#101a2e 0%,#0c1424 55%,#090e1a 100%);padding:24px;
-  transition:opacity .55s ease,visibility .55s ease}
+  background:linear-gradient(180deg,var(--sp-bg1) 0%,var(--sp-bg2) 55%,var(--sp-bg3) 100%);padding:24px;
+  transition:opacity .7s ease,visibility .7s ease}
 #yve-splash.hide{opacity:0;visibility:hidden;pointer-events:none}
-/* Pieza 11 (intro): primero la bola —con el color de acento que el usuario
-   haya elegido en Personalizacion, leido de localStorage ANTES de pintar—,
-   luego el nombre, luego la frase. Sin rueda de "cargando". */
-#yve-splash{--sp-acc:#3b82f6;--sp-acc2:#60a5fa;--sp-dark:#1d4ed8;--sp-r:59;--sp-g:130;--sp-b:246}
-#yve-splash .sp-ball{width:96px;height:96px;border-radius:50%;position:relative;
-  background:radial-gradient(circle at 34% 30%,rgba(255,255,255,.75) 0,var(--sp-acc2) 16%,var(--sp-acc) 58%,var(--sp-dark) 100%);
-  box-shadow:0 0 0 0 rgba(var(--sp-r),var(--sp-g),var(--sp-b),.5),0 26px 70px rgba(var(--sp-r),var(--sp-g),var(--sp-b),.45);
-  animation:spBall 1s cubic-bezier(.2,.9,.3,1.25) both,spHalo 1.5s ease-out .45s both,spBreath 2.6s ease-in-out 1.5s infinite}
-#yve-splash .sp-ball::after{content:'';position:absolute;inset:-14px;border-radius:50%;
-  border:1px solid rgba(var(--sp-r),var(--sp-g),var(--sp-b),.35);animation:spRing 1.6s ease-out .55s both}
-#yve-splash .sp-brand{font-family:'Space Grotesk','Inter',sans-serif;margin-top:28px;font-size:32px;font-weight:700;letter-spacing:-.4px;color:#fff;animation:spFade .7s cubic-bezier(.2,.8,.2,1) .8s both}
-#yve-splash .sp-brand span{color:var(--sp-acc2)}
-#yve-splash .sp-sub{margin-top:9px;font-size:13px;color:#94a3b8;animation:spFade .7s ease 1.05s both}
-@keyframes spBall{from{opacity:0;transform:scale(.25) translateY(22px)}60%{opacity:1}to{opacity:1;transform:none}}
-@keyframes spHalo{from{box-shadow:0 0 0 0 rgba(var(--sp-r),var(--sp-g),var(--sp-b),.5),0 26px 70px rgba(var(--sp-r),var(--sp-g),var(--sp-b),.45)}
-  to{box-shadow:0 0 0 34px rgba(var(--sp-r),var(--sp-g),var(--sp-b),0),0 26px 70px rgba(var(--sp-r),var(--sp-g),var(--sp-b),.45)}}
-@keyframes spRing{from{opacity:0;transform:scale(.6)}30%{opacity:1}to{opacity:0;transform:scale(1.9)}}
-@keyframes spBreath{0%,100%{transform:scale(1)}50%{transform:scale(1.045)}}
+/* Intro (rehecha, Jordi 5 sep): 1) se ENCIENDE el logo de verdad (el de los
+   anillos, como el favicon), anillo a anillo y el punto al final; 2) aparece
+   "Yve" a su derecha letra a letra, y con cada letra el logo se desplaza un
+   poco a la izquierda para hacer sitio (la fila esta centrada: la letra ocupa
+   ancho con una transicion lenta y la fila entera se recentra sola); 3) el
+   ".01" con el acento y la frase. Lento a proposito. Colores: acento Y fondo
+   de Personalizacion, leidos de localStorage antes del primer frame. */
+#yve-splash{--sp-acc:#3b82f6;--sp-acc2:#60a5fa;--sp-r:59;--sp-g:130;--sp-b:246;
+  --sp-bg1:#101a2e;--sp-bg2:#0c1424;--sp-bg3:#090e1a;--sp-sq:#0b1120}
+#yve-splash .sp-row{display:flex;align-items:center;justify-content:center;gap:0}
+#yve-splash .sp-logo{width:104px;height:104px;flex:0 0 auto;display:block;overflow:visible;
+  filter:drop-shadow(0 18px 40px rgba(0,0,0,.5));animation:spLogoIn 1.4s cubic-bezier(.2,.8,.2,1) both}
+#yve-splash .sp-logo .sq{fill:var(--sp-sq)}
+#yve-splash .sp-logo .r{fill:var(--sp-acc);opacity:0;animation:spRingOn 1.1s ease-out both}
+#yve-splash .sp-logo .r1{animation-delay:.35s;--o:.08}
+#yve-splash .sp-logo .r2{animation-delay:.6s;--o:.12}
+#yve-splash .sp-logo .r3{animation-delay:.85s;--o:.16}
+#yve-splash .sp-logo .r4{animation-delay:1.1s;--o:.2}
+#yve-splash .sp-logo .dot{fill:var(--sp-acc);opacity:0;transform-origin:32px 32px;animation:spDotOn 1.3s cubic-bezier(.2,.8,.2,1.15) 1.35s both}
+#yve-splash .sp-glow{position:absolute;width:104px;height:104px;border-radius:26px;pointer-events:none;
+  box-shadow:0 0 0 0 rgba(var(--sp-r),var(--sp-g),var(--sp-b),0);animation:spGlow 2.4s ease-out 1.6s both}
+#yve-splash .sp-word{display:flex;align-items:baseline;font-family:'Space Grotesk','Inter',sans-serif;font-size:56px;font-weight:700;letter-spacing:-.5px;color:#fff;line-height:1;margin-left:0}
+#yve-splash .sp-l{display:inline-block;max-width:0;overflow:hidden;opacity:0;white-space:pre;
+  animation:spLetter 1.1s cubic-bezier(.25,.8,.25,1) both}
+#yve-splash .sp-l:nth-child(1){animation-delay:2.4s;--w:.72em}
+#yve-splash .sp-l:nth-child(2){animation-delay:3.15s;--w:.62em}
+#yve-splash .sp-l:nth-child(3){animation-delay:3.9s;--w:.62em}
+#yve-splash .sp-l.sp-01{color:var(--sp-acc2);font-size:40px;animation-delay:4.7s;--w:1.7em}
+#yve-splash .sp-sub{margin-top:26px;font-size:13.5px;letter-spacing:.2px;color:#94a3b8;animation:spFade 1.2s ease 5.5s both}
+@keyframes spLogoIn{from{opacity:0;transform:scale(.86)}to{opacity:1;transform:none}}
+@keyframes spRingOn{from{opacity:0}to{opacity:var(--o)}}
+@keyframes spDotOn{from{opacity:0;transform:scale(.4)}55%{opacity:1}to{opacity:1;transform:scale(1)}}
+@keyframes spGlow{0%{box-shadow:0 0 0 0 rgba(var(--sp-r),var(--sp-g),var(--sp-b),0)}
+  35%{box-shadow:0 0 60px 6px rgba(var(--sp-r),var(--sp-g),var(--sp-b),.45)}
+  100%{box-shadow:0 0 34px 0 rgba(var(--sp-r),var(--sp-g),var(--sp-b),.22)}}
+@keyframes spLetter{from{max-width:0;opacity:0;transform:translateY(6px)}45%{opacity:.6}to{max-width:var(--w);opacity:1;transform:none}}
 @keyframes spFade{from{opacity:0;transform:translateY(10px)}to{opacity:1;transform:none}}
+@media(max-width:480px){#yve-splash .sp-logo,#yve-splash .sp-glow{width:84px;height:84px}#yve-splash .sp-word{font-size:46px}#yve-splash .sp-l.sp-01{font-size:32px}}
 /* ── Arreglos responsive móvil ── */
 @media(max-width:480px){
   .stats,#stats-ap-grid,#ar-real-stats{grid-template-columns:repeat(2,1fr)!important;gap:8px!important}
@@ -6367,8 +6386,18 @@ svg.yvi{width:1em;height:1em;vertical-align:-0.125em;flex-shrink:0;display:inlin
 }
 </style>
 <div id="yve-splash" role="status" aria-label="Cargando Yve.01">
-  <div class="sp-ball"></div>
-  <div class="sp-brand">Yve<span>.01</span></div>
+  <div class="sp-row">
+    <div style="position:relative;display:flex;align-items:center;justify-content:center;margin-right:22px">
+      <div class="sp-glow"></div>
+      <svg class="sp-logo" viewBox="0 0 64 64" aria-hidden="true">
+        <rect class="sq" width="64" height="64" rx="14"/>
+        <circle class="r r1" cx="32" cy="32" r="30"/><circle class="r r2" cx="32" cy="32" r="25"/>
+        <circle class="r r3" cx="32" cy="32" r="20"/><circle class="r r4" cx="32" cy="32" r="16"/>
+        <circle class="dot" cx="32" cy="32" r="13"/>
+      </svg>
+    </div>
+    <div class="sp-word"><span class="sp-l">Y</span><span class="sp-l">v</span><span class="sp-l">e</span><span class="sp-l sp-01">.01</span></div>
+  </div>
   <div class="sp-sub">Automatización financiera para hoteles</div>
 </div>
 <script>
@@ -6378,15 +6407,26 @@ svg.yvi{width:1em;height:1em;vertical-align:-0.125em;flex-shrink:0;display:inlin
   // nombre. Se lee aqui, antes del primer frame, y no cuando arranque el
   // resto de la app: si no, la bola saldria azul y cambiaria a medias.
   try{
+    var hx=function(v){ v=Math.max(0,Math.min(255,Math.round(v))); return (v<16?'0':'')+v.toString(16); };
+    var rgb=function(h){ return [parseInt(h.slice(1,3),16),parseInt(h.slice(3,5),16),parseInt(h.slice(5,7),16)]; };
+    var mix=function(v,w){ return v+(255-v)*w; };
+    var hex=function(c){ return '#'+hx(c[0])+hx(c[1])+hx(c[2]); };
     var acc=(localStorage.getItem('yve_accent')||'').trim();
     if(/^#[0-9a-f]{6}$/i.test(acc)){
-      var R=parseInt(acc.slice(1,3),16),G=parseInt(acc.slice(3,5),16),B=parseInt(acc.slice(5,7),16);
-      var hx=function(v){ v=Math.max(0,Math.min(255,Math.round(v))); return (v<16?'0':'')+v.toString(16); };
-      var mix=function(v,w){ return v+(255-v)*w; };
+      var A=rgb(acc);
       sp.style.setProperty('--sp-acc',acc);
-      sp.style.setProperty('--sp-acc2','#'+hx(mix(R,.25))+hx(mix(G,.25))+hx(mix(B,.25)));
-      sp.style.setProperty('--sp-dark','#'+hx(R*.6)+hx(G*.6)+hx(B*.6));
-      sp.style.setProperty('--sp-r',String(R)); sp.style.setProperty('--sp-g',String(G)); sp.style.setProperty('--sp-b',String(B));
+      sp.style.setProperty('--sp-acc2',hex([mix(A[0],.25),mix(A[1],.25),mix(A[2],.25)]));
+      sp.style.setProperty('--sp-r',String(A[0])); sp.style.setProperty('--sp-g',String(A[1])); sp.style.setProperty('--sp-b',String(A[2]));
+    }
+    // el FONDO tambien es el de Personalizacion (yve_bg): degradado de un poco
+    // mas claro arriba a mas oscuro abajo, y el cuadrado del logo mas oscuro aun
+    var bg=(localStorage.getItem('yve_bg')||'').trim();
+    if(/^#[0-9a-f]{6}$/i.test(bg)){
+      var Bg=rgb(bg), k=function(f){ return [Bg[0]*f,Bg[1]*f,Bg[2]*f]; };
+      sp.style.setProperty('--sp-bg1',hex([mix(Bg[0],.05),mix(Bg[1],.05),mix(Bg[2],.05)]));
+      sp.style.setProperty('--sp-bg2',hex(k(.85)));
+      sp.style.setProperty('--sp-bg3',hex(k(.62)));
+      sp.style.setProperty('--sp-sq',hex(k(.55)));
     }
   }catch(e){}
   var shown=false;
@@ -6395,7 +6435,7 @@ svg.yvi{width:1em;height:1em;vertical-align:-0.125em;flex-shrink:0;display:inlin
   try{ sessionStorage.setItem('yve_splash_shown','1'); }catch(e){}
   // Precargar la traducción del idioma guardado mientras se ve el splash
   try{ var lang=localStorage.getItem('yve_lang'); if(lang && lang!=='es'){ fetch('/static/i18n/'+lang+'.json?v=__ASSETS_V__').catch(function(){}); } }catch(e){}
-  var start=Date.now(), MIN=1900, MAX=6000, done=false;   // 1,9 s: que de tiempo a bola → nombre → frase
+  var start=Date.now(), MIN=7200, MAX=9500, done=false;   // 7,2 s: logo (1,4+1,3) → Y v e (a 0,75 s) → .01 → frase; solo una vez por sesion
   // El servidor manda el HTML SIEMPRE en español (no sabe tu idioma), asi que
   // al entrar con otro idioma se veia español antes de traducir. El splash ya
   // dura 1,5 s: se aprovecha para traducir DEBAJO y no se suelta hasta que la
