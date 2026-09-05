@@ -510,6 +510,7 @@
   "paq.listo": "✓ ready for head office",
   "paq.pendiente": "{n} block(s) pending",
   "paq.resultado": "Result (per documents)",
+  "paq.sinDatos": "no data for this month",
   "paq.titulo": "Month-end file for head office",
   "prov.albSinFactura": "Delivery notes without invoice",
   "prov.albVacio": "Nothing to provision: everything delivered up to the cut-off has an invoice.",

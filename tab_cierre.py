@@ -211,6 +211,8 @@ def api_subir_recuento():
     if actual is not None and not actual.empty and 'ingrediente' in actual.columns:
         for _, r in actual.iterrows():
             por_nombre[INV._norm(r.get('ingrediente'))] = r.to_dict()
+    from provisiones import _mes_a_rango as _rango
+    _, _, mes = _rango(mes)
     filas = []; nuevos = 0
     for _, r in df_c.iterrows():
         base = por_nombre.get(INV._norm(r['ingrediente']))
@@ -218,6 +220,13 @@ def api_subir_recuento():
             nuevos += 1
             base = {'ingrediente': r['ingrediente']}
         fila = dict(base)
+        # Recuento de un mes NUEVO: el final del mes anterior pasa a ser el
+        # inicial de este. Si es el mismo mes (se vuelve a contar), el inicial
+        # no se toca.
+        _mes_base = INV.mes_de_texto(base.get('mes'))
+        if _mes_base and _mes_base != mes and INV._txt(base.get('stock_actual_kg_l')):
+            fila['stock_inicial_kg_l'] = base.get('stock_actual_kg_l')
+        fila['mes'] = mes
         fila['stock_actual_kg_l'] = float(r['stock_actual_kg_l'])
         for k in ('categoria', 'unidad', 'coste_unitario', 'proveedor'):
             if k in r and pd.notna(r[k]) and str(r[k]).strip():
@@ -225,7 +234,7 @@ def api_subir_recuento():
         fila.pop('hotel_id', None)
         filas.append(fila)
     from dashboard import _guardar_fb_del_hotel, _audit
-    _guardar_fb_del_hotel(pd.DataFrame(filas), 'inventario.xlsx')
+    _guardar_fb_del_hotel(pd.DataFrame(filas), 'inventario.xlsx', mes=mes)
     try:
         from flask_login import current_user
         _audit('INVENTARIO_RECUENTO', f'{n} articulos contados, {nuevos} nuevos', getattr(current_user, 'username', None) or 'sistema')

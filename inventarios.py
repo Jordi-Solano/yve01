@@ -20,7 +20,9 @@ pasa por `dashboard._guardar_fb_del_hotel`, la misma puerta que el clasificador.
 """
 import json
 import os
+import re
 import unicodedata
+from datetime import datetime
 from io import BytesIO
 
 import pandas as pd
@@ -45,6 +47,63 @@ CUENTAS = {   # existencias / variacion de existencias (PGC)
     "GUEST_SUPPLIES": ("328", "Material diverso — guest supplies", "612", "Variacion de existencias de otros aprovisionamientos"),
     "OTROS":          ("300", "Mercaderias — otros", "610", "Variacion de existencias de mercaderias"),
 }
+
+
+_MESES = {"enero": 1, "gener": 1, "january": 1, "janvier": 1, "febrero": 2, "febrer": 2, "february": 2, "fevrier": 2,
+          "marzo": 3, "marc": 3, "march": 3, "mars": 3, "abril": 4, "april": 4, "avril": 4, "mayo": 5, "maig": 5, "may": 5, "mai": 5,
+          "junio": 6, "juny": 6, "june": 6, "juin": 6, "julio": 7, "juliol": 7, "july": 7, "juillet": 7,
+          "agosto": 8, "agost": 8, "august": 8, "aout": 8, "septiembre": 9, "setembre": 9, "setiembre": 9, "september": 9, "septembre": 9,
+          "octubre": 10, "october": 10, "octobre": 10, "noviembre": 11, "novembre": 11, "november": 11,
+          "diciembre": 12, "desembre": 12, "december": 12, "decembre": 12}
+
+
+def mes_de_texto(v):
+    """'2026-08', '2026_08', 'agosto_2026', '08/2026', una fecha o un Timestamp -> 'YYYY-MM'; '' si no hay mes.
+
+    Sirve para estampar el mes de un inventario (nombre del fichero, columna
+    `mes` o `fecha`). Un inventario sin mes no se inventa: queda vacio y el
+    cierre lo dice.
+    """
+    if v is None:
+        return ""
+    if isinstance(v, (pd.Timestamp, datetime)):
+        return f"{v.year:04d}-{v.month:02d}"
+    s = unicodedata.normalize("NFKD", str(v)).lower()
+    s = "".join(c for c in s if not unicodedata.combining(c))
+    if not s.strip() or s.strip() in ("nan", "none", "nat"):
+        return ""
+    m = re.search(r"(20\d\d)[-_/ .]?(0[1-9]|1[0-2])(?!\d)", s)
+    if m:
+        return f"{m.group(1)}-{m.group(2)}"
+    m = re.search(r"(?<!\d)(0[1-9]|1[0-2])[-_/ .](20\d\d)", s)      # 08/2026, 31-08-2026 -> mes 08
+    if m:
+        return f"{m.group(2)}-{m.group(1)}"
+    m = re.search(r"(?<!\d)\d{1,2}[-_/ .](0?[1-9]|1[0-2])[-_/ .](20\d\d)", s)
+    if m:
+        return f"{m.group(2)}-{int(m.group(1)):02d}"
+    s = re.sub(r"[_.\-/]+", " ", s)      # 'inventario_agosto_2026' -> palabras sueltas
+    for nombre, num in _MESES.items():
+        if re.search(r"\b" + nombre + r"\b", s):
+            y = re.search(r"\b(20\d\d)\b", s)
+            if y:
+                return f"{y.group(1)}-{num:02d}"
+    return ""
+
+
+def filtrar_mes(df_inv, mes):
+    """Filas del inventario que son de `mes` (o sin mes estampado, que valen para cualquiera).
+
+    Devuelve (df_filtrado, otros_meses). `otros_meses` es la lista de meses que
+    SI hay en el fichero cuando no queda nada del pedido: asi el cierre puede
+    decir "el ultimo recuento es de 2026-08" en vez de pintar agosto como si
+    fuera octubre (ronda de pruebas de Jordi, fase 6).
+    """
+    if df_inv is None or df_inv.empty or "mes" not in df_inv.columns:
+        return df_inv, []
+    meses = df_inv["mes"].map(mes_de_texto)
+    keep = (meses == "") | (meses == str(mes))
+    otros = sorted({m for m in meses if m and m != str(mes)})
+    return df_inv[keep], otros
 
 
 def _norm(x):
@@ -97,6 +156,7 @@ def valorar(mes, df_inv, df_ap=None, coste_teorico_fb=None, cfg=None):
     ini, fin, mes = _mes_a_rango(mes)
     cfg = cfg or {}
     arts = []
+    df_inv, otros_meses = filtrar_mes(df_inv, mes)
     if df_inv is not None and not df_inv.empty:
         for _, r in df_inv.iterrows():
             nombre = _txt(r.get("ingrediente")) or _txt(r.get("producto"))
@@ -167,7 +227,11 @@ def valorar(mes, df_inv, df_ap=None, coste_teorico_fb=None, cfg=None):
         "desviacion_pct": round(desv / coste_teorico_fb * 100, 1) if desv is not None and coste_teorico_fb else None,
         "nota": ("Consumo real = existencias iniciales + compras F&B del mes - existencias finales. "
                  "Teorico = escandallo × unidades vendidas. La diferencia son mermas, regalos, robos o recuento mal hecho."),
+        "otros_meses": otros_meses,
     }
+    if not arts and otros_meses:
+        resumen["nota"] = (f"Sin recuento de {mes}: el inventario guardado es de {', '.join(otros_meses)}. "
+                           "Descarga la hoja de recuento de este mes, cuentala y subela.")
     return {"mes": mes, "familias": fams, "articulos": arts, "asientos": asientos,
             "revisar": [a for a in arts if a["revisar"]], "resumen": resumen}
 

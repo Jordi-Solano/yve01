@@ -510,6 +510,7 @@
   "paq.listo": "✓ prêt pour le siège",
   "paq.pendiente": "{n} bloc(s) en attente",
   "paq.resultado": "Résultat (selon documents)",
+  "paq.sinDatos": "pas de données pour ce mois",
   "paq.titulo": "Dossier de fin de mois pour le siège",
   "prov.albSinFactura": "Bons de livraison sans facture",
   "prov.albVacio": "Rien à provisionner : tout ce qui a été livré jusqu’à la clôture a une facture.",

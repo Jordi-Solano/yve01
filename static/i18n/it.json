@@ -510,6 +510,7 @@
   "paq.listo": "✓ pronto per la sede",
   "paq.pendiente": "{n} blocco/i in sospeso",
   "paq.resultado": "Risultato (da documenti)",
+  "paq.sinDatos": "nessun dato per questo mese",
   "paq.titulo": "Archivio di fine mese per la sede",
   "prov.albSinFactura": "Bolle senza fattura",
   "prov.albVacio": "Nulla da accantonare: tutto il consegnato fino alla chiusura ha fattura.",

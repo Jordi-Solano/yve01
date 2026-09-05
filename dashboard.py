@@ -975,8 +975,23 @@ _CLAVE_FB = {
 }
 
 
-def _guardar_fb_del_hotel(df, fichero):
+def _mes_de_nombre(fname):
+    """'inventario_agosto_2026.xlsx' -> '2026-08'; '' si el nombre no lleva mes."""
+    try:
+        from inventarios import mes_de_texto
+        return mes_de_texto(os.path.splitext(os.path.basename(str(fname or '')))[0])
+    except Exception:
+        return ''
+
+
+def _guardar_fb_del_hotel(df, fichero, mes=None):
     """Añade `df` a un fichero de F&B del hotel activo.
+
+    `mes` (solo inventario): 'YYYY-MM' del recuento cuando el fichero no lo
+    trae en una columna `mes`/`fecha`. Sale del nombre del fichero subido o del
+    selector de mes del cierre. Sin mes no se inventa: la fila queda sin mes y
+    vale para cualquier cierre, pero el cierre de un mes SIN recuento propio ya
+    no pinta el de otro mes como si fuera suyo (ronda de pruebas, fase 6).
 
     Devuelve (filas DE ESTE HOTEL, filas entrantes) — no el fichero entero. Es
     a proposito: quien llama lo usa para el mensaje de la pantalla, y decir "20
@@ -1018,6 +1033,14 @@ def _guardar_fb_del_hotel(df, fichero):
             df['fecha'] = df['fecha'].astype(object)
             _vacia = df['fecha'].isna() | (df['fecha'].map(lambda v: str(v).strip()) == '')
             df.loc[_vacia, 'fecha'] = _hoy
+    if fichero == 'inventario.xlsx':
+        from inventarios import mes_de_texto as _mdt
+        if 'mes' not in df.columns:
+            _src = df['fecha_recuento'] if 'fecha_recuento' in df.columns else (df['fecha'] if 'fecha' in df.columns else None)
+            df['mes'] = _src.map(_mdt) if _src is not None else ''
+        df['mes'] = df['mes'].astype(object).map(_mdt)
+        if mes:
+            df.loc[df['mes'] == '', 'mes'] = _mdt(mes)
     entrantes = len(df)
     ruta = os.path.join(_ddir(), fichero)
     if os.path.exists(ruta):
@@ -1218,6 +1241,7 @@ def _destino_capa1(fname, fpath):
 
 _INV_COL_MAP = {
     'ingrediente': ['producto', 'nombre', 'item', 'articulo', 'material'],
+    'mes': ['month', 'periodo', 'mes_recuento', 'period'],
     'categoria': ['tipo', 'category', 'grupo', 'familia'],
     'coste_unitario': ['precio', 'coste', 'precio_unitario', 'cost', 'precio_kg'],
     'stock_actual_kg_l': ['stock_actual', 'stock', 'cantidad', 'cantidad_actual'],
@@ -2100,7 +2124,7 @@ def _enrutar_tipo_doc(reg, fname, fpath=None):
                 # — este camino ya lo hacia bien y ahora lo hace en el mismo
                 # sitio que los otros dos, que es lo que impide que vuelvan a
                 # separarse.
-                _df_inv, _ = _guardar_fb_del_hotel(_df_inv, 'inventario.xlsx')
+                _df_inv, _ = _guardar_fb_del_hotel(_df_inv, 'inventario.xlsx', mes=_mes_de_nombre(fname))
                 nombres = [str(i.get('ingrediente', i.get('producto', '?')))[:20] for i in inv_items[:5]]
                 _msg = f'✓ Inventario {fname}: {len(inv_items)} productos ({", ".join(nombres)}{"..." if len(inv_items)>5 else ""}) integrados'
             else:
@@ -2415,7 +2439,7 @@ def api_procesar_batch_stream():
                             import pandas as _pdi
                             _df_i = _pdi.read_csv(fpath) if ext == '.csv' else _pdi.read_excel(fpath)
                             _df_i = _normalize_cols(_df_i, _INV_COL_MAP)
-                            _df_i, _n_i = _guardar_fb_del_hotel(_df_i, 'inventario.xlsx')
+                            _df_i, _n_i = _guardar_fb_del_hotel(_df_i, 'inventario.xlsx', mes=_mes_de_nombre(fname))
                             yield (f'data: ✓ Inventario {fname}: {_n_i} items integrados '
                                    f'· {len(_df_i)} en el hotel\n\n')
                         except Exception:
@@ -2822,6 +2846,7 @@ def _generar_cierre(pasos):
                 # se comia tambien la fila del resumen y salian 2 donde habia 1
                 _n_fac = _n_alb = 0
                 _det = []
+                _sin_reg = []
                 _NOMBRE_INC = {'FACTURA_SIN_ALBARAN': 'sin albarán que la respalde',
                                'DIFERENCIA_IMPORTE': 'diferencia de importe con el albarán',
                                'DIFERENCIA_LINEA': 'diferencia en alguna línea'}
@@ -2832,6 +2857,8 @@ def _generar_cierre(pasos):
                             _n_fac, _n_alb = int(_a), int(_b)
                         except Exception:
                             pass
+                    elif _ln.startswith('SIN_REGISTRO:'):
+                        _sin_reg = [x.strip() for x in _ln.split(':', 1)[1].split(';') if x.strip()]
                     elif _ln.startswith('INCIDENCIAS_DETALLE:'):
                         for _par in _ln.split(':', 1)[1].strip().split(';'):
                             if '=' in _par:
@@ -2852,6 +2879,14 @@ def _generar_cierre(pasos):
                         yield f'data: ⚠ Cruce con albaranes: {" · ".join(_partes)}\n\n'
                     else:
                         yield 'data: ✓ Cruce con albaranes: sin incidencias\n\n'
+                    if _sin_reg:
+                        # Diseño: no se reclama albaran a un hotel que aun no
+                        # registra entregas. Pero se dice, para que "sin
+                        # incidencias" no suene a "todo respaldado".
+                        yield (f'data: ℹ {len(_sin_reg)} factura(s) de mercancía sin albarán que NO se reclaman '
+                               f'porque el hotel todavía no registraba albaranes cuando se emitieron: '
+                               f'{", ".join(_sin_reg[:6])}{" …" if len(_sin_reg) > 6 else ""}. '
+                               f'Sube sus albaranes de entrega y el cruce las revisará.\n\n')
                 else:
                     _e_alb = (_r_alb.stderr or _r_alb.stdout or 'error').strip().splitlines()
                     _e_alb = (_e_alb[-1] if _e_alb else 'error')[:90]
@@ -3074,7 +3109,7 @@ def api_scan_documento():
             inv_items = datos.get('items', datos.get('productos', []))
             if inv_items:
                 _df_inv = _normalize_cols(pd.DataFrame(inv_items), _INV_COL_MAP)
-                _df_inv, _ = _guardar_fb_del_hotel(_df_inv, 'inventario.xlsx')
+                _df_inv, _ = _guardar_fb_del_hotel(_df_inv, 'inventario.xlsx', mes=_mes_de_nombre(fname))
                 items_count = len(inv_items)
                 nombres = [str(i.get('ingrediente', '?'))[:15] for i in inv_items[:4]]
                 mensaje = f'{items_count} productos ({", ".join(nombres)}...) integrados'
@@ -11847,7 +11882,7 @@ function showAPDetail(row) {
   var stC = row.aprobacion === 'APROBADA' ? '#22c55e' : row.aprobacion === 'RECHAZADA' ? '#ef4444' : '#f59e0b';
   var fields = [
     ['Proveedor', row.proveedor||'—'], ['Fecha', row.fecha_factura||'—'],
-    ['Total', row.importe_con_iva ? '€'+row.importe_con_iva : '—'],
+    ['Total', row.importe_con_iva ? _fmtEurES(row.importe_con_iva) : '—'],
     ['Cuenta', row.cuenta_contable||'—'], ['Tipo', row.tipo||'—'],
     ['Estado', row.estado||'—'], ['Aprobación', row.aprobacion||'—'],
     ['PO', row.tiene_po ? '✅' : '❌'], ['Albarán', row.tiene_alb ? '✅' : '❌'],
@@ -13277,7 +13312,7 @@ function showInvoiceDetail(row) {
     (row.discrepancia_euros && parseFloat(row.discrepancia_euros) !== 0 ?
       '<div style="margin-top:16px;background:rgba(239,68,68,.08);border:1px solid rgba(239,68,68,.2);border-radius:10px;padding:12px">' +
         '<div style="font-size:12px;font-weight:700;color:var(--red);margin-bottom:6px">⚠ Discrepancia detectada</div>' +
-        '<div style="font-size:12px;color:var(--mut)">Diferencia: €' + row.discrepancia_euros + ' · Acción recomendada: solicitar factura rectificativa</div>' +
+        '<div style="font-size:12px;color:var(--mut)">Diferencia: ' + _fmtEurES(row.discrepancia_euros) + ' · Acción recomendada: solicitar factura rectificativa</div>' +
       '</div>'
     : '') +
     '<div style="display:flex;gap:10px;margin-top:16px">' +
@@ -13907,7 +13942,7 @@ async function loadPaquete(){
     var r = await fetch('/api/cierre/paquete?mes=' + encodeURIComponent(mes));
     var d = await r.json();
     if (!d || !d.ok) { body.innerHTML = '<div class="empty"><p>' + _cEsc((d&&d.error)||'Error') + '</p></div>'; return; }
-    if (est) { est.textContent = d.listo ? t('paq.listo','✓ listo para la central') : t('paq.pendiente','{n} bloque(s) pendiente(s)').replace('{n}', (d.resumen_checklist||{}).PENDIENTE||0); est.style.color = d.listo ? '#22c55e' : '#f59e0b'; }
+    if (est) { est.textContent = d.listo ? t('paq.listo','✓ listo para la central') : (d.sin_datos ? t('paq.sinDatos','sin datos de este mes') : t('paq.pendiente','{n} bloque(s) pendiente(s)').replace('{n}', (d.resumen_checklist||{}).PENDIENTE||0)); est.style.color = d.listo ? '#22c55e' : (d.sin_datos ? 'var(--mut)' : '#f59e0b'); }
     var rr = d.resultado || {};
     var tile = function(l, v, col){ return '<div class="card" style="padding:10px;border-radius:10px"><div style="font-size:11px;color:var(--mut);text-transform:uppercase;letter-spacing:.4px">' + _cEsc(l) + '</div><div style="font-size:15px;font-weight:700;color:' + (col||'var(--tx)') + '">' + v + '</div></div>'; };
     rs.innerHTML = tile(t('paq.ingresos','Ingresos asentados'), _cEur(rr.ingresos)) + tile(t('paq.gastos','Gastos asentados'), _cEur(rr.gastos)) + tile(t('paq.resultado','Resultado (según documentos)'), _cEur(rr.resultado), (rr.resultado||0) >= 0 ? '#22c55e' : '#f87171') + (rr.drr_rooms_revenue!=null ? tile(t('paq.drr','Rooms Revenue DRR (MTD)'), _cEur(rr.drr_rooms_revenue)) : '');
@@ -14305,7 +14340,7 @@ async function loadFBInventario() {
         '<td style="color:var(--mut)">' + item.categoria + '</td>' +
         '<td style="color:var(--dim);font-size:12px">' + item.proveedor + '</td>' +
         '<td style="text-align:right;font-weight:700">' + item.stock_actual + ' ' + item.unidad + '</td>' +
-        '<td style="text-align:right;color:var(--mut)">€' + item.coste_unitario + '</td>' +
+        '<td style="text-align:right;color:var(--mut)">' + _fmtEurES(item.coste_unitario) + '</td>' +
         '<td style="text-align:right">' +
           '<div class="stock-bar"><div class="stock-fill" style="width:' + Math.min(item.pct_restante,100) + '%;background:' + fillColor + '"></div></div>' +
           '<div style="font-size:10px;color:var(--dim);text-align:right">' + item.pct_restante + '%</div></td>' +
@@ -14343,7 +14378,7 @@ async function loadFBMermas() {
         '</div>';
       window._fbCriticalAlerts = data.criticos_count || 0;
     if (totalCoste > 200) {
-        html += '<div style="background:rgba(245,158,11,.08);border:1px solid rgba(245,158,11,.25);border-radius:10px;padding:12px 16px;font-size:13px;color:var(--ora);margin-bottom:16px">⚠ Mermas altas: €' + totalCoste.toFixed(2) + ' este período. Revisar porcionado y almacenamiento.</div>';
+        html += '<div style="background:rgba(245,158,11,.08);border:1px solid rgba(245,158,11,.25);border-radius:10px;padding:12px 16px;font-size:13px;color:var(--ora);margin-bottom:16px">⚠ Mermas altas: ' + _fmtEurES(totalCoste) + ' este período. Revisar porcionado y almacenamiento.</div>';
       }
     }
     html += '<div class="fb-chart-grid" style="display:grid;grid-template-columns:1fr 1fr;gap:16px;margin-bottom:20px">';
@@ -14354,7 +14389,7 @@ async function loadFBMermas() {
     causas.forEach(([causa, coste]) => {
       const pct = Math.round(coste/maxCausa*100);
       html += '<div style="margin-bottom:10px"><div style="display:flex;justify-content:space-between;font-size:13px;margin-bottom:3px">' +
-        '<span>' + causa + '</span><span style="font-weight:700;color:var(--ora)">€' + coste.toFixed(2) + '</span></div>' +
+        '<span>' + causa + '</span><span style="font-weight:700;color:var(--ora)">' + _fmtEurES(coste) + '</span></div>' +
         '<div class="stock-bar"><div class="stock-fill" style="width:' + pct + '%;background:var(--ora)"></div></div></div>';
     });
     html += '</div></div>';
@@ -14379,7 +14414,7 @@ async function loadFBMermas() {
     html += '</div></div></div>';
 
     // Historial
-    html += '<div class="card"><div class="card-title">Historial de Mermas · Total: <span style="color:var(--ora)">€' + data.total.toFixed(2) + '</span></div>';
+    html += '<div class="card"><div class="card-title">Historial de Mermas · Total: <span style="color:var(--ora)">' + _fmtEurES(data.total) + '</span></div>';
     html += '<div class="tbl-wrap" style="overflow-x:auto;-webkit-overflow-scrolling:touch"><table style="min-width:0;width:100%"><thead><tr>';
     html += '<th>Fecha</th><th>Ingrediente</th><th>Categoría</th><th style="text-align:right">Cantidad</th>';
     html += '<th>Causa</th><th style="text-align:right">Coste</th></tr></thead><tbody>';
@@ -14390,7 +14425,7 @@ async function loadFBMermas() {
         '<td style="color:var(--mut)">' + m.categoria + '</td>' +
         '<td style="text-align:right">' + m.cantidad + ' ' + m.unidad + '</td>' +
         '<td><span class="badge b-unk">' + m.causa + '</span></td>' +
-        '<td style="text-align:right;font-weight:700;color:var(--red)">€' + m.coste.toFixed(2) + '</td>' +
+        '<td style="text-align:right;font-weight:700;color:var(--red)">' + _fmtEurES(m.coste) + '</td>' +
         '</tr>';
     });
     html += '</tbody></table></div></div>';
@@ -14412,7 +14447,7 @@ async function fbRegistrarMerma() {
   const r = await _postJson('/fb/api/registrar_merma', data);
   const res = await r.json();
   if (res.ok) {
-    if(msg) { msg.style.color='var(--grn)'; msg.textContent='✓ Merma registrada (€' + res.coste.toFixed(2) + ')'; }
+    if(msg) { msg.style.color='var(--grn)'; msg.textContent='✓ Merma registrada (' + _fmtEurES(res.coste) + ')'; }
     _fbLoaded.mermas = false; // force reload
     setTimeout(() => { loadFBMermas(); }, 800);
   } else {
@@ -14448,15 +14483,15 @@ async function loadFBRecetas() {
     html += '</tr></thead><tbody>';
     data.recetas.sort((a,b)=>b.fc_pct-a.fc_pct).forEach(r => {
       const fcColor = r.alerta ? 'var(--red)' : r.fc_pct < 25 ? 'var(--grn)' : 'var(--ora)';
-      const margen = (r.precio_venta - r.coste_teorico).toFixed(2);
+      const margen = (Number(r.precio_venta) || 0) - (Number(r.coste_teorico) || 0);
       const badge = r.alerta ? '<span class="badge b-disc">Alto FC</span>' : '<span class="badge b-ok">OK</span>';
       html += '<tr>' +
         '<td style="font-weight:600">' + r.nombre + '</td>' +
         '<td style="color:var(--mut)">' + r.categoria + '</td>' +
-        '<td style="text-align:right;font-weight:700">€' + r.precio_venta + '</td>' +
-        '<td style="text-align:right;color:var(--mut)">€' + r.coste_teorico + '</td>' +
+        '<td style="text-align:right;font-weight:700">' + _fmtEurES(r.precio_venta) + '</td>' +
+        '<td style="text-align:right;color:var(--mut)">' + _fmtEurES(r.coste_teorico) + '</td>' +
         '<td style="text-align:right;font-weight:800;color:' + fcColor + '">' + r.fc_pct + '%</td>' +
-        '<td style="text-align:right;color:var(--grn)">€' + margen + '</td>' +
+        '<td style="text-align:right;color:var(--grn)">' + _fmtEurES(margen) + '</td>' +
         '<td style="text-align:center">' + badge + '</td></tr>';
     });
     html += '</tbody></table></div></div>';
@@ -14485,7 +14520,7 @@ function _fbAvisoCobertura(cob) {
   // Solo aparece si hay ventas que no cruzan con ninguna receta. Decimos
   // cuánto dinero se queda fuera y qué platos son, que es lo accionable.
   if (!cob || !cob.n_platos_sin_receta) return '';
-  var eurSin = Math.round(cob.ventas_sin_receta || 0).toLocaleString('es-ES');
+  var eurSin = Math.round(cob.ventas_sin_receta || 0);
   var lista  = (cob.platos_sin_receta || []).join(', ');
   var mas    = cob.n_platos_sin_receta > (cob.platos_sin_receta || []).length
              ? ' (+' + (cob.n_platos_sin_receta - cob.platos_sin_receta.length) + ')' : '';
@@ -14494,7 +14529,7 @@ function _fbAvisoCobertura(cob) {
          '<b style="color:var(--ora)">' + cob.n_platos_sin_receta + ' ' +
          (cob.n_platos_sin_receta === 1 ? t('fb.platoSinEscandallo', 'plato sin escandallo')
                                         : t('fb.platosSinEscandallo', 'platos sin escandallo')) +
-         '</b> — €' + eurSin + ' ' +
+         '</b> — ' + _fmtEurES(eurSin, 0) + ' ' +
          t('fb.noCuentanFc', 'de ventas que no cuentan para el food cost') + ': ' +
          lista + mas + '</div>';
 }
@@ -15602,8 +15637,8 @@ async function loadMHClasica() {
 
 function _mhEur(n) {
   n = Number(n) || 0;
-  if (Math.abs(n) >= 10000) return '€' + Math.round(n / 1000) + 'K';
-  return '€' + n.toLocaleString('es-ES', {minimumFractionDigits: 0, maximumFractionDigits: 0});
+  if (Math.abs(n) >= 10000) return Math.round(n / 1000) + 'K €';
+  return _fmtEurES(n, 0);
 }
 
 function _mhBloque(etiqueta, valor, pie, color) {

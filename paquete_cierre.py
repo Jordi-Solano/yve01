@@ -79,6 +79,18 @@ def cuenta_resultados(mayor):
                             "tipo": "ingreso" if str(m["cuenta"]).startswith("7") else "gasto"} for m in ing + gas]}
 
 
+def _eur(v, dec=2):
+    """1234.5 -> '1.234,50 €' (mismo formato que el panel: ronda de pruebas, punto 6)."""
+    try:
+        x = float(v)
+    except (TypeError, ValueError):
+        return "—"
+    if x != x:
+        return "—"
+    s = f"{abs(x):,.{dec}f}".replace(",", "X").replace(".", ",").replace("X", ".")
+    return ("-" if x < 0 else "") + s + " €"
+
+
 def montar(mes, asientos=None, reconciliacion=None, banco=None, provisiones=None, inventarios=None,
            inmovilizado=None, aging=None, fiscal=None, comentarios_mes=None, drr=None):
     """Checklist + resumen. Cada bloque puede venir None (no calculado / sin datos)."""
@@ -90,11 +102,16 @@ def montar(mes, asientos=None, reconciliacion=None, banco=None, provisiones=None
 
     if asientos:
         item("asientos", "Asientos del mes", "OK" if asientos.get("cuadra") and asientos.get("n_asientos") else ("SIN_DATO" if not asientos.get("n_asientos") else "PENDIENTE"),
-             f"{asientos.get('n_asientos', 0)} asientos · {asientos.get('debe', 0):,.2f} EUR",
+             f"{asientos.get('n_asientos', 0)} asientos · {_eur(asientos.get('debe', 0))}",
              "; ".join(asientos.get("avisos") or []))
     else:
         item("asientos", "Asientos del mes", "SIN_DATO", "", "")
-    if reconciliacion:
+    hay_asientos = bool(asientos and asientos.get("n_asientos"))
+    if reconciliacion and not hay_asientos:
+        # Sin asientos no hay nada que reconciliar: "7 cuadran" con todo a
+        # cero no es un OK, es que no hay datos del mes (ronda de pruebas, fase 6).
+        item("reconciliacion", "Reconciliacion de cuentas", "SIN_DATO", "sin asientos del mes", "")
+    elif reconciliacion:
         n = reconciliacion.get("resumen", {})
         item("reconciliacion", "Reconciliacion de cuentas", "OK" if reconciliacion.get("ok") else "PENDIENTE",
              f"{n.get('CUADRA', 0)} cuadran · {n.get('DIFERENCIA', 0)} con diferencia · {n.get('PENDIENTE', 0)} pendientes · {n.get('SIN_DATO', 0)} sin dato",
@@ -105,8 +122,8 @@ def montar(mes, asientos=None, reconciliacion=None, banco=None, provisiones=None
         p = banco.get("pestanas", {})
         item("banco", "Cuadre de banco por pestañas", "OK" if banco.get("ok") else "PENDIENTE",
              f"{banco.get('n', 0)} movimientos · {banco.get('sin_clasificar', 0)} sin clasificar · {banco.get('sin_conciliar', 0)} sin conciliar"
-             + (f" · saldo {banco.get('saldo_final'):,.2f} EUR" if banco.get("saldo_final") is not None else ""),
-             " · ".join(f"{k}: {v.get('total', 0):,.2f}" for k, v in p.items() if v.get("n")))
+             + (f" · saldo {_eur(banco.get('saldo_final'))}" if banco.get("saldo_final") is not None else ""),
+             " · ".join(f"{k}: {_eur(v.get('total', 0))}" for k, v in p.items() if v.get("n")))
     else:
         item("banco", "Cuadre de banco por pestañas", "SIN_DATO", "sin extracto del mes", "")
     if provisiones:
@@ -114,27 +131,29 @@ def montar(mes, asientos=None, reconciliacion=None, banco=None, provisiones=None
         com = provisiones[1] if len(provisiones) > 1 else {}
         tot = _r((alb or {}).get("total", 0) + (com or {}).get("total", 0))
         item("provisiones", "Provisiones (albaran sin factura, comisiones)", "OK" if provisiones else "SIN_DATO",
-             f"{tot:,.2f} EUR · {(alb or {}).get('n', 0)} albaranes · {(com or {}).get('n', 0)} liquidaciones", "")
+             f"{_eur(tot)} · {(alb or {}).get('n', 0)} albaranes · {(com or {}).get('n', 0)} liquidaciones", "")
     else:
         item("provisiones", "Provisiones", "SIN_DATO", "", "")
     if inventarios and inventarios.get("resumen", {}).get("n_articulos"):
         s = inventarios["resumen"]
         item("inventarios", "Inventarios de cierre", "PENDIENTE" if s.get("n_revisar") else "OK",
-             f"existencias {s.get('valor_final', 0):,.2f} EUR · consumo real {s.get('consumo_real_fb') if s.get('consumo_real_fb') is not None else '—'}"
+             f"existencias {_eur(s.get('valor_final', 0))} · consumo real {_eur(s.get('consumo_real_fb')) if s.get('consumo_real_fb') is not None else '—'}"
              + (f" · desviacion {s.get('desviacion_pct')} %" if s.get("desviacion_pct") is not None else ""),
              f"{s.get('n_revisar', 0)} articulos a revisar" if s.get("n_revisar") else "")
     else:
-        item("inventarios", "Inventarios de cierre", "SIN_DATO", "sin recuento", "")
+        _otros = ((inventarios or {}).get("resumen") or {}).get("otros_meses") or []
+        item("inventarios", "Inventarios de cierre", "SIN_DATO",
+             f"sin recuento de {mes} (el inventario guardado es de {', '.join(_otros)})" if _otros else "sin recuento", "")
     if inmovilizado and inmovilizado.get("resumen", {}).get("n_activos"):
         s = inmovilizado["resumen"]
         item("inmovilizado", "Inmovilizado y amortizaciones", "PENDIENTE" if (s.get("n_error") or s.get("altas_pendientes")) else "OK",
-             f"{s.get('n_activos', 0)} activos · cuota {s.get('cuota_mes', 0):,.2f} EUR · VNC {s.get('vnc_total', 0):,.2f} EUR",
+             f"{s.get('n_activos', 0)} activos · cuota {_eur(s.get('cuota_mes', 0))} · VNC {_eur(s.get('vnc_total', 0))}",
              (f"{s.get('altas_pendientes')} posibles altas sin registrar" if s.get("altas_pendientes") else "") + (f" · {s.get('n_error')} con error" if s.get("n_error") else ""))
     else:
         item("inmovilizado", "Inmovilizado y amortizaciones", "SIN_DATO", "sin activos registrados", "")
     if aging and aging.get("n"):
         item("aging", "Aging AP (deuda con proveedores)", "PENDIENTE" if aging.get("mas_de_60") else "OK",
-             f"{aging.get('total', 0):,.2f} EUR pendientes · {aging.get('mas_de_60', 0):,.2f} EUR a mas de 60 dias", "")
+             f"{_eur(aging.get('total', 0))} pendientes · {_eur(aging.get('mas_de_60', 0))} a mas de 60 dias", "")
     else:
         item("aging", "Aging AP", "SIN_DATO", "nada pendiente", "")
     if fiscal:
@@ -148,7 +167,10 @@ def montar(mes, asientos=None, reconciliacion=None, banco=None, provisiones=None
     n = {k: sum(1 for c in chk if c["estado"] == k) for k in ("OK", "PENDIENTE", "SIN_DATO")}
     return {
         "mes": mes, "generado": datetime.now().strftime("%Y-%m-%d %H:%M"),
-        "checklist": chk, "resumen_checklist": n, "listo": n["PENDIENTE"] == 0,
+        # "Listo" exige que haya asientos del mes: un mes vacio (todo SIN_DATO)
+        # no esta listo para la central, esta sin datos.
+        "checklist": chk, "resumen_checklist": n, "listo": n["PENDIENTE"] == 0 and hay_asientos,
+        "sin_datos": not hay_asientos,
         "resultado": resultado,
         "comentario_general": (comentarios_mes or {}).get("resumen", {}).get("texto", ""),
         "nota": ("La cuenta de resultados recoge SOLO lo que entra por documento en Yve (facturas, TPV, extracto, "
@@ -163,7 +185,7 @@ def exportar_excel(paq, asientos=None, reconciliacion=None, banco=None, provisio
     buf = BytesIO()
     with pd.ExcelWriter(buf, engine="openpyxl") as w:
         portada = [{"campo": "Mes", "valor": paq["mes"]}, {"campo": "Generado", "valor": paq["generado"]},
-                   {"campo": "Estado", "valor": "LISTO PARA LA CENTRAL" if paq["listo"] else f"{paq['resumen_checklist']['PENDIENTE']} bloque(s) pendiente(s)"},
+                   {"campo": "Estado", "valor": "LISTO PARA LA CENTRAL" if paq["listo"] else ("SIN DATOS DEL MES" if paq.get("sin_datos") else f"{paq['resumen_checklist']['PENDIENTE']} bloque(s) pendiente(s)")},
                    {"campo": "Comentario general", "valor": paq.get("comentario_general", "")},
                    {"campo": "Ingresos asentados", "valor": paq["resultado"]["ingresos"]},
                    {"campo": "Gastos asentados", "valor": paq["resultado"]["gastos"]},

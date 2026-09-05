@@ -785,6 +785,13 @@ def main():
     if df_alb.empty:
         print("\n  No hay albaranes todavía: nada que cruzar.")
         print("  (Sube los albaranes por Procesar Archivos y vuelve a ejecutarlo.)")
+        # Pero que se sepa: la mercancia que ESPERARIA albaran no se reclama
+        # porque el hotel aun no registra entregas, no porque este bien
+        # (ronda de pruebas de Jordi, fase 7: "el cruce dice sin incidencias").
+        _esp = [_txt(f.get("numero_factura")) or "s/n" for _, f in df_fact.iterrows() if _exige_albaran(f)]
+        print("INCIDENCIAS: 0|0")
+        if _esp:
+            print("SIN_REGISTRO: " + ";".join(_esp))
         return 0
 
     print(f"  Facturas: {len(df_fact)}  |  Albaranes: {len(df_alb)}"
@@ -873,6 +880,11 @@ def main():
             if r["estado_matching"] in ("FACTURA_SIN_ALBARAN", "DIFERENCIA_IMPORTE", "DIFERENCIA_LINEA")]
     if _det:
         print("INCIDENCIAS_DETALLE: " + ";".join(_det))
+    # mercancia sin albaran que NO se reclama (hotel sin albaranes registrados
+    # o factura anterior al primer albaran): el log lo dice, no lo calla
+    _anteriores = [str(r["numero_factura"]) for r in res_f if r["estado_matching"] == "ANTERIOR_AL_REGISTRO"]
+    if _anteriores:
+        print("SIN_REGISTRO: " + ";".join(_anteriores))
     print(f"\n✅ Reporte: {SALIDA}")
     print("=" * 60)
     return 0

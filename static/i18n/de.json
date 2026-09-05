@@ -510,6 +510,7 @@
   "paq.listo": "✓ bereit für die Zentrale",
   "paq.pendiente": "{n} Block/Blöcke offen",
   "paq.resultado": "Ergebnis (laut Belegen)",
+  "paq.sinDatos": "keine Daten für diesen Monat",
   "paq.titulo": "Monatsabschlussakte für die Zentrale",
   "prov.albSinFactura": "Lieferscheine ohne Rechnung",
   "prov.albVacio": "Nichts zurückzustellen: alles bis zum Stichtag Gelieferte hat eine Rechnung.",

@@ -510,6 +510,7 @@
   "paq.listo": "✓ pronto para a central",
   "paq.pendiente": "{n} bloco(s) pendente(s)",
   "paq.resultado": "Resultado (segundo documentos)",
+  "paq.sinDatos": "sem dados deste mês",
   "paq.titulo": "Arquivo de fim de mês para a central",
   "prov.albSinFactura": "Guias de remessa sem fatura",
   "prov.albVacio": "Nada a provisionar: tudo o que foi entregue até ao corte tem fatura.",

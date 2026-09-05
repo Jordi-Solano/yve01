@@ -510,6 +510,7 @@
   "paq.listo": "✓ llest per a la central",
   "paq.pendiente": "{n} bloc(s) pendent(s)",
   "paq.resultado": "Resultat (segons documents)",
+  "paq.sinDatos": "sense dades d’aquest mes",
   "paq.titulo": "Arxiu de fi de mes per a la central",
   "prov.albSinFactura": "Albarans sense factura",
   "prov.albVacio": "Res a provisionar: tot el lliurat fins al tall té factura.",

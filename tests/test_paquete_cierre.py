@@ -58,7 +58,10 @@ def main():
     ok(p['comentario_general'] == 'Mes tranquilo' and next(c for c in p['checklist'] if c['clave'] == 'banco')['comentario'] == 'Dos transferencias sin identificar', 'los comentarios viajan con cada bloque')
     ok(p['resultado']['resultado'] == 750.0 and p['resultado']['drr_rooms_revenue'] == 1300.0, 'resultado del mes y DRR en el resumen')
     p0 = PQ.montar('2026-08')
-    ok(all(c['estado'] == 'SIN_DATO' for c in p0['checklist']) and p0['listo'] is True, 'sin bloques: todo SIN_DATO (nunca un OK sin dato)')
+    # Lote 3 de Jordi (fase 6): un mes vacio NO esta "listo para la central",
+    # esta sin datos. Antes este test exigia listo=True; era el bug.
+    ok(all(c['estado'] == 'SIN_DATO' for c in p0['checklist']) and p0['listo'] is False and p0.get('sin_datos') is True,
+       'sin bloques: todo SIN_DATO y NO listo (sin_datos=True)')
     buf, nombre = PQ.exportar_excel(p, {'asientos': [{'num': 1}]}, recon, banco, prov, {'familias': [{'familia': 'ALIMENTOS'}]}, {'activos': [{'id': 'X'}]}, {'por_acreedor': [{'acreedor': 'Makro'}]})
     hojas = set(pd.read_excel(buf, sheet_name=None))
     ok({'Portada', 'Checklist', 'Resultados', 'Libro Diario', 'Mayor', 'Reconciliacion', 'Banco pestañas', 'Banco movimientos', 'Provisiones', 'Inventarios', 'Inmovilizado', 'Aging AP'} <= hojas and nombre == 'cierre_2026-08_paquete_central.xlsx', f'Excel del paquete: {len(hojas)} hojas')
