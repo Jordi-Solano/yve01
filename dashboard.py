@@ -6856,89 +6856,84 @@ svg.yvi{width:1em;height:1em;vertical-align:-0.125em;flex-shrink:0;display:inlin
   </div><!-- /panel-notif -->
 
   <!-- PANEL CIERRE DE MES (Ola B). Solo lectura: asientos del mes + reconciliacion. -->
-  <div id="panel-cierre" class="panel">
-    <div style="display:flex;align-items:center;justify-content:space-between;gap:12px;flex-wrap:wrap;margin-bottom:14px">
-      <div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap">
-        <label for="cierre-mes" style="font-size:12px;color:var(--mut)" data-i18n="cierre.mes">Mes</label>
-        <input type="month" id="cierre-mes" onchange="loadCierre(true)" style="background:var(--bg);border:1px solid var(--s2);color:var(--tx);padding:6px 8px;border-radius:8px;font-size:12px">
-        <span id="cierre-hotel" style="font-size:12px;color:var(--dim)"></span>
+  <div id="panel-cierre" class="panel g-panel">
+    <!-- Guia de estilo (b61). Ids de siempre. -->
+    <div class="g-head">
+      <div><div class="g-h1" data-i18n="tab.cierre">🧾 Cierre</div><div class="g-sub" data-i18n="cierre.subtitulo">El mes contable: asientos, reconciliación, cuadre de banco, inventarios, fiscal, inmovilizado y el archivo para la central.</div></div>
+      <div class="g-actions">
+        <label class="g-field g-inline"><span data-i18n="cierre.mes">Mes</span><input type="month" id="cierre-mes" class="g-input" onchange="loadCierre(true)"></label>
+        <span id="cierre-hotel" class="g-small"></span>
       </div>
     </div>
-    <div class="stats" id="cierre-stats" style="margin-bottom:14px">
-      <div class="stat"><div class="stat-label" data-i18n="cierre.kAsientos">Asientos</div><div class="stat-value" id="cierre-k-asientos">—</div></div>
-      <div class="stat"><div class="stat-label" data-i18n="cierre.kDebe">Debe</div><div class="stat-value" id="cierre-k-debe">—</div></div>
-      <div class="stat"><div class="stat-label" data-i18n="cierre.kHaber">Haber</div><div class="stat-value" id="cierre-k-haber">—</div></div>
-      <div class="stat"><div class="stat-label" data-i18n="cierre.kCuadre">Cuadre</div><div class="stat-value" id="cierre-k-cuadre">—</div></div>
+    <div class="g-tiles" id="cierre-stats">
+      <div class="g-kpi k-acc"><div class="g-kpi-lbl" data-i18n="cierre.kAsientos">Asientos</div><div class="g-kpi-val" id="cierre-k-asientos">—</div></div>
+      <div class="g-kpi"><div class="g-kpi-lbl" data-i18n="cierre.kDebe">Debe</div><div class="g-kpi-val g-num" id="cierre-k-debe">—</div></div>
+      <div class="g-kpi"><div class="g-kpi-lbl" data-i18n="cierre.kHaber">Haber</div><div class="g-kpi-val g-num" id="cierre-k-haber">—</div></div>
+      <div class="g-kpi"><div class="g-kpi-lbl" data-i18n="cierre.kCuadre">Cuadre</div><div class="g-kpi-val" id="cierre-k-cuadre">—</div></div>
     </div>
-    <div class="card" id="card-cierre-paquete" style="margin-bottom:22px">
-      <div style="display:flex;align-items:center;justify-content:space-between;gap:12px;flex-wrap:wrap;margin-bottom:10px">
-        <div class="card-title" style="margin:0" data-i18n="paq.titulo">Archivo de fin de mes para la central</div>
-        <div style="display:flex;align-items:center;gap:8px"><span id="paq-estado" style="font-size:12px;font-weight:700"></span></div>
+    <div class="g-card" id="card-cierre-paquete">
+      <div class="g-card-head">
+        <div><div class="g-card-title" data-i18n="paq.titulo">Archivo de fin de mes para la central</div><div class="g-sub" data-i18n="paq.sub">Lo que se manda a la central: cada bloque con su estado y tu comentario.</div></div>
+        <span id="paq-estado"></span>
       </div>
-      <div id="paq-resultado" style="display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:8px;margin-bottom:12px"></div>
-      <div id="paq-body" style="font-size:12px;color:var(--mut)"><div class="empty"><p data-i18n="cierre.cargando">Montando el mes…</p></div></div>
+      <div id="paq-resultado" class="g-tiles g-tiles-sm"></div>
+      <div id="paq-body" class="g-small"><div class="g-empty" data-i18n="cierre.cargando">Montando el mes…</div></div>
     </div>
-    <div class="card" id="card-cierre-recon" style="margin-bottom:22px">
-      <div class="card-title" data-i18n="cierre.recon">Reconciliación de cuentas</div>
-      <div id="cierre-recon-body" style="font-size:13px;color:var(--mut)"><div class="empty"><p data-i18n="cierre.cargando">Montando el mes…</p></div></div>
+    <div class="g-card" id="card-cierre-recon">
+      <div class="g-card-head"><div><div class="g-card-title" data-i18n="cierre.recon">Reconciliación de cuentas</div><div class="g-sub" data-i18n="cierre.reconSub">Cada cuenta del libro contra lo que la justifica.</div></div></div>
+      <div id="cierre-recon-body" class="g-small"><div class="g-empty" data-i18n="cierre.cargando">Montando el mes…</div></div>
     </div>
-    <div class="card" id="card-cierre-banco" style="margin-bottom:22px">
-      <div style="display:flex;align-items:center;justify-content:space-between;gap:12px;flex-wrap:wrap;margin-bottom:10px">
-        <div class="card-title" style="margin:0" data-i18n="cbanco.titulo">Cuadre de banco por pestañas</div>
-        <div style="display:flex;align-items:center;gap:10px"><span id="cbanco-saldo" style="font-size:12px;color:var(--mut)"></span></div>
+    <div class="g-card" id="card-cierre-banco">
+      <div class="g-card-head">
+        <div><div class="g-card-title" data-i18n="cbanco.titulo">Cuadre de banco por pestañas</div><div class="g-sub" data-i18n="cbanco.sub">Pulsa una pestaña para filtrar; cambia la pestaña de un movimiento desde su fila.</div></div>
+        <span id="cbanco-saldo" class="g-small"></span>
       </div>
-      <div id="cbanco-pestanas" style="display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:8px;margin-bottom:12px"></div>
-      <div id="cbanco-body" style="font-size:12px;color:var(--mut);overflow-x:auto"><div class="empty"><p data-i18n="cierre.cargando">Montando el mes…</p></div></div>
+      <div id="cbanco-pestanas" class="g-tiles g-tiles-sm"></div>
+      <div id="cbanco-body" class="g-small"><div class="g-empty" data-i18n="cierre.cargando">Montando el mes…</div></div>
     </div>
-    <div class="card" id="card-cierre-inv" style="margin-bottom:22px">
-      <div style="display:flex;align-items:center;justify-content:space-between;gap:12px;flex-wrap:wrap;margin-bottom:10px">
-        <div class="card-title" style="margin:0" data-i18n="inv.titulo">Inventarios de cierre</div>
-        <div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap">
-          <button class="btn-ref" style="font-size:12px;margin:0" onclick="openUploadModal()" data-i18n="inv.subir">📤 Subir recuento (Procesar archivos)</button>
-        </div>
+    <div class="g-card" id="card-cierre-inv">
+      <div class="g-card-head">
+        <div><div class="g-card-title" data-i18n="inv.titulo">Inventarios de cierre</div><div class="g-sub" data-i18n="inv.sub">Existencias iniciales y finales, compras del mes y la desviación frente al escandallo.</div></div>
+        <button class="g-btn g-secondary g-sm" onclick="openUploadModal()" data-i18n="inv.subir">📤 Subir recuento (Procesar archivos)</button>
       </div>
-      <div id="inv-resumen" style="display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:8px;margin-bottom:12px"></div>
-      <div id="inv-body" style="font-size:12px;color:var(--mut);overflow-x:auto"><div class="empty"><p data-i18n="cierre.cargando">Montando el mes…</p></div></div>
+      <div id="inv-resumen" class="g-tiles g-tiles-sm"></div>
+      <div id="inv-body" class="g-small"><div class="g-empty" data-i18n="cierre.cargando">Montando el mes…</div></div>
     </div>
-    <div class="card" id="card-cierre-fiscal" style="margin-bottom:22px">
-      <div style="display:flex;align-items:center;justify-content:space-between;gap:12px;flex-wrap:wrap;margin-bottom:10px">
-        <div class="card-title" style="margin:0" data-i18n="fis.titulo">Fiscal: IVA 303, 349 y SII</div>
-        <div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap"><span id="fis-estado" style="font-size:12px;font-weight:700"></span>
-        </div>
+    <div class="g-card" id="card-cierre-fiscal">
+      <div class="g-card-head">
+        <div><div class="g-card-title" data-i18n="fis.titulo">Fiscal: IVA 303, 349 y SII</div><div class="g-sub" data-i18n="fis.ayuda">Preparado a partir de los mismos datos que los asientos del mes. Nada se envía a Hacienda: el envío del SII exige certificado digital y lo hace la gestoría.</div></div>
+        <span id="fis-estado"></span>
       </div>
-      <div style="font-size:12px;color:var(--mut);margin-bottom:10px" data-i18n="fis.ayuda">Preparado a partir de los mismos datos que los asientos del mes. Nada se envía a Hacienda: el envío del SII exige certificado digital y lo hace la gestoría.</div>
-      <div id="fis-resumen" style="display:grid;grid-template-columns:repeat(auto-fit,minmax(170px,1fr));gap:10px;margin-bottom:12px"></div>
+      <div id="fis-resumen" class="g-tiles g-tiles-sm"></div>
       <div id="fis-body"></div>
     </div>
-    <div class="card" id="card-cierre-inm" style="margin-bottom:22px">
-      <div style="display:flex;align-items:center;justify-content:space-between;gap:12px;flex-wrap:wrap;margin-bottom:10px">
-        <div class="card-title" style="margin:0" data-i18n="inm.titulo">Inmovilizado y amortizaciones</div>
-        <div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap">
-          <button class="btn-ref" style="font-size:12px" onclick="_inmForm()" data-i18n="inm.alta">➕ Dar de alta</button>
-        </div>
+    <div class="g-card" id="card-cierre-inm">
+      <div class="g-card-head">
+        <div><div class="g-card-title" data-i18n="inm.titulo">Inmovilizado y amortizaciones</div><div class="g-sub" data-i18n="inm.sub">Los activos del hotel y la cuota de amortización de cada mes.</div></div>
+        <button class="g-btn g-secondary g-sm" onclick="_inmForm()" data-i18n="inm.alta">➕ Dar de alta</button>
       </div>
-      <div id="inm-form" style="display:none;margin-bottom:12px;padding:10px;border:1px dashed var(--s2);border-radius:10px">
-        <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(160px,1fr));gap:8px">
-          <input id="inm-desc" placeholder="Descripción" style="background:var(--bg);border:1px solid var(--s2);color:var(--tx);padding:7px;border-radius:8px;font-size:12px">
-          <select id="inm-cat" style="background:var(--bg);border:1px solid var(--s2);color:var(--tx);padding:7px;border-radius:8px;font-size:12px"></select>
-          <input id="inm-fecha" type="date" style="background:var(--bg);border:1px solid var(--s2);color:var(--tx);padding:7px;border-radius:8px;font-size:12px">
-          <input id="inm-coste" type="number" step="0.01" placeholder="Coste (sin IVA)" style="background:var(--bg);border:1px solid var(--s2);color:var(--tx);padding:7px;border-radius:8px;font-size:12px">
-          <input id="inm-vida" type="number" step="0.5" placeholder="Vida útil (años)" style="background:var(--bg);border:1px solid var(--s2);color:var(--tx);padding:7px;border-radius:8px;font-size:12px">
-          <input id="inm-doc" placeholder="Nº factura" style="background:var(--bg);border:1px solid var(--s2);color:var(--tx);padding:7px;border-radius:8px;font-size:12px">
+      <div id="inm-form" class="g-row" style="display:none;margin-bottom:12px">
+        <div class="g-grid-auto">
+          <div class="g-field"><label data-i18n="inm.fDesc">Descripción</label><input id="inm-desc" class="g-input"></div>
+          <div class="g-field"><label data-i18n="inm.fCat">Categoría</label><select id="inm-cat" class="g-input"></select></div>
+          <div class="g-field"><label data-i18n="inm.hAlta">Alta</label><input id="inm-fecha" type="date" class="g-input"></div>
+          <div class="g-field"><label data-i18n="inm.fCoste">Coste (sin IVA)</label><input id="inm-coste" type="number" step="0.01" class="g-input"></div>
+          <div class="g-field"><label data-i18n="inm.fVida">Vida útil (años)</label><input id="inm-vida" type="number" step="0.5" class="g-input"></div>
+          <div class="g-field"><label data-i18n="inm.fDoc">Nº factura</label><input id="inm-doc" class="g-input"></div>
         </div>
-        <div style="margin-top:8px;display:flex;gap:8px"><button class="btn-run" style="font-size:12px" onclick="_inmGuardar()" data-i18n="inm.guardar">Guardar</button><button class="btn-ref" style="font-size:12px" onclick="document.getElementById('inm-form').style.display='none'" data-i18n="inm.cancelar">Cancelar</button></div>
+        <div style="flex-basis:100%;display:flex;gap:8px;margin-top:4px"><button class="g-btn g-primary g-sm" onclick="_inmGuardar()" data-i18n="inm.guardar">Guardar</button><button class="g-btn g-secondary g-sm" onclick="document.getElementById('inm-form').style.display='none'" data-i18n="btn.cancelar">Cancelar</button></div>
       </div>
-      <div id="inm-resumen" style="display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:8px;margin-bottom:12px"></div>
-      <div id="inm-body" style="font-size:12px;color:var(--mut);overflow-x:auto"><div class="empty"><p data-i18n="cierre.cargando">Montando el mes…</p></div></div>
+      <div id="inm-resumen" class="g-tiles g-tiles-sm"></div>
+      <div id="inm-body" class="g-small"><div class="g-empty" data-i18n="cierre.cargando">Montando el mes…</div></div>
     </div>
-    <div class="card" id="card-cierre-mayor" style="margin-bottom:22px">
-      <div class="card-title" data-i18n="cierre.mayor">Mayor del mes (por cuenta)</div>
-      <div id="cierre-mayor-body" style="font-size:13px;color:var(--mut)"></div>
+    <div class="g-card" id="card-cierre-mayor">
+      <div class="g-card-head"><div><div class="g-card-title" data-i18n="cierre.mayor">Mayor del mes (por cuenta)</div></div></div>
+      <div id="cierre-mayor-body" class="g-small"></div>
     </div>
-    <div class="card" id="card-cierre-diario">
-      <div class="card-title" data-i18n="cierre.diario">Libro Diario del mes</div>
-      <div id="cierre-avisos" style="font-size:12px;color:#f59e0b;margin-bottom:8px"></div>
-      <div id="cierre-diario-body" style="font-size:12px;color:var(--mut);overflow-x:auto"></div>
+    <div class="g-card" id="card-cierre-diario">
+      <div class="g-card-head"><div><div class="g-card-title" data-i18n="cierre.diario">Libro Diario del mes</div></div></div>
+      <div id="cierre-avisos" class="g-inline-list" style="margin-bottom:10px"></div>
+      <div id="cierre-diario-body" class="g-small"></div>
     </div>
   </div><!-- /panel-cierre -->
 
@@ -14058,6 +14053,17 @@ var _CARGADORES = {
 
 // ── Cuadre de banco por pestañas (Ola B·2) ───────────────────────────────
 var _cbFiltro = '';
+// Guia de estilo (b61): piezas comunes del Cierre. Un tile pequeño, un badge
+// de estado con los MISMOS significados que el resto de la app.
+function _cTile(l, v, sub, cls){ return '<div class="g-kpi g-kpi-sm ' + (cls||'') + '"><div class="g-kpi-lbl">' + _cEsc(l) + '</div><div class="g-kpi-val g-num">' + v + '</div>' + (sub ? '<div class="g-kpi-sub">' + _cEsc(sub) + '</div>' : '') + '</div>'; }
+function _cEstado(e){
+  var M = {CUADRA:['g-ok', t('cierre.stCuadra','Cuadra')], OK:['g-ok','OK'], PREPARADO:['g-ok', t('cierre.stPreparado','Preparado')],
+           PENDIENTE:['g-warn', t('cierre.stPend','Pendiente')], DIFERENCIA:['g-err', t('cierre.stDif','Diferencia')], REVISAR:['g-err', t('cierre.stRevisar','Revisar')],
+           SIN_DATO:['g-mute', t('cierre.stSinDato','Sin dato')], INFO:['g-mute', t('cierre.stInfo','Info')]};
+  var v = M[e] || ['g-mute', e || '—'];
+  return gBadge(v[0], _cEsc(v[1]).replace(/^[✓⚠] /, ''));
+}
+function _cSigno(v){ return (Number(v)||0) < 0 ? 'var(--red)' : 'var(--grn)'; }
 async function loadCuadreBanco(){
   var inp = document.getElementById('cierre-mes'); if (!inp) return;
   var mes = inp.value;
@@ -14065,19 +14071,17 @@ async function loadCuadreBanco(){
   try {
     var r = await fetch('/api/cuadre_banco?mes=' + encodeURIComponent(mes));
     var d = await r.json();
-    if (!d || !d.ok_api) { body.innerHTML = '<div class="empty"><p>' + _cEsc((d&&d.error)||'Error') + '</p></div>'; return; }
+    if (!d || !d.ok_api) { body.innerHTML = '<div class=\"g-empty\">' + _cEsc((d&&d.error)||'Error') + '</div>'; return; }
     if (sal) sal.textContent = (d.saldo_final!=null ? t('cbanco.saldo','saldo del extracto {f}: {s}').replace('{f}', d.fecha_saldo).replace('{s}', _cEur(d.saldo_final)) + ' · ' : '') + t('cbanco.movs','{n} movimientos · {p} sin conciliar').replace('{n}', d.n).replace('{p}', d.sin_conciliar);
     var LBL = {AR:t('cbanco.AR','AR · cobros'), AP:t('cbanco.AP','AP · pagos'), TARJETAS:t('cbanco.TARJETAS','Tarjetas'), CAJA:t('cbanco.CAJA','Income / caja'), VARIOS:t('cbanco.VARIOS','Varios'), SIN_CLASIFICAR:t('cbanco.SIN','Sin clasificar')};
-    var COL = {CUADRA:'#22c55e', PENDIENTE:'#f59e0b', INFO:'var(--dim)', SIN_DATO:'var(--mut)'};
-    var ST = {CUADRA:t('cierre.stCuadra','✓ cuadra'), PENDIENTE:t('cierre.stPend','pendiente'), INFO:'info', SIN_DATO:t('cierre.stSinDato','sin dato')};
     var ps = d.pestanas || {};
     pw.innerHTML = Object.keys(LBL).map(function(k){ var p = ps[k] || {}; var act = _cbFiltro===k;
-      return '<div class="card" onclick="_cbFiltro=(_cbFiltro===\'' + k + '\'?\'\':\'' + k + '\');loadCuadreBanco()" style="padding:10px;border-radius:10px;cursor:pointer;' + (act?'outline:2px solid var(--acc,#3b82f6);':'') + '"><div style="font-size:11px;color:var(--mut);text-transform:uppercase;letter-spacing:.4px">' + _cEsc(LBL[k]) + '</div><div style="font-size:15px;font-weight:700">' + _cEur(p.total) + '</div><div style="font-size:11px;color:var(--dim)">' + (p.n||0) + ' mov.' + (p.justificado!=null ? ' · ' + t('cierre.hJust','Justificado') + ' ' + _cEur(p.justificado) : '') + '</div><div style="font-size:11px;font-weight:700;color:' + (COL[p.estado]||'var(--mut)') + '">' + _cEsc(ST[p.estado]||p.estado||'') + '</div></div>'; }).join('');
+      return '<div class="g-kpi g-kpi-sm g-kpi-btn' + (act?' is-on':'') + '" onclick="_cbFiltro=(_cbFiltro===\'' + k + '\'?\'\':\'' + k + '\');loadCuadreBanco()"><div class="g-kpi-lbl">' + _cEsc(LBL[k]) + '</div><div class="g-kpi-val g-num">' + _cEur(p.total) + '</div><div class="g-kpi-sub">' + (p.n||0) + ' mov.' + (p.justificado!=null ? ' · ' + t('cierre.hJust','Justificado') + ' ' + _cEur(p.justificado) : '') + '</div><div class="g-kpi-sub">' + (p.estado ? _cEstado(p.estado) : '') + '</div></div>'; }).join('');
     var ms = (d.movimientos||[]).filter(function(m){ return !_cbFiltro || m.pestana===_cbFiltro; });
     var opts = Object.keys(LBL).map(function(k){ return '<option value="' + k + '">' + _cEsc(LBL[k]) + '</option>'; }).join('');
-    body.innerHTML = ms.length ? '<table style="width:100%;border-collapse:collapse;font-size:11px"><thead><tr style="color:var(--dim);text-align:left"><th>' + t('cierre.hFecha','Fecha') + '</th><th>' + t('cierre.hConceptoD','Concepto') + '</th><th style="text-align:right">' + t('cbanco.importe','Importe') + '</th><th>' + t('cbanco.factura','Factura') + '</th><th>' + t('cbanco.pestana','Pestaña') + '</th></tr></thead><tbody>' +
-      ms.map(function(m){ return '<tr style="border-top:1px solid var(--s2)"><td style="padding:3px 4px;white-space:nowrap">' + _cEsc(m.fecha) + '</td><td style="padding:3px 4px">' + _cEsc(m.concepto) + '</td><td style="text-align:right;padding:3px 4px;color:' + (m.importe<0?'#f87171':'#22c55e') + '">' + _cEur(m.importe) + '</td><td style="padding:3px 4px;color:var(--dim)">' + _cEsc(m.factura_ref||'') + '</td><td style="padding:3px 4px"><select data-clave="' + _cEsc(m.clave) + '" onchange="_cbAsignar(this)" style="background:var(--bg);border:1px solid var(--s2);color:var(--tx);padding:3px;border-radius:6px;font-size:11px">' + opts.replace('value="' + m.pestana + '"', 'value="' + m.pestana + '" selected') + '</select>' + (m.via==='manual' ? ' <span title="manual">✎</span>' : '') + '</td></tr>'; }).join('') + '</tbody></table>' : '<div class="empty"><p>' + t('cbanco.vacio','Sin movimientos del extracto en este mes. Súbelo en la pestaña Banco.') + '</p></div>';
-  } catch(e) { if (body) body.innerHTML = '<div class="empty"><p>' + _cEsc(e.message) + '</p></div>'; }
+    body.innerHTML = ms.length ? '<div class="g-tbl-wrap"><table class="g-tbl"><thead><tr><th>' + t('cierre.hFecha','Fecha') + '</th><th>' + t('cierre.hConceptoD','Concepto') + '</th><th class="num">' + t('cbanco.importe','Importe') + '</th><th>' + t('cbanco.factura','Factura') + '</th><th>' + t('cbanco.pestana','Pestaña') + '</th></tr></thead><tbody>' +
+      ms.map(function(m){ return '<tr><td style="white-space:nowrap">' + _cEsc(m.fecha) + '</td><td>' + _cEsc(m.concepto) + '</td><td class="num" style="color:' + _cSigno(m.importe) + '">' + _cEur(m.importe) + '</td><td class="g-small">' + _cEsc(m.factura_ref||'') + '</td><td><select class="g-input" data-clave="' + _cEsc(m.clave) + '" onchange="_cbAsignar(this)">' + opts.replace('value="' + m.pestana + '"', 'value="' + m.pestana + '" selected') + '</select>' + (m.via==='manual' ? ' <span title="manual">✎</span>' : '') + '</td></tr>'; }).join('') + '</tbody></table></div>' : '<div class=\"g-empty\">' + t('cbanco.vacio','Sin movimientos del extracto en este mes. Súbelo en la pestaña Banco.') + '</div>';
+  } catch(e) { if (body) body.innerHTML = '<div class=\"g-empty\">' + _cEsc(e.message) + '</div>'; }
 }
 async function _cbAsignar(sel){
   try {
@@ -14096,9 +14100,9 @@ async function loadInventarios(){
   try {
     var r = await fetch('/api/inventarios?mes=' + encodeURIComponent(mes));
     var d = await r.json();
-    if (!d || !d.ok) { body.innerHTML = '<div class="empty"><p>' + _cEsc((d&&d.error)||'Error') + '</p></div>'; return; }
+    if (!d || !d.ok) { body.innerHTML = '<div class=\"g-empty\">' + _cEsc((d&&d.error)||'Error') + '</div>'; return; }
     var s = d.resumen || {};
-    var tile = function(l, v, sub, col){ return '<div class="card" style="padding:10px;border-radius:10px"><div style="font-size:11px;color:var(--mut);text-transform:uppercase;letter-spacing:.4px">' + _cEsc(l) + '</div><div style="font-size:15px;font-weight:700;color:' + (col||'var(--tx)') + '">' + v + '</div>' + (sub?'<div style="font-size:11px;color:var(--dim)">' + _cEsc(sub) + '</div>':'') + '</div>'; };
+    var tile = function(l, v, sub, col){ return _cTile(l, v, sub, col==='#f87171'||col==='var(--red)' ? 'k-red' : col==='#22c55e'||col==='var(--grn)' ? 'k-grn' : ''); };
     rs.innerHTML = tile(t('inv.kFinal','Existencias finales'), _cEur(s.valor_final), s.n_articulos + ' ' + t('inv.articulos','artículos')) +
       tile(t('inv.kCompras','Compras F&B del mes'), _cEur(s.compras_fb), (s.n_facturas_fb||0) + ' ' + t('inv.facturas','facturas')) +
       tile(t('inv.kReal','Consumo real F&B'), s.consumo_real_fb==null?'—':_cEur(s.consumo_real_fb), t('inv.formula','inicial + compras − final')) +
@@ -14106,15 +14110,15 @@ async function loadInventarios(){
       tile(t('inv.kDesv','Desviación'), s.desviacion_fb==null?'—':_cEur(s.desviacion_fb) + (s.desviacion_pct!=null?' (' + s.desviacion_pct + ' %)':''), s.n_revisar ? s.n_revisar + ' ' + t('inv.revisar','artículos a revisar') : '', s.desviacion_fb==null?'var(--tx)':(Math.abs(s.desviacion_pct||0)>5?'#f87171':'#22c55e'));
     var fams = d.familias || [];
     var LBL = {ALIMENTOS:t('inv.ALIMENTOS','Alimentos'), BEBIDAS:t('inv.BEBIDAS','Bebidas'), LICORES:t('inv.LICORES','Licores'), GUEST_SUPPLIES:t('inv.GUEST','Guest supplies'), OTROS:t('inv.OTROS','Otros')};
-    var h = fams.length ? '<table style="width:100%;border-collapse:collapse;font-size:12px"><thead><tr style="color:var(--dim);text-align:left"><th>' + t('inv.familia','Familia') + '</th><th style="text-align:right">' + t('inv.articulos','artículos') + '</th><th style="text-align:right">' + t('inv.inicial','Inicial') + '</th><th style="text-align:right">' + t('inv.final','Final') + '</th><th style="text-align:right">' + t('inv.variacion','Variación') + '</th><th style="text-align:right">' + t('inv.revisar','a revisar') + '</th></tr></thead><tbody>' +
-      fams.map(function(f){ return '<tr style="border-top:1px solid var(--s2)"><td style="padding:5px 4px;font-weight:700">' + _cEsc(LBL[f.familia]||f.familia) + '</td><td style="text-align:right;padding:5px 4px">' + f.n + '</td><td style="text-align:right;padding:5px 4px">' + _cEur(f.valor_inicial) + '</td><td style="text-align:right;padding:5px 4px">' + _cEur(f.valor_final) + '</td><td style="text-align:right;padding:5px 4px;color:' + (f.variacion<0?'#f87171':'#22c55e') + '">' + _cEur(f.variacion) + '</td><td style="text-align:right;padding:5px 4px">' + (f.revisar||0) + '</td></tr>'; }).join('') + '</tbody></table>' : '<div class="empty"><p>' + t('inv.vacio','Sin inventario. Descarga la hoja de recuento, cuéntalo y súbela, o procesa un inventario en Procesar Archivos.') + '</p></div>';
+    var h = fams.length ? '<div class="g-tbl-wrap"><table class="g-tbl"><thead><tr><th>' + t('inv.familia','Familia') + '</th><th class="num">' + t('inv.articulos','artículos') + '</th><th class="num">' + t('inv.inicial','Inicial') + '</th><th class="num">' + t('inv.final','Final') + '</th><th class="num">' + t('inv.variacion','Variación') + '</th><th class="num">' + t('inv.revisar','a revisar') + '</th></tr></thead><tbody>' +
+      fams.map(function(f){ return '<tr><td><b>' + _cEsc(LBL[f.familia]||f.familia) + '</b></td><td class="num">' + f.n + '</td><td class="num">' + _cEur(f.valor_inicial) + '</td><td class="num">' + _cEur(f.valor_final) + '</td><td class="num" style="color:' + _cSigno(f.variacion) + '">' + _cEur(f.variacion) + '</td><td class="num">' + (f.revisar||0) + '</td></tr>'; }).join('') + '</tbody></table></div>' : '<div class=\"g-empty\">' + t('inv.vacio','Sin inventario. Descarga la hoja de recuento, cuéntalo y súbela, o procesa un inventario en Procesar Archivos.') + '</div>';
     var asi = d.asientos || [];
-    if (asi.length) h += '<div style="margin-top:10px;font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.5px;color:var(--mut)">' + t('inv.asientos','Asiento de variación de existencias') + '</div><table style="width:100%;border-collapse:collapse;font-size:11px">' + asi.map(function(a){ return '<tr style="border-top:1px solid var(--s2)"><td style="padding:3px 4px"><b>' + _cEsc(a.cuenta) + '</b> ' + _cEsc(a.desc_cuenta) + '</td><td style="padding:3px 4px">' + _cEsc(a.concepto) + '</td><td style="text-align:right;padding:3px 4px">' + (a.debe?_cEur(a.debe):'') + '</td><td style="text-align:right;padding:3px 4px">' + (a.haber?_cEur(a.haber):'') + '</td></tr>'; }).join('') + '</table>';
+    if (asi.length) h += '<div class="g-label" style="margin:14px 0 8px">' + t('inv.asientos','Asiento de variación de existencias') + '</div><div class="g-tbl-wrap"><table class="g-tbl"><tbody>' + asi.map(function(a){ return '<tr><td><b>' + _cEsc(a.cuenta) + '</b> ' + _cEsc(a.desc_cuenta) + '</td><td>' + _cEsc(a.concepto) + '</td><td class="num">' + (a.debe?_cEur(a.debe):'') + '</td><td class="num">' + (a.haber?_cEur(a.haber):'') + '</td></tr>'; }).join('') + '</tbody></table></div>';
     var rev = d.revisar || [];
-    if (rev.length) h += '<div style="margin-top:10px;font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.5px;color:#f59e0b">' + t('inv.revisarTit','Artículos a revisar') + '</div><div style="font-size:11px">' + rev.slice(0,30).map(function(a){ return _cEsc(a.articulo) + ' — ' + _cEsc(a.motivo); }).join('<br>') + '</div>';
-    if (s.nota) h += '<div style="margin-top:8px;font-size:11px;color:var(--dim)">' + _cEsc(s.nota) + '</div>';
+    if (rev.length) h += '<div class="g-label" style="margin:14px 0 8px;color:var(--ora)">' + t('inv.revisarTit','Artículos a revisar') + '</div><div class="g-small">' + rev.slice(0,30).map(function(a){ return _cEsc(a.articulo) + ' — ' + _cEsc(a.motivo); }).join('<br>') + '</div>';
+    if (s.nota) h += '<div class="g-note">' + _cEsc(s.nota) + '</div>';
     body.innerHTML = h;
-  } catch(e) { if (body) body.innerHTML = '<div class="empty"><p>' + _cEsc(e.message) + '</p></div>'; }
+  } catch(e) { if (body) body.innerHTML = '<div class=\"g-empty\">' + _cEsc(e.message) + '</div>'; }
 }
 
 // ── Inmovilizado y amortizaciones (Ola B·4) ──────────────────────────────
@@ -14126,11 +14130,10 @@ async function loadFiscal(){
   try {
     var r = await fetch('/api/fiscal?mes=' + encodeURIComponent(mes));
     var d = await r.json();
-    if (!d || !d.ok) { body.innerHTML = '<div class="empty"><p>' + _cEsc((d&&d.error)||'Error') + '</p></div>'; return; }
+    if (!d || !d.ok) { body.innerHTML = '<div class=\"g-empty\">' + _cEsc((d&&d.error)||'Error') + '</div>'; return; }
     var m = d.m303 || {}, s3 = d.m349 || {}, sii = d.sii || {};
-    var col = {PREPARADO:'var(--ok)', PENDIENTE:'var(--warn)', SIN_DATO:'var(--mut)'}[d.estado] || 'var(--mut)';
-    est.innerHTML = '<span style="color:' + col + '">' + _cEsc(d.estado||'') + '</span>';
-    var tile = function(l, v, sub){ return '<div class="card" style="padding:10px;border-radius:10px"><div style="font-size:11px;color:var(--mut);text-transform:uppercase;letter-spacing:.4px">' + _cEsc(l) + '</div><div style="font-size:15px;font-weight:700">' + v + '</div>' + (sub?'<div style="font-size:11px;color:var(--dim)">' + _cEsc(sub) + '</div>':'') + '</div>'; };
+    est.innerHTML = d.estado ? _cEstado(d.estado) : '';
+    var tile = function(l, v, sub){ return _cTile(l, v, sub); };
     var lib = d.libro;
     rs.innerHTML = tile(t('fis.k303','303 · resultado'), _cEur(m.c46_resultado), (m.signo||'')) +
       tile(t('fis.kDev','IVA devengado (27)'), _cEur(m.c27_devengado), lib ? (t('fis.libro','libro 477') + ' ' + _cEur(lib.iva_repercutido_477)) : '') +
@@ -14138,19 +14141,19 @@ async function loadFiscal(){
       tile(t('fis.k349','349 · operadores UE'), (s3.n||0), _cEur(s3.total_base)) +
       tile(t('fis.kSii','SII'), (sii.n_expedidas||0) + ' / ' + (sii.n_recibidas||0), t('fis.siiSub','expedidas / recibidas'));
     var h = '';
-    if (lib && !lib.cuadra) h += '<div style="font-size:12px;color:var(--warn);margin-bottom:8px">⚠️ ' + _cEsc(t('fis.noCuadra','El 303 no cuadra con el libro del mes (477/472). Revisa los asientos antes de presentar.')) + '</div>';
-    if (!sii.n_expedidas && !sii.n_recibidas) { h += _vacioCard(t('fis.vacio','Sin facturas ni ventas en este mes: no hay nada que declarar.')); body.innerHTML = h; return; }
-    h += '<div style="overflow-x:auto"><table class="tbl" style="width:100%;font-size:12px"><thead><tr><th>' + _cEsc(t('fis.casilla','Casilla')) + '</th><th>' + _cEsc(t('fis.concepto','Concepto')) + '</th><th style="text-align:right">' + _cEsc(t('fis.base','Base')) + '</th><th style="text-align:right">' + _cEsc(t('fis.cuota','Cuota')) + '</th></tr></thead><tbody>';
-    (m.casillas||[]).forEach(function(c){ if (!c.base && !c.cuota) return; h += '<tr><td>' + _cEsc(c.casilla_base + ' / ' + c.casilla_cuota) + '</td><td>' + _cEsc(c.concepto) + '</td><td style="text-align:right">' + _cEur(c.base) + '</td><td style="text-align:right">' + _cEur(c.cuota) + '</td></tr>'; });
-    h += '<tr style="font-weight:700"><td>46</td><td>' + _cEsc(t('fis.resultado','Resultado')) + ' (' + _cEsc(m.signo||'') + ')</td><td></td><td style="text-align:right">' + _cEur(m.c46_resultado) + '</td></tr></tbody></table></div>';
+    if (lib && !lib.cuadra) h += '<div class="g-alert warn" style="margin-bottom:10px">⚠ <span>' + _cEsc(t('fis.noCuadra','El 303 no cuadra con el libro del mes (477/472). Revisa los asientos antes de presentar.')) + '</span></div>';
+    if (!sii.n_expedidas && !sii.n_recibidas) { h += _gVacio(t('fis.vacio','Sin facturas ni ventas en este mes: no hay nada que declarar.')); body.innerHTML = h; return; }
+    h += '<div class="g-tbl-wrap"><table class="g-tbl"><thead><tr><th>' + _cEsc(t('fis.casilla','Casilla')) + '</th><th>' + _cEsc(t('fis.concepto','Concepto')) + '</th><th class="num">' + _cEsc(t('fis.base','Base')) + '</th><th class="num">' + _cEsc(t('fis.cuota','Cuota')) + '</th></tr></thead><tbody>';
+    (m.casillas||[]).forEach(function(c){ if (!c.base && !c.cuota) return; h += '<tr><td>' + _cEsc(c.casilla_base + ' / ' + c.casilla_cuota) + '</td><td>' + _cEsc(c.concepto) + '</td><td class="num">' + _cEur(c.base) + '</td><td class="num">' + _cEur(c.cuota) + '</td></tr>'; });
+    h += '<tr class="is-total"><td>46</td><td>' + _cEsc(t('fis.resultado','Resultado')) + ' (' + _cEsc(m.signo||'') + ')</td><td></td><td class="num">' + _cEur(m.c46_resultado) + '</td></tr></tbody></table></div>';
     if ((s3.filas||[]).length) {
-      h += '<div style="font-weight:700;font-size:12px;margin:12px 0 6px">' + _cEsc(t('fis.t349','Modelo 349 — operaciones intracomunitarias')) + '</div><div style="overflow-x:auto"><table class="tbl" style="width:100%;font-size:12px"><thead><tr><th>' + _cEsc(t('fis.operador','Operador')) + '</th><th>NIF-IVA</th><th>' + _cEsc(t('fis.clave','Clave')) + '</th><th style="text-align:right">' + _cEsc(t('fis.base','Base')) + '</th></tr></thead><tbody>';
-      s3.filas.forEach(function(f){ h += '<tr><td>' + _cEsc(f.operador) + '</td><td>' + (f.nif ? _cEsc(f.nif) : '<span style="color:var(--warn)">' + _cEsc(t('fis.nifPend','pendiente')) + '</span>') + '</td><td>' + _cEsc(f.clave) + '</td><td style="text-align:right">' + _cEur(f.base) + '</td></tr>'; });
+      h += '<div class="g-label" style="margin:14px 0 8px">' + _cEsc(t('fis.t349','Modelo 349 — operaciones intracomunitarias')) + '</div><div class="g-tbl-wrap"><table class="g-tbl"><thead><tr><th>' + _cEsc(t('fis.operador','Operador')) + '</th><th>NIF-IVA</th><th>' + _cEsc(t('fis.clave','Clave')) + '</th><th class="num">' + _cEsc(t('fis.base','Base')) + '</th></tr></thead><tbody>';
+      s3.filas.forEach(function(f){ h += '<tr><td>' + _cEsc(f.operador) + '</td><td>' + (f.nif ? _cEsc(f.nif) : gBadge('g-warn', _cEsc(t('fis.nifPend','pendiente')))) + '</td><td>' + _cEsc(f.clave) + '</td><td class="num">' + _cEur(f.base) + '</td></tr>'; });
       h += '</tbody></table></div>';
     }
-    if ((d.avisos||[]).length) h += '<div style="font-size:12px;color:var(--mut);margin-top:10px">' + d.avisos.map(function(a){ return '• ' + _cEsc(a); }).join('<br>') + '</div>';
+    if ((d.avisos||[]).length) h += '<div class="g-note" style="margin-top:10px">' + d.avisos.map(function(a){ return '• ' + _cEsc(a); }).join('<br>') + '</div>';
     body.innerHTML = h;
-  } catch(e) { body.innerHTML = '<div class="empty"><p>' + _cEsc(e.message) + '</p></div>'; }
+  } catch(e) { body.innerHTML = '<div class=\"g-empty\">' + _cEsc(e.message) + '</div>'; }
 }
 async function loadInmovilizado(){
   var inp = document.getElementById('cierre-mes'); if (!inp) return;
@@ -14159,23 +14162,23 @@ async function loadInmovilizado(){
   try {
     var r = await fetch('/api/inmovilizado?mes=' + encodeURIComponent(mes));
     var d = await r.json();
-    if (!d || !d.ok) { body.innerHTML = '<div class="empty"><p>' + _cEsc((d&&d.error)||'Error') + '</p></div>'; return; }
+    if (!d || !d.ok) { body.innerHTML = '<div class=\"g-empty\">' + _cEsc((d&&d.error)||'Error') + '</div>'; return; }
     _inmCats = d.categorias || {};
     var s = d.resumen || {};
-    var tile = function(l, v, sub){ return '<div class="card" style="padding:10px;border-radius:10px"><div style="font-size:11px;color:var(--mut);text-transform:uppercase;letter-spacing:.4px">' + _cEsc(l) + '</div><div style="font-size:15px;font-weight:700">' + v + '</div>' + (sub?'<div style="font-size:11px;color:var(--dim)">' + _cEsc(sub) + '</div>':'') + '</div>'; };
+    var tile = function(l, v, sub){ return _cTile(l, v, sub); };
     rs.innerHTML = tile(t('inm.kActivos','Activos'), s.n_activos||0, (s.n_en_curso||0) + ' ' + t('inm.enCurso','en curso') + ' · ' + (s.n_amortizados||0) + ' ' + t('inm.amortizados','amortizados')) +
       tile(t('inm.kCoste','Coste total'), _cEur(s.coste_total)) + tile(t('inm.kAcum','Amortización acumulada'), _cEur(s.acumulada_total)) +
       tile(t('inm.kVnc','Valor neto contable'), _cEur(s.vnc_total)) + tile(t('inm.kCuota','Cuota del mes'), _cEur(s.cuota_mes), (s.altas_pendientes ? s.altas_pendientes + ' ' + t('inm.altasPend','posibles altas sin registrar') : ''));
     var acts = d.activos || [];
     var EST = {EN_CURSO:t('inm.enCurso','en curso'), AMORTIZADO:t('inm.amortizado','amortizado'), BAJA:t('inm.baja','baja'), NO_ALTA:t('inm.noAlta','alta posterior'), ERROR:'error'};
-    var h = acts.length ? '<table style="width:100%;border-collapse:collapse;font-size:11px"><thead><tr style="color:var(--dim);text-align:left"><th>' + t('inm.hDesc','Activo') + '</th><th>' + t('inm.hCat','Categoría') + '</th><th>' + t('inm.hAlta','Alta') + '</th><th style="text-align:right">' + t('inm.hCoste','Coste') + '</th><th style="text-align:right">' + t('inm.hCuota','Cuota mes') + '</th><th style="text-align:right">' + t('inm.hAcum','Acumulada') + '</th><th style="text-align:right">VNC</th><th></th><th></th></tr></thead><tbody>' +
-      acts.map(function(a){ return '<tr style="border-top:1px solid var(--s2)"><td style="padding:4px">' + _cEsc(a.descripcion) + (a.error?'<div style="color:#f87171">' + _cEsc(a.error) + '</div>':'') + '</td><td style="padding:4px">' + _cEsc((_inmCats[a.categoria]||{}).nombre||a.categoria) + '</td><td style="padding:4px;white-space:nowrap">' + _cEsc(a.fecha_alta||'') + (a.fecha_baja?'<br><span style="color:#f87171">⤓ ' + _cEsc(a.fecha_baja) + '</span>':'') + '</td><td style="text-align:right;padding:4px">' + _cEur(a.coste) + '</td><td style="text-align:right;padding:4px">' + _cEur(a.cuota) + '</td><td style="text-align:right;padding:4px">' + _cEur(a.acumulada) + '</td><td style="text-align:right;padding:4px;font-weight:700">' + _cEur(a.vnc) + '</td><td style="padding:4px;color:var(--dim)">' + _cEsc(EST[a.estado]||a.estado) + '</td><td style="padding:4px">' + (a.estado==='EN_CURSO'||a.estado==='AMORTIZADO' ? '<button class="btn-ref" style="font-size:10px;padding:2px 6px" onclick="_inmBaja(\'' + _cEsc(a.id) + '\')">' + t('inm.darBaja','Baja') + '</button>' : '') + '</td></tr>'; }).join('') + '</tbody></table>' : '<div class="empty"><p>' + t('inm.vacio','Sin activos registrados. Da de alta el mobiliario, la maquinaria, los equipos… y Yve calcula la amortización de cada mes.') + '</p></div>';
+    var h = acts.length ? '<div class="g-tbl-wrap"><table class="g-tbl"><thead><tr><th>' + t('inm.hDesc','Activo') + '</th><th>' + t('inm.hCat','Categoría') + '</th><th>' + t('inm.hAlta','Alta') + '</th><th class="num">' + t('inm.hCoste','Coste') + '</th><th class="num">' + t('inm.hCuota','Cuota mes') + '</th><th class="num">' + t('inm.hAcum','Acumulada') + '</th><th class="num">VNC</th><th></th><th></th></tr></thead><tbody>' +
+      acts.map(function(a){ return '<tr><td>' + _cEsc(a.descripcion) + (a.error?'<div class="g-note" style="color:var(--red)">' + _cEsc(a.error) + '</div>':'') + '</td><td>' + _cEsc((_inmCats[a.categoria]||{}).nombre||a.categoria) + '</td><td style="white-space:nowrap">' + _cEsc(a.fecha_alta||'') + (a.fecha_baja?'<br><span style="color:var(--red)">⤓ ' + _cEsc(a.fecha_baja) + '</span>':'') + '</td><td class="num">' + _cEur(a.coste) + '</td><td class="num">' + _cEur(a.cuota) + '</td><td class="num">' + _cEur(a.acumulada) + '</td><td class="num"><b>' + _cEur(a.vnc) + '</b></td><td>' + gBadge(a.estado==='EN_CURSO'?'g-info':a.estado==='AMORTIZADO'?'g-ok':a.estado==='ERROR'?'g-err':'g-mute', _cEsc(EST[a.estado]||a.estado)) + '</td><td>' + (a.estado==='EN_CURSO'||a.estado==='AMORTIZADO' ? '<button class="g-btn g-ghost g-sm" onclick="_inmBaja(\'' + _cEsc(a.id) + '\')">' + t('inm.darBaja','Baja') + '</button>' : '') + '</td></tr>'; }).join('') + '</tbody></table></div>' : '<div class=\"g-empty\">' + t('inm.vacio','Sin activos registrados. Da de alta el mobiliario, la maquinaria, los equipos… y Yve calcula la amortización de cada mes.') + '</div>';
     var asi = d.asientos || [];
-    if (asi.length) h += '<div style="margin-top:10px;font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.5px;color:var(--mut)">' + t('inm.asiento','Asiento de amortización del mes') + '</div><table style="width:100%;border-collapse:collapse;font-size:11px">' + asi.map(function(a){ return '<tr style="border-top:1px solid var(--s2)"><td style="padding:3px 4px"><b>' + _cEsc(a.cuenta) + '</b> ' + _cEsc(a.desc_cuenta) + '</td><td style="padding:3px 4px">' + _cEsc(a.concepto) + '</td><td style="text-align:right;padding:3px 4px">' + (a.debe?_cEur(a.debe):'') + '</td><td style="text-align:right;padding:3px 4px">' + (a.haber?_cEur(a.haber):'') + '</td></tr>'; }).join('') + '</table>';
+    if (asi.length) h += '<div class="g-label" style="margin:14px 0 8px">' + t('inm.asiento','Asiento de amortización del mes') + '</div><div class="g-tbl-wrap"><table class="g-tbl"><tbody>' + asi.map(function(a){ return '<tr><td><b>' + _cEsc(a.cuenta) + '</b> ' + _cEsc(a.desc_cuenta) + '</td><td>' + _cEsc(a.concepto) + '</td><td class="num">' + (a.debe?_cEur(a.debe):'') + '</td><td class="num">' + (a.haber?_cEur(a.haber):'') + '</td></tr>'; }).join('') + '</tbody></table></div>';
     var pend = d.altas_pendientes || [];
-    if (pend.length) h += '<div style="margin-top:10px;font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.5px;color:#f59e0b">' + t('inm.pendTit','Facturas del mes que podrían ser un activo') + '</div><div style="font-size:11px">' + pend.slice(0,20).map(function(p){ return _cEsc(p.numero_factura) + ' · ' + _cEsc(p.proveedor) + ' · ' + _cEur(p.base) + ' · ' + _cEsc(p.motivo) + ' <a href="#" onclick="_inmForm({descripcion:\'' + _cEsc(p.proveedor) + ' ' + _cEsc(p.numero_factura) + '\',coste:' + (p.base||0) + ',fecha:\'' + _cEsc(p.fecha) + '\',doc:\'' + _cEsc(p.numero_factura) + '\'});return false;">' + t('inm.registrar','registrar') + '</a>'; }).join('<br>') + '</div>';
+    if (pend.length) h += '<div class="g-label" style="margin:14px 0 8px;color:var(--ora)">' + t('inm.pendTit','Facturas del mes que podrían ser un activo') + '</div><div class="g-small">' + pend.slice(0,20).map(function(p){ return _cEsc(p.numero_factura) + ' · ' + _cEsc(p.proveedor) + ' · ' + _cEur(p.base) + ' · ' + _cEsc(p.motivo) + ' <a href="#" onclick="_inmForm({descripcion:\'' + _cEsc(p.proveedor) + ' ' + _cEsc(p.numero_factura) + '\',coste:' + (p.base||0) + ',fecha:\'' + _cEsc(p.fecha) + '\',doc:\'' + _cEsc(p.numero_factura) + '\'});return false;">' + t('inm.registrar','registrar') + '</a>'; }).join('<br>') + '</div>';
     body.innerHTML = h;
-  } catch(e) { if (body) body.innerHTML = '<div class="empty"><p>' + _cEsc(e.message) + '</p></div>'; }
+  } catch(e) { if (body) body.innerHTML = '<div class=\"g-empty\">' + _cEsc(e.message) + '</div>'; }
 }
 function _inmForm(pre){
   var f = document.getElementById('inm-form'); if (!f) return;
@@ -14211,21 +14214,19 @@ async function loadPaquete(){
   try {
     var r = await fetch('/api/cierre/paquete?mes=' + encodeURIComponent(mes));
     var d = await r.json();
-    if (!d || !d.ok) { body.innerHTML = '<div class="empty"><p>' + _cEsc((d&&d.error)||'Error') + '</p></div>'; return; }
-    if (est) { est.textContent = d.listo ? t('paq.listo','✓ listo para la central') : (d.sin_datos ? t('paq.sinDatos','sin datos de este mes') : t('paq.pendiente','{n} bloque(s) pendiente(s)').replace('{n}', (d.resumen_checklist||{}).PENDIENTE||0)); est.style.color = d.listo ? '#22c55e' : (d.sin_datos ? 'var(--mut)' : '#f59e0b'); }
+    if (!d || !d.ok) { body.innerHTML = '<div class=\"g-empty\">' + _cEsc((d&&d.error)||'Error') + '</div>'; return; }
+    if (est) { est.innerHTML = d.listo ? gBadge('g-ok', t('paq.listo','Listo para la central')) : (d.sin_datos ? gBadge('g-mute', t('paq.sinDatos','Sin datos de este mes')) : gBadge('g-warn', t('paq.pendiente','{n} bloque(s) pendiente(s)').replace('{n}', (d.resumen_checklist||{}).PENDIENTE||0))); }
     var rr = d.resultado || {};
-    var tile = function(l, v, col){ return '<div class="card" style="padding:10px;border-radius:10px"><div style="font-size:11px;color:var(--mut);text-transform:uppercase;letter-spacing:.4px">' + _cEsc(l) + '</div><div style="font-size:15px;font-weight:700;color:' + (col||'var(--tx)') + '">' + v + '</div></div>'; };
+    var tile = function(l, v, col){ return _cTile(l, v, '', col==='#f87171' ? 'k-red' : col==='#22c55e' ? 'k-grn' : ''); };
     rs.innerHTML = tile(t('paq.ingresos','Ingresos asentados'), _cEur(rr.ingresos)) + tile(t('paq.gastos','Gastos asentados'), _cEur(rr.gastos)) + tile(t('paq.resultado','Resultado (según documentos)'), _cEur(rr.resultado), (rr.resultado||0) >= 0 ? '#22c55e' : '#f87171') + (rr.drr_rooms_revenue!=null ? tile(t('paq.drr','Rooms Revenue DRR (MTD)'), _cEur(rr.drr_rooms_revenue)) : '');
-    var COL = {OK:'#22c55e', PENDIENTE:'#f59e0b', SIN_DATO:'var(--mut)'};
-    var LBL = {OK:'✓ OK', PENDIENTE:t('cierre.stPend','pendiente'), SIN_DATO:t('cierre.stSinDato','sin dato')};
-    var h = '<div style="margin-bottom:8px"><label style="font-size:10px;color:var(--mut);text-transform:uppercase;letter-spacing:.4px">' + t('paq.comentarioGeneral','Comentario general para la central') + '</label><textarea id="paq-com-resumen" rows="2" style="width:100%;box-sizing:border-box;background:var(--bg);border:1px solid var(--s2);color:var(--tx);padding:6px;border-radius:8px;font-size:12px;font-family:inherit">' + _cEsc(d.comentario_general||'') + '</textarea><button class="btn-ref" style="font-size:11px;margin-top:4px" onclick="_paqGuardar(\'resumen\')">' + t('paq.guardar','Guardar comentario') + '</button></div>';
-    h += '<table style="width:100%;border-collapse:collapse;font-size:12px"><tbody>' + (d.checklist||[]).map(function(c){
-      return '<tr style="border-top:1px solid var(--s2)"><td style="padding:6px 4px;width:34%"><b>' + _cEsc(c.titulo) + '</b><div style="font-size:11px;color:var(--dim)">' + _cEsc(c.cifra||'') + (c.detalle ? '<br>' + _cEsc(c.detalle) : '') + '</div></td>' +
-        '<td style="padding:6px 4px;width:90px;font-weight:700;color:' + (COL[c.estado]||'var(--mut)') + '">' + _cEsc(LBL[c.estado]||c.estado) + '</td>' +
-        '<td style="padding:6px 4px"><textarea id="paq-com-' + _cEsc(c.clave) + '" rows="1" placeholder="' + t('paq.comentario','comentario para la central') + '" style="width:100%;box-sizing:border-box;background:var(--bg);border:1px solid var(--s2);color:var(--tx);padding:5px;border-radius:8px;font-size:11px;font-family:inherit" onblur="_paqGuardar(\'' + _cEsc(c.clave) + '\')">' + _cEsc(c.comentario||'') + '</textarea></td></tr>'; }).join('') + '</tbody></table>';
-    h += '<div style="margin-top:8px;font-size:11px;color:var(--dim)">' + _cEsc(d.nota||'') + '</div>';
+    var h = '<div class="g-field" style="margin-bottom:12px"><label>' + t('paq.comentarioGeneral','Comentario general para la central') + '</label><textarea id="paq-com-resumen" class="g-input" rows="2">' + _cEsc(d.comentario_general||'') + '</textarea><div><button class="g-btn g-secondary g-sm" onclick="_paqGuardar(\'resumen\')">' + t('paq.guardar','Guardar comentario') + '</button></div></div>';
+    h += '<div class="g-tbl-wrap"><table class="g-tbl"><tbody>' + (d.checklist||[]).map(function(c){
+      return '<tr><td style="width:34%"><b>' + _cEsc(c.titulo) + '</b><div class="g-note" style="margin-top:2px">' + _cEsc(c.cifra||'') + (c.detalle ? '<br>' + _cEsc(c.detalle) : '') + '</div></td>' +
+        '<td>' + _cEstado(c.estado) + '</td>' +
+        '<td><textarea id="paq-com-' + _cEsc(c.clave) + '" rows="1" class="g-input" placeholder="' + t('paq.comentario','comentario para la central') + '" onblur="_paqGuardar(\'' + _cEsc(c.clave) + '\')">' + _cEsc(c.comentario||'') + '</textarea></td></tr>'; }).join('') + '</tbody></table></div>';
+    h += '<div class="g-note">' + _cEsc(d.nota||'') + '</div>';
     body.innerHTML = h;
-  } catch(e) { if (body) body.innerHTML = '<div class="empty"><p>' + _cEsc(e.message) + '</p></div>'; }
+  } catch(e) { if (body) body.innerHTML = '<div class=\"g-empty\">' + _cEsc(e.message) + '</div>'; }
 }
 async function _paqGuardar(seccion){
   var ta = document.getElementById('paq-com-' + seccion); if (!ta) return;
@@ -14255,31 +14256,29 @@ async function loadCierre(forzar){
   try {
     var r = await fetch('/api/cierre/asientos?mes=' + encodeURIComponent(mes));
     var d = await r.json();
-    if (!d || !d.ok) { rb.innerHTML = '<div class="empty"><p>' + _cEsc((d&&d.error)||'Error') + '</p></div>'; return; }
+    if (!d || !d.ok) { rb.innerHTML = '<div class=\"g-empty\">' + _cEsc((d&&d.error)||'Error') + '</div>'; return; }
     var hs = document.getElementById('cierre-hotel'); if (hs) hs.textContent = d.hotel ? '' : t('cierre.grupo','vista de grupo (todos los hoteles)');
     document.getElementById('cierre-k-asientos').textContent = d.n_asientos;
     document.getElementById('cierre-k-debe').textContent = _cEur(d.debe);
     document.getElementById('cierre-k-haber').textContent = _cEur(d.haber);
-    var kc = document.getElementById('cierre-k-cuadre'); kc.textContent = d.cuadra ? t('cierre.cuadra','✓ cuadra') : t('cierre.noCuadra','✗ no cuadra'); kc.style.color = d.cuadra ? '#22c55e' : '#f87171';
+    var kc = document.getElementById('cierre-k-cuadre'); kc.innerHTML = d.cuadra ? gBadge('g-ok', t('cierre.stCuadra','Cuadra')) : gBadge('g-err', t('cierre.noCuadra','No cuadra'));
     var f = d.fuentes || {};
     var fuentes = t('cierre.fuentes','{ap} facturas AP · {ota} comisiones OTA · {fb} días de TPV · {ar} facturas AR · {cob} cobros · {bk} mov. banco · {pv} provisiones')
       .replace('{ap}', f.ap||0).replace('{ota}', f.ar_ota||0).replace('{fb}', f.ventas_fb||0).replace('{ar}', f.ar_facturas||0).replace('{cob}', f.ar_cobros||0).replace('{bk}', f.banco||0).replace('{pv}', f.provisiones||0);
-    av.innerHTML = '<div style="color:var(--dim)">' + _cEsc(fuentes) + '</div>' + (d.avisos||[]).map(function(a){ return '<div>⚠ ' + _cEsc(a) + '</div>'; }).join('');
+    av.innerHTML = '<div class="g-note" style="margin:0">' + _cEsc(fuentes) + '</div>' + (d.avisos||[]).map(function(a){ return '<div class="g-alert warn">⚠ <span>' + _cEsc(a) + '</span></div>'; }).join('');
     // reconciliacion
     var rec = d.reconciliacion || {}; var chk = rec.checks || [];
-    var COL = {CUADRA:'#22c55e', DIFERENCIA:'#f87171', PENDIENTE:'#f59e0b', SIN_DATO:'var(--mut)', REVISAR:'#f87171', INFO:'var(--dim)'};
-    var LBL = {CUADRA:t('cierre.stCuadra','✓ cuadra'), DIFERENCIA:t('cierre.stDif','⚠ diferencia'), PENDIENTE:t('cierre.stPend','pendiente'), SIN_DATO:t('cierre.stSinDato','sin dato'), REVISAR:t('cierre.stRevisar','revisar'), INFO:'info'};
-    rb.innerHTML = (chk.length ? '<div style="overflow-x:auto"><table style="width:100%;border-collapse:collapse;font-size:12px"><thead><tr style="color:var(--dim);text-align:left"><th>' + t('cierre.hCuenta','Cuenta') + '</th><th>' + t('cierre.hConcepto','Comprobación') + '</th><th style="text-align:right">' + t('cierre.hLibro','Libro') + '</th><th style="text-align:right">' + t('cierre.hJust','Justificado') + '</th><th style="text-align:right">' + t('cierre.hDif','Diferencia') + '</th><th></th></tr></thead><tbody>' +
-      chk.map(function(c){ return '<tr style="border-top:1px solid var(--s2)"><td style="padding:6px 4px;font-weight:700">' + _cEsc(c.cuenta) + '</td><td style="padding:6px 4px">' + _cEsc(c.concepto) + (c.nota ? '<div style="font-size:11px;color:var(--dim)">' + _cEsc(c.nota) + '</div>' : '') + '</td><td style="text-align:right;padding:6px 4px">' + _cEur(c.libro) + '</td><td style="text-align:right;padding:6px 4px">' + (c.justificado==null?'—':_cEur(c.justificado)) + '</td><td style="text-align:right;padding:6px 4px">' + (c.diferencia==null?'—':_cEur(c.diferencia)) + '</td><td style="padding:6px 4px;text-align:right"><span style="font-size:11px;font-weight:700;color:' + (COL[c.estado]||'var(--mut)') + '">' + _cEsc(LBL[c.estado]||c.estado) + '</span></td></tr>'; }).join('') + '</tbody></table></div>' : '<div class="empty"><p>' + t('cierre.vacio','Sin datos en este mes.') + '</p></div>');
+    rb.innerHTML = (chk.length ? '<div class="g-tbl-wrap"><table class="g-tbl"><thead><tr><th>' + t('cierre.hCuenta','Cuenta') + '</th><th>' + t('cierre.hConcepto','Comprobación') + '</th><th class="num">' + t('cierre.hLibro','Libro') + '</th><th class="num">' + t('cierre.hJust','Justificado') + '</th><th class="num">' + t('cierre.hDif','Diferencia') + '</th><th></th></tr></thead><tbody>' +
+      chk.map(function(c){ return '<tr><td><b>' + _cEsc(c.cuenta) + '</b></td><td>' + _cEsc(c.concepto) + (c.nota ? '<div class="g-note" style="margin-top:2px">' + _cEsc(c.nota) + '</div>' : '') + '</td><td class="num">' + _cEur(c.libro) + '</td><td class="num">' + (c.justificado==null?'—':_cEur(c.justificado)) + '</td><td class="num">' + (c.diferencia==null?'—':_cEur(c.diferencia)) + '</td><td class="num">' + _cEstado(c.estado) + '</td></tr>'; }).join('') + '</tbody></table></div>' : '<div class=\"g-empty\">' + t('cierre.vacio','Sin datos en este mes.') + '</div>');
     // mayor
     var my = d.mayor || [];
-    mb.innerHTML = my.length ? '<div style="overflow-x:auto"><table style="width:100%;border-collapse:collapse;font-size:12px"><thead><tr style="color:var(--dim);text-align:left"><th>' + t('cierre.hCuenta','Cuenta') + '</th><th></th><th style="text-align:right">' + t('cierre.kDebe','Debe') + '</th><th style="text-align:right">' + t('cierre.kHaber','Haber') + '</th><th style="text-align:right">' + t('cierre.hSaldo','Saldo') + '</th></tr></thead><tbody>' +
-      my.map(function(m){ return '<tr style="border-top:1px solid var(--s2)"><td style="padding:5px 4px;font-weight:700">' + _cEsc(m.cuenta) + '</td><td style="padding:5px 4px">' + _cEsc(m.descripcion) + '</td><td style="text-align:right;padding:5px 4px">' + _cEur(m.debe) + '</td><td style="text-align:right;padding:5px 4px">' + _cEur(m.haber) + '</td><td style="text-align:right;padding:5px 4px;font-weight:700">' + _cEur(m.saldo) + '</td></tr>'; }).join('') + '</tbody></table></div>' : '<div class="empty"><p>' + t('cierre.vacio','Sin datos en este mes.') + '</p></div>';
+    mb.innerHTML = my.length ? '<div class="g-tbl-wrap"><table class="g-tbl"><thead><tr><th>' + t('cierre.hCuenta','Cuenta') + '</th><th></th><th class="num">' + t('cierre.kDebe','Debe') + '</th><th class="num">' + t('cierre.kHaber','Haber') + '</th><th class="num">' + t('cierre.hSaldo','Saldo') + '</th></tr></thead><tbody>' +
+      my.map(function(m){ return '<tr><td><b>' + _cEsc(m.cuenta) + '</b></td><td>' + _cEsc(m.descripcion) + '</td><td class="num">' + _cEur(m.debe) + '</td><td class="num">' + _cEur(m.haber) + '</td><td class="num"><b>' + _cEur(m.saldo) + '</b></td></tr>'; }).join('') + '</tbody></table></div>' : '<div class=\"g-empty\">' + t('cierre.vacio','Sin datos en este mes.') + '</div>';
     // diario
     var as = d.asientos || [];
-    db.innerHTML = as.length ? '<table style="width:100%;border-collapse:collapse;font-size:11px"><thead><tr style="color:var(--dim);text-align:left"><th>#</th><th>' + t('cierre.hFecha','Fecha') + '</th><th>' + t('cierre.hCuenta','Cuenta') + '</th><th>' + t('cierre.hConceptoD','Concepto') + '</th><th style="text-align:right">' + t('cierre.kDebe','Debe') + '</th><th style="text-align:right">' + t('cierre.kHaber','Haber') + '</th><th>' + t('cierre.hOrigen','Origen') + '</th></tr></thead><tbody>' +
-      as.map(function(a){ return '<tr style="border-top:1px solid var(--s2)"><td style="padding:3px 4px">' + a.num + '</td><td style="padding:3px 4px;white-space:nowrap">' + _cEsc(a.fecha) + '</td><td style="padding:3px 4px;white-space:nowrap"><b>' + _cEsc(a.cuenta) + '</b> ' + _cEsc(a.desc_cuenta) + '</td><td style="padding:3px 4px">' + _cEsc(a.concepto) + '</td><td style="text-align:right;padding:3px 4px">' + (a.debe?_cEur(a.debe):'') + '</td><td style="text-align:right;padding:3px 4px">' + (a.haber?_cEur(a.haber):'') + '</td><td style="padding:3px 4px;color:var(--dim)">' + _cEsc(a.origen) + '</td></tr>'; }).join('') + '</tbody></table>' + (d.truncado ? '<div style="color:var(--dim);margin-top:6px">' + t('cierre.truncado','Se muestran las primeras líneas; el Excel lleva todas.') + '</div>' : '') : '<div class="empty"><p>' + t('cierre.vacio','Sin datos en este mes.') + '</p></div>';
-  } catch(e) { if (rb) rb.innerHTML = '<div class="empty"><p>' + _cEsc(e.message) + '</p></div>'; }
+    db.innerHTML = as.length ? '<div class="g-tbl-wrap"><table class="g-tbl"><thead><tr><th>#</th><th>' + t('cierre.hFecha','Fecha') + '</th><th>' + t('cierre.hCuenta','Cuenta') + '</th><th>' + t('cierre.hConceptoD','Concepto') + '</th><th class="num">' + t('cierre.kDebe','Debe') + '</th><th class="num">' + t('cierre.kHaber','Haber') + '</th><th>' + t('cierre.hOrigen','Origen') + '</th></tr></thead><tbody>' +
+      as.map(function(a){ return '<tr><td>' + a.num + '</td><td style="white-space:nowrap">' + _cEsc(a.fecha) + '</td><td style="white-space:nowrap"><b>' + _cEsc(a.cuenta) + '</b> ' + _cEsc(a.desc_cuenta) + '</td><td>' + _cEsc(a.concepto) + '</td><td class="num">' + (a.debe?_cEur(a.debe):'') + '</td><td class="num">' + (a.haber?_cEur(a.haber):'') + '</td><td class="g-small">' + _cEsc(a.origen) + '</td></tr>'; }).join('') + '</tbody></table></div>' + (d.truncado ? '<div class="g-note">' + t('cierre.truncado','Se muestran las primeras líneas; el Excel lleva todas.') + '</div>' : '') : '<div class=\"g-empty\">' + t('cierre.vacio','Sin datos en este mes.') + '</div>';
+  } catch(e) { if (rb) rb.innerHTML = '<div class=\"g-empty\">' + _cEsc(e.message) + '</div>'; }
 }
 
 function _cargarPanel(tab, panel, forzar) {

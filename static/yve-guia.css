@@ -290,3 +290,11 @@ body .g-subtabs .fb-sub.active{background:var(--s2);color:var(--tx)}
 .g-linea-total{border-bottom:none;font-weight:700;font-size:13px;padding-top:8px}
 .g-linea-total b{color:var(--acc2)}
 .g-tbl tr.is-vencida td{background:rgba(239,68,68,.04)}
+
+/* Cierre (b61) */
+.g-tiles-sm{grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:8px;margin-bottom:12px}
+.g-kpi-sm{padding:10px 12px}.g-kpi-sm .g-kpi-val{font-size:16px}
+.g-kpi-btn{cursor:pointer}.g-kpi-btn.is-on{outline:2px solid var(--acc)}
+.g-grid-auto{display:grid;grid-template-columns:repeat(auto-fit,minmax(160px,1fr));gap:8px;flex-basis:100%}
+.g-tbl tr.is-total td{font-weight:700}
+@media(max-width:768px){.g-tiles-sm{grid-template-columns:repeat(2,1fr)}}

@@ -36,8 +36,10 @@ PANELES = {
     'panel-fb': (['fb-mes', 'fb-subtabs', 'fb-resumen', 'fb-inventario', 'fb-mermas-panel', 'fb-recetas'], ['fbCambiarMes()', "fbSub('resumen',this)", "fbSub('recetas',this)", 'openUploadModal()'], 1),
     'panel-ar_real': (['ar-real-stats', 'arp-pendiente', 'arp-vencido', 'arp-cobrado', 'arp-nclientes', 'ar-real-grid', 'ar-clientes-list', 'ar-facturas-count', 'ar-filter-estado', 'ar-aging-bar', 'ar-facturas-tbody', 'modal-emitir', 'ef-cliente', 'ef-entrada', 'ef-salida', 'ef-hab', 'ef-precio', 'ef-fb', 'ef-sub-hab', 'ef-sub-fb', 'ef-iva', 'ef-total', 'ef-msg', 'ar-bonos-section', 'ar-bonos-resumen', 'ar-bonos-list', 'ar-beos-section', 'ar-beos-count', 'ar-beos-list', 'ar-real-status'],
                       ['abrirEmitirFactura()', 'loadARRealData()', 'abrirNuevoCliente()', 'filtrarFacturasAR(this.value)', 'calcularFactura()', 'emitirFactura()', 'cerrarEmitirFactura()', 'href="/aprobaciones-ar/"'], 2),
+    'panel-cierre': (['cierre-mes', 'cierre-hotel', 'cierre-stats', 'cierre-k-asientos', 'cierre-k-debe', 'cierre-k-haber', 'cierre-k-cuadre', 'cierre-avisos', 'paq-estado', 'paq-body', 'paq-resultado', 'cierre-recon-body', 'cbanco-saldo', 'cbanco-pestanas', 'cbanco-body', 'inv-resumen', 'inv-body', 'fis-estado', 'fis-resumen', 'fis-body', 'inm-resumen', 'inm-form', 'inm-desc', 'inm-cat', 'inm-fecha', 'inm-coste', 'inm-vida', 'inm-doc', 'inm-body', 'cierre-mayor-body', 'cierre-diario-body'],
+                     ['loadCierre(true)', 'openUploadModal()', '_inmForm()', '_inmGuardar()'], 1),
 }
-FIN = {'panel-ap': '<!-- /panel-ap -->', 'panel-ar': '<!-- /panel-ar -->', 'panel-banco': '<!-- /panel-banco -->', 'panel-drr': '<!-- /panel-drr -->', 'panel-notif': '<!-- /panel-notif -->', 'panel-fb': '<!-- /panel-fb -->', 'panel-ar_real': '<!-- /panel-ar_real -->'}
+FIN = {'panel-ap': '<!-- /panel-ap -->', 'panel-ar': '<!-- /panel-ar -->', 'panel-banco': '<!-- /panel-banco -->', 'panel-drr': '<!-- /panel-drr -->', 'panel-notif': '<!-- /panel-notif -->', 'panel-fb': '<!-- /panel-fb -->', 'panel-ar_real': '<!-- /panel-ar_real -->', 'panel-cierre': '<!-- /panel-cierre -->'}
 
 # funciones de badges que se ejecutan con node: (nombre, [(argumento, texto esperado, clase esperada)])
 BADGES = [
