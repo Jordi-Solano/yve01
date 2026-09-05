@@ -323,3 +323,6 @@ body .g-subtabs .fb-sub.active{background:var(--s2);color:var(--tx)}
 @media(max-width:768px){.mh-celdas{grid-template-columns:repeat(2,1fr)}}
 @media(max-width:768px){.g-actions .g-subtabs{flex:1 1 100%}}
 .mh-tri{color:var(--ora);font-size:12px}
+/* Zona segura del telefono (b64): a pantalla completa, la cabecera del chat baja
+   por debajo de la hora/barra de estado; el fab respeta la barra de gestos. */
+@media(max-width:768px){body #chat-header{padding-top:calc(16px + var(--sa-top))}}

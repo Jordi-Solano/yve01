@@ -5660,6 +5660,9 @@ body.light-mode .tab-btn.active{color:var(--acc-dark)}
 /* ─────────────────────────────────────────────────── */
 .show-mobile{display:none!important}
 :root{
+  /* Zona segura del telefono (notch arriba, barra de gestos abajo). Todo lo fijo
+     usa estas dos variables, no env() a pelo: asi el test de movil las puede simular. */
+  --sa-top:env(safe-area-inset-top,0px);--sa-bottom:env(safe-area-inset-bottom,0px);
   --tx:#f1f5f9;--mut:#94a3b8;--dim:#64748b;
   --grn:#22c55e;--red:#ef4444;--ora:#f97316;--yel:#eab308;--pur:#8b5cf6;
 }
@@ -5688,7 +5691,7 @@ body::before{
   background:rgba(var(--bg-r,15),var(--bg-g,23),var(--bg-b,42),.92);
   backdrop-filter:blur(12px);-webkit-backdrop-filter:blur(12px);
   border-bottom:1px solid var(--s2);
-  padding:env(safe-area-inset-top) 24px 0 24px;height:calc(60px + env(safe-area-inset-top));box-sizing:border-box;
+  padding:var(--sa-top) 24px 0 24px;height:calc(60px + var(--sa-top));box-sizing:border-box;
   display:flex;align-items:center;gap:16px;
   position:sticky;top:0;z-index:200
 }
@@ -5708,7 +5711,7 @@ body::before{
 .btn-run:disabled{opacity:.5;cursor:not-allowed;transform:none;box-shadow:none}
 @media(max-width:640px){
   .logo-tag,.pill{display:none}
-  .nav{padding:env(safe-area-inset-top) 10px 0 10px;gap:6px;height:calc(50px + env(safe-area-inset-top));box-sizing:border-box}
+  .nav{padding:var(--sa-top) 10px 0 10px;gap:6px;height:calc(50px + var(--sa-top));box-sizing:border-box}
   .logo-name{font-size:16px}
   .btn-run{padding:8px 12px;font-size:12px}
   .btn-ref{padding:4px 8px;font-size:11px}
@@ -5764,7 +5767,7 @@ body::before{
 }
 @media(max-width:768px){
   /* Nav */
-  .nav{padding:env(safe-area-inset-top) 10px 0 10px;gap:4px;height:calc(52px + env(safe-area-inset-top));box-sizing:border-box}
+  .nav{padding:var(--sa-top) 10px 0 10px;gap:4px;height:calc(52px + var(--sa-top));box-sizing:border-box}
   .logo-name{font-size:15px}
   .logo-tag{display:none}
   /* M10 · La nav derecha medía 409 px en una pantalla de 370: el selector de
@@ -5798,7 +5801,7 @@ body::before{
   .dropdown>.btn-ref{font-size:13px!important;padding:4px 7px!important}
   /* El desplegable, anclado a la PANTALLA y no al boton. Da igual donde acabe
      la barra: siempre cabe entero. */
-  .menu{position:fixed;top:calc(52px + env(safe-area-inset-top));right:8px;left:auto;
+  .menu{position:fixed;top:calc(52px + var(--sa-top));right:8px;left:auto;
         min-width:0;width:min(268px,calc(100vw - 16px));max-height:calc(100vh - 74px)}
   /* Red de seguridad: que ningun elemento pueda volver a desplazar la pagina
      de lado. La causa se arregla arriba; esto es para que no vuelva. */
@@ -5988,7 +5991,7 @@ tr:hover td{background:rgba(255,255,255,.025)}
 /* ── Chat AI — Yve Copilot ─────────────────────────────── */
 /* ── Chat / Ask Yve ─────────────────────────────────── */
 #chat-fab{
-  position:fixed;bottom:24px;right:24px;z-index:1000;
+  position:fixed;bottom:calc(24px + var(--sa-bottom));right:24px;z-index:1000;
   display:flex;align-items:center;gap:10px;
   background:linear-gradient(135deg,#7c3aed,var(--acc));
   color:#fff;border:none;border-radius:50px;
@@ -6007,7 +6010,7 @@ tr:hover td{background:rgba(255,255,255,.025)}
    la barra de arriba, que es lo que hacia que no cupiera todo. Un poco mas
    pequeña y pegada a la esquina para no taparle nada al contenido. */
 @media(max-width:768px){
-  #chat-fab{bottom:16px;right:12px;padding:10px 14px;font-size:12px}
+  #chat-fab{bottom:calc(16px + var(--sa-bottom));right:12px;padding:10px 14px;font-size:12px}
   #chat-fab span{display:none}
   #chat-fab::after{content:'Yve';font-weight:800}
 }
@@ -6078,7 +6081,7 @@ tr:hover td{background:rgba(255,255,255,.025)}
 #chat-input-row{
   padding:12px 14px;border-top:1px solid var(--s1);
   display:flex;gap:10px;align-items:flex-end;flex-shrink:0;background:var(--bg);
-  padding-bottom:max(12px, env(safe-area-inset-bottom));
+  padding-bottom:max(12px, var(--sa-bottom));
 }
 #chat-input{
   flex:1;background:var(--s1);border:1px solid var(--s2);color:#f1f5f9;
@@ -6216,7 +6219,7 @@ tr:hover td{background:rgba(255,255,255,.025)}
 /* ── Mobile / Responsive ──────────────────────────────────── */
 @media(max-width:480px){
   /* Nav */
-  .nav{height:calc(54px + env(safe-area-inset-top));padding:env(safe-area-inset-top) 12px 0 12px;gap:8px;box-sizing:border-box}
+  .nav{height:calc(54px + var(--sa-top));padding:var(--sa-top) 12px 0 12px;gap:8px;box-sizing:border-box}
   .logo-tag{display:none}
   .pill{display:none}
   .btn-run{padding:7px 12px;font-size:11px;gap:5px}
@@ -6457,7 +6460,7 @@ svg.yvi{width:1em;height:1em;vertical-align:-0.125em;flex-shrink:0;display:inlin
   <span style="font-size:9px;color:#334155;margin-left:4px;font-weight:500">v1.5</span>
   </div>
   <div class="nav-mid"></div>
-  <div id="demo-banner" style="display:none;position:fixed;top:0;left:0;right:0;z-index:8000;background:linear-gradient(90deg,#f59e0b,#d97706);color:#000;text-align:center;padding:6px 16px;font-size:13px;font-weight:700;letter-spacing:.3px">
+  <div id="demo-banner" style="display:none;position:fixed;top:0;left:0;right:0;padding-top:var(--sa-top);z-index:8000;background:linear-gradient(90deg,#f59e0b,#d97706);color:#000;text-align:center;padding:6px 16px;font-size:13px;font-weight:700;letter-spacing:.3px">
     🎭 MODO DEMO · <span style="font-weight:400">Datos de ejemplo para demostración</span>
     <button onclick="toggleDemoMode()" style="margin-left:16px;background:rgba(0,0,0,.2);border:none;padding:3px 10px;border-radius:6px;cursor:pointer;font-size:12px;font-weight:700">✕ Salir</button>
   </div>
@@ -11236,7 +11239,7 @@ function yveShowBanner(id, htmlMsg, btnHtml, dismissFn, accent) {
   accent = accent || '#3b82f6';
   var bar = document.createElement('div');
   bar.id = id;
-  bar.style.cssText = 'position:fixed;left:50%;transform:translateX(-50%);bottom:calc(16px + env(safe-area-inset-bottom));z-index:10000;display:flex;align-items:center;gap:14px;max-width:min(560px,calc(100% - 24px));width:max-content;background:linear-gradient(135deg,' + accent + ',#2563eb);color:#fff;padding:12px 14px 12px 18px;border-radius:14px;box-shadow:0 10px 40px rgba(0,0,0,.35);font-size:13px;font-weight:500;animation:yveSlideUp .3s ease';
+  bar.style.cssText = 'position:fixed;left:50%;transform:translateX(-50%);bottom:calc(16px + var(--sa-bottom));z-index:10000;display:flex;align-items:center;gap:14px;max-width:min(560px,calc(100% - 24px));width:max-content;background:linear-gradient(135deg,' + accent + ',#2563eb);color:#fff;padding:12px 14px 12px 18px;border-radius:14px;box-shadow:0 10px 40px rgba(0,0,0,.35);font-size:13px;font-weight:500;animation:yveSlideUp .3s ease';
   var txt = document.createElement('div'); txt.style.cssText = 'flex:1;line-height:1.4'; txt.innerHTML = htmlMsg;
   bar.appendChild(txt);
   if (btnHtml) { var wrap = document.createElement('div'); wrap.innerHTML = btnHtml; if (wrap.firstChild) bar.appendChild(wrap.firstChild); }
