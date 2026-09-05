@@ -242,11 +242,56 @@ def conciliar(extracto, facturas, tolerancia_dias=3, tolerancia_importe=0.02):
     return df_result
 
 
+def conservar_manuales(df_result, reportes_dir=None):
+    """Vuelve a aplicar sobre `df_result` las asignaciones MANUALES del informe
+    anterior (cajon 8: re-conciliar las pisaba y se perdian).
+
+    Se casan por la clave de contenido del movimiento (`almacen_datos.
+    clave_movimiento`), nunca por posicion. Una asignacion manual gana siempre
+    al cruce automatico. Devuelve cuantas se han conservado."""
+    try:
+        import almacen_datos as _alm
+        ruta_prev = _alm._ultimo_informe(str(reportes_dir or REPORTES_DIR))
+    except Exception:
+        ruta_prev = None
+    if not ruta_prev or df_result is None or df_result.empty:
+        return 0
+    try:
+        prev = pd.read_excel(ruta_prev)
+    except Exception:
+        return 0
+    if prev.empty or "origen" not in prev.columns:
+        return 0
+    manuales = {}
+    for fila in prev.to_dict("records"):
+        if str(fila.get("origen", "")).strip().upper() == "MANUAL":
+            manuales.setdefault(_alm.clave_movimiento(fila), []).append(fila)
+    if not manuales:
+        return 0
+    for col in ("estado", "factura_ref", "origen"):
+        if col not in df_result.columns:
+            df_result[col] = ""
+        df_result[col] = df_result[col].astype(object)
+    n = 0
+    for i, fila in zip(df_result.index, df_result.to_dict("records")):
+        k = _alm.clave_movimiento(fila)
+        if manuales.get(k):
+            m = manuales[k].pop(0)
+            df_result.at[i, "estado"] = "CONCILIADO"
+            df_result.at[i, "factura_ref"] = m.get("factura_ref", "")
+            df_result.at[i, "origen"] = "MANUAL"
+            n += 1
+    return n
+
+
 def generar_reporte(df_result):
-    """Guarda el reporte de conciliacion en reportes/."""
+    """Guarda el reporte de conciliacion en reportes/ (conservando las asignaciones manuales)."""
     nombre = f"conciliacion_{HOY}.xlsx"
     ruta = str(REPORTES_DIR / nombre)
 
+    conservadas = conservar_manuales(df_result)
+    if conservadas:
+        print(f"  Asignaciones manuales conservadas del informe anterior: {conservadas}")
     cols_out = ["fecha", "concepto", "importe", "tipo", "referencia", "saldo",
                 "estado", "factura_ref", "origen", "match_proveedor", "diferencia"]
     cols_exist = [c for c in cols_out if c in df_result.columns]
