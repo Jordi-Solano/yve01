@@ -41,12 +41,14 @@ def main():
     assert cl.post('/api/login', json={'username': 'admin', 'password': 'admin123'}).status_code == 200
     html = cl.get('/').get_data(as_text=True)
     if SABOTAJE:
-        html = html.replace('class="fb-acciones" style="display:flex;gap:8px;align-items:center;flex-wrap:wrap"', 'style="display:flex;gap:8px;align-items:center;flex-wrap:nowrap"')
+        html = html.replace('class="g-actions fb-acciones"', 'style="display:flex;gap:8px;align-items:center;flex-wrap:nowrap"')
         html = html.replace('#hotel-activo-sel{max-width:none!important;flex:1 1 auto;min-width:118px', '#hotel-activo-sel{max-width:92px!important')
         html = html.replace("NOTIF_CHANNELS.map(ch => {", "NOTIF_CHANNELS.filter(ch => ch.key !== 'push' || yvePushSupported()).map(ch => {")
     i = html.find('@media(max-width:768px)')
     movil = html[i:]
-    ok('class="fb-acciones"' in html and 'flex-wrap:wrap' in html.split('class="fb-acciones"')[1][:120] if 'class="fb-acciones"' in html else False, "1 · fila de acciones de F&B con flex-wrap:wrap")
+    # b59: la fila de acciones es `g-actions fb-acciones` y el flex-wrap:wrap lo pone la guia (.g-head .g-actions)
+    _css = cl.get('/static/yve-guia.css').get_data(as_text=True)
+    ok('fb-acciones' in html and ('flex-wrap:wrap' in html.split('fb-acciones')[1][:120] or ('.g-head .g-actions{' in _css and 'flex-wrap:wrap' in _css.split('.g-head .g-actions{')[1][:120])), "1 · fila de acciones de F&B con flex-wrap:wrap")
     ok('#hotel-activo-sel{max-width:none!important;flex:1 1 auto;min-width:118px' in movil, "2 · el selector de hotel manda en movil")
     ok("#run-lbl::after{content:'⚡'" in movil and '.btn-run{font-size:12px;padding:5px 9px;min-width:0}' in movil, "3 · procesar: solo el rayo y mas pequeño")
     ok('.dropdown>.btn-ref{font-size:13px!important;padding:4px 7px!important}' in movil, "4 · ajustes mas pequeño")

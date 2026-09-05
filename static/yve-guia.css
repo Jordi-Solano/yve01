@@ -266,3 +266,13 @@ body .rd-dc-st{margin-top:8px}
 .g-check-row{display:flex;align-items:center;gap:10px;cursor:pointer;font-size:13px;color:var(--tx)}
 .g-check-row input{width:17px;height:17px;accent-color:var(--acc);cursor:pointer}
 @media(max-width:768px){.g-canales{grid-template-columns:1fr 1fr}.g-checks{grid-template-columns:1fr}}
+/* F&B (b59): sub-pestañas y campo de mes en linea */
+.g-subtabs{display:flex;gap:4px;background:var(--s1);border:1px solid var(--g-line);border-radius:var(--g-r-md);padding:4px;width:max-content;max-width:100%;overflow-x:auto;scrollbar-width:none;margin-bottom:20px}
+body .g-subtabs .fb-sub{padding:7px 12px;border-radius:calc(var(--g-r-md) - 4px);border:none;background:none;color:var(--mut);font:600 12px 'Inter',-apple-system,'Segoe UI',Roboto,sans-serif;cursor:pointer;white-space:nowrap}
+body .g-subtabs .fb-sub.active{background:var(--s2);color:var(--tx)}
+.g-field.g-inline{flex-direction:row;align-items:center;gap:6px}
+.g-field.g-inline span{font-size:12px;color:var(--mut)}
+.g-field.g-inline .g-input{padding:6px 8px;font-size:12px}
+.g-empty-lg{padding:44px 20px}
+.g-empty-ico{font-size:40px;margin-bottom:10px;opacity:.85}
+@media(max-width:768px){.g-subtabs{width:auto}body .g-subtabs .fb-sub{flex:1 1 0;text-align:center;padding:9px 6px}}

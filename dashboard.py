@@ -6944,21 +6944,22 @@ svg.yvi{width:1em;height:1em;vertical-align:-0.125em;flex-shrink:0;display:inlin
 
   <!-- PANEL F&B -->
 
-  <div id="panel-fb" class="panel">
-    <!-- F&B Sub-tabs -->
-    <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:20px;flex-wrap:wrap;gap:10px">
-      <div id="fb-subtabs" style="display:flex;gap:4px;background:var(--s1);border-radius:10px;padding:4px;border:1px solid var(--s2);overflow-x:auto;-webkit-overflow-scrolling:touch;scrollbar-width:none">
-        <button class="fb-sub active" onclick="fbSub('resumen',this)" data-i18n="fb.resumen">📊 Resumen</button>
-        <button class="fb-sub" onclick="fbSub('inventario',this)" data-i18n="fb.inventario">📦 Inventario</button>
-        <button class="fb-sub" onclick="fbSub('mermas',this)" data-i18n="fb.mermas">⚠️ Mermas</button>
-        <button class="fb-sub" onclick="fbSub('recetas',this)" data-i18n="fb.recetas">📋 Recetas</button>
-      </div>
-      <div class="fb-acciones" style="display:flex;gap:8px;align-items:center;flex-wrap:wrap">
-        <label style="font-size:12px;color:var(--mut);display:flex;align-items:center;gap:6px"><span data-i18n="fb.mesLbl">Mes</span><input type="month" id="fb-mes" style="font-size:12px;padding:4px 6px;border-radius:6px;border:1px solid var(--s2);background:var(--s1);color:var(--tx)" onchange="fbCambiarMes()" title="Vacío = todo el periodo"></label>
-        <button class="btn-ref" style="font-size:12px" onclick="openUploadModal()" data-i18n="btn.importarFB">📤 Subir ventas, inventario, mermas o recetas</button>
+  <div id="panel-fb" class="panel g-panel">
+    <!-- Guia de estilo (b59). Ids de siempre. -->
+    <div class="g-head">
+      <div><div class="g-h1" data-i18n="tab.fb">🍽️ F&B Cost</div><div class="g-sub" data-i18n="fb.subtitulo">Ventas, escandallo, inventario y mermas: el food cost teórico y el real, por mes.</div></div>
+      <div class="g-actions fb-acciones">
+        <label class="g-field g-inline"><span data-i18n="fb.mesLbl">Mes</span><input type="month" id="fb-mes" class="g-input" onchange="fbCambiarMes()" title="Vacío = todo el periodo"></label>
+        <button class="g-btn g-primary g-sm" onclick="openUploadModal()" data-i18n="btn.importarFB">📤 Subir ventas, inventario, mermas o recetas</button>
       </div>
     </div>
-    <div id="fb-resumen" class="lite-visible"><div class="empty"><p>Cargando...</p></div></div>
+    <div class="g-subtabs" id="fb-subtabs">
+      <button class="fb-sub active" onclick="fbSub('resumen',this)" data-i18n="fb.resumen">📊 Resumen</button>
+      <button class="fb-sub" onclick="fbSub('inventario',this)" data-i18n="fb.inventario">📦 Inventario</button>
+      <button class="fb-sub" onclick="fbSub('mermas',this)" data-i18n="fb.mermas">⚠️ Mermas</button>
+      <button class="fb-sub" onclick="fbSub('recetas',this)" data-i18n="fb.recetas">📋 Recetas</button>
+    </div>
+    <div id="fb-resumen" class="lite-visible"><div class="g-empty">Cargando...</div></div>
     <div id="fb-inventario" style="display:none"></div>
     <div id="fb-mermas-panel" style="display:none"></div>
     <div id="fb-recetas" style="display:none"></div>
@@ -14487,14 +14488,13 @@ async function loadFBResumen() {
     const fcSign  = fcDiff > 0 ? '+' : '';
 
     // ── Header: título a la izquierda, botón recalcular a la derecha ──
-    let html = '<div style="display:flex;align-items:flex-start;justify-content:space-between;margin-bottom:18px;gap:12px">';
-    html += '<div><h2 style="font-size:18px;font-weight:700;margin:0">F&B Cost Control</h2>';
-    html += '<div style="font-size:12px;color:var(--mut);margin-top:4px">' + (t('fb.datosReales', 'Datos calculados desde ventas reales')) + ' · ' + data.ventas_diarias.fechas.length + ' ' + (t('fb.dias', 'días')) + '</div></div>';
-    html += '<button class="btn-ref" onclick="runFB()" style="font-size:12px;flex-shrink:0" data-i18n="btn.recalcular">↺ Recalcular</button>';
+    let html = '<div class="g-card-head"><div><div class="g-card-title">' + t('fb.control', 'F&B Cost Control') + '</div>';
+    html += '<div class="g-sub">' + (t('fb.datosReales', 'Datos calculados desde ventas reales')) + ' · ' + data.ventas_diarias.fechas.length + ' ' + (t('fb.dias', 'días')) + '</div></div>';
+    html += '<button class="g-btn g-secondary g-sm" onclick="runFB()" data-i18n="btn.recalcular">↺ Recalcular</button>';
     html += '</div>';
 
-    // ── KPIs: 4 cards en fila ──
-    html += '<div class="fb-kpi-grid" style="display:grid;grid-template-columns:repeat(4,1fr);gap:12px;margin-bottom:16px">';
+    // ── KPIs: 4 tiles ──
+    html += '<div class="g-tiles fb-kpi-grid">';
     html += _fbKpi(t('fb.ventasFb', 'Ventas F&B'), _fmtEurES(r.total_ventas, 0), (data.mes ? data.mes : t('fb.periodoCompleto', 'período completo')), 'var(--acc2)');
     html += _fbKpi(t('fb.fcTeorico', 'FC Teórico'), r.fc_teorico_pct + '%', _fbSobre(cob), 'var(--grn)');
     // De donde sale el FC real: con recuento del mes (inicial + compras − final) o aproximado (escandallo + mermas)
@@ -14505,7 +14505,7 @@ async function loadFBResumen() {
     html += _fbKpi(t('fb.fcReal', 'FC Real'), r.fc_real_pct + '%', fcSub, fcColor);
     var fcDesglose = '';
     if (fcd.metodo === 'inventario' && fcd.sin_explicar != null) {
-      fcDesglose = '<div style="font-size:11px;color:var(--mut);margin:-8px 0 12px 2px">' + t('fb.desglose', 'Consumo real') + ' ' + _fmtEurES(fcd.consumo_real) + ' = ' + t('fb.escandallo', 'escandallo') + ' ' + _fmtEurES(r.coste_escandallo) + ' + ' + t('fb.mermasLabel', 'Mermas').toLowerCase() + ' ' + _fmtEurES(fcd.mermas_mes) + ' + ' + t('fb.sinExplicar', 'sin explicar') + ' <b style="color:' + (fcd.sin_explicar > 0 ? 'var(--ora)' : 'var(--grn)') + '">' + _fmtEurES(fcd.sin_explicar) + '</b></div>';
+      fcDesglose = '<div class="g-note" style="margin:-12px 0 16px 2px">' + t('fb.desglose', 'Consumo real') + ' ' + _fmtEurES(fcd.consumo_real) + ' = ' + t('fb.escandallo', 'escandallo') + ' ' + _fmtEurES(r.coste_escandallo) + ' + ' + t('fb.mermasLabel', 'Mermas').toLowerCase() + ' ' + _fmtEurES(fcd.mermas_mes) + ' + ' + t('fb.sinExplicar', 'sin explicar') + ' ' + gBadge(fcd.sin_explicar > 0 ? 'g-warn' : 'g-ok', _fmtEurES(fcd.sin_explicar)) + '</div>';
     }
     html += _fbKpi(t('fb.mermasLabel', 'Mermas'), _fmtEurES(r.coste_mermas, 2), r.alerta ? t('fb.revisar', '⚠ Revisar') : t('fb.bajoControl', 'bajo control'), r.alerta ? 'var(--red)' : 'var(--mut)');
     html += '</div>';
@@ -14514,38 +14514,35 @@ async function loadFBResumen() {
 
     // ── Fila: gráfico ventas (izq, ancho) + gauge FC% (der, estrecho) ──
     const maxG = Math.max(r.fc_teorico_pct, r.fc_real_pct) * 1.35;
-    html += '<div class="fb-chart-grid" style="display:grid;grid-template-columns:1.5fr 1fr;gap:16px;margin-bottom:16px">';
-    html += '<div class="card"><div class="card-title" data-i18n="card.ventasDiarias">Ventas diarias F&B</div>';
-    html += '<div style="height:200px;position:relative"><canvas id="fb-ventas-chart"></canvas></div></div>';
-    html += '<div class="card"><div class="card-title" style="margin-bottom:16px" data-i18n="fb.gaugeTitle">Food Cost % — Teórico vs Real</div>';
+    html += '<div class="g-grid2 fb-chart-grid" style="margin-bottom:16px">';
+    html += '<div class="g-card"><div class="g-card-head"><div class="g-card-title" data-i18n="card.ventasDiarias">Ventas diarias F&B</div></div>';
+    html += '<div class="chart-wrap" style="height:200px"><canvas id="fb-ventas-chart"></canvas></div></div>';
+    html += '<div class="g-card"><div class="g-card-head"><div class="g-card-title" data-i18n="fb.gaugeTitle">Food Cost % — Teórico vs Real</div></div>';
     html += _fcBar(t('fb.gaugeTeorico', 'Teórico'), r.fc_teorico_pct, maxG, 'var(--grn)');
     html += '<div style="height:14px"></div>';
     html += _fcBar(t('fb.gaugeReal', 'Real'),    r.fc_real_pct,    maxG, fcColor);
     html += '</div></div>';
 
     // ── Fila: categorías (izq) + top platos (der) ──
-    html += '<div class="fb-chart-grid" style="display:grid;grid-template-columns:1.2fr 0.8fr;gap:16px">';
-    html += '<div class="card"><div class="card-title" data-i18n="card.fcCategoria">Food Cost por Categoría</div>';
-    html += '<div class="tbl-wrap" style="overflow-x:auto;-webkit-overflow-scrolling:touch"><table style="min-width:0;width:100%"><thead><tr>';
-    html += '<th>' + (t('fb.thCategoria', 'Categoría')) + '</th><th style="text-align:right">' + (t('fb.thVentas', 'Ventas')) + '</th><th style="text-align:right">FC%</th><th style="text-align:center">' + (t('fb.thEstado', 'Estado')) + '</th>';
+    html += '<div class="g-grid2 fb-chart-grid">';
+    html += '<div class="g-card"><div class="g-card-head"><div class="g-card-title" data-i18n="card.fcCategoria">Food Cost por Categoría</div></div>';
+    html += '<div class="g-tbl-wrap"><table class="g-tbl"><thead><tr>';
+    html += '<th>' + (t('fb.thCategoria', 'Categoría')) + '</th><th class="num">' + (t('fb.thVentas', 'Ventas')) + '</th><th class="num">FC%</th><th>' + (t('fb.thEstado', 'Estado')) + '</th>';
     html += '</tr></thead><tbody id="mh-tbody">';
     data.categorias.forEach(c => {
-      const cC = c.alerta ? 'var(--red)' : 'var(--grn)';
-      const badge = c.alerta ? '<span class="badge b-disc">Alerta</span>' : '<span class="badge b-ok">OK</span>';
-      html += '<tr><td style="font-weight:600">' + c.nombre + '</td>' +
-        '<td style="text-align:right">' + _fmtEurES(c.total_ventas, 0) + '</td>' +
-        '<td style="text-align:right;color:' + cC + ';font-weight:700">' + c.fc_real_pct + '%</td>' +
-        '<td style="text-align:center">' + badge + '</td></tr>';
+      html += '<tr><td><b>' + c.nombre + '</b></td>' +
+        '<td class="num">' + _fmtEurES(c.total_ventas, 0) + '</td>' +
+        '<td class="num"><b>' + c.fc_real_pct + '%</b></td>' +
+        '<td>' + (c.alerta ? gBadge('g-err', t('est.alerta', 'Alerta')) : gBadge('g-ok', 'OK')) + '</td></tr>';
     });
     html += '</tbody></table></div></div>';
 
-    html += '<div class="card"><div class="card-title" data-i18n="card.topPlatos">Top Platos</div>';
-    html += '<div class="tbl-wrap" style="overflow-x:auto;-webkit-overflow-scrolling:touch"><table style="min-width:0;width:100%"><thead><tr><th>' + (t('fb.thPlato', 'Plato')) + '</th><th style="text-align:right">€</th><th style="text-align:right">FC%</th></tr></thead><tbody>';
+    html += '<div class="g-card"><div class="g-card-head"><div class="g-card-title" data-i18n="card.topPlatos">Top Platos</div></div>';
+    html += '<div class="g-tbl-wrap"><table class="g-tbl"><thead><tr><th>' + (t('fb.thPlato', 'Plato')) + '</th><th class="num">€</th><th class="num">FC%</th></tr></thead><tbody>';
     data.ranking_top.forEach((p, i) => {
-      const pC = p.fc_real_pct > 30 ? 'var(--ora)' : 'var(--grn)';
-      html += '<tr><td><span style="color:var(--dim);font-size:10px;margin-right:5px">#' + (i+1) + '</span>' + p.nombre + '</td>' +
-        '<td style="text-align:right">' + _fmtEurES(p.total_ventas, 0) + '</td>' +
-        '<td style="text-align:right;font-weight:700;color:' + pC + '">' + p.fc_real_pct + '%</td></tr>';
+      html += '<tr><td><span class="g-small" style="margin-right:6px">#' + (i+1) + '</span>' + p.nombre + '</td>' +
+        '<td class="num">' + _fmtEurES(p.total_ventas, 0) + '</td>' +
+        '<td class="num">' + gBadge(p.fc_real_pct > 30 ? 'g-warn' : 'g-ok', p.fc_real_pct + '%') + '</td></tr>';
     });
     html += '</tbody></table></div></div></div>';
 
@@ -14576,7 +14573,7 @@ async function loadFBResumen() {
         });
       }
     }, 100);
-  } catch(e) { cont.innerHTML = '<div class="empty"><p>Error: ' + e.message + '</p></div>'; }
+  } catch(e) { cont.innerHTML = '<div class="g-empty">Error: ' + e.message + '</div>'; }
 }
 
 async function loadFBInventario() {
@@ -14587,42 +14584,42 @@ async function loadFBInventario() {
   try {
     const res = await fetch('/fb/api/inventario');
     const data = await res.json();
-    if (!data.ok) { cont.innerHTML = '<div class="empty"><p>Error inventario</p></div>'; return; }
+    if (!data.ok) { cont.innerHTML = '<div class="g-empty">Error inventario</div>'; return; }
     if (!data.items || !data.items.length) { cont.innerHTML = _emptyState('📦', t('fb.invVacioTitulo', 'Inventario vacío'), t('fb.sinInventario', 'Sin datos de inventario. Sube un inventario con ⚡ Procesar Archivos.')); return; }
 
     const alertas = data.items.filter(i => i.alerta);
-    let html = '<div class="fb-kpi-grid" style="display:grid;grid-template-columns:repeat(auto-fit,minmax(140px,1fr));gap:14px;margin-bottom:20px">';
+    let html = '<div class="g-tiles fb-kpi-grid">';
     html += _fbKpi(t('fb.itemsStock', 'Items en Stock'), data.items.length, t('fb.ingredientes', 'ingredientes'), 'var(--acc2)');
     html += _fbKpi(t('fb.valorInv', 'Valor Inventario'), _fmtEurES(data.valor_total, 2), t('fb.valorActual', 'valoración actual'), 'var(--grn)');
     html += _fbKpi(t('fb.alertasStock', 'Alertas Stock Bajo'), alertas.length, alertas.length > 0 ? 'revisar urgente' : t('fb.todoOk', 'todo OK'), alertas.length > 0 ? 'var(--red)' : 'var(--grn)');
     html += '</div>';
 
-    html += '<div class="card"><div class="card-title" data-i18n="card.stockIngredientes">Stock de Ingredientes</div>';
-    html += '<div class="tbl-wrap" style="overflow-x:auto;-webkit-overflow-scrolling:touch"><table style="min-width:0;width:100%"><thead><tr>';
+    html += '<div class="g-card"><div class="g-card-head"><div class="g-card-title" data-i18n="card.stockIngredientes">Stock de Ingredientes</div></div>';
+    html += '<div class="g-tbl-wrap"><table class="g-tbl"><thead><tr>';
     html += '<th>' + (t('fb.thIngrediente', 'Ingrediente')) + '</th><th>' + (t('fb.thCategoria', 'Categoría')) + '</th><th>' + (t('th.proveedor', 'Proveedor')) + '</th>';
-    html += '<th style="text-align:right">' + (t('fb.thActual', 'Actual')) + '</th><th style="text-align:right">€/u</th>';
-    html += '<th style="text-align:right;width:130px">Stock</th><th style="text-align:center">Estado</th>';
+    html += '<th class="num">' + (t('fb.thActual', 'Actual')) + '</th><th class="num">€/u</th>';
+    html += '<th class="num" style="width:130px">Stock</th><th>' + t('th.estado', 'Estado') + '</th>';
     html += '</tr></thead><tbody>';
     data.items.forEach(item => {
-      const fillColor = item.critico ? 'var(--red)' : item.alerta ? 'var(--ora)' : 'var(--grn)';
-      const badge = item.critico ? '<span class="badge b-disc">Crítico</span>' :
-                    item.alerta  ? '<span class="badge b-unk">Bajo</span>' :
-                                   '<span class="badge b-ok">OK</span>';
+      const fillCls = item.critico ? 'err' : item.alerta ? 'warn' : 'ok';
+      const badge = item.critico ? gBadge('g-err', t('est.critico', 'Crítico')) :
+                    item.alerta  ? gBadge('g-warn', t('est.bajo', 'Bajo')) :
+                                   gBadge('g-ok', 'OK');
       html += '<tr>' +
-        '<td style="font-weight:600">' + item.ingrediente + '</td>' +
-        '<td style="color:var(--mut)">' + item.categoria + '</td>' +
-        '<td style="color:var(--dim);font-size:12px">' + item.proveedor + '</td>' +
-        '<td style="text-align:right;font-weight:700">' + item.stock_actual + ' ' + item.unidad + '</td>' +
-        '<td style="text-align:right;color:var(--mut)">' + _fmtEurES(item.coste_unitario) + '</td>' +
-        '<td style="text-align:right">' +
-          '<div class="stock-bar"><div class="stock-fill" style="width:' + Math.min(item.pct_restante,100) + '%;background:' + fillColor + '"></div></div>' +
-          '<div style="font-size:10px;color:var(--dim);text-align:right">' + item.pct_restante + '%</div></td>' +
-        '<td style="text-align:center">' + badge + '</td>' +
+        '<td><b>' + item.ingrediente + '</b></td>' +
+        '<td class="g-small">' + item.categoria + '</td>' +
+        '<td class="g-small">' + item.proveedor + '</td>' +
+        '<td class="num"><b>' + item.stock_actual + ' ' + item.unidad + '</b></td>' +
+        '<td class="num g-small">' + _fmtEurES(item.coste_unitario) + '</td>' +
+        '<td class="num">' +
+          '<div class="g-progress-bar" style="height:8px"><div class="g-progress-fill ' + fillCls + '" style="width:' + Math.min(item.pct_restante,100) + '%"></div></div>' +
+          '<div class="g-note" style="margin-top:2px;text-align:right">' + item.pct_restante + '%</div></td>' +
+        '<td>' + badge + '</td>' +
         '</tr>';
     });
     html += '</tbody></table></div></div>';
     cont.innerHTML = html;
-  } catch(e) { cont.innerHTML = '<div class="empty"><p>Error: ' + e.message + '</p></div>'; }
+  } catch(e) { cont.innerHTML = '<div class="g-empty">Error: ' + e.message + '</div>'; }
   if (_i18nLang && _i18nLang !== "es") applyI18n(_i18nData);
 }
 
@@ -14634,7 +14631,7 @@ async function loadFBMermas() {
   try {
     const res = await fetch('/fb/api/mermas' + _fbMesQS());
     const data = await res.json();
-    if (!data.ok) { cont.innerHTML = '<div class="empty"><p>Error mermas</p></div>'; return; }
+    if (!data.ok) { cont.innerHTML = '<div class="g-empty">Error mermas</div>'; return; }
     if (!data.mermas || !data.mermas.length) { cont.innerHTML = _emptyState('🗑️', t('fb.sinMermas', 'Sin mermas registradas.'), t('fb.merVacioSub', 'Cuando registres mermas o subas un archivo, aparecerán aquí con su coste y causa.')); return; }
 
     // Add summary KPI if total available
@@ -14644,72 +14641,70 @@ async function loadFBMermas() {
     if (totalCoste > 0) {
       const topCat = Object.keys(porCategoria)[0] || '—';
       const topVal = Object.values(porCategoria)[0] || 0;
-      html += '<div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(140px,1fr));gap:12px;margin-bottom:20px">' +
-        '<div class="sc"><div class="sc-lbl" data-tip="Coste total de mermas registradas">COSTE TOTAL MERMAS</div><div class="sc-val" style="color:var(--ora)">' + _fmtEurES(totalCoste, 2) + '</div></div>' +
-        '<div class="sc"><div class="sc-lbl">CATEGORÍA CON MÁS MERMA</div><div class="sc-val" style="font-size:16px;font-weight:700">' + topCat + '</div><div class="sc-sub">' + _fmtEurES(topVal, 2) + '</div></div>' +
-        '<div class="sc"><div class="sc-lbl">REGISTROS</div><div class="sc-val">' + data.mermas.length + '</div></div>' +
+      html += '<div class="g-tiles">' +
+        _fbKpi(t('fb.costeMermas', 'Coste total mermas'), _fmtEurES(totalCoste, 2), t('fb.registradas', 'registradas'), 'var(--ora)') +
+        _fbKpi(t('fb.catMasMerma', 'Categoría con más merma'), topCat, _fmtEurES(topVal, 2), '') +
+        _fbKpi(t('fb.registros', 'Registros'), data.mermas.length, t('fb.enElPeriodo', 'en el periodo'), '') +
         '</div>';
       window._fbCriticalAlerts = data.criticos_count || 0;
     if (totalCoste > 200) {
-        html += '<div style="background:rgba(245,158,11,.08);border:1px solid rgba(245,158,11,.25);border-radius:10px;padding:12px 16px;font-size:13px;color:var(--ora);margin-bottom:16px">⚠ Mermas altas: ' + _fmtEurES(totalCoste) + ' este período. Revisar porcionado y almacenamiento.</div>';
+        html += '<div class="g-alert warn" style="margin-bottom:16px">⚠ <span>' + t('fb.mermasAltas', 'Mermas altas') + ': ' + _fmtEurES(totalCoste) + ' ' + t('fb.estePeriodo', 'este período. Revisar porcionado y almacenamiento.') + '</span></div>';
       }
     }
-    html += '<div class="fb-chart-grid" style="display:grid;grid-template-columns:1fr 1fr;gap:16px;margin-bottom:20px">';
+    html += '<div class="g-grid2 fb-chart-grid" style="margin-bottom:24px">';
     // Mermas por causa
-    html += '<div class="card"><div class="card-title" data-i18n="card.mermasCausa">Mermas por Causa</div><div style="margin-top:8px">';
+    html += '<div class="g-card"><div class="g-card-head"><div class="g-card-title" data-i18n="card.mermasCausa">Mermas por Causa</div></div><div>';
     const causas = Object.entries(data.por_causa).sort((a,b) => b[1]-a[1]);
     const maxCausa = causas[0]?.[1] || 1;
     causas.forEach(([causa, coste]) => {
       const pct = Math.round(coste/maxCausa*100);
-      html += '<div style="margin-bottom:10px"><div style="display:flex;justify-content:space-between;font-size:13px;margin-bottom:3px">' +
-        '<span>' + causa + '</span><span style="font-weight:700;color:var(--ora)">' + _fmtEurES(coste) + '</span></div>' +
-        '<div class="stock-bar"><div class="stock-fill" style="width:' + pct + '%;background:var(--ora)"></div></div></div>';
+      html += '<div style="margin-bottom:10px"><div style="display:flex;justify-content:space-between;font-size:13px;margin-bottom:4px">' +
+        '<span>' + causa + '</span><b class="g-num" style="color:var(--ora)">' + _fmtEurES(coste) + '</b></div>' +
+        '<div class="g-progress-bar" style="height:8px"><div class="g-progress-fill warn" style="width:' + pct + '%"></div></div></div>';
     });
     html += '</div></div>';
 
     // Formulario registrar merma
-    html += '<div class="card"><div class="card-title" data-i18n="card.registrarMerma">Registrar Merma</div>';
-    html += '<div style="display:grid;gap:10px;margin-top:8px">';
+    html += '<div class="g-card"><div class="g-card-head"><div class="g-card-title" data-i18n="card.registrarMerma">Registrar Merma</div></div>';
+    html += '<div style="display:grid;gap:10px">';
     html += _fbField('mb-ing', 'Ingrediente', 'text', 'Ej: Gambas');
     html += '<div style="display:grid;grid-template-columns:1fr 1fr;gap:10px">';
     html += _fbField('mb-cant', 'Cantidad', 'number', '0.5');
     html += _fbField('mb-unidad', 'Unidad', 'text', 'kg / l');
     html += '</div>';
     html += _fbField('mb-coste', 'Coste unitario (€/u)', 'number', '12.00');
-    html += '<div><label style="font-size:11px;color:var(--mut);display:block;margin-bottom:5px;text-transform:uppercase;letter-spacing:.4px">Causa</label>';
-    html += '<select id="mb-causa" style="width:100%;background:var(--bg);border:1px solid var(--s2);color:var(--tx);border-radius:9px;padding:10px 12px;font-family:inherit;font-size:14px">';
+    html += '<div class="g-field"><label>' + t('fb.causa', 'Causa') + '</label>';
+    html += '<select id="mb-causa" class="g-input">';
     ['Caducidad','Deterioro','Merma cocina','No vendido','Rotura','Otro'].forEach(c => {
       html += '<option value="' + c + '">' + c + '</option>';
     });
     html += '</select></div>';
-    html += '<button class="btn-run" onclick="fbRegistrarMerma()" style="font-size:13px;margin-top:4px">💾 Registrar Merma</button>';
-    html += '<div id="mb-msg" style="font-size:12px;text-align:center;min-height:18px"></div>';
+    html += '<button class="g-btn g-secondary" onclick="fbRegistrarMerma()" style="margin-top:4px">💾 ' + t('fb.registrarBtn', 'Registrar merma') + '</button>';
+    html += '<div id="mb-msg" class="g-small" style="text-align:center;min-height:18px"></div>';
     html += '</div></div></div>';
 
     // Historial
-    html += '<div class="card"><div class="card-title">Historial de Mermas · Total: <span style="color:var(--ora)">' + _fmtEurES(data.total) + '</span></div>';
-    html += '<div class="tbl-wrap" style="overflow-x:auto;-webkit-overflow-scrolling:touch"><table style="min-width:0;width:100%"><thead><tr>';
-    html += '<th>Fecha</th><th>Ingrediente</th><th>Categoría</th><th style="text-align:right">Cantidad</th>';
-    html += '<th>Causa</th><th style="text-align:right">Coste</th></tr></thead><tbody>';
+    html += '<div class="g-card"><div class="g-card-head"><div class="g-card-title">' + t('fb.historialMermas', 'Historial de Mermas') + '</div><span class="g-small">' + t('fb.total', 'Total') + ': <b class="g-num" style="color:var(--ora)">' + _fmtEurES(data.total) + '</b></span></div>';
+    html += '<div class="g-tbl-wrap"><table class="g-tbl"><thead><tr>';
+    html += '<th>' + t('lbl.fecha', 'Fecha') + '</th><th>' + t('fb.thIngrediente', 'Ingrediente') + '</th><th>' + t('fb.thCategoria', 'Categoría') + '</th><th class="num">' + t('fb.cantidad', 'Cantidad') + '</th>';
+    html += '<th>' + t('fb.causa', 'Causa') + '</th><th class="num">' + t('fb.coste', 'Coste') + '</th></tr></thead><tbody>';
     [...data.mermas].reverse().forEach(m => {
       html += '<tr>' +
-        '<td style="color:var(--dim);font-size:12px">' + m.fecha + '</td>' +
-        '<td style="font-weight:600">' + m.ingrediente + '</td>' +
-        '<td style="color:var(--mut)">' + m.categoria + '</td>' +
-        '<td style="text-align:right">' + m.cantidad + ' ' + m.unidad + '</td>' +
-        '<td><span class="badge b-unk">' + m.causa + '</span></td>' +
-        '<td style="text-align:right;font-weight:700;color:var(--red)">' + _fmtEurES(m.coste) + '</td>' +
+        '<td class="g-small">' + m.fecha + '</td>' +
+        '<td><b>' + m.ingrediente + '</b></td>' +
+        '<td class="g-small">' + m.categoria + '</td>' +
+        '<td class="num">' + m.cantidad + ' ' + m.unidad + '</td>' +
+        '<td>' + gBadge('g-mute', m.causa) + '</td>' +
+        '<td class="num"><b style="color:var(--red)">' + _fmtEurES(m.coste) + '</b></td>' +
         '</tr>';
     });
     html += '</tbody></table></div></div>';
     cont.innerHTML = html;
-  } catch(e) { cont.innerHTML = '<div class="empty"><p>Error: ' + e.message + '</p></div>'; }
+  } catch(e) { cont.innerHTML = '<div class="g-empty">Error: ' + e.message + '</div>'; }
 }
 
 function _fbField(id, label, type, ph) {
-  return '<div><label style="font-size:11px;color:var(--mut);display:block;margin-bottom:5px;text-transform:uppercase;letter-spacing:.4px">' + label + '</label>' +
-    '<input id="' + id + '" type="' + type + '" placeholder="' + ph + '" ' +
-    'style="width:100%;background:var(--bg);border:1px solid var(--s2);color:var(--tx);border-radius:9px;padding:10px 12px;font-family:inherit;font-size:14px;outline:none"></div>';
+  return '<div class="g-field"><label>' + label + '</label><input class="g-input" id="' + id + '" type="' + type + '" placeholder="' + ph + '"></div>';
 }
 
 async function fbRegistrarMerma() {
@@ -14736,11 +14731,11 @@ async function loadFBRecetas() {
   try {
     const res = await fetch('/fb/api/recetas');
     const data = await res.json();
-    if (!data.ok) { cont.innerHTML = '<div class="empty"><p>Error recetas</p></div>'; return; }
+    if (!data.ok) { cont.innerHTML = '<div class="g-empty">Error recetas</div>'; return; }
     if (!data.recetas || !data.recetas.length) { cont.innerHTML = _emptyState('📖', t('fb.recVacioTitulo', 'Sin recetas cargadas'), t('fb.sinRecetas', 'Aún no hay recetario. Súbelo con ⚡ Procesar archivos: una fila por ingrediente (receta, ingrediente, cantidad, coste) y Yve calcula el food cost de cada plato.')); return; }
 
     const avg = data.recetas.length ? data.recetas.reduce((a,r)=>a+r.fc_pct,0)/data.recetas.length : 0;
-    let html = '<div class="fb-kpi-grid" style="display:grid;grid-template-columns:repeat(3,1fr);gap:14px;margin-bottom:20px">';
+    let html = '<div class="g-tiles fb-kpi-grid">';
     html += _fbKpi((t('fb.recetas', 'Recetas activas')), data.recetas.length, t('fb.enCarta', 'recetas en carta'), 'var(--acc2)');
     if (data.avg_fc_pct) html += _fbKpi('FC% Medio', data.avg_fc_pct + '%', 'media del menú', data.avg_fc_pct <= 22 ? 'var(--grn)' : 'var(--ora)');
     if (data.best_margin) html += _fbKpi('Mejor margen', data.best_margin.split(' ').slice(0,2).join(' '), 'menor FC%', 'var(--grn)');
@@ -14748,36 +14743,36 @@ async function loadFBRecetas() {
     html += _fbKpi('Alertas FC alto', data.recetas.filter(r=>r.alerta).length, '>35% FC', 'var(--red)');
     html += '</div>';
 
-    html += '<div class="card"><div class="card-title" data-i18n="card.fichaRecetas">Ficha de Recetas con Coste Teórico</div>';
-    html += '<div class="tbl-wrap" style="overflow-x:auto;-webkit-overflow-scrolling:touch"><table style="min-width:0;width:100%"><thead><tr>';
-    html += '<th>Receta</th><th>Categoría</th><th style="text-align:right">PVP</th>';
-    html += '<th style="text-align:right">Coste</th><th style="text-align:right">FC%</th>';
-    html += '<th style="text-align:right">Margen</th><th style="text-align:center">Estado</th>';
+    html += '<div class="g-card"><div class="g-card-head"><div class="g-card-title" data-i18n="card.fichaRecetas">Ficha de Recetas con Coste Teórico</div></div>';
+    html += '<div class="g-tbl-wrap"><table class="g-tbl"><thead><tr>';
+    html += '<th>' + t('fb.receta', 'Receta') + '</th><th>' + t('fb.thCategoria', 'Categoría') + '</th><th class="num">PVP</th>';
+    html += '<th class="num">' + t('fb.coste', 'Coste') + '</th><th class="num">FC%</th>';
+    html += '<th class="num">' + t('fb.margen', 'Margen') + '</th><th>' + t('th.estado', 'Estado') + '</th>';
     html += '</tr></thead><tbody>';
     data.recetas.sort((a,b)=>b.fc_pct-a.fc_pct).forEach(r => {
-      const fcColor = r.alerta ? 'var(--red)' : r.fc_pct < 25 ? 'var(--grn)' : 'var(--ora)';
+      const fcCls = r.alerta ? 'g-err' : r.fc_pct < 25 ? 'g-ok' : 'g-warn';
       const margen = (Number(r.precio_venta) || 0) - (Number(r.coste_teorico) || 0);
-      const badge = r.alerta ? '<span class="badge b-disc">Alto FC</span>' : '<span class="badge b-ok">OK</span>';
+      const badge = r.alerta ? gBadge('g-err', t('est.altoFc', 'FC alto')) : gBadge('g-ok', 'OK');
       html += '<tr>' +
-        '<td style="font-weight:600">' + r.nombre + '</td>' +
-        '<td style="color:var(--mut)">' + r.categoria + '</td>' +
-        '<td style="text-align:right;font-weight:700">' + _fmtEurES(r.precio_venta) + '</td>' +
-        '<td style="text-align:right;color:var(--mut)">' + _fmtEurES(r.coste_teorico) + '</td>' +
-        '<td style="text-align:right;font-weight:800;color:' + fcColor + '">' + r.fc_pct + '%</td>' +
-        '<td style="text-align:right;color:var(--grn)">' + _fmtEurES(margen) + '</td>' +
-        '<td style="text-align:center">' + badge + '</td></tr>';
+        '<td><b>' + r.nombre + '</b></td>' +
+        '<td class="g-small">' + r.categoria + '</td>' +
+        '<td class="num"><b>' + _fmtEurES(r.precio_venta) + '</b></td>' +
+        '<td class="num g-small">' + _fmtEurES(r.coste_teorico) + '</td>' +
+        '<td class="num">' + gBadge(fcCls, r.fc_pct + '%') + '</td>' +
+        '<td class="num" style="color:var(--grn)">' + _fmtEurES(margen) + '</td>' +
+        '<td>' + badge + '</td></tr>';
     });
     html += '</tbody></table></div></div>';
     cont.innerHTML = html;
-  } catch(e) { cont.innerHTML = '<div class="empty"><p>Error: ' + e.message + '</p></div>'; }
+  } catch(e) { cont.innerHTML = '<div class="g-empty">Error: ' + e.message + '</div>'; }
 }
 
 function _emptyState(emoji, titulo, sub, conCta) {
-  return '<div style="text-align:center;padding:44px 20px">' +
-    '<div style="font-size:44px;margin-bottom:12px;opacity:.85">' + emoji + '</div>' +
-    '<div style="font-size:15px;font-weight:700;color:var(--tx);margin-bottom:6px">' + titulo + '</div>' +
-    '<div style="font-size:12.5px;color:var(--mut);max-width:340px;margin:0 auto 18px;line-height:1.6">' + sub + '</div>' +
-    (conCta !== false ? '<button class="btn-run" onclick="openUploadModal()" style="margin:0 auto;font-size:13px">' + t('nav.procesar', '⚡ Procesar Archivos') + '</button>' : '') +
+  return '<div class="g-empty g-empty-lg">' +
+    '<div class="g-empty-ico">' + emoji + '</div>' +
+    '<b>' + titulo + '</b>' +
+    '<div class="g-small" style="max-width:340px;margin:0 auto">' + sub + '</div>' +
+    (conCta !== false ? '<div style="margin-top:16px"><button class="g-btn g-secondary g-sm" onclick="openUploadModal()">' + t('nav.procesar', '⚡ Procesar Archivos') + '</button></div>' : '') +
     '</div>';
 }
 
@@ -14797,30 +14792,27 @@ function _fbAvisoCobertura(cob) {
   var lista  = (cob.platos_sin_receta || []).join(', ');
   var mas    = cob.n_platos_sin_receta > (cob.platos_sin_receta || []).length
              ? ' (+' + (cob.n_platos_sin_receta - cob.platos_sin_receta.length) + ')' : '';
-  return '<div style="background:var(--s1);border:1px solid var(--s2);border-left:3px solid var(--ora);' +
-         'border-radius:9px;padding:11px 14px;margin-bottom:16px;font-size:12px;color:var(--mut)">' +
-         '<b style="color:var(--ora)">' + cob.n_platos_sin_receta + ' ' +
+  return '<div class="g-alert warn" style="margin-bottom:16px"><span><b>' + cob.n_platos_sin_receta + ' ' +
          (cob.n_platos_sin_receta === 1 ? t('fb.platoSinEscandallo', 'plato sin escandallo')
                                         : t('fb.platosSinEscandallo', 'platos sin escandallo')) +
          '</b> — ' + _fmtEurES(eurSin, 0) + ' ' +
          t('fb.noCuentanFc', 'de ventas que no cuentan para el food cost') + ': ' +
-         lista + mas + '</div>';
+         lista + mas + '</span></div>';
 }
 
+// Guia: el tile de F&B es el tile de la guia; `color` (var(--grn), var(--red)...) decide la clase de significado.
 function _fbKpi(lbl, val, sub, color) {
-  return '<div class="fb-kpi-card" style="background:var(--s1);border:1px solid var(--s2);border-radius:13px;padding:18px 16px">' +
-    '<div class="fb-kpi-lbl" style="font-size:10px;color:var(--mut);text-transform:uppercase;letter-spacing:.6px;margin-bottom:10px;font-weight:600">' + lbl + '</div>' +
-    '<div class="fb-kpi-val" style="font-size:24px;font-weight:800;color:' + color + ';line-height:1;letter-spacing:-.5px">' + val + '</div>' +
-    '<div style="font-size:11px;color:var(--dim);margin-top:7px">' + sub + '</div></div>';
+  var k = {'var(--acc2)':'k-acc', 'var(--grn)':'k-grn', 'var(--red)':'k-red', 'var(--ora)':'k-ora', 'var(--pur)':'k-pur'}[color] || '';
+  return '<div class="g-kpi fb-kpi-card ' + k + '"><div class="g-kpi-lbl fb-kpi-lbl">' + lbl + '</div>' +
+    '<div class="g-kpi-val fb-kpi-val">' + val + '</div><div class="g-kpi-sub">' + sub + '</div></div>';
 }
 
 function _fcBar(label, pct, maxG, color) {
   const w = Math.round(pct/maxG*100);
-  return '<div style="display:flex;align-items:center;gap:12px;margin-bottom:10px">' +
-    '<div style="font-size:12px;color:var(--mut);width:56px;flex-shrink:0">' + label + '</div>' +
-    '<div style="flex:1;background:var(--s2);border-radius:6px;height:16px;overflow:hidden">' +
-      '<div style="height:100%;background:' + color + ';border-radius:6px;width:' + w + '%;transition:width .8s"></div></div>' +
-    '<div style="font-size:15px;font-weight:700;color:' + color + ';width:42px;text-align:right">' + pct + '%</div></div>';
+  var k = {'var(--grn)':'ok', 'var(--red)':'err', 'var(--ora)':'warn'}[color] || 'ok';
+  return '<div class="g-progress" style="margin-bottom:10px"><span class="g-small" style="width:56px;flex:0 0 auto">' + label + '</span>' +
+    '<div class="g-progress-bar" style="height:14px"><div class="g-progress-fill ' + k + '" style="width:' + w + '%"></div></div>' +
+    '<b class="g-num ' + k + '" style="min-width:48px">' + pct + '%</b></div>';
 }
 
 

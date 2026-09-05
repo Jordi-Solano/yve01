@@ -33,8 +33,9 @@ PANELES = {
                     ['runConciliacion()', 'abrirModoBanco()', "elegirModoBanco('grupo')", "elegirModoBanco('por_hotel')", 'cerrarModoBanco()', 'href="/conciliacion/"'], 1),
     'panel-drr': (['drr-status', 'drr-oob-badge', 'drr-body', 'drr-metrics', 'drr-drop-zone'], ['openUploadModal()', '_recibirEnProcesar(event.dataTransfer.files)'], 1),
     'panel-notif': (['notif-smtp-banner', 'btn-save-notif', 'notif-canales', 'notif-channel-fields', 'notif-alertas', 'notif-count', 'btn-send-notif', 'notif-tbody'], ['guardarNotifConfig()', 'probarNotif()', 'enviarNotificaciones()'], 1),
+    'panel-fb': (['fb-mes', 'fb-subtabs', 'fb-resumen', 'fb-inventario', 'fb-mermas-panel', 'fb-recetas'], ['fbCambiarMes()', "fbSub('resumen',this)", "fbSub('recetas',this)", 'openUploadModal()'], 1),
 }
-FIN = {'panel-ap': '<!-- /panel-ap -->', 'panel-ar': '<!-- /panel-ar -->', 'panel-banco': '<!-- /panel-banco -->', 'panel-drr': '<!-- /panel-drr -->', 'panel-notif': '<!-- /panel-notif -->'}
+FIN = {'panel-ap': '<!-- /panel-ap -->', 'panel-ar': '<!-- /panel-ar -->', 'panel-banco': '<!-- /panel-banco -->', 'panel-drr': '<!-- /panel-drr -->', 'panel-notif': '<!-- /panel-notif -->', 'panel-fb': '<!-- /panel-fb -->'}
 
 # funciones de badges que se ejecutan con node: (nombre, [(argumento, texto esperado, clase esperada)])
 BADGES = [
