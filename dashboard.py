@@ -6,6 +6,16 @@ Abre en: http://localhost:5001
 
 import os, glob, json, subprocess, sys, threading
 from datetime import date
+# ANTES de que nadie abra un fichero: si hay disco persistente (YVE_DATA_DIR),
+# las carpetas de datos pasan a vivir alli (almacen_persistente). Sin la
+# variable no hace nada.
+try:
+    import almacen_persistente as _AP_DISCO
+    _MONTADO = _AP_DISCO.montar()
+    if _MONTADO:
+        print(f"[almacen_persistente] datos en {_MONTADO['data_dir']} · sembradas {_MONTADO['sembradas']} · {_MONTADO['copiados']} ficheros copiados")
+except Exception as _e_disco:
+    print(f"[almacen_persistente] NO montado: {_e_disco}")
 import pandas as pd
 from flask import Flask, Response, jsonify, request, stream_with_context, redirect, send_file, session
 from flask_login import login_required, current_user
@@ -750,7 +760,13 @@ def api_oracle_status():
         sim = bool(_is_sim())
     except Exception:
         sim = True                       # ante la duda, nunca decir "real"
-    return jsonify({'mode': 'simulation' if sim else 'real', 'simulacion': sim, 'ok': True})
+    try:
+        import almacen_persistente as _APD
+        _disco = _APD.estado()
+    except Exception:
+        _disco = {'persistente': False}
+    return jsonify({'mode': 'simulation' if sim else 'real', 'simulacion': sim, 'ok': True,
+                    'almacenamiento_persistente': bool(_disco.get('persistente')), 'data_dir': _disco.get('data_dir', '')})
 
 # ── Provisiones de cierre (Ola A) ────────────────────────────────────────────
 def _provisiones_args():

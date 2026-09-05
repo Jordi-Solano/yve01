@@ -5,7 +5,21 @@ services:
     buildCommand: pip install -r requirements.txt
     startCommand: gunicorn dashboard:app --bind 0.0.0.0:$PORT --workers 1 --threads 8 --timeout 120
     healthCheckPath: /health
+    # ── Almacenamiento persistente (prerequisito de venta) ───────────────
+    # Sin esto, cada deploy borra lo subido. Exige un plan de pago (Starter,
+    # 7 $/mes) + disco (0,25 $/GB/mes). Si el servicio NO se gestiona por este
+    # Blueprint, hacerlo a mano en el panel de Render: Disks → Add disk
+    # (mount path /var/data, 1 GB) y Environment → YVE_DATA_DIR=/var/data.
+    # El codigo (almacen_persistente.py) siembra el disco la primera vez y
+    # enlaza las carpetas de datos; sin la variable, todo sigue como antes.
+    # plan: starter
+    # disk:
+    #   name: yve-datos
+    #   mountPath: /var/data
+    #   sizeGB: 1
     envVars:
+      - key: YVE_DATA_DIR
+        sync: false
       - key: ANTHROPIC_API_KEY
         sync: false
       - key: SECRET_KEY
