@@ -83,6 +83,16 @@ def main():
     ok(all('⚡ Procesar Archivos' in o and 'openUploadModal()' in o for o in outs[:3]) and 'Procesar' not in outs[3], 'el boton ⚡ Procesar Archivos sale por defecto y se quita con cta:false')
     ok(outs[0] == outs[1] and outs[2] == outs[0].replace('class="g-empty"', 'class="g-empty g-empty-lg"'), 'los tres caminos dan literalmente el mismo HTML (el grande solo añade g-empty-lg)')
     ok('g-badge g-ok' in outs[4] and 'is-ok' in outs[4] and TITULO not in outs[4], '_todoOk: verde y sin "Sin datos" (no hay nada que hacer ≠ no hay datos)')
+    # 2b) Multi-Hotel: un hotel del censo sin documentos -> sus 4 bloques en "—" (nada de "0 €")
+    prog = "function t(k,d){return d;}\nfunction _fmtEurES(v){return String(v)+' €';}\nfunction gBadge(c,x){return '<span class=\"g-badge '+c+'\">'+x+'</span>';}\n" + "\n".join(_func(html, n) for n in ('_mhEur', '_mhK', '_mhBloque', '_mhTarjeta', '_mhFilaHotelera')) + \
+        "\nvar vacio={hotel_id:'h',nombre:'H',censo:{},drr:{estado:'sin_drr'},ap:{importe:0,facturas:0,discrepancias:0},ar_ota:{importe_reclamable:0,importe_bruto:0,facturas:0},ar_real:{pendiente:0,vencido:0,facturas:0},fb:{ventas:0,food_cost_pct:0}};" + \
+        "\nvar lleno=JSON.parse(JSON.stringify(vacio)); lleno.ap={importe:1200,facturas:3,discrepancias:0};" + \
+        "\nconsole.log(JSON.stringify([_mhTarjeta(vacio,'hotel'), _mhTarjeta(lleno,'hotel')]));"
+    open('/tmp/_mh.js', 'w', encoding='utf-8').write(prog)
+    rc = subprocess.run(['node', '/tmp/_mh.js'], capture_output=True, text=True)
+    mh = json.loads(rc.stdout) if rc.returncode == 0 else ['', '']
+    ok(rc.returncode == 0 and mh[0].count('is-empty') == 4 and '0 €' not in mh[0], f"Multi-Hotel: hotel sin documentos -> 4 bloques en '—' ({rc.stderr[:60]})")
+    ok(mh[1].count('is-empty') == 0 and '1200 €' in mh[1], 'Multi-Hotel: hotel con documentos -> numeros')
     # 3) i18n: el titulo existe en los 6 idiomas
     faltan = [l for l in ('en', 'ca', 'fr', 'de', 'it', 'pt') if 'vacio.titulo' not in json.load(open(f'static/i18n/{l}.json', encoding='utf-8'))]
     ok(not faltan, f"'vacio.titulo' en los 6 idiomas (faltan {faltan})")

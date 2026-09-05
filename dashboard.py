@@ -15890,11 +15890,12 @@ function _mhK(color) {
        : color === '#ef4444' || color === 'var(--red)' ? 'k-red'
        : color === '#a78bfa' ? 'k-pur' : color === 'var(--acc2)' ? 'k-acc' : '';
 }
-function _mhBloque(etiqueta, valor, pie, color) {
-  return '<div class="g-kpi g-kpi-sm ' + _mhK(color) + '">' +
+// `vacio`: la caja no tiene ni un documento -> "—" sin color (b67: nada de ceros)
+function _mhBloque(etiqueta, valor, pie, color, vacio) {
+  return '<div class="g-kpi g-kpi-sm ' + (vacio ? 'is-empty' : _mhK(color)) + '">' +
     '<div class="g-kpi-lbl">' + etiqueta + '</div>' +
-    '<div class="g-kpi-val g-num">' + valor + '</div>' +
-    '<div class="g-kpi-sub">' + (pie || '&nbsp;') + '</div>' +
+    '<div class="g-kpi-val g-num">' + (vacio ? '—' : valor) + '</div>' +
+    '<div class="g-kpi-sub">' + (vacio ? '&nbsp;' : (pie || '&nbsp;')) + '</div>' +
   '</div>';
 }
 
@@ -15929,6 +15930,7 @@ function _mhTarjeta(f, tipo) {
   var fc = Number(f.fb.food_cost_pct) || 0;
   var fcColor = fc === 0 ? 'var(--dim)' : fc > 35 ? '#ef4444' : fc > 30 ? '#f59e0b' : '#22c55e';
   var recl = Number(f.ar_ota.importe_reclamable) || 0;
+  var sinDocs = !(f.ap.facturas || f.ar_ota.facturas || f.ar_real.facturas || f.fb.ventas);
 
   return '<div class="g-card mh-card ' + clase + '"' + (esHotel ? ' title="Ver solo este hotel" onclick="seleccionarHotelActivo(\'' + String(f.hotel_id).replace(/'/g, "\\'") + '\', true)"' : '') + '>' +
     '<div class="mh-card-head">' +
@@ -15938,17 +15940,17 @@ function _mhTarjeta(f, tipo) {
     '<div class="g-tiles g-tiles-sm mh-bloques">' +
       _mhBloque('Por pagar · AP', _mhEur(f.ap.importe),
                 f.ap.facturas + ' fact.' + (f.ap.discrepancias ? ' · ' + f.ap.discrepancias + ' con incidencia' : ''),
-                f.ap.discrepancias ? '#f59e0b' : null) +
+                f.ap.discrepancias ? '#f59e0b' : null, sinDocs) +
       // El numero que justifica el producto, y por eso va en verde y con
       // nombre completo: "reclamable" a secas se confunde con el bruto.
       _mhBloque('Reclamable a OTAs', _mhEur(recl),
                 f.ar_ota.facturas + ' fact. · bruto ' + _mhEur(f.ar_ota.importe_bruto),
-                recl > 0 ? '#22c55e' : null) +
+                recl > 0 ? '#22c55e' : null, sinDocs) +
       _mhBloque('Por cobrar · AR Real', _mhEur(f.ar_real.pendiente),
                 f.ar_real.facturas + ' fact.' + (f.ar_real.vencido ? ' · vencido ' + _mhEur(f.ar_real.vencido) : ''),
-                f.ar_real.vencido ? '#ef4444' : null) +
+                f.ar_real.vencido ? '#ef4444' : null, sinDocs) +
       _mhBloque('Ventas F&B', _mhEur(f.fb.ventas),
-                fc ? 'food cost ' + fc + '%' : 'sin escandallo', fcColor) +
+                fc ? 'food cost ' + fc + '%' : 'sin escandallo', fcColor, sinDocs) +
     '</div>' +
     (esHotel ? _mhFilaHotelera(f.drr) : '') +
   '</div>';
@@ -16047,6 +16049,8 @@ async function loadMultiHotel() {
           '<div class="g-kpi-sub">' + c.s + '</div>' +
         '</div>';
       }).join('');
+    // hoteles en el censo pero ni un documento: los cuatro numeros del grupo en "—"
+    if (kEl) _tilesVacios(kEl, !(g.ap.facturas || g.ar_ota.facturas || g.ar_real.facturas || g.fb.ventas));
 
     // ── Banco, fila hotelera del grupo, y cuadre ─────────────────────────
     var iEl = document.getElementById('mh-insights');
