@@ -98,7 +98,12 @@ def main():
                 for w in (370, 770, 800, 850, 1280):
                     ctx = br.new_context(viewport={'width': w, 'height': 800}, is_mobile=(w < 500)); pg = ctx.new_page()
                     pg.goto('http://127.0.0.1:5093/login'); pg.fill('#username', 'admin'); pg.fill('#password', 'admin123')
-                    pg.click('#btn-login'); pg.wait_for_load_state('networkidle'); pg.wait_for_timeout(800)
+                    pg.click('#btn-login')
+                    try:
+                        pg.wait_for_url(lambda u: '/login' not in u, timeout=20000)
+                    except Exception:
+                        pass
+                    pg.wait_for_load_state('networkidle'); pg.wait_for_timeout(500)
                     pg.evaluate("sessionStorage.setItem('yve_splash_shown','1')")
                     pg.goto('http://127.0.0.1:5093/__ap'); pg.wait_for_load_state('networkidle'); pg.wait_for_timeout(600)
                     # filas de prueba en la tabla AP, pintadas por el MISMO codigo que en produccion

@@ -143,3 +143,73 @@ body.light-mode .g-row{background:#fff}
 .g-modal-val{font-size:13px;font-weight:600;color:var(--tx);margin-top:4px;overflow-wrap:anywhere}
 .g-modal-foot{display:flex;justify-content:flex-end;gap:10px;margin-top:20px;padding-top:16px;border-top:1px solid var(--g-line)}
 @media(max-width:768px){.g-modal{padding:16px}.g-overlay{padding:8px}}
+
+/* ============================================================
+   CARCASA (b54): barra superior, pestañas, menu ⚙️, modales genericos y
+   burbuja de Yve con la guia. Y las piezas viejas (card, sc, btn-ref,
+   btn-run, badge, tabla, empty, modal) toman el aspecto de la guia para
+   que ningun apartado quede a medias mientras se convierte.
+   Selectores con `body` delante: la hoja va ANTES del <style> de la
+   pagina y necesita ganar en especificidad.
+   ============================================================ */
+body .nav{border-bottom:1px solid var(--g-line)}
+body .nav .btn-run{background:var(--acc);color:#fff;border:1px solid transparent;border-radius:var(--g-r-btn);padding:8px 16px;font:600 13px 'Inter',-apple-system,'Segoe UI',Roboto,sans-serif;box-shadow:0 4px 14px rgba(var(--acc-r,59),var(--acc-g,130),var(--acc-b,246),.28)}
+body .nav .btn-run:hover{background:var(--acc-dark,var(--acc))}
+body .nav .dropdown>.btn-ref{background:transparent;border:1px solid var(--s3);color:var(--tx);border-radius:var(--g-r-btn);padding:6px 10px!important}
+body .nav .dropdown>.btn-ref:hover{background:var(--s1);border-color:var(--acc)}
+body .pill{background:var(--s1);border:1px solid var(--g-line);color:var(--mut);border-radius:999px;font-size:11px}
+body #hotel-activo-sel{background:var(--s1)!important;border:1px solid var(--s3)!important;color:var(--tx)!important;border-radius:var(--g-r-sm)!important;padding:5px 10px!important;font:500 12px 'Inter',sans-serif!important}
+body .status-bar{font-size:12px;color:var(--mut)}
+body .tabs{gap:2px;border-bottom:1px solid var(--g-line)}
+body .tabs .tab{padding:10px 16px;font:600 13px 'Inter',-apple-system,'Segoe UI',Roboto,sans-serif;color:var(--mut);border-bottom:2px solid transparent;margin-bottom:-1px;border-radius:0}
+body .tabs .tab:hover{color:var(--tx)}
+body .tabs .tab.active{color:var(--acc2);border-bottom-color:var(--acc);background:transparent}
+@media(max-width:768px){
+  body .tabs{background:var(--s1);border:1px solid var(--g-line);border-radius:999px;padding:4px;gap:4px;margin-bottom:16px}
+  body .tabs .tab{border-radius:999px;border-bottom:none;margin:0;padding:8px 13px;font-size:12px}
+  body .tabs .tab.active{background:var(--acc);color:#fff}
+  body .nav .btn-run{padding:7px 12px}
+}
+body .menu{border:1px solid var(--g-line);border-radius:var(--g-r-md);box-shadow:0 12px 40px rgba(0,0,0,.45)}
+body .menu-item{border-radius:var(--g-r-sm);font-size:12.5px}
+body .menu-head{font-size:10px;letter-spacing:.6px}
+body .menu-sep{border-top:1px solid var(--g-line)}
+body #chat-fab{background:var(--acc);box-shadow:0 8px 24px rgba(var(--acc-r,59),var(--acc-g,130),var(--acc-b,246),.45);border-radius:999px;font:700 13px 'Inter',sans-serif}
+body #chat-fab:hover{box-shadow:0 12px 32px rgba(var(--acc-r,59),var(--acc-g,130),var(--acc-b,246),.55)}
+/* modales genericos (procesado, subida, personalizacion...) */
+body .overlay{background:rgba(0,0,0,.6);backdrop-filter:blur(3px)}
+body .modal{background:var(--s1);border:1px solid var(--g-line);border-radius:var(--g-r-lg);padding:24px;box-shadow:0 30px 80px rgba(0,0,0,.5)}
+@media(max-width:768px){body .modal{padding:16px}}
+
+/* piezas viejas → aspecto de la guia (hasta que cada apartado se convierta) */
+body .card{background:var(--s1);border:1px solid var(--g-line);border-radius:var(--g-r-lg);box-shadow:var(--g-shadow)}
+body .card-title{font-size:11px;letter-spacing:.6px}
+body .sc{background:var(--s1);border:1px solid var(--g-line);border-radius:var(--g-r-md);box-shadow:var(--g-shadow)}
+body .sc:hover{transform:none;border-color:var(--g-line)}
+body .sc.hl{background:var(--s1);border-color:var(--g-line)}
+body .sc-lbl{font-size:11px;font-weight:700;letter-spacing:.5px;color:var(--mut)}
+body .sc-val{font-family:var(--g-f-head);font-size:26px;font-weight:700;letter-spacing:-.6px;font-variant-numeric:tabular-nums}
+body .sc-sub{font-size:12px}
+body .btn-ref{background:transparent;border:1px solid var(--s3);color:var(--tx);border-radius:var(--g-r-btn);padding:6px 12px;font:600 12px 'Inter',-apple-system,'Segoe UI',Roboto,sans-serif}
+body .btn-ref:hover{background:var(--s1);border-color:var(--acc);color:var(--tx)}
+body .btn-run{background:var(--acc);color:#fff;border:1px solid transparent;border-radius:var(--g-r-btn);font:600 13px 'Inter',-apple-system,'Segoe UI',Roboto,sans-serif;box-shadow:0 4px 14px rgba(var(--acc-r,59),var(--acc-g,130),var(--acc-b,246),.28)}
+body .btn-run:hover{background:var(--acc-dark,var(--acc))}
+body .badge{font-size:11px;text-transform:none;letter-spacing:.2px;padding:3px 10px;border-radius:999px;border:1px solid transparent}
+body .badge.ok{color:var(--grn);background:rgba(34,197,94,.12);border-color:rgba(34,197,94,.25)}
+body .badge.err{color:var(--red);background:rgba(239,68,68,.12);border-color:rgba(239,68,68,.25)}
+body .badge.warn{color:var(--ora);background:rgba(245,158,11,.12);border-color:rgba(245,158,11,.25)}
+body th{background:var(--s2);color:var(--mut);font-size:10.5px;letter-spacing:.5px;border-bottom:none}
+body td{border-bottom:none;border-top:1px solid var(--g-line);padding:11px 14px}
+body .tbl-wrap{border:1px solid var(--g-line);border-radius:var(--g-r-md);overflow-x:auto}
+body .empty{color:var(--mut)}
+body input[type=month],body input[type=text],body input[type=email],body input[type=number],body input[type=search],body select,body textarea{border-radius:var(--g-r-sm)}
+@media(max-width:768px){body .btn-ref{padding:6px 11px}body .btn-run{padding:8px 14px}}
+/* un textarea dentro de una tabla tiene ancho minimo propio y ensanchaba la tabla (Cierre a 770-850 px) */
+body textarea{min-width:0;max-width:100%}
+body table td textarea{width:100%}
+body #paq-body table{table-layout:fixed}
+/* table{min-width:800px} global de la app: cualquier tabla fuera de un marco con scroll desbordaba
+   entre 769 y 850 px. Regla de la guia: solo las tablas dentro de un marco con scroll tienen ancho minimo. */
+body table{min-width:0}
+body .tbl-wrap>table{min-width:640px}
+@media(max-width:768px){body .tbl-wrap>table{min-width:500px}}
