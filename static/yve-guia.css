@@ -338,3 +338,12 @@ body .g-subtabs .fb-sub.active{background:var(--s2);color:var(--tx)}
 .g-empty.g-cargando{border-style:solid;border-color:transparent;color:var(--dim);padding:24px 20px}
 .g-empty.is-ok{border-style:solid;border-color:var(--g-line);padding:18px}
 .g-kpi.is-empty::before{opacity:0}.g-kpi.is-empty .g-kpi-val{color:var(--dim)}.g-kpi.is-empty .g-kpi-sub{visibility:hidden}
+/* Personalizacion · "acentuar todo" (b70): las reglas de la pagina apuntaban a
+   .sc/.card/.fb-kpi-card, que la guia ya no usa. Mismo efecto sobre las piezas
+   nuevas: borde y fondo con el acento, titulos y numeros neutros en acc2. Los
+   colores de significado (verde/rojo/ambar/violeta) NO se tocan. */
+body.acentuar-todo .g-card,body.acentuar-todo .g-kpi,body.acentuar-todo .g-row,body.acentuar-todo .g-empty,body.acentuar-todo .g-tbl-wrap,body.acentuar-todo .mh-card,body.acentuar-todo .g-canal,body.acentuar-todo .g-choice{border-color:rgba(var(--acc-r,59),var(--acc-g,130),var(--acc-b,246),.4)!important;background:rgba(var(--acc-r,59),var(--acc-g,130),var(--acc-b,246),.06)!important}
+body.acentuar-todo .g-kpi:not(.k-grn):not(.k-red):not(.k-ora):not(.k-pur):not(.is-empty) .g-kpi-val{color:var(--acc2)!important}
+body.acentuar-todo .g-kpi:not(.k-grn):not(.k-red):not(.k-ora):not(.k-pur):not(.is-empty){--k:var(--acc)}
+body.acentuar-todo .g-card-title,body.acentuar-todo .g-kpi-lbl,body.acentuar-todo .g-label{color:var(--acc2)!important;opacity:.85}
+body.acentuar-todo .g-tbl th{background:rgba(var(--acc-r,59),var(--acc-g,130),var(--acc-b,246),.12)}
