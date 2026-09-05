@@ -140,6 +140,14 @@ def generar_demo(cadenas):
             "porcentaje_pactado": pct_pactado,
             "porcentaje_factura": pct_fact,
             "comision_calculada": round(bruto * pct_fact / 100, 2),
+            # Hallazgo (j) de la Ola B: el demo no traia las columnas que escribe
+            # el verificador de verdad (`importe_comision_factura`,
+            # `porcentaje_comision`, `porcentaje_pactado`), asi que el cierre y el
+            # fiscal veian 0 asientos de comisiones OTA con el demo puesto. No era
+            # el producto: era el demo, que no se parecia al informe real.
+            "importe_comision_factura": round(bruto * pct_fact / 100, 2),
+            "importe_comision": round(bruto * pct_fact / 100, 2),
+            "porcentaje_comision": pct_fact,
             "estado": "DISCREPANCIA" if discrepancia else "CORRECTO",
             "discrepancia_euros": discrepancia if discrepancia else "",
             "estado_di": "FALTA_CERTIFICADO_DI" if extranjera and rng.random() < 0.35 else "OK",
