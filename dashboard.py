@@ -11924,11 +11924,7 @@ async function generarEmailAR(numero) {
   if (!numero) return;
   try {
     showNotification('⏳ Generando email...', 'info');
-    const r = await fetch('/api/ar_real/recordatorio', {
-      method: 'POST',
-      headers: {'Content-Type':'application/json'},
-      body: JSON.stringify({numero})
-    });
+    const r = await _postJson('/api/ar_real/recordatorio', {numero});
     const d = await r.json();
     showNotification(d.ok ? '✓ Email enviado a ' + (d.email||'') : '✗ ' + (d.error||'Error'), d.ok ? 'success' : 'error');
     if (d.ok) closeInvoiceModal();
@@ -11937,22 +11933,7 @@ async function generarEmailAR(numero) {
   }
 }
 
-function generarEmailAP(numero) {
-  if (!numero) return;
-  showNotification('⏳ Generando email AP...', 'info');
-  fetch('/ap/api/generar_email', {
-    method:'POST',
-    headers:{'Content-Type':'application/json'},
-    body:JSON.stringify({numero_factura: numero})
-  }).then(function(r){ return r.json(); }).then(function(d){
-    if (d.ok) {
-      showNotification('✉ Email generado: ' + (d.email||'proveedor'), 'success');
-      closeInvoiceModal();
-    } else {
-      showNotification('✗ ' + (d.error||'Error generando email'), 'error');
-    }
-  }).catch(function(){ showNotification('✗ Error de conexión', 'error'); });
-}
+// (generarEmailAP eliminada: llamaba a /ap/api/generar_email, una ruta que no existe, y nadie la usaba)
 
 function showAPDetail(row) {
   var modal = document.getElementById('invoice-modal');
@@ -16402,10 +16383,8 @@ async function emitirFactura() {
   const msg = document.getElementById('ef-msg');
   msg.style.display='block';msg.style.color='var(--mut)';msg.textContent='Emitiendo factura...';
   try {
-    const resp = await fetch('/api/ar_real/emitir_factura', {
-      method:'POST', headers:{'Content-Type':'application/json'},
-      body:JSON.stringify({cliente,fecha_entrada:entrada,fecha_salida:salida,habitaciones:hab,precio_noche:precio,fb_extras:fb,total})
-    });
+    // por _postJson: manda el CSRF (antes daba 403 "CSRF inválido" siempre)
+    const resp = await _postJson('/api/ar_real/emitir_factura', {cliente,fecha_entrada:entrada,fecha_salida:salida,habitaciones:hab,precio_noche:precio,fb_extras:fb,total});
     const d = await resp.json();
     if (d.ok) {
       msg.style.color='var(--grn)';msg.textContent='✓ Factura '+d.numero+' emitida — '+_fmtEurES(total, 2);
