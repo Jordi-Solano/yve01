@@ -6819,44 +6819,37 @@ svg.yvi{width:1em;height:1em;vertical-align:-0.125em;flex-shrink:0;display:inlin
   </div><!-- /panel-banco -->
 
   <!-- PANEL NOTIFICACIONES -->
-  <div id="panel-notif" class="panel">
+  <div id="panel-notif" class="panel g-panel">
+    <!-- Guia de estilo (b58). Ids de siempre. -->
+    <div class="g-head">
+      <div><div class="g-h1" data-i18n="tab.notif">🔔 Notificaciones</div><div class="g-sub" data-i18n="notif.subtitulo">Por dónde te avisa Yve y de qué; y el historial de lo enviado.</div></div>
+      <div class="g-actions">
+        <button class="g-btn g-secondary g-sm" onclick="probarNotif()" data-i18n="btn.test">🔔 Probar</button>
+        <button class="g-btn g-primary g-sm" id="btn-send-notif" onclick="enviarNotificaciones()"><span data-i18n="notif.enviar">🔔 Enviar notificaciones pendientes</span></button>
+      </div>
+    </div>
     <!-- Banner de estado SMTP -->
-    <div id="notif-smtp-banner" style="margin-bottom:16px;display:none"></div>
+    <div id="notif-smtp-banner" style="display:none;margin-bottom:16px"></div>
     <!-- Configuración de canales -->
-    <div class="card" style="margin-bottom:20px">
-      <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:18px;flex-wrap:wrap;gap:10px">
-        <div class="card-title" style="margin:0" data-i18n="notif.canales">Canales de notificación</div>
-        <button class="btn-ref" onclick="guardarNotifConfig()" id="btn-save-notif" data-i18n="notif.guardar" style="font-size:12px">💾 Guardar configuración</button>
-        <button class="btn-ref" onclick="probarNotif()" style="font-size:12px" data-i18n="btn.test">🔔 Probar</button>
+    <div class="g-card">
+      <div class="g-card-head">
+        <div><div class="g-card-title" data-i18n="notif.canales">Canales de notificación</div><div class="g-sub" data-i18n="notif.canalesSub">Pulsa un canal para activarlo o apagarlo; rellena sus datos debajo.</div></div>
+        <button class="g-btn g-secondary g-sm" onclick="guardarNotifConfig()" id="btn-save-notif" data-i18n="notif.guardar">💾 Guardar configuración</button>
       </div>
-      <div style="display:grid;grid-template-columns:repeat(4,1fr);gap:12px;margin-bottom:18px" id="notif-canales">
-        <!-- channel cards inject here -->
-      </div>
-      <div id="notif-channel-fields" style="display:grid;gap:12px;margin-bottom:8px"></div>
-      <div style="border-top:1px solid var(--s2);margin-top:14px;padding-top:16px">
-        <div style="font-size:11px;color:var(--mut);text-transform:uppercase;letter-spacing:.5px;font-weight:600;margin-bottom:12px" data-i18n="notif.eventosLabel">Eventos que disparan alerta</div>
-        <div id="notif-alertas" style="display:grid;grid-template-columns:1fr 1fr;gap:10px"></div>
-      </div>
+      <div class="g-canales" id="notif-canales"></div>
+      <div id="notif-channel-fields" class="g-inline-list" style="margin-top:14px"></div>
+      <div class="g-sep"></div>
+      <div class="g-label" style="margin-bottom:12px" data-i18n="notif.eventosLabel">Eventos que disparan alerta</div>
+      <div id="notif-alertas" class="g-checks"></div>
     </div>
 
     <!-- Historial -->
-    <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:16px;flex-wrap:wrap;gap:12px">
-      <div>
-        <span style="font-size:1.1rem;font-weight:700" data-i18n="notif.historial">Historial de Notificaciones</span>
-        <span id="notif-count" style="font-size:.8rem;color:var(--dim);margin-left:8px"></span>
-      </div>
-      <div style="display:flex;gap:8px">
-        
-        <button class="btn-run" id="btn-send-notif" onclick="enviarNotificaciones()" style="font-size:12px;padding:8px 16px">
-        <span data-i18n="notif.enviar">🔔 Enviar notificaciones pendientes</span>
-      </button>
-      </div>
-    </div>
-    <div class="card">
-      <div class="tbl-wrap">
-        <table>
-          <thead><tr><th>Fecha</th><th>Tipo</th><th>Asunto</th><th>Destinatario</th><th data-i18n="th.estado">Estado</th></tr></thead>
-          <tbody id="notif-tbody"><tr><td colspan="5" class="empty"><p>Sin notificaciones.</p></td></tr></tbody>
+    <div class="g-card">
+      <div class="g-card-head"><div><div class="g-card-title" data-i18n="notif.historial">Historial de Notificaciones</div><div class="g-sub" data-i18n="notif.historialSub">Una alerta enviada por varios canales cuenta una vez.</div></div><span id="notif-count" class="g-small"></span></div>
+      <div class="g-tbl-wrap">
+        <table class="g-tbl">
+          <thead><tr><th data-i18n="lbl.fecha">Fecha</th><th data-i18n="th.tipo">Tipo</th><th data-i18n="notif.asunto">Asunto</th><th data-i18n="notif.destinatario">Destinatario</th><th data-i18n="th.estado">Estado</th></tr></thead>
+          <tbody id="notif-tbody"><tr><td colspan="5"><div class="g-empty" data-i18n="notif.vacio">Sin notificaciones.</div></td></tr></tbody>
         </table>
       </div>
     </div>
@@ -15547,11 +15540,9 @@ async function loadNotifConfig() {
         banner.style.display = 'none';  // No mostrar banner verde — el estado se ve en el canal Email como "Activo" 
       } else {
         banner.style.display = 'flex';
-        banner.innerHTML = '<div style="background:rgba(245,158,11,.08);border:1px solid rgba(245,158,11,.3);border-radius:12px;padding:14px 18px;width:100%">' +
-          '<div style="display:flex;align-items:center;gap:10px;margin-bottom:10px">' +
-          '<span style="font-size:20px">⚠️</span>' +
-          '<div style="font-size:13px;font-weight:700;color:#f59e0b">SMTP no configurado — el email no funcionará</div></div>' +
-          '<div style="font-size:12px;color:var(--mut);line-height:1.7">' +
+        banner.innerHTML = '<div class="g-alert warn" style="width:100%;display:block">' +
+          '<div style="font-weight:700;margin-bottom:8px">⚠ ' + t('notif.smtpNo', 'SMTP no configurado — el email no funcionará') + '</div>' +
+          '<div class="g-small" style="line-height:1.7">' +
           'Para activar notificaciones por email, añade estas variables en <strong>Render → grupo Yve → Environment</strong>:<br>' +
           '<code style="background:var(--s2);padding:2px 6px;border-radius:4px;margin:2px 0;display:inline-block">SMTP_SERVER = smtp.gmail.com</code><br>' +
           '<code style="background:var(--s2);padding:2px 6px;border-radius:4px;margin:2px 0;display:inline-block">SMTP_PORT = 587</code><br>' +
@@ -15586,13 +15577,11 @@ function renderNotifConfig() {
     cont.innerHTML = NOTIF_CHANNELS.map(ch => {
       const on = c.canales && c.canales[ch.key];
       const noSoportado = ch.key === 'push' && !yvePushSupported();
-      return '<div ' + (noSoportado ? '' : 'onclick="toggleNotifCanal(\'' + ch.key + '\')" ') + 'style="cursor:' + (noSoportado ? 'not-allowed;opacity:.55' : 'pointer') + ';background:' +
-        (on ? 'rgba(var(--acc-r,59),var(--acc-g,130),var(--acc-b,246),.1)' : 'var(--s2)') + ';border:1px solid ' +
-        (on ? 'var(--acc)' : 'var(--s2)') + ';border-radius:12px;padding:14px;text-align:center;transition:background-color .15s,border-color .15s,color .15s,box-shadow .15s,transform .15s,opacity .15s">' +
-        '<div style="font-size:22px;margin-bottom:6px">' + ch.icon + '</div>' +
-        '<div style="font-size:13px;font-weight:600;color:' + (on ? 'var(--acc2)' : 'var(--mut)') + '">' + ch.name + '</div>' +
-        '<div style="font-size:10px;color:' + (on ? 'var(--grn)' : 'var(--dim)') + ';margin-top:4px">' +
-        (noSoportado ? t('notif.pushNo', 'No disponible en este navegador (en iPhone: instala Yve como app)') : (on ? '● Activo' : '○ Inactivo')) + '</div>' +
+      return '<div class="g-canal' + (on ? ' is-on' : '') + (noSoportado ? ' is-off' : '') + '" ' + (noSoportado ? '' : 'onclick="toggleNotifCanal(\'' + ch.key + '\')" ') + '>' +
+        '<div class="g-canal-ico">' + ch.icon + '</div>' +
+        '<div class="g-canal-nom">' + ch.name + '</div>' +
+        '<div class="g-canal-st">' + (noSoportado ? gBadge('g-mute', t('notif.noDisponible', 'No disponible')) : (on ? gBadge('g-ok', t('notif.activo', 'Activo')) : gBadge('g-mute', t('notif.inactivo', 'Inactivo')))) + '</div>' +
+        (noSoportado ? '<div class="g-note">' + t('notif.pushNo', 'No disponible en este navegador (en iPhone: instala Yve como app)') + '</div>' : '') +
         '</div>';
     }).join('');
     // (6) lo que pinta JS no pasa por el iconizador solo: sin esto los emoji
@@ -15607,7 +15596,7 @@ function renderNotifConfig() {
       html += notifField('email', 'Email de notificaciones', 'controller@hotel.com', c.email || '');
     if (c.canales && c.canales.whatsapp)
       html += notifField('whatsapp', 'Número WhatsApp destino (+34...)', '+34600123456', c.whatsapp || '') +
-              '<div style="font-size:11px;color:var(--dim);margin-top:4px">Necesita TWILIO_ACCOUNT_SID + TWILIO_AUTH_TOKEN + TWILIO_WHATSAPP_FROM en Render</div>';
+              '<div class="g-note">Necesita TWILIO_ACCOUNT_SID + TWILIO_AUTH_TOKEN + TWILIO_WHATSAPP_FROM en Render</div>';
 
     if (c.canales && c.canales.slack)
       html += notifField('slack_webhook', 'Slack Webhook URL', 'https://hooks.slack.com/services/...', c.slack_webhook || '');
@@ -15617,10 +15606,10 @@ function renderNotifConfig() {
            : (Notification.permission === 'denied' ? '⚠ Permiso bloqueado — actívalo en los ajustes del navegador'
            : 'Se pedirá permiso al activar el canal'))
         : 'Este navegador no soporta notificaciones push';
-      html += '<div style="background:var(--bg);border:1px solid var(--s2);border-radius:9px;padding:12px 14px">' +
-              '<div style="font-size:11px;color:var(--mut);text-transform:uppercase;letter-spacing:.4px;margin-bottom:6px">Notificaciones push</div>' +
-              '<div style="font-size:12px;color:var(--dim);margin-bottom:10px">' + permTxt + '</div>' +
-              '<button onclick="yvePushTest()" class="btn-ref" style="font-size:12px">🔔 Enviar push de prueba</button></div>';
+      html += '<div class="g-row" style="display:block">' +
+              '<div class="g-label" style="margin-bottom:6px">' + t('notif.push', 'Notificaciones push') + '</div>' +
+              '<div class="g-small" style="margin-bottom:10px">' + permTxt + '</div>' +
+              '<button onclick="yvePushTest()" class="g-btn g-secondary g-sm">🔔 ' + t('notif.pushPrueba', 'Enviar push de prueba') + '</button></div>';
     }
     fields.innerHTML = html;
     if (typeof _pintarYa === 'function') _pintarYa(fields);
@@ -15630,17 +15619,15 @@ function renderNotifConfig() {
   if (al) {
     al.innerHTML = NOTIF_ALERTAS.map(a => {
       const on = c.alertas && c.alertas[a.key];
-      return '<label style="display:flex;align-items:center;gap:10px;cursor:pointer;font-size:13px;color:var(--tx)">' +
-        '<input type="checkbox" data-alerta="' + a.key + '"' + (on ? ' checked' : '') +
-        ' style="width:17px;height:17px;accent-color:var(--acc)">' + a.label + '</label>';
+      return '<label class="g-check-row">' +
+        '<input type="checkbox" data-alerta="' + a.key + '"' + (on ? ' checked' : '') + '>' + a.label + '</label>';
     }).join('');
   }
 }
 
 function notifField(key, label, ph, val) {
-  return '<div><label style="display:block;font-size:11px;color:var(--mut);margin-bottom:5px;text-transform:uppercase;letter-spacing:.4px">' + label + '</label>' +
-    '<input data-field="' + key + '" value="' + val + '" placeholder="' + ph + '" ' +
-    'style="width:100%;background:var(--bg);border:1px solid var(--s2);color:var(--tx);border-radius:9px;padding:10px 13px;font-size:14px;outline:none;font-family:inherit"></div>';
+  return '<div class="g-field"><label>' + label + '</label>' +
+    '<input class="g-input" data-field="' + key + '" value="' + val + '" placeholder="' + ph + '"></div>';
 }
 
 function toggleNotifCanal(key) {
@@ -15732,7 +15719,7 @@ async function loadNotif() {
     const tbody = document.getElementById('notif-tbody');
     const count = document.getElementById('notif-count');
     if (!data || !data.length) {
-      tbody.innerHTML = '<tr><td colspan="5" class="empty"><p>Sin notificaciones.</p></td></tr>';
+      tbody.innerHTML = '<tr><td colspan="5"><div class="g-empty">' + t('notif.vacio', 'Sin notificaciones.') + '</div></td></tr>';
       count.textContent = '';
       return;
     }
@@ -15747,13 +15734,13 @@ async function loadNotif() {
       const TIPOS = {ar_discrepancia:'AR Disc.',ar_falta_di:'AR DI',drr_oob:'DRR OOB',ap_discrepancia:'AP Disc.',general:'General'};
       const tipo = TIPOS[n.tipo] || n.tipo || '—';
       const est = n.estado === 'enviado'
-        ? '<span class="badge b-ok">✓ Enviado</span>'
-        : '<span class="badge b-disc">✗ Error</span>';
+        ? gBadge('g-ok', t('notif.enviado', 'Enviado'))
+        : gBadge('g-err', t('notif.error', 'Error'));
       return '<tr>'
-        + '<td class="td-dim">' + (n.fecha || '—') + '</td>'
-        + '<td>' + tipo + '</td>'
-        + '<td class="td-b">' + (n.asunto || '—').substring(0,50) + '</td>'
-        + '<td class="td-dim">' + (n.destinatario || '—') + '</td>'
+        + '<td class="g-small">' + (n.fecha || '—') + '</td>'
+        + '<td>' + gBadge('g-info', tipo) + '</td>'
+        + '<td><b>' + (n.asunto || '—').substring(0,50) + '</b></td>'
+        + '<td class="g-small">' + (n.destinatario || '—') + '</td>'
         + '<td>' + est + '</td>'
         + '</tr>';
     }).join('');
