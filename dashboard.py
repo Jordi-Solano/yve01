@@ -6749,25 +6749,26 @@ svg.yvi{width:1em;height:1em;vertical-align:-0.125em;flex-shrink:0;display:inlin
   </div><!-- /panel-ap -->
 
   <!-- PANEL DRR -->
-  <div id="panel-drr" class="panel">
-    <!-- Acciones (sin titulo ni chips: decision de diseno). El estado va oculto,
-         que lo leen la subida y el onboarding; el OOB va dentro del panel. -->
+  <div id="panel-drr" class="panel g-panel">
+    <!-- Guia de estilo (b57). El estado va oculto (lo leen la subida y el onboarding). -->
+    <div class="g-head">
+      <div><div class="g-h1" data-i18n="tab.drr">📊 DRR</div><div class="g-sub" data-i18n="drr.subtitulo">El Daily Revenue Report del hotel: ocupación, tarifa, ingresos, beneficio y el cuadre diario.</div></div>
+      <div class="g-actions"><button class="g-btn g-primary g-sm" onclick="openUploadModal()" data-i18n="drr.subirBoton">📊 Subir DRR</button></div>
+    </div>
     <span class="drr-status" id="drr-status" style="display:none" data-i18n="drr.sinArchivo">Sin archivo cargado</span>
     <span id="drr-oob-badge" style="display:none"></span>
     <!-- Cuerpo: lo pinta renderDRR. #drr-metrics vive aqui (ancla del tour) y lo
          reconstruye renderDRR con los tres grupos. Al arrancar, la zona de subida. -->
     <div id="drr-body">
-      <div class="drr-metrics" id="drr-metrics" style="display:grid;grid-template-columns:repeat(auto-fit,minmax(140px,1fr));gap:10px">
-        <div class="empty" id="drr-drop-zone"
-      style="border:2px dashed var(--s3);border-radius:12px;padding:32px;cursor:pointer;transition:background-color .2s,border-color .2s,color .2s,box-shadow .2s,transform .2s,opacity .2s"
-      ondragover="event.preventDefault();this.style.borderColor='var(--acc)';this.style.background='rgba(var(--acc-r,59),var(--acc-g,130),var(--acc-b,246),.05)'"
-      ondragleave="this.style.borderColor='var(--s3)';this.style.background=''"
-      ondrop="event.preventDefault();this.style.borderColor='var(--s3)';this.style.background='';_recibirEnProcesar(event.dataTransfer.files)"
-      onclick="openUploadModal()">
-    <div class="ei">📊</div>
-    <p style="margin-bottom:6px" data-i18n="drr.arrastra">Arrastra tu DRR aquí o</p>
-    <p style="font-size:12px;color:var(--acc2);font-weight:600" data-i18n="drr.hazClic">súbelo con ⚡ Procesar archivos (.xlsm/.xlsx)</p>
-  </div>
+      <div class="drr-metrics" id="drr-metrics">
+        <div class="g-empty g-drop" id="drr-drop-zone"
+          ondragover="event.preventDefault();this.classList.add('is-over')"
+          ondragleave="this.classList.remove('is-over')"
+          ondrop="event.preventDefault();this.classList.remove('is-over');_recibirEnProcesar(event.dataTransfer.files)"
+          onclick="openUploadModal()">
+          <b data-i18n="drr.arrastra">Arrastra tu DRR aquí o</b>
+          <span data-i18n="drr.hazClic">súbelo con ⚡ Procesar archivos (.xlsm/.xlsx)</span>
+        </div>
       </div>
     </div>
   </div><!-- /panel-drr -->
@@ -15299,8 +15300,8 @@ async function renderDRR(s) {
   // ya filtra bien (drr_del_hotel devuelve None); el agujero era de repintado.
   if (!s || s.error) {
     const _msg = (s && s.error) ? ('Error: ' + s.error) : 'Sin DRR para este hotel.';
-    if (body) body.innerHTML = '<div class="drr-metrics" id="drr-metrics" style="display:grid;grid-template-columns:repeat(auto-fit,minmax(140px,1fr));gap:10px">'
-      + '<div class="empty"><p>' + _msg + '</p></div></div>';
+    if (body) body.innerHTML = '<div class="drr-metrics" id="drr-metrics">'
+      + '<div class="g-empty">' + _msg + '</div></div>';
     if (statusEl) statusEl.textContent = '';
     window._drrChartData = null;
     try { if (_drrChart) { _drrChart.destroy(); _drrChart = null; } } catch(e) {}
@@ -15335,18 +15336,17 @@ async function renderDRR(s) {
   const tr = M['Total Revenue'] || {};
   const _bp = Math.round(_num(tr.mtd) / (_num(tr.budget) || 1) * 100);
   const bpct = isFinite(_bp) ? _bp : 0;
-  const budCol = bpct >= 95 ? 'var(--grn)' : bpct >= 75 ? 'var(--ora)' : 'var(--red)';
+  const budCls = bpct >= 95 ? 'ok' : bpct >= 75 ? 'warn' : 'err';
   const budBar = '<div class="drr-mc rd-bud">'
-    + '<div style="display:flex;justify-content:space-between;font-size:11px;color:var(--mut);margin-bottom:9px"><span>Revenue del mes (MTD) vs Presupuesto</span><span style="color:' + budCol + ';font-weight:800">' + bpct + '%</span></div>'
-    + '<div style="height:8px;border-radius:5px;background:var(--s2);overflow:hidden"><div style="height:100%;width:' + Math.min(100, Math.max(0, bpct)) + '%;background:' + budCol + ';border-radius:5px"></div></div>'
-    + '<div style="font-size:10.5px;color:var(--dim);margin-top:8px">' + (tr.mtd || 'N/D') + ' de ' + (tr.budget || 'N/D') + ' presupuestado</div></div>';
+    + '<div class="g-progress" style="margin-bottom:8px"><span class="g-small">' + t('drr.mtdVsPpto', 'Revenue del mes (MTD) vs Presupuesto') + '</span><div class="g-progress-bar"><div class="g-progress-fill ' + budCls + '" style="width:' + Math.min(100, Math.max(0, bpct)) + '%"></div></div><b class="g-num ' + budCls + '">' + bpct + '%</b></div>'
+    + '<div class="g-note" style="margin-top:0">' + (tr.mtd || 'N/D') + ' ' + t('drr.de', 'de') + ' ' + (tr.budget || 'N/D') + ' ' + t('drr.presupuestado', 'presupuestado') + '</div></div>';
 
   // Procedencia del GOP, en su propia burbuja (no pegada al %). Refleja lo que
   // trae `gop_procedencia`: medido / derivado / estimado / sin datos.
   const _proc = s.gop_procedencia || {};
   const _pv = _proc.mtd || _proc.today || _proc.forecast || 'sin_datos';
-  const _provTxt = {medido:'● Medido — lo trae el DRR', derivado:'● Derivado de los datos del hotel', inventado:'● Estimado — sin datos del hotel', sin_datos:'● El DRR no trae el GOP'}[_pv] || '● Medido — lo trae el DRR';
-  const _provCol = {medido:'var(--grn)', derivado:'var(--ora)', inventado:'var(--red)', sin_datos:'var(--dim)'}[_pv] || 'var(--grn)';
+  const _provTxt = {medido:t('drr.gopMedido','Medido — lo trae el DRR'), derivado:t('drr.gopDerivado','Derivado de los datos del hotel'), inventado:t('drr.gopEstimado','Estimado — sin datos del hotel'), sin_datos:t('drr.gopSinDatos','El DRR no trae el GOP')}[_pv] || t('drr.gopMedido','Medido — lo trae el DRR');
+  const _provCls = {medido:'g-ok', derivado:'g-warn', inventado:'g-err', sin_datos:'g-mute'}[_pv] || 'g-ok';
 
   // Tres grupos con jerarquia. #drr-metrics (ancla del tour) va en el primero.
   const groups = ''
@@ -15367,16 +15367,16 @@ async function renderDRR(s) {
     +   '<div class="rd-grid gop">'
     +     tile('GOP %', 'GOP %', 'hero grn')
     +     tile('GOP', 'GOP', '', 'Gross Operating Profit — beneficio bruto antes de deuda e impuestos')
-    +     '<div class="drr-mc" style="display:flex;align-items:center"><div class="rd-prov" style="color:' + _provCol + '">' + _provTxt + '</div></div>'
+    +     '<div class="drr-mc rd-provwrap"><div class="g-label" style="margin-bottom:8px">' + t('drr.gopProcedencia', 'Procedencia del GOP') + '</div>' + gBadge(_provCls, _provTxt) + '</div>'
     +   '</div></div>';
 
-  const chartCard = '<div class="card" id="drr-chart-card" style="margin-bottom:20px">'
-    + '<div class="card-title">Revenue Diario</div>'
-    + '<div style="height:215px;position:relative"><canvas id="drr-revenue-chart"></canvas></div>'
-    + '<div id="drr-chart-vacio" style="display:none;padding:14px 4px;font-size:12.5px;color:var(--mut);line-height:1.6"></div>'
-    + '<div style="font-size:11px;color:var(--mut);margin-top:12px;display:flex;gap:18px;flex-wrap:wrap">'
-    +   '<span style="display:inline-flex;align-items:center;gap:6px"><i style="width:14px;height:3px;border-radius:2px;background:var(--acc)"></i>Revenue por día</span>'
-    +   '<span style="color:var(--red)">⚠ = día descuadrado</span></div></div>';
+  const chartCard = '<div class="g-card" id="drr-chart-card">'
+    + '<div class="g-card-head"><div><div class="g-card-title">' + t('drr.revenueDiario', 'Revenue Diario') + '</div><div class="g-sub">' + t('drr.revenueDiarioSub', 'Ingresos por día; los días descuadrados van marcados.') + '</div></div></div>'
+    + '<div class="chart-wrap" style="height:215px"><canvas id="drr-revenue-chart"></canvas></div>'
+    + '<div id="drr-chart-vacio" class="g-note" style="display:none"></div>'
+    + '<div class="g-note" style="display:flex;gap:14px;flex-wrap:wrap;align-items:center">'
+    +   '<span class="g-legend"><i></i>' + t('drr.revenuePorDia', 'Revenue por día') + '</span>'
+    +   gBadge('g-err', t('drr.diaDescuadrado', 'día descuadrado')) + '</div></div>';
 
   // Estado diario: una tarjeta por dia CON DATOS, con el revenue del dia y, en
   // los descuadrados, el importe del descuadre. El importe sale del revenue
@@ -15390,13 +15390,13 @@ async function renderDRR(s) {
     const rev = revByDay[d.dia];
     const f = String(d.fecha || '').slice(5);
     return '<div class="rd-daycard ' + (d.oob ? 'oob' : 'ok') + '">'
-      + '<div class="rd-dc-top">Día ' + d.dia + (f ? ' · ' + f : '') + '</div>'
-      + '<div class="rd-dc-amt">' + (rev != null ? _eur(rev) : '—') + '</div>'
-      + '<div class="rd-dc-sub">revenue del día</div>'
-      + '<div class="rd-dc-st ' + (d.oob ? 'oob' : 'ok') + '">' + (d.oob ? ('⚠ Descuadre ' + _eur(Math.abs(d.diff || 0))) : '✓ Cuadra') + '</div></div>';
+      + '<div class="rd-dc-top">' + t('drr.dia', 'Día') + ' ' + d.dia + (f ? ' · ' + f : '') + '</div>'
+      + '<div class="rd-dc-amt g-num">' + (rev != null ? _eur(rev) : '—') + '</div>'
+      + '<div class="rd-dc-sub">' + t('drr.revenueDelDia', 'revenue del día') + '</div>'
+      + '<div class="rd-dc-st">' + (d.oob ? gBadge('g-err', t('drr.descuadre', 'Descuadre') + ' ' + _eur(Math.abs(d.diff || 0))) : gBadge('g-ok', t('drr.cuadra', 'Cuadra'))) + '</div></div>';
   }).join('');
-  const trialCard = '<div class="card"><div class="card-title">Estado diario · Trial Balance</div>'
-    + '<div class="rd-daywrap">' + (dcards || '<div class="empty"><p>Sin días con datos.</p></div>') + '</div></div>';
+  const trialCard = '<div class="g-card"><div class="g-card-head"><div><div class="g-card-title">' + t('drr.estadoDiario', 'Estado diario · Trial Balance') + '</div><div class="g-sub">' + t('drr.estadoDiarioSub', 'Un día por tarjeta; en rojo los que no cuadran y por cuánto.') + '</div></div></div>'
+    + '<div class="rd-daywrap">' + (dcards || '<div class="g-empty">' + t('drr.sinDias', 'Sin días con datos.') + '</div>') + '</div></div>';
 
   body.innerHTML = groups + chartCard + trialCard;
 

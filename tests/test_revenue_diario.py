@@ -232,7 +232,7 @@ def test_la_pantalla_no_pinta_un_grafico_vacio(ruta=None):
     # (a) el `style` duplicado en la tarjeta del grafico
     tarjeta = re.search(r"<div[^>]*id=\"drr-chart-card\"[^>]*>", src)
     assert tarjeta, "no encuentro la tarjeta `drr-chart-card`"
-    assert tarjeta.group(0).count("style=") == 1, (
+    assert tarjeta.group(0).count("style=") <= 1, (      # b57: la guia quito el style en linea (0 tambien vale)
         f"la tarjeta del grafico tiene {tarjeta.group(0).count('style=')} atributos "
         "`style`. En HTML gana el PRIMERO, asi que el segundo —el que llevaba "
         "`display:none`— se descartaba y la tarjeta salia visible siempre, con "

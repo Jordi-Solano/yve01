@@ -230,3 +230,25 @@ body .tbl-wrap>table{min-width:640px}
 .g-choice:hover{border-color:var(--acc);background:rgba(var(--acc-r,59),var(--acc-g,130),var(--acc-b,246),.06)}
 .g-choice b{display:block;font-size:15px;font-weight:700;margin-bottom:6px}
 .g-choice span{display:block;font-size:12px;color:var(--mut);line-height:1.5}
+/* DRR (b57): sus tiles tienen jerarquia propia (MTD grande + Hoy/Prev/Ppto); toman la piel de la guia */
+body .drr-metrics{display:grid;grid-template-columns:1fr;gap:12px;margin-bottom:22px}
+body .rd-group{margin-bottom:16px}
+body .rd-glabel{font-size:11px;font-weight:700;letter-spacing:.6px;color:var(--mut);margin:0 2px 10px}
+body .drr-mc{background:var(--s1);border:1px solid var(--g-line);border-radius:var(--g-r-md);padding:16px 18px;box-shadow:var(--g-shadow)}
+body .drr-mc .mc-name{font-size:11px;font-weight:700;letter-spacing:.5px;margin-bottom:8px}
+body .rd-tile .rd-hero{font-family:var(--g-f-head);font-size:22px;font-weight:700;letter-spacing:-.5px;font-variant-numeric:tabular-nums}
+body .rd-tile.hero .rd-hero{font-size:26px}
+body .rd-mini{border-top:1px solid var(--g-line)}
+body .rd-mini>div{font-size:11px}
+body .rd-provwrap{display:flex;flex-direction:column;justify-content:center;align-items:flex-start}
+body .rd-daywrap{display:grid;grid-template-columns:repeat(auto-fill,minmax(150px,1fr));gap:10px}
+body .rd-daycard{background:var(--bg);border:1px solid var(--g-line);border-radius:var(--g-r-md);padding:12px 14px}
+body .rd-daycard.oob{border-color:rgba(239,68,68,.35);background:rgba(239,68,68,.05)}
+body .rd-dc-amt{font-family:var(--g-f-head);font-size:18px;font-weight:700}
+body .rd-dc-st{margin-top:8px}
+.g-legend{display:inline-flex;align-items:center;gap:6px}
+.g-legend i{width:14px;height:3px;border-radius:2px;background:var(--acc);display:inline-block}
+.g-drop{cursor:pointer;transition:border-color .15s,background-color .15s}
+.g-drop.is-over,.g-drop:hover{border-color:var(--acc);background:rgba(var(--acc-r,59),var(--acc-g,130),var(--acc-b,246),.06)}
+.g-drop span{display:block;color:var(--acc2);font-weight:600;font-size:12px;margin-top:4px}
+@media(max-width:768px){body .rd-grid.rate,body .rd-grid.rev,body .rd-grid.gop{grid-template-columns:1fr 1fr}body .rd-grid .rd-bud,body .rd-grid .rd-provwrap{grid-column:1/-1}}

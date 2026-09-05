@@ -31,8 +31,9 @@ PANELES = {
                  ["toggleSelectAll(this,'ar-row-cb')", 'exportarSeleccionados()', 'href="/aprobaciones-ar/"'], 1),
     'panel-banco': (['banco-modo-chip', 'banco-modo-cambiar', 'banco-progress-bar', 'bk-total', 'bk-conc', 'bk-pend', 'bk-imp-pend', 'bk-diff', 'bk-alertas', 'modal-banco-config', 'banco-modal-cancelar'],
                     ['runConciliacion()', 'abrirModoBanco()', "elegirModoBanco('grupo')", "elegirModoBanco('por_hotel')", 'cerrarModoBanco()', 'href="/conciliacion/"'], 1),
+    'panel-drr': (['drr-status', 'drr-oob-badge', 'drr-body', 'drr-metrics', 'drr-drop-zone'], ['openUploadModal()', '_recibirEnProcesar(event.dataTransfer.files)'], 1),
 }
-FIN = {'panel-ap': '<!-- /panel-ap -->', 'panel-ar': '<!-- /panel-ar -->', 'panel-banco': '<!-- /panel-banco -->'}
+FIN = {'panel-ap': '<!-- /panel-ap -->', 'panel-ar': '<!-- /panel-ar -->', 'panel-banco': '<!-- /panel-banco -->', 'panel-drr': '<!-- /panel-drr -->'}
 
 # funciones de badges que se ejecutan con node: (nombre, [(argumento, texto esperado, clase esperada)])
 BADGES = [
