@@ -6773,47 +6773,46 @@ svg.yvi{width:1em;height:1em;vertical-align:-0.125em;flex-shrink:0;display:inlin
   </div><!-- /panel-drr -->
 
   <!-- PANEL BANCO -->
-  <div id="panel-banco" class="panel">
-    <!-- Modo del banco (grupo / por hotel), elegido por el usuario. La etiqueta
-         y el enlace de "cambiar" los rellena loadBanco cuando ya hay elección. -->
-    <div style="display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:10px;margin-bottom:14px">
-      <span id="banco-modo-chip" style="display:none;font-size:11.5px;font-weight:600;padding:5px 12px;border-radius:999px;background:var(--s1);border:1px solid var(--s2);color:var(--mut)"></span>
-      <a id="banco-modo-cambiar" href="javascript:void(0)" onclick="abrirModoBanco()" style="display:none;font-size:11.5px;color:var(--acc2);text-decoration:none">⚙ Cambiar cómo funciona el banco</a>
+  <div id="panel-banco" class="panel g-panel">
+    <!-- Guia de estilo (b56). Ids de siempre. -->
+    <div class="g-head">
+      <div><div class="g-h1" data-i18n="tab.banco">🏦 Banco</div><div class="g-sub" data-i18n="bk.subtitulo">El extracto cruzado con las facturas: qué está conciliado, qué falta y qué no cuadra.</div></div>
+      <div class="g-actions">
+        <span id="banco-modo-chip" class="g-badge g-info" style="display:none"></span>
+        <button id="banco-modo-cambiar" class="g-btn g-ghost g-sm" onclick="abrirModoBanco()" style="display:none" data-i18n="bk.cambiarModo">⚙ Cambiar cómo funciona el banco</button>
+        <a href="/conciliacion/" class="g-btn g-secondary g-sm" data-i18n="btn.verConciliacion">🏦 Ver conciliación</a>
+        <button class="g-btn g-primary g-sm" onclick="runConciliacion()" data-i18n="btn.conciliar">⚡ Conciliar</button>
+      </div>
     </div>
-    <div id="banco-progress-bar" style="display:none;margin-bottom:14px"></div>
-    <div class="stats lite-visible" id="banco-stats">
-      <div class="sc hl c-blu"><div class="sc-lbl" data-i18n="sc.movimientos">Movimientos</div><div class="sc-val" id="bk-total" data-tip="Movimientos totales en el extracto">—</div><div class="sc-sub" data-i18n="sc.delExtracto">del extracto</div></div>
-      <div class="sc c-grn"><div class="sc-lbl" data-i18n="sc.conciliados">Conciliados</div><div class="sc-val" id="bk-conc" data-tip="Cruzados con factura en el sistema">—</div><div class="sc-sub" data-i18n="sc.conFactura">con factura</div></div>
-      <div class="sc c-ora"><div class="sc-lbl" data-i18n="sc.pendientes">Pendientes</div><div class="sc-val" id="bk-pend" data-tip="Sin factura asociada — pendientes">—</div><div class="sc-sub" id="bk-imp-pend">—</div></div>
-      <div class="sc c-red"><div class="sc-lbl" data-i18n="sc.diferencias">Diferencias</div><div class="sc-val" id="bk-diff">—</div><div class="sc-sub" data-i18n="sc.importeNoCuadra">importe no cuadra</div></div>
+    <div id="banco-progress-bar" class="g-progress" style="display:none"></div>
+    <div class="g-tiles" id="banco-stats">
+      <div class="g-kpi k-acc"><div class="g-kpi-lbl" data-i18n="sc.movimientos">Movimientos</div><div class="g-kpi-val" id="bk-total" data-tip="Movimientos totales en el extracto">—</div><div class="g-kpi-sub" data-i18n="sc.delExtracto">del extracto</div></div>
+      <div class="g-kpi k-grn"><div class="g-kpi-lbl" data-i18n="sc.conciliados">Conciliados</div><div class="g-kpi-val" id="bk-conc" data-tip="Cruzados con factura en el sistema">—</div><div class="g-kpi-sub" data-i18n="sc.conFactura">con factura</div></div>
+      <div class="g-kpi k-ora"><div class="g-kpi-lbl" data-i18n="sc.pendientes">Pendientes</div><div class="g-kpi-val" id="bk-pend" data-tip="Sin factura asociada — pendientes">—</div><div class="g-kpi-sub" id="bk-imp-pend">—</div></div>
+      <div class="g-kpi k-red"><div class="g-kpi-lbl" data-i18n="sc.diferencias">Diferencias</div><div class="g-kpi-val" id="bk-diff">—</div><div class="g-kpi-sub" data-i18n="sc.importeNoCuadra">importe no cuadra</div></div>
     </div>
-    <div class="card">
-      <div class="card-title" data-i18n="card.alertasBanco">Alertas Bancarias</div>
-      <div id="bk-alertas"><div class="empty"><p>—</p></div></div>
-    </div>
-    <div style="margin-top:16px;display:flex;flex-wrap:wrap;gap:8px;align-items:center">
-      <button class="btn-run" onclick="runConciliacion()" style="font-size:12px">⚡ Conciliar</button>
-      <a href="/conciliacion/" class="btn-ref" style="text-decoration:none;font-size:12px" data-i18n="btn.verConciliacion">🏦 Ver conciliación</a>
+    <div class="g-card">
+      <div class="g-card-head"><div><div class="g-card-title" data-i18n="card.alertasBanco">Alertas Bancarias</div><div class="g-sub" data-i18n="bk.alertasSub">Movimientos que llevan días sin conciliar, depósitos previstos y lo que falta por asignar a un hotel.</div></div></div>
+      <div id="bk-alertas" class="g-inline-list"><div class="g-empty">—</div></div>
     </div>
 
     <!-- Modal de primera vez: ¿cómo funciona el banco de esta empresa? Resuelve
          el nº10 convirtiéndolo en una elección (grupo vs por hotel), no un bug.
          La elección se guarda en el servidor (config_banco.json) y gobierna todo. -->
-    <div id="modal-banco-config" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,.72);z-index:9000;align-items:center;justify-content:center;padding:20px">
-      <div class="card" style="max-width:600px;width:100%">
-        <div style="font-size:18px;font-weight:800;margin-bottom:6px">🏦 ¿Cómo funciona el banco de tu empresa?</div>
-        <div style="font-size:13px;color:var(--mut);margin-bottom:20px;line-height:1.6">Un extracto bancario no dice a qué hotel es cada movimiento, así que lo eliges tú una vez. Se guarda en tu empresa (funciona igual desde el móvil y el PC) y puedes cambiarlo luego.</div>
-        <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px">
-          <button type="button" onclick="elegirModoBanco('grupo')" style="text-align:left;background:var(--s1);border:1px solid var(--s2);border-radius:12px;padding:16px;cursor:pointer;color:var(--tx);transition:border-color .15s,background-color .15s" onmouseover="this.style.borderColor='var(--acc)'" onmouseout="this.style.borderColor='var(--s2)'">
-            <div style="font-size:15px;font-weight:700;margin-bottom:6px">🏛️ Una cuenta del grupo</div>
-            <div style="font-size:12px;color:var(--mut);line-height:1.5">Una sola cuenta para toda la empresa. El banco se muestra junto, igual en todos los hoteles.</div>
+    <div id="modal-banco-config" class="g-overlay" style="display:none">
+      <div class="g-modal" style="max-width:600px">
+        <div class="g-modal-head"><div><div class="g-modal-title">🏦 ¿Cómo funciona el banco de tu empresa?</div><div class="g-sub">Un extracto bancario no dice a qué hotel es cada movimiento, así que lo eliges tú una vez. Se guarda en tu empresa (funciona igual desde el móvil y el PC) y puedes cambiarlo cuando quieras.</div></div></div>
+        <div class="g-grid2">
+          <button type="button" class="g-choice" onclick="elegirModoBanco('grupo')">
+            <b>🏛️ Una cuenta del grupo</b>
+            <span>Una sola cuenta para toda la empresa. El banco se muestra junto, igual en todos los hoteles.</span>
           </button>
-          <button type="button" onclick="elegirModoBanco('por_hotel')" style="text-align:left;background:var(--s1);border:1px solid var(--s2);border-radius:12px;padding:16px;cursor:pointer;color:var(--tx);transition:border-color .15s,background-color .15s" onmouseover="this.style.borderColor='var(--acc)'" onmouseout="this.style.borderColor='var(--s2)'">
-            <div style="font-size:15px;font-weight:700;margin-bottom:6px">🏨 Cada hotel su cuenta</div>
-            <div style="font-size:12px;color:var(--mut);line-height:1.5">Cada hotel tiene su cuenta. El banco se separa por hotel; subes cada extracto dentro de su hotel.</div>
+          <button type="button" class="g-choice" onclick="elegirModoBanco('por_hotel')">
+            <b>🏨 Cada hotel su cuenta</b>
+            <span>Cada hotel tiene su cuenta. El banco se separa por hotel; subes cada extracto dentro de su hotel.</span>
           </button>
         </div>
-        <div style="text-align:right;margin-top:16px"><a href="javascript:void(0)" onclick="cerrarModoBanco()" id="banco-modal-cancelar" style="display:none;font-size:12px;color:var(--mut);text-decoration:none">Cancelar</a></div>
+        <div class="g-modal-foot" id="banco-modal-cancelar-wrap"><button class="g-btn g-secondary" onclick="cerrarModoBanco()" id="banco-modal-cancelar" style="display:none" data-i18n="btn.cancelar">Cancelar</button></div>
       </div>
     </div>
   </div><!-- /panel-banco -->
@@ -16312,7 +16311,7 @@ async function _cargarConfigBanco() {
   return window._bancoModo;
 }
 function abrirModoBanco() {
-  var c = document.getElementById('banco-modal-cancelar'); if (c) c.style.display = 'inline';
+  var c = document.getElementById('banco-modal-cancelar'); if (c) c.style.display = 'inline-flex';
   var m = document.getElementById('modal-banco-config'); if (m) m.style.display = 'flex';
 }
 function cerrarModoBanco() {
@@ -16347,8 +16346,8 @@ async function loadBanco() {
   var chip = document.getElementById('banco-modo-chip');
   var camb = document.getElementById('banco-modo-cambiar');
   if (modo) {
-    if (chip) { chip.style.display = 'inline-block'; chip.textContent = modo === 'grupo' ? '🏛️ Banco del grupo' : '🏨 Banco por hotel'; }
-    if (camb) camb.style.display = 'inline';
+    if (chip) { chip.style.display = 'inline-flex'; chip.textContent = modo === 'grupo' ? t('bk.modoGrupo', 'Banco del grupo') : t('bk.modoHotel', 'Banco por hotel'); }
+    if (camb) camb.style.display = 'inline-flex';
   } else {
     if (chip) chip.style.display = 'none';
     if (camb) camb.style.display = 'none';
@@ -16359,14 +16358,14 @@ async function loadBanco() {
     if (!d) {
       ['bk-total','bk-conc','bk-pend','bk-diff'].forEach(function(id){ var e=document.getElementById(id); if(e) e.textContent='0'; });
       var ip = document.getElementById('bk-imp-pend'); if (ip) ip.textContent = '—';
-      var ba0 = document.getElementById('bk-alertas'); if (ba0) ba0.innerHTML = '<div class="empty"><p>Sin movimientos bancarios.</p></div>';
+      var ba0 = document.getElementById('bk-alertas'); if (ba0) ba0.innerHTML = '<div class="g-empty">' + t('bk.sinMovs', 'Sin movimientos bancarios.') + '</div>';
       var pb0 = document.getElementById('banco-progress-bar'); if (pb0) pb0.style.display = 'none';
       return;
     }
     document.getElementById('bk-total').textContent = d.total || '0';
     document.getElementById('bk-conc').textContent = d.conciliados || '0';
     var _bT = d.total||0, _bC = d.conciliados||0, _pEl = document.getElementById('banco-progress-bar');
-    if (_pEl && _bT > 0) { var _pct = Math.round(_bC/_bT*100), _col = _pct>=80?'var(--grn)':_pct>=50?'var(--ora)':'var(--red)'; _pEl.style.display='block'; _pEl.innerHTML = '<div style="display:flex;align-items:center;gap:12px;font-size:12px"><span style="color:var(--mut);white-space:nowrap">Conciliado:</span><div style="flex:1;background:var(--s2);border-radius:4px;height:8px;overflow:hidden"><div style="height:100%;border-radius:4px;background:'+_col+';width:'+_pct+'%;transition:width .6s ease"></div></div><span style="color:'+_col+';font-weight:700;min-width:60px">'+_bC+'/'+_bT+' ('+_pct+'%)</span></div>'; }
+    if (_pEl && _bT > 0) { var _pct = Math.round(_bC/_bT*100), _cls = _pct>=80?'ok':_pct>=50?'warn':'err'; _pEl.style.display='flex'; _pEl.innerHTML = '<span class="g-small">' + t('bk.conciliado', 'Conciliado') + ':</span><div class="g-progress-bar"><div class="g-progress-fill ' + _cls + '" style="width:'+_pct+'%"></div></div><b class="g-num ' + _cls + '">'+_bC+'/'+_bT+' ('+_pct+'%)</b>'; }
     else if (_pEl) { _pEl.style.display='none'; }
     document.getElementById('bk-pend').textContent = d.pendientes || '0';
     document.getElementById('bk-diff').textContent = d.diferencias || '0';
@@ -16374,22 +16373,22 @@ async function loadBanco() {
 
     var el = document.getElementById('bk-alertas');
     var _html = (d.alertas && d.alertas.length)
-      ? d.alertas.map(function(a) { return '<div class="act-item"><div class="adot r"></div><div class="atxt"><b>' + a.dias + ' ' + t('bk.dias', 'días') + '</b> ' + t('bk.sinConciliar', 'sin conciliar:') + ' ' + a.concepto + ' — ' + eur(a.importe) + '</div></div>'; }).join('')
-      : '<div class="empty"><p>Sin alertas bancarias pendientes.</p></div>';
+      ? d.alertas.map(function(a) { return '<div class="g-row">' + gBadge('g-err', a.dias + ' ' + t('bk.dias', 'días')) + '<div class="g-who"><b>' + _cEsc(a.concepto) + '</b><span>' + t('bk.sinConciliar', 'sin conciliar:') + ' ' + eur(a.importe) + '</span></div></div>'; }).join('')
+      : '<div class="g-empty">' + t('bk.sinAlertas', 'Sin alertas bancarias pendientes.') + '</div>';
     // Depositos previstos de contratos de grupo: NO son movimientos del banco, se avisan aparte
     var _deps = (d.depositos_previstos || []).filter(function(x){ return x.estado !== 'EN_EXTRACTO'; });
     if (_deps.length) {
-      _html = _deps.map(function(x) { return '<div class="act-item"><div class="adot" style="background:var(--acc2)"></div><div class="atxt"><b>' + t('bk.depPrevisto', 'Depósito previsto, aún no en el extracto') + ':</b> ' + _cEsc(x.concepto) + ' — ' + _fmtEurES(x.importe) + '</div></div>'; }).join('') + _html;
+      _html = _deps.map(function(x) { return '<div class="g-row">' + gBadge('g-info', t('bk.previsto', 'Previsto')) + '<div class="g-who"><b>' + _cEsc(x.concepto) + '</b><span>' + t('bk.depPrevisto', 'Depósito previsto, aún no en el extracto') + ' — ' + _fmtEurES(x.importe) + '</span></div></div>'; }).join('') + _html;
     }
     // Modo por hotel: lo que no está asignado a ningún hotel NO se esconde, se avisa.
     if (modo === 'por_hotel' && d.sin_asignar) {
-      _html = '<div class="act-item"><div class="adot" style="background:var(--ora)"></div><div class="atxt"><b>' + d.sin_asignar + '</b> movimiento(s) sin asignar a un hotel — súbelos dentro del hotel que corresponda</div></div>' + _html;
+      _html = '<div class="g-row">' + gBadge('g-warn', t('bk.sinAsignar', 'Sin hotel')) + '<div class="g-who"><b>' + d.sin_asignar + ' ' + t('bk.movsSinHotel', 'movimiento(s) sin asignar a un hotel') + '</b><span>' + t('bk.subelosHotel', 'súbelos dentro del hotel que corresponda') + '</span></div></div>' + _html;
     }
     el.innerHTML = _html;
   } catch(e) {
     console.warn('Error banco:', e);
     var el2 = document.getElementById('bk-alertas');
-    if (el2 && el2.innerHTML.includes('—')) el2.innerHTML = '<div class="empty"><p>Sin alertas bancarias.</p></div>';
+    if (el2 && el2.innerHTML.includes('—')) el2.innerHTML = '<div class="g-empty">' + t('bk.sinAlertas', 'Sin alertas bancarias pendientes.') + '</div>';
     ['bk-total','bk-conc','bk-pend','bk-diff'].forEach(function(id){ var e=document.getElementById(id); if (e && e.textContent === '—') e.textContent = '0'; });
   }
 }

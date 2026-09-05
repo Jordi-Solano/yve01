@@ -218,3 +218,15 @@ body .tbl-wrap>table{min-width:640px}
 .g-tbl .g-chk input{cursor:pointer;accent-color:var(--acc);width:15px;height:15px}
 .g-mid{grid-template-columns:1fr 320px}
 @media(max-width:1000px){.g-mid{grid-template-columns:1fr}}
+/* Banco (b56): barra de progreso y tarjeta-eleccion del modal */
+.g-progress{display:flex;align-items:center;gap:12px;font-size:12px;margin-bottom:16px}
+.g-progress-bar{flex:1;background:var(--s2);border-radius:4px;height:8px;overflow:hidden}
+.g-progress-fill{height:100%;border-radius:4px;transition:width .6s ease}
+.g-progress-fill.ok,.g-progress b.ok{background:var(--grn);color:var(--grn)}
+.g-progress-fill.warn,.g-progress b.warn{background:var(--ora);color:var(--ora)}
+.g-progress-fill.err,.g-progress b.err{background:var(--red);color:var(--red)}
+.g-progress b{background:none!important;min-width:70px;text-align:right}
+.g-choice{text-align:left;background:var(--bg);border:1px solid var(--s3);border-radius:var(--g-r-md);padding:16px;cursor:pointer;color:var(--tx);font-family:inherit;transition:border-color .15s,background-color .15s}
+.g-choice:hover{border-color:var(--acc);background:rgba(var(--acc-r,59),var(--acc-g,130),var(--acc-b,246),.06)}
+.g-choice b{display:block;font-size:15px;font-weight:700;margin-bottom:6px}
+.g-choice span{display:block;font-size:12px;color:var(--mut);line-height:1.5}
