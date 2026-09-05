@@ -5617,6 +5617,41 @@ def index():
 def app_dashboard():
     return index()
 
+# ── gzip (b66) ─────────────────────────────────────────────────────────────
+# Render no comprime nada: el dashboard son 624 KB de HTML que viajaban tal cual
+# en cada apertura (y con no-store, siempre). Comprimido son ~90 KB. Se salta lo
+# que se emite en streaming (SSE) y lo que no es texto/JSON.
+import gzip as _gzip
+_GZIP_TIPOS = ("text/", "application/json", "application/javascript", "image/svg+xml")
+
+@app.after_request
+def _comprimir(resp):
+    try:
+        if resp.status_code != 200 or "Content-Encoding" in resp.headers:
+            return resp
+        if resp.is_streamed and not resp.direct_passthrough:
+            return resp          # SSE y otros generadores: se emiten segun salen
+        if "gzip" not in (request.headers.get("Accept-Encoding") or ""):
+            return resp
+        mt = resp.mimetype or ""
+        if not mt.startswith(_GZIP_TIPOS):
+            return resp
+        if resp.direct_passthrough:
+            # fichero estatico pequeño (css/js/svg): se lee entero y se comprime
+            if (resp.content_length or 0) > 2_000_000:
+                return resp
+            resp.direct_passthrough = False
+        data = resp.get_data()
+        if len(data) < 1024:
+            return resp
+        resp.set_data(_gzip.compress(data, compresslevel=6))
+        resp.headers["Content-Encoding"] = "gzip"
+        resp.headers["Content-Length"] = str(len(resp.get_data()))
+        resp.headers.add("Vary", "Accept-Encoding")
+    except Exception:
+        pass
+    return resp
+
 # ── HTML ───────────────────────────────────────────────────────────────────
 
 HTML = r"""<!DOCTYPE html>
