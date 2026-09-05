@@ -34,8 +34,10 @@ PANELES = {
     'panel-drr': (['drr-status', 'drr-oob-badge', 'drr-body', 'drr-metrics', 'drr-drop-zone'], ['openUploadModal()', '_recibirEnProcesar(event.dataTransfer.files)'], 1),
     'panel-notif': (['notif-smtp-banner', 'btn-save-notif', 'notif-canales', 'notif-channel-fields', 'notif-alertas', 'notif-count', 'btn-send-notif', 'notif-tbody'], ['guardarNotifConfig()', 'probarNotif()', 'enviarNotificaciones()'], 1),
     'panel-fb': (['fb-mes', 'fb-subtabs', 'fb-resumen', 'fb-inventario', 'fb-mermas-panel', 'fb-recetas'], ['fbCambiarMes()', "fbSub('resumen',this)", "fbSub('recetas',this)", 'openUploadModal()'], 1),
+    'panel-ar_real': (['ar-real-stats', 'arp-pendiente', 'arp-vencido', 'arp-cobrado', 'arp-nclientes', 'ar-real-grid', 'ar-clientes-list', 'ar-facturas-count', 'ar-filter-estado', 'ar-aging-bar', 'ar-facturas-tbody', 'modal-emitir', 'ef-cliente', 'ef-entrada', 'ef-salida', 'ef-hab', 'ef-precio', 'ef-fb', 'ef-sub-hab', 'ef-sub-fb', 'ef-iva', 'ef-total', 'ef-msg', 'ar-bonos-section', 'ar-bonos-resumen', 'ar-bonos-list', 'ar-beos-section', 'ar-beos-count', 'ar-beos-list', 'ar-real-status'],
+                      ['abrirEmitirFactura()', 'loadARRealData()', 'abrirNuevoCliente()', 'filtrarFacturasAR(this.value)', 'calcularFactura()', 'emitirFactura()', 'cerrarEmitirFactura()', 'href="/aprobaciones-ar/"'], 2),
 }
-FIN = {'panel-ap': '<!-- /panel-ap -->', 'panel-ar': '<!-- /panel-ar -->', 'panel-banco': '<!-- /panel-banco -->', 'panel-drr': '<!-- /panel-drr -->', 'panel-notif': '<!-- /panel-notif -->', 'panel-fb': '<!-- /panel-fb -->'}
+FIN = {'panel-ap': '<!-- /panel-ap -->', 'panel-ar': '<!-- /panel-ar -->', 'panel-banco': '<!-- /panel-banco -->', 'panel-drr': '<!-- /panel-drr -->', 'panel-notif': '<!-- /panel-notif -->', 'panel-fb': '<!-- /panel-fb -->', 'panel-ar_real': '<!-- /panel-ar_real -->'}
 
 # funciones de badges que se ejecutan con node: (nombre, [(argumento, texto esperado, clase esperada)])
 BADGES = [

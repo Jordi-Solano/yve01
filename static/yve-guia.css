@@ -276,3 +276,17 @@ body .g-subtabs .fb-sub.active{background:var(--s2);color:var(--tx)}
 .g-empty-lg{padding:44px 20px}
 .g-empty-ico{font-size:40px;margin-bottom:10px;opacity:.85}
 @media(max-width:768px){.g-subtabs{width:auto}body .g-subtabs .fb-sub{flex:1 1 0;text-align:center;padding:9px 6px}}
+/* AR Real (b60) */
+.g-arreal-grid{display:grid;grid-template-columns:1fr 1.6fr;gap:16px;margin-bottom:24px}
+@media(max-width:1000px){.g-arreal-grid{grid-template-columns:1fr}}
+.g-grid3{display:grid;grid-template-columns:1fr 1fr 1fr;gap:10px}
+@media(max-width:480px){.g-grid3{grid-template-columns:1fr}}
+.g-totales>div{display:flex;justify-content:space-between;font-size:13px;color:var(--mut);padding:3px 0}
+.g-totales .g-totales-total{border-top:1px solid var(--g-line);margin-top:6px;padding-top:8px;font-weight:700;font-size:15px;color:var(--tx)}
+.g-totales .g-totales-total span:last-child{color:var(--acc2)}
+.g-cliente{cursor:pointer;transition:border-color .15s}
+.g-cliente:hover{border-color:var(--acc)}
+.g-linea{display:flex;justify-content:space-between;gap:10px;font-size:12px;padding:5px 0;border-bottom:1px solid var(--g-line);color:var(--tx)}
+.g-linea-total{border-bottom:none;font-weight:700;font-size:13px;padding-top:8px}
+.g-linea-total b{color:var(--acc2)}
+.g-tbl tr.is-vencida td{background:rgba(239,68,68,.04)}

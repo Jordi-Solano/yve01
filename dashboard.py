@@ -6966,152 +6966,110 @@ svg.yvi{width:1em;height:1em;vertical-align:-0.125em;flex-shrink:0;display:inlin
   </div><!-- /panel-fb -->
 
   <!-- PANEL AR REAL -->
-  <div id="panel-ar_real" class="panel">
-
-    <!-- Header AR Real -->
-    <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:20px;flex-wrap:wrap;gap:12px">
-      <div>
-        <h2 style="font-size:18px;font-weight:700;margin:0">🏢 AR Real — Grupos Corporativos
-          <span data-tip="Gestión completa del ciclo de cobro: facturas emitidas, antigüedad, recordatorios y cobros" style="font-size:12px;color:var(--dim);cursor:help">❓</span>
-        </h2>
-        <div style="font-size:12px;color:var(--mut);margin-top:4px">Clientes de crédito · Facturación corporativa · Control de cobros</div>
-      </div>
-      <div style="display:flex;gap:8px;flex-wrap:wrap">
-        <button class="btn-ref" onclick="abrirEmitirFactura()" style="font-size:12px">📄 Nueva factura</button>
-        <button class="btn-ref" onclick="loadARRealData()" style="font-size:12px">🔄 Actualizar</button>
-        <a href="/aprobaciones-ar/" class="btn-run" style="text-decoration:none;font-size:12px;padding:8px 14px" data-i18n="btn.aprobarAR">📲 Aprobar AR</a>
+  <div id="panel-ar_real" class="panel g-panel">
+    <!-- Guia de estilo (b60). Ids de siempre. -->
+    <div class="g-head">
+      <div><div class="g-h1" data-i18n="tab.arreal">🏢 AR Real</div><div class="g-sub" data-i18n="arreal.subtitulo">Clientes de crédito, facturación corporativa y control de cobros: quién debe, desde cuándo y qué falta por emitir.</div></div>
+      <div class="g-actions">
+        <button class="g-btn g-ghost g-sm" onclick="loadARRealData()" data-i18n="btn.actualizar">🔄 Actualizar</button>
+        <button class="g-btn g-secondary g-sm" onclick="abrirEmitirFactura()" data-i18n="arreal.nuevaFactura">📄 Nueva factura</button>
+        <a href="/aprobaciones-ar/" class="g-btn g-primary g-sm" data-i18n="btn.aprobarAR">📲 Aprobar AR</a>
       </div>
     </div>
-
-    <!-- Stats KPIs -->
-    <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(120px,1fr));gap:10px;margin-bottom:16px" id="ar-real-stats" class="lite-visible">
-      <div class="sc hl c-ora"><div class="sc-lbl" data-tip="Facturas emitidas aún no cobradas">PENDIENTE COBRO</div><div class="sc-val" id="arp-pendiente">—</div></div>
-      <div class="sc c-red"><div class="sc-lbl" data-tip="Facturas con más de 60 días sin cobrar">VENCIDO >60d</div><div class="sc-val" id="arp-vencido">—</div></div>
-      <div class="sc c-grn"><div class="sc-lbl" data-tip="Cobrado este mes">COBRADO MES</div><div class="sc-val" id="arp-cobrado">—</div></div>
-      <!-- Cuenta las altas de clientes_credito.xlsx, no los clientes que salen
-           en las facturas: por eso la etiqueta dice de credito y no activos. -->
-      <div class="sc"><div class="sc-lbl">CLIENTES DE CRÉDITO</div><div class="sc-val" id="arp-nclientes">—</div></div>
+    <div class="g-tiles" id="ar-real-stats">
+      <div class="g-kpi k-ora"><div class="g-kpi-lbl" data-tip="Facturas emitidas aún no cobradas" data-i18n="arreal.pendienteCobro">Pendiente cobro</div><div class="g-kpi-val g-num" id="arp-pendiente">—</div></div>
+      <div class="g-kpi k-red"><div class="g-kpi-lbl" data-tip="Facturas con más de 60 días sin cobrar" data-i18n="arreal.vencido">Vencido &gt;60d</div><div class="g-kpi-val g-num" id="arp-vencido">—</div></div>
+      <div class="g-kpi k-grn"><div class="g-kpi-lbl" data-tip="Cobrado este mes" data-i18n="arreal.cobradoMes">Cobrado mes</div><div class="g-kpi-val g-num" id="arp-cobrado">—</div></div>
+      <!-- Cuenta las altas de clientes_credito.xlsx, no los clientes que salen en las facturas -->
+      <div class="g-kpi"><div class="g-kpi-lbl" data-i18n="arreal.clientesCredito">Clientes de crédito</div><div class="g-kpi-val" id="arp-nclientes">—</div></div>
     </div>
 
-    <!-- Two-column layout: clients + invoices -->
-    <div style="display:grid;grid-template-columns:1fr 1.6fr;gap:16px" id="ar-real-grid">
-
+    <div class="g-arreal-grid" id="ar-real-grid">
       <!-- Client list -->
-      <div>
-        <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:10px;gap:8px">
-          <div style="font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.5px;color:var(--mut)">Clientes</div>
-          <button onclick="abrirNuevoCliente()" class="btn-ref" data-i18n="ar.btnNuevoCliente" style="font-size:11px;padding:6px 10px;min-height:36px">➕ Nuevo cliente</button>
+      <div class="g-card">
+        <div class="g-card-head">
+          <div><div class="g-card-title" data-i18n="arreal.clientes">Clientes</div><div class="g-sub" data-i18n="arreal.clientesSub">Pulsa uno para ver solo sus facturas.</div></div>
+          <button onclick="abrirNuevoCliente()" class="g-btn g-secondary g-sm" data-i18n="ar.btnNuevoCliente">➕ Nuevo cliente</button>
         </div>
-        <div id="ar-clientes-list" style="display:flex;flex-direction:column;gap:8px"></div>
+        <div id="ar-clientes-list" class="g-inline-list"></div>
       </div>
-
       <!-- Invoices -->
-      <div>
-        <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:10px">
-          <div style="font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.5px;color:var(--mut)">Facturas <span id="ar-facturas-count" style="color:var(--dim)"></span></div>
-          <select id="ar-filter-estado" onchange="filtrarFacturasAR(this.value)" style="background:var(--s1);border:1px solid var(--s2);color:var(--tx);padding:5px 10px;border-radius:8px;font-size:11px">
-            <option value="">Todas</option>
+      <div class="g-card">
+        <div class="g-card-head">
+          <div><div class="g-card-title"><span data-i18n="arreal.facturas">Facturas</span> <span id="ar-facturas-count" class="g-small"></span></div><div class="g-sub" data-i18n="arreal.facturasSub">Emitidas, cobradas y pendientes de emitir.</div></div>
+          <select id="ar-filter-estado" class="g-input" onchange="filtrarFacturasAR(this.value)">
+            <option value="" data-i18n-opt="lbl.todas">Todas</option>
             <option value="PENDIENTE_FACTURA">Pendiente emitir</option>
             <option value="FACTURADO">Facturadas</option>
             <option value="COBRADO">Cobradas</option>
           </select>
         </div>
-        <!-- Aging bar -->
         <div id="ar-aging-bar" style="display:none;margin-bottom:12px"></div>
-        <!-- Invoice table -->
-        <div style="overflow-x:auto">
-          <table style="width:100%;min-width:520px;border-collapse:collapse;font-size:12px">
-            <thead><tr style="border-bottom:2px solid var(--s2)">
-              <th style="text-align:left;padding:8px;color:var(--mut);font-weight:600;font-size:11px;text-transform:uppercase;letter-spacing:.4px">Nº / Cliente</th>
-              <th style="text-align:right;padding:8px;color:var(--mut);font-weight:600;font-size:11px;text-transform:uppercase;letter-spacing:.4px">Importe</th>
-              <th style="text-align:center;padding:8px;color:var(--mut);font-weight:600;font-size:11px;text-transform:uppercase;letter-spacing:.4px">Días</th>
-              <th style="text-align:left;padding:8px;color:var(--mut);font-weight:600;font-size:11px;text-transform:uppercase;letter-spacing:.4px">Estado</th>
-              <th style="padding:8px;color:var(--mut);font-weight:600;font-size:11px;text-transform:uppercase;letter-spacing:.4px">Acciones</th>
+        <div class="g-tbl-wrap">
+          <table class="g-tbl">
+            <thead><tr>
+              <th data-i18n="arreal.thNumCliente">Nº / Cliente</th>
+              <th class="num" data-i18n="th.importe">Importe</th>
+              <th class="num" data-i18n="arreal.thDias">Días</th>
+              <th data-i18n="th.estado">Estado</th>
+              <th data-i18n="arreal.thAcciones">Acciones</th>
             </tr></thead>
             <tbody id="ar-facturas-tbody">
-            <tr><td colspan="8" class="empty" style="padding:32px;text-align:center;color:var(--dim)">
-              <div style="font-size:24px;margin-bottom:8px">📋</div>
-              <div style="font-weight:600;margin-bottom:4px">Sin facturas AR todavía</div>
-              <div style="font-size:12px">Usa <b>Nueva factura</b> para emitir a clientes corporativos, grupos o agencias.</div>
-            </td></tr>
-          </tbody>
+              <tr><td colspan="5"><div class="g-empty"><b data-i18n="arreal.vacioTitulo">Sin facturas AR todavía</b><span data-i18n="arreal.vacioSub">Usa Nueva factura para emitir a clientes corporativos, grupos o agencias.</span></div></td></tr>
+            </tbody>
           </table>
         </div>
       </div>
     </div>
 
     <!-- Emit invoice modal -->
-    <div id="modal-emitir" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,.7);z-index:9000;align-items:center;justify-content:center">
-      <div style="background:var(--s1);border:1px solid var(--s2);border-radius:16px;padding:28px;max-width:480px;width:90%;max-height:85vh;overflow-y:auto">
-        <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:20px">
-          <h3 style="font-size:16px;font-weight:700;margin:0">📄 Nueva Factura Corporativa</h3>
-          <button onclick="cerrarEmitirFactura()" style="background:none;border:none;color:var(--mut);font-size:20px;cursor:pointer">×</button>
-        </div>
-        <div style="display:flex;flex-direction:column;gap:12px">
-          <div>
-            <label style="font-size:11px;color:var(--mut);font-weight:600;text-transform:uppercase">Cliente</label>
-            <select id="ef-cliente" style="width:100%;background:var(--bg);border:1px solid var(--s2);color:var(--tx);padding:9px;border-radius:8px;font-size:13px;margin-top:4px">
-              <option value="">Seleccionar cliente...</option>
-            </select>
+    <div id="modal-emitir" class="g-overlay" style="display:none">
+      <div class="g-modal" style="max-width:520px">
+        <div class="g-modal-head"><div class="g-modal-title" data-i18n="arreal.modalTitulo">📄 Nueva factura corporativa</div><button class="g-btn g-ghost g-icon" onclick="cerrarEmitirFactura()" aria-label="Cerrar">✕</button></div>
+        <div class="g-inline-list">
+          <div class="g-field"><label data-i18n="arreal.cliente">Cliente</label>
+            <select id="ef-cliente" class="g-input"><option value="" data-i18n-opt="arreal.selCliente">Seleccionar cliente...</option></select>
           </div>
-          <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px">
-            <div>
-              <label style="font-size:11px;color:var(--mut);font-weight:600;text-transform:uppercase">Entrada</label>
-              <input type="date" id="ef-entrada" style="width:100%;background:var(--bg);border:1px solid var(--s2);color:var(--tx);padding:9px;border-radius:8px;font-size:13px;margin-top:4px">
-            </div>
-            <div>
-              <label style="font-size:11px;color:var(--mut);font-weight:600;text-transform:uppercase">Salida</label>
-              <input type="date" id="ef-salida" style="width:100%;background:var(--bg);border:1px solid var(--s2);color:var(--tx);padding:9px;border-radius:8px;font-size:13px;margin-top:4px">
-            </div>
+          <div class="g-grid2" style="gap:10px">
+            <div class="g-field"><label data-i18n="arreal.entrada">Entrada</label><input type="date" id="ef-entrada" class="g-input"></div>
+            <div class="g-field"><label data-i18n="arreal.salida">Salida</label><input type="date" id="ef-salida" class="g-input"></div>
           </div>
-          <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:10px">
-            <div>
-              <label style="font-size:11px;color:var(--mut);font-weight:600;text-transform:uppercase">Habitaciones</label>
-              <input type="number" id="ef-hab" value="1" min="1" style="width:100%;background:var(--bg);border:1px solid var(--s2);color:var(--tx);padding:9px;border-radius:8px;font-size:13px;margin-top:4px" oninput="calcularFactura()">
-            </div>
-            <div>
-              <label style="font-size:11px;color:var(--mut);font-weight:600;text-transform:uppercase">€/noche</label>
-              <input type="number" id="ef-precio" value="186" step="0.01" style="width:100%;background:var(--bg);border:1px solid var(--s2);color:var(--tx);padding:9px;border-radius:8px;font-size:13px;margin-top:4px" oninput="calcularFactura()">
-            </div>
-            <div>
-              <label style="font-size:11px;color:var(--mut);font-weight:600;text-transform:uppercase">F&B</label>
-              <input type="number" id="ef-fb" value="0" step="0.01" style="width:100%;background:var(--bg);border:1px solid var(--s2);color:var(--tx);padding:9px;border-radius:8px;font-size:13px;margin-top:4px" oninput="calcularFactura()">
-            </div>
+          <div class="g-grid3">
+            <div class="g-field"><label data-i18n="arreal.habitaciones">Habitaciones</label><input type="number" id="ef-hab" value="1" min="1" class="g-input" oninput="calcularFactura()"></div>
+            <div class="g-field"><label>€/noche</label><input type="number" id="ef-precio" value="186" step="0.01" class="g-input" oninput="calcularFactura()"></div>
+            <div class="g-field"><label>F&B</label><input type="number" id="ef-fb" value="0" step="0.01" class="g-input" oninput="calcularFactura()"></div>
           </div>
-          <div style="background:var(--bg);border-radius:10px;padding:12px;font-size:13px">
-            <div style="display:flex;justify-content:space-between;color:var(--mut);margin-bottom:3px"><span>Habitaciones:</span><span id="ef-sub-hab">—</span></div>
-            <div style="display:flex;justify-content:space-between;color:var(--mut);margin-bottom:3px"><span>F&B:</span><span id="ef-sub-fb">—</span></div>
-            <div style="display:flex;justify-content:space-between;color:var(--mut);margin-bottom:6px"><span>IVA 10%:</span><span id="ef-iva">—</span></div>
-            <div style="display:flex;justify-content:space-between;font-weight:800;font-size:16px;border-top:1px solid var(--s2);padding-top:8px"><span>TOTAL:</span><span id="ef-total" style="color:var(--acc2)">—</span></div>
+          <div class="g-modal-field g-totales">
+            <div><span data-i18n="arreal.habitaciones">Habitaciones</span><span id="ef-sub-hab">—</span></div>
+            <div><span>F&B</span><span id="ef-sub-fb">—</span></div>
+            <div><span>IVA 10%</span><span id="ef-iva">—</span></div>
+            <div class="g-totales-total"><span>TOTAL</span><span id="ef-total" class="g-num">—</span></div>
           </div>
-          <div id="ef-msg" style="font-size:12px;display:none"></div>
-          <div style="display:flex;gap:10px">
-            <button onclick="calcularFactura()" class="btn-ref" style="flex:1;font-size:13px">Calcular</button>
-            <button onclick="emitirFactura()" class="btn-run" style="flex:2;font-size:13px">📄 Emitir</button>
+          <div id="ef-msg" class="g-small" style="display:none"></div>
+          <div class="g-modal-foot">
+            <button onclick="calcularFactura()" class="g-btn g-secondary" data-i18n="arreal.calcular">Calcular</button>
+            <button onclick="emitirFactura()" class="g-btn g-primary" data-i18n="arreal.emitir">📄 Emitir</button>
           </div>
         </div>
       </div>
     </div>
 
     <!-- Direct bill: la factura a credito contra el bono de la agencia (Ola A). Solo lectura. -->
-    <div id="ar-bonos-section" class="card" style="margin-top:22px">
-      <div style="display:flex;align-items:center;justify-content:space-between;gap:12px;flex-wrap:wrap;margin-bottom:10px">
-        <div class="card-title" style="margin:0" data-i18n="bonos.titulo">Direct bill: factura vs bono de agencia</div>
-        <div style="display:flex;align-items:center;gap:10px"><span id="ar-bonos-resumen" style="font-size:12px;color:var(--mut)"></span></div>
+    <div id="ar-bonos-section" class="g-card">
+      <div class="g-card-head">
+        <div><div class="g-card-title" data-i18n="bonos.titulo">Direct bill: factura vs bono de agencia</div><div class="g-sub" data-i18n="bonos.sub">Cada bono (voucher) con la factura a crédito que lo respalda, y las facturas sin bono.</div></div>
+        <span id="ar-bonos-resumen" class="g-small"></span>
       </div>
-      <div id="ar-bonos-list" style="display:flex;flex-direction:column;gap:8px"><div class="empty"><p data-i18n="bonos.cargando">Cotejando bonos…</p></div></div>
+      <div id="ar-bonos-list" class="g-inline-list"><div class="g-empty" data-i18n="bonos.cargando">Cotejando bonos…</div></div>
     </div>
 
     <!-- BEOs generados automáticamente desde contratos -->
-    <div id="ar-beos-section" style="margin-top:22px">
-      <div style="display:flex;align-items:center;gap:8px;margin-bottom:10px">
-        <div style="font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.5px;color:var(--mut)">BEOs desde contratos <span id="ar-beos-count" style="color:var(--dim)"></span></div>
-        <span data-tip="Yve crea el BEO (partidas e importes) desde el contrato de grupo y coteja la factura contra él." style="cursor:help;color:var(--dim);font-size:12px">&#9432;</span>
+    <div id="ar-beos-section" class="g-card">
+      <div class="g-card-head">
+        <div><div class="g-card-title"><span data-i18n="beos.titulo">BEOs desde contratos</span> <span id="ar-beos-count" class="g-small"></span></div><div class="g-sub" data-i18n="beos.sub">Yve crea el BEO (partidas e importes) desde el contrato de grupo y coteja la factura contra él.</div></div>
       </div>
-      <div id="ar-beos-list" style="display:flex;flex-direction:column;gap:10px">
-        <div class="empty card" style="padding:20px;text-align:center;color:var(--dim);font-size:12px;border-style:dashed;border-radius:12px">
-          Procesa un contrato de grupo en <b>Procesar Archivos</b> y aquí ver&aacute;s su BEO con el cotejo de la factura.
-        </div>
+      <div id="ar-beos-list" class="g-inline-list">
+        <div class="g-empty" data-i18n="beos.vacio">Procesa un contrato de grupo en <b>Procesar Archivos</b> y aquí verás su BEO con el cotejo de la factura.</div>
       </div>
     </div>
 
@@ -16400,18 +16358,15 @@ function abrirNuevoCliente(cli) {
   if (v) v.remove();
   var m = document.createElement('div');
   m.id = 'nuevo-cliente-modal';
-  m.style.cssText = 'position:fixed;inset:0;z-index:9500;background:rgba(0,0,0,.7);display:flex;align-items:center;justify-content:center;padding:16px';
+  m.className = 'g-overlay'; m.style.zIndex = '9500';
   var campo = function(id, etiq, tipo, ph) {
-    return '<label style="display:block;margin-bottom:10px">' +
-      '<span style="display:block;font-size:11px;color:var(--mut);margin-bottom:4px">' + etiq + '</span>' +
-      '<input id="' + id + '" type="' + tipo + '" placeholder="' + (ph || '') + '" ' +
-      'style="width:100%;box-sizing:border-box;background:var(--bg);border:1px solid var(--s3);color:var(--tx);' +
-      'padding:11px 12px;border-radius:9px;font-size:14px;outline:none"></label>';
+    return '<div class="g-field" style="margin-bottom:10px"><label>' + etiq + '</label>' +
+      '<input class="g-input" id="' + id + '" type="' + tipo + '" placeholder="' + (ph || '') + '"></div>';
   };
-  m.innerHTML = '<div style="background:var(--s1);border:1px solid var(--s2);border-radius:16px;padding:22px;width:min(420px,100%);max-height:88vh;overflow:auto">' +
-    '<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:16px">' +
-      '<h3 style="margin:0;font-size:16px;font-weight:800">' + (cli ? '✎ ' + t('ar.completarCliente', 'Completar ficha del cliente') : '➕ ' + t('ar.nuevoCliente', 'Nuevo cliente de crédito')) + '</h3>' +
-      '<button onclick="cerrarNuevoCliente()" style="background:none;border:none;color:var(--mut);font-size:22px;cursor:pointer;min-width:44px;min-height:44px">✕</button>' +
+  m.innerHTML = '<div class="g-modal" style="max-width:440px">' +
+    '<div class="g-modal-head">' +
+      '<div class="g-modal-title">' + (cli ? '✎ ' + t('ar.completarCliente', 'Completar ficha del cliente') : '➕ ' + t('ar.nuevoCliente', 'Nuevo cliente de crédito')) + '</div>' +
+      '<button onclick="cerrarNuevoCliente()" class="g-btn g-ghost g-icon" aria-label="Cerrar">✕</button>' +
     '</div>' +
     campo('ncl-nombre', t('ar.clNombre', 'Nombre del cliente') + ' *', 'text', 'Viajes Meridiano S.A.') +
     campo('ncl-nif', t('ar.clNif', 'NIF / CIF'), 'text', 'A28004556') +
@@ -16419,10 +16374,10 @@ function abrirNuevoCliente(cli) {
     campo('ncl-dias', t('ar.clDias', 'Días de pago'), 'number', '30') +
     campo('ncl-email', t('ar.clEmail', 'Email'), 'email', 'cuentas@cliente.com') +
     campo('ncl-tel', t('ar.clTel', 'Teléfono'), 'text', '') +
-    '<div id="ncl-err" style="display:none;font-size:12px;color:var(--red);margin:4px 0 10px"></div>' +
-    '<div style="display:flex;gap:10px;justify-content:flex-end;margin-top:6px">' +
-      '<button onclick="cerrarNuevoCliente()" class="btn-ref" style="min-height:44px">' + t('js.cancelar', 'Cancelar') + '</button>' +
-      '<button id="ncl-ok" onclick="guardarNuevoCliente()" style="background:var(--acc);border:none;color:#fff;padding:12px 20px;border-radius:10px;font-size:14px;font-weight:700;cursor:pointer;min-height:44px">' + t('js.guardar', 'Guardar') + '</button>' +
+    '<div id="ncl-err" class="g-alert err" style="display:none;margin:4px 0 10px"></div>' +
+    '<div class="g-modal-foot">' +
+      '<button onclick="cerrarNuevoCliente()" class="g-btn g-secondary">' + t('js.cancelar', 'Cancelar') + '</button>' +
+      '<button id="ncl-ok" onclick="guardarNuevoCliente()" class="g-btn g-primary">' + t('js.guardar', 'Guardar') + '</button>' +
     '</div></div>';
   m.addEventListener('click', function(e) { if (e.target === m) cerrarNuevoCliente(); });
   document.body.appendChild(m);
@@ -16593,23 +16548,23 @@ async function cargarBonosAR(){
       ? t('bonos.resumen', '{ok} cuadran · {dif} con diferencia · {sf} sin factura · {sb} facturas sin bono')
           .replace('{ok}', rs.CUADRA||0).replace('{dif}', (rs.DIFERENCIA_IMPORTE||0)+(rs.DIFERENCIA_FECHAS||0)).replace('{sf}', rs.SIN_FACTURA||0).replace('{sb}', rs.FACTURA_SIN_BONO||0)
       : '';
-    if (!bonos.length && !sin.length) { wrap.innerHTML = _vacioCard(t('bonos.vacio', 'Sube el bono de la agencia (voucher) en Procesar Archivos y aquí verás si la factura a crédito cuadra con lo autorizado.')); return; }
-    var COL = {CUADRA:['#22c55e','rgba(34,197,94,.12)'], DIFERENCIA_IMPORTE:['#f87171','rgba(239,68,68,.12)'], DIFERENCIA_FECHAS:['#f59e0b','rgba(245,158,11,.12)'], SIN_FACTURA:['var(--mut)','rgba(148,163,184,.12)']};
-    var LBL = {CUADRA:t('bonos.cuadra','✓ Cuadra'), DIFERENCIA_IMPORTE:t('bonos.difImporte','⚠ Importe distinto'), DIFERENCIA_FECHAS:t('bonos.difFechas','⚠ Fechas distintas'), SIN_FACTURA:t('bonos.sinFactura','Sin factura aún')};
+    if (!bonos.length && !sin.length) { wrap.innerHTML = _gVacio(t('bonos.vacio', 'Sube el bono de la agencia (voucher) en Procesar Archivos y aquí verás si la factura a crédito cuadra con lo autorizado.')); return; }
+    // mismos badges que el resto: verde cuadra, rojo importe distinto, ambar fechas, gris sin factura
+    var CLS = {CUADRA:'g-ok', DIFERENCIA_IMPORTE:'g-err', DIFERENCIA_FECHAS:'g-warn', SIN_FACTURA:'g-mute'};
+    var LBL = {CUADRA:t('bonos.cuadra','Cuadra'), DIFERENCIA_IMPORTE:t('bonos.difImporte','Importe distinto'), DIFERENCIA_FECHAS:t('bonos.difFechas','Fechas distintas'), SIN_FACTURA:t('bonos.sinFactura','Sin factura aún')};
     var h = bonos.map(function(b){
-      var c = COL[b.estado] || COL.SIN_FACTURA;
-      return '<div class="card" style="padding:10px 12px;border-radius:10px;display:flex;justify-content:space-between;gap:8px;flex-wrap:wrap;align-items:center">' +
-        '<div style="min-width:0"><div style="font-weight:700;font-size:13px">' + _bonoEsc(b.agencia||'—') + ' · ' + t('bonos.bono','bono') + ' ' + _bonoEsc(b.numero_bono||'s/n') + '</div>' +
-        '<div style="font-size:11px;color:var(--dim)">' + (b.huesped?_bonoEsc(b.huesped)+' · ':'') + _bonoEsc(b.fecha_entrada||'') + (b.fecha_salida?' → '+_bonoEsc(b.fecha_salida):'') +
+      return '<div class="g-row">' +
+        '<div class="g-who"><b>' + _bonoEsc(b.agencia||'—') + ' · ' + t('bonos.bono','bono') + ' ' + _bonoEsc(b.numero_bono||'s/n') + '</b>' +
+        '<span>' + (b.huesped?_bonoEsc(b.huesped)+' · ':'') + _bonoEsc(b.fecha_entrada||'') + (b.fecha_salida?' → '+_bonoEsc(b.fecha_salida):'') +
         ' · ' + t('bonos.autorizado','autorizado') + ' <b>' + _bonoEur(b.importe_bono) + '</b>' +
         (b.numero_factura ? ' · ' + t('bonos.factura','factura') + ' ' + _bonoEsc(b.numero_factura) + ' ' + _bonoEur(b.importe_factura) : '') +
-        (b.detalle ? ' · ' + _bonoEsc(b.detalle) : '') + '</div></div>' +
-        '<span style="font-size:11px;font-weight:700;padding:3px 10px;border-radius:20px;background:' + c[1] + ';color:' + c[0] + '">' + _bonoEsc(LBL[b.estado]||b.estado) + '</span></div>';
+        (b.detalle ? ' · ' + _bonoEsc(b.detalle) : '') + '</span></div>' +
+        gBadge(CLS[b.estado] || 'g-mute', _bonoEsc(LBL[b.estado]||b.estado).replace(/^[✓⚠] /, '')) + '</div>';
     });
     if (sin.length) {
-      h.push('<div style="font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.5px;color:#f87171;margin-top:6px">' + t('bonos.sinBonoTitulo','Facturas a crédito sin bono que las respalde') + '</div>');
+      h.push('<div class="g-label" style="color:var(--red);margin-top:6px">' + t('bonos.sinBonoTitulo','Facturas a crédito sin bono que las respalde') + '</div>');
       sin.forEach(function(f){
-        h.push('<div class="card" style="padding:8px 12px;border-radius:10px;font-size:12px;display:flex;justify-content:space-between;gap:8px;flex-wrap:wrap"><span>' + _bonoEsc(f.numero) + ' · ' + _bonoEsc(f.cliente) + (f.fecha_entrada?' · '+_bonoEsc(f.fecha_entrada):'') + '</span><b>' + _bonoEur(f.total) + '</b></div>');
+        h.push('<div class="g-row"><div class="g-who"><b>' + _bonoEsc(f.numero) + '</b><span>' + _bonoEsc(f.cliente) + (f.fecha_entrada?' · '+_bonoEsc(f.fecha_entrada):'') + '</span></div>' + gBadge('g-err', t('bonos.sinBono', 'Sin bono')) + '<b class="g-num">' + _bonoEur(f.total) + '</b></div>');
       });
     }
     wrap.innerHTML = h.join('');
@@ -16626,29 +16581,27 @@ async function cargarBeosAR() {
     if (cnt) cnt.textContent = beos.length ? '(' + beos.length + ')' : '';
     // Igual que en reclamaciones y en el grafico: sin datos, limpiar.
     if (!beos.length) {
-      wrap.innerHTML = _vacioCard(t('beos.vacio', 'Procesa un contrato de grupo en <b>Procesar Archivos</b> y aquí verás su BEO con el cotejo de la factura.'));
+      wrap.innerHTML = _gVacio(t('beos.vacio', 'Procesa un contrato de grupo en <b>Procesar Archivos</b> y aquí verás su BEO con el cotejo de la factura.'));
       return;
     }
     var eur = function(v){ return _fmtEurES(Number(v)||0, 2); };
     wrap.innerHTML = beos.map(function(b){
       var c = b.cotejo || {};
-      var badge, bg, col;
-      if (c.estado === 'cuadra') { badge = '✓ Factura cuadra'; bg='rgba(34,197,94,.12)'; col='#22c55e'; }
-      else if (c.estado === 'discrepancia') { badge = '⚠ ' + (c.diff_pct||0) + '% (' + eur(c.total_factura) + ' vs ' + eur(c.total_beo) + ')'; bg='rgba(239,68,68,.12)'; col='#f87171'; }
-      else { badge = 'Sin factura aún'; bg='rgba(148,163,184,.12)'; col='var(--mut)'; }
+      var badge;
+      if (c.estado === 'cuadra') badge = gBadge('g-ok', t('beos.cuadra', 'Factura cuadra'));
+      else if (c.estado === 'discrepancia') badge = gBadge('g-err', (c.diff_pct||0) + '% (' + eur(c.total_factura) + ' vs ' + eur(c.total_beo) + ')');
+      else badge = gBadge('g-mute', t('bonos.sinFactura', 'Sin factura aún'));
       var lineas = (b.lineas||[]).map(function(l){
-        return '<div style="display:flex;justify-content:space-between;gap:10px;font-size:12px;padding:5px 0;border-bottom:1px solid var(--s2)">' +
-          '<span style="color:var(--tx)">' + (l.concepto||'') + ' <span style="color:var(--dim);font-size:11px">' + (l.detalle||'') + '</span></span>' +
-          '<span style="color:var(--tx);font-weight:600;white-space:nowrap">' + eur(l.importe) + '</span></div>';
+        return '<div class="g-linea"><span>' + (l.concepto||'') + ' <span class="g-small">' + (l.detalle||'') + '</span></span><b class="g-num">' + eur(l.importe) + '</b></div>';
       }).join('');
-      return '<div style="border:1px solid var(--s2);border-radius:12px;padding:14px;background:var(--s1)">' +
+      return '<div class="g-row" style="display:block">' +
         '<div style="display:flex;align-items:center;justify-content:space-between;gap:8px;margin-bottom:8px;flex-wrap:wrap">' +
-          '<div style="min-width:0"><div style="font-weight:700;font-size:13px">' + (b.evento||'Evento') + '</div>' +
-          '<div style="font-size:11px;color:var(--dim)">' + (b.cliente||'') + (b.contrato ? ' · contrato ' + b.contrato : '') + (b.pax ? ' · ' + b.pax + ' pax' : '') + '</div></div>' +
-          '<span style="font-size:11px;font-weight:700;padding:4px 10px;border-radius:20px;background:' + bg + ';color:' + col + '">' + badge + '</span>' +
+          '<div class="g-who"><b>' + (b.evento||'Evento') + '</b>' +
+          '<span>' + (b.cliente||'') + (b.contrato ? ' · contrato ' + b.contrato : '') + (b.pax ? ' · ' + b.pax + ' pax' : '') + '</span></div>' +
+          badge +
         '</div>' + lineas +
-        '<div style="display:flex;justify-content:space-between;font-size:13px;font-weight:800;padding-top:8px"><span>TOTAL BEO</span><span style="color:var(--acc2)">' + eur(b.total) + '</span></div>' +
-        '<div style="font-size:10px;color:var(--dim);margin-top:6px">BEO generado automáticamente del contrato · ' + (b.fecha_generado||'') + '</div>' +
+        '<div class="g-linea g-linea-total"><span>TOTAL BEO</span><b class="g-num">' + eur(b.total) + '</b></div>' +
+        '<div class="g-note">' + t('beos.generado', 'BEO generado automáticamente del contrato') + ' · ' + (b.fecha_generado||'') + '</div>' +
       '</div>';
     }).join('');
   } catch(e) {}
@@ -16682,16 +16635,16 @@ async function cargarARRealData() {
       const agingEl = document.getElementById('ar-aging-bar');
       if (agingEl && s.aging) {
         const total = Object.values(s.aging).reduce((a,b) => a+b, 0) || 1;
-        const colors = {'0-30 días':'var(--grn)','31-60 días':'var(--ora)','61-90 días':'var(--red)','>90 días (VENCIDA)':'#7f1d1d'};
+        const colors = {'0-30 días':'var(--grn)','31-60 días':'var(--ora)','61-90 días':'var(--red)','>90 días (VENCIDA)':'var(--red)'};
         agingEl.style.display = 'block';
-        agingEl.innerHTML = '<div style="font-size:10px;color:var(--mut);font-weight:600;text-transform:uppercase;letter-spacing:.4px;margin-bottom:6px">Antigüedad de saldo</div>' +
-          '<div style="display:flex;height:8px;border-radius:4px;overflow:hidden;gap:2px">' +
+        agingEl.innerHTML = '<div class="g-label" style="margin-bottom:6px">' + t('arreal.antiguedad', 'Antigüedad de saldo') + '</div>' +
+          '<div class="g-progress-bar" style="display:flex;gap:2px;background:transparent">' +
           Object.entries(s.aging).filter(([k,v]) => v > 0).map(([k,v]) =>
             '<div style="flex:' + v + ';background:' + (colors[k]||'var(--mut)') + ';border-radius:3px" title="' + k + ': ' + _fmtEurES(v, 0) + '"></div>'
           ).join('') + '</div>' +
           '<div style="display:flex;gap:12px;margin-top:5px;flex-wrap:wrap">' +
           Object.entries(s.aging).filter(([k,v]) => v > 0).map(([k,v]) =>
-            '<span style="font-size:10px;color:var(--dim)"><span style="display:inline-block;width:8px;height:8px;border-radius:2px;background:' + (colors[k]||'var(--mut)') + ';margin-right:3px"></span>' + k + '</span>'
+            '<span class="g-legend g-note" style="margin:0"><i style="background:' + (colors[k]||'var(--mut)') + '"></i>' + k + '</span>'
           ).join('') + '</div>';
       }
     }
@@ -16704,22 +16657,20 @@ async function cargarARRealData() {
         listEl.innerHTML = dc.clientes.map(c => {
           const uso = c.uso_credito_pct || 0;
           const pend = c.pendiente_completar
-            ? '<div style="font-size:10px;color:var(--ora);margin-top:3px">⚠ ' + t('ar.pendienteCompletar', 'Ficha pendiente de completar') + (c.origen ? ' · ' + _cEsc(c.origen) : '') + '</div>'
+            ? '<div style="margin-top:4px">' + gBadge('g-warn', t('ar.pendienteCompletar', 'Ficha pendiente de completar')) + (c.origen ? ' <span class="g-note" style="margin:0">' + _cEsc(c.origen) + '</span>' : '') + '</div>'
             : '';
-          const editBtn = '<button onclick="event.stopPropagation();editarClienteAR(\'' + c.nombre.replace(/'/g,"\\'") + '\')" title="' + t('ar.editarFicha', 'Editar ficha') + '" style="background:none;border:1px solid var(--s2);color:var(--mut);border-radius:6px;font-size:11px;padding:2px 6px;cursor:pointer;margin-left:6px">✎</button>';
+          const editBtn = '<button onclick="event.stopPropagation();editarClienteAR(\'' + c.nombre.replace(/'/g,"\\'") + '\')" title="' + t('ar.editarFicha', 'Editar ficha') + '" class="g-btn g-ghost g-sm g-icon">✎</button>';
           const usoPct = Math.min(100, uso);
-          const usoColor = uso >= 90 ? 'var(--red)' : uso >= 70 ? 'var(--ora)' : 'var(--grn)';
-          return '<div class="card" style="padding:12px;cursor:pointer;transition:background-color .15s,border-color .15s,color .15s,box-shadow .15s,transform .15s,opacity .15s" ' +
-            'onclick="filtrarClienteAR(\'' + c.nombre.replace(/'/g,"\\'") + '\')" ' +
-            'onmouseover="this.style.borderColor=\'var(--acc)\'" onmouseout="this.style.borderColor=\'\'"><div style="display:flex;justify-content:space-between;align-items:flex-start">' +
-            '<div style="flex:1;min-width:0"><div style="font-weight:600;font-size:13px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">' + c.nombre.split(' ').slice(0,3).join(' ') + '</div>' +
-            '<div style="font-size:10px;color:var(--dim);margin-top:2px">' + c.dias_pago + 'd pago · ' + c.facturas_pendientes + ' fact.</div>' + pend + '</div>' +
-            '<div style="text-align:right;flex-shrink:0;margin-left:8px">' + editBtn +
-            '<div style="font-size:13px;font-weight:700;color:' + usoColor + '">' + _fmtEurES(c.saldo_pendiente||0, 0) + '</div>' +
-            (c.tiene_vencidas ? '<div style="font-size:10px;color:var(--red)">⚠ Vencida</div>' : '') +
-            '</div></div>' +
-            '<div style="background:var(--s2);border-radius:3px;height:4px;margin-top:8px;overflow:hidden"><div style="height:100%;border-radius:3px;background:' + usoColor + ';width:' + usoPct + '%"></div></div>' +
-            '<div style="font-size:9px;color:var(--dim);margin-top:2px">' + uso + '% crédito usado (límite ' + _fmtEurES(c.limite_credito||0, 0) + ')</div>' +
+          const usoCls = uso >= 90 ? 'err' : uso >= 70 ? 'warn' : 'ok';
+          return '<div class="g-row g-cliente" onclick="filtrarClienteAR(\'' + c.nombre.replace(/'/g,"\\'") + '\')">' +
+            '<div class="g-who"><b>' + c.nombre.split(' ').slice(0,3).join(' ') + '</b>' +
+            '<span>' + c.dias_pago + 'd ' + t('arreal.pago', 'pago') + ' · ' + c.facturas_pendientes + ' ' + t('arreal.fact', 'fact.') + '</span>' + pend + '</div>' +
+            '<div style="text-align:right;flex:0 0 auto">' + editBtn +
+            '<div class="g-num" style="font-weight:700;color:var(--' + (usoCls === 'ok' ? 'grn' : usoCls === 'warn' ? 'ora' : 'red') + ')">' + _fmtEurES(c.saldo_pendiente||0, 0) + '</div>' +
+            (c.tiene_vencidas ? gBadge('g-err', t('est.vencida', 'Vencida')) : '') +
+            '</div>' +
+            '<div style="flex-basis:100%"><div class="g-progress-bar" style="height:4px"><div class="g-progress-fill ' + usoCls + '" style="width:' + usoPct + '%"></div></div>' +
+            '<div class="g-note" style="margin-top:3px">' + uso + '% ' + t('arreal.creditoUsado', 'crédito usado (límite') + ' ' + _fmtEurES(c.limite_credito||0, 0) + ')</div></div>' +
             '</div>';
         }).join('');
       }
@@ -16754,31 +16705,31 @@ function _renderFacturasAR(facturas, stats) {
   const display = estado_filter ? facturas.filter(f => f.estado === estado_filter) : facturas;
 
   if (!display.length) {
-    tbody.innerHTML = '<tr><td colspan="4">' + _emptyState('📋', tt('ar.vacioTitulo', 'Sin facturas todavía'), tt('ar.vacioSub', 'Crea una factura con “Nueva factura” o procesa documentos de grupos y aparecerán aquí.'), false) + '</td></tr>';
+    tbody.innerHTML = '<tr><td colspan="5">' + _emptyState('📋', tt('ar.vacioTitulo', 'Sin facturas todavía'), tt('ar.vacioSub', 'Crea una factura con “Nueva factura” o procesa documentos de grupos y aparecerán aquí.'), false) + '</td></tr>';
     return;
   }
 
   tbody.innerHTML = display.map(f => {
     const isVenc = f.days_pending > 60;
     const isOk   = f.estado === 'COBRADO';
-    const rowColor = isVenc ? 'rgba(239,68,68,.04)' : '';
-    const stateColor = isVenc ? 'var(--red)' : isOk ? 'var(--grn)' : f.estado === 'FACTURADO' ? 'var(--ora)' : 'var(--mut)';
-    const stateLabel = {'FACTURADO':'Emitida','COBRADO':'Cobrada','PENDIENTE_FACTURA':'Pendiente'}[f.estado] || f.estado;
-
-    return '<tr style="border-bottom:1px solid var(--s2);background:' + rowColor + '">' +
-      '<td style="padding:8px"><div style="font-weight:600;font-size:12px;cursor:pointer;color:var(--acc2)" onclick="copyToClip(\'' + f.numero + '\')">' + f.numero + '</div>' +
-        '<div style="font-size:11px;color:var(--mut);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:140px">' + f.cliente.split(' ').slice(0,2).join(' ') + '</div>' +
-        (f.aging_bucket && f.aging_bucket !== 'N/A' ? '<div style="font-size:10px;color:' + (f.days_pending > 60 ? 'var(--red)' : 'var(--dim)') + '">' + f.aging_bucket + '</div>' : '') +
+    // estado con los badges de la guia: violeta cobrada (cerrada), ambar emitida, rojo vencida, gris pendiente de emitir
+    const estadoBadge = isVenc ? gBadge('g-err', t('est.vencida', 'Vencida'))
+                      : isOk ? gBadge('g-pur', t('est.cobrada', 'Cobrada'))
+                      : f.estado === 'FACTURADO' ? gBadge('g-warn', t('est.emitida', 'Emitida'))
+                      : gBadge('g-mute', t('est.pendienteEmitir', 'Pendiente de emitir'));
+    const diasCls = f.days_pending > 60 ? 'g-err' : f.days_pending > 30 ? 'g-warn' : 'g-ok';
+    return '<tr' + (isVenc ? ' class="is-vencida"' : '') + '>' +
+      '<td><b style="cursor:copy" onclick="copyToClip(\'' + f.numero + '\')">' + f.numero + '</b>' +
+        '<div class="g-small" style="white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:160px">' + f.cliente.split(' ').slice(0,2).join(' ') + '</div>' +
+        (f.aging_bucket && f.aging_bucket !== 'N/A' ? '<div class="g-note" style="margin-top:2px' + (f.days_pending > 60 ? ';color:var(--red)' : '') + '">' + f.aging_bucket + '</div>' : '') +
       '</td>' +
-      '<td style="text-align:right;padding:8px;font-weight:700">' + _fmtEurES(f.total||0, 2) + '</td>' +
-      '<td style="text-align:center;padding:8px">' +
-        (f.days_pending > 0 ? '<span style="font-size:13px;font-weight:700;color:' + (f.days_pending > 60 ? 'var(--red)' : f.days_pending > 30 ? 'var(--ora)' : 'var(--grn)') + '">' + f.days_pending + 'd</span>' : '<span style="color:var(--dim)">—</span>') +
-      '</td>' +
-      '<td style="padding:8px"><span style="background:' + stateColor + '20;color:' + stateColor + ';padding:2px 8px;border-radius:6px;font-size:10px;font-weight:700">' + stateLabel + '</span></td>' +
-      '<td style="padding:8px;white-space:nowrap">' +
-        (f.estado === 'FACTURADO' ? '<button onclick="cobrarFacturaAR(\'' + f.numero + '\')" class="btn bsm" style="font-size:10px;margin-right:4px;background:rgba(34,197,94,.1);color:var(--grn);border-color:rgba(34,197,94,.3)" title="Marcar como cobrada">💰</button>' : '') +
-        (f.estado === 'FACTURADO' ? '<a href="/api/ar_real/pdf/' + encodeURIComponent(f.numero) + '" target="_blank" class="btn bsm" style="font-size:10px;text-decoration:none;background:rgba(59,130,246,.1);color:var(--acc2);border-color:rgba(59,130,246,.3)" title="Descargar PDF">📄</a>' : '') +
-        (f.estado === 'FACTURADO' ? '<button onclick="recordatorioAR(\'' + f.numero + '\')" class="btn bsm" style="font-size:10px;background:rgba(245,158,11,.1);color:var(--ora);border-color:rgba(245,158,11,.3)" title="Enviar recordatorio email">📧</button>' : '') +
+      '<td class="num"><b>' + _fmtEurES(f.total||0, 2) + '</b></td>' +
+      '<td class="num">' + (f.days_pending > 0 ? gBadge(diasCls, f.days_pending + 'd') : '<span class="g-small">—</span>') + '</td>' +
+      '<td>' + estadoBadge + '</td>' +
+      '<td style="white-space:nowrap">' +
+        (f.estado === 'FACTURADO' ? '<button onclick="cobrarFacturaAR(\'' + f.numero + '\')" class="g-btn g-ghost g-sm g-icon" title="' + t('arreal.marcarCobrada', 'Marcar como cobrada') + '">💰</button>' : '') +
+        (f.estado === 'FACTURADO' ? '<a href="/api/ar_real/pdf/' + encodeURIComponent(f.numero) + '" target="_blank" class="g-btn g-ghost g-sm g-icon" title="' + t('arreal.pdf', 'Descargar PDF') + '">📄</a>' : '') +
+        (f.estado === 'FACTURADO' ? '<button onclick="recordatorioAR(\'' + f.numero + '\')" class="g-btn g-ghost g-sm g-icon" title="' + t('arreal.recordatorio', 'Enviar recordatorio email') + '">📧</button>' : '') +
       '</td>' +
     '</tr>';
   }).join('');
