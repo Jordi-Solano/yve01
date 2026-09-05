@@ -53,7 +53,7 @@ def main():
     d2 = DI.analizar_factura(pd.Series({**r_nf, "estado": "OTA_DESCONOCIDA", "mercado": NF}))
     ok(d2["estado_di"] == "OTA_DESCONOCIDA", "DI de una OTA sin nombre sigue siendo desconocida")
     src = open(os.path.join(BASE, 'dashboard.py'), encoding='utf-8').read()
-    ok("SIN_TARIFA_PACTADA: ['b-unk', '? Sin tarifa pactada']" in src and "(c.SIN_TARIFA_HOTEL||0) + (c.SIN_TARIFA_PACTADA||0)" in src, "panel: badge y linea 'sin tarifa pactada' con el estado nuevo")
+    ok("SIN_TARIFA_PACTADA: ['g-warn', t('est.sinTarifa', 'Sin tarifa pactada')]" in src and "(c.SIN_TARIFA_HOTEL||0) + (c.SIN_TARIFA_PACTADA||0)" in src, "panel: badge y linea 'sin tarifa pactada' con el estado nuevo")
     ok("SIN_TARIFA_PACTADA" in open(os.path.join(BASE, 'provisiones.py'), encoding='utf-8').read(), "provisiones: sin tarifa → provisiona lo facturado, no lo pactado")
     ok("SIN_TARIFA_PACTADA" in open(os.path.join(BASE, 'app_aprobacion.py'), encoding='utf-8').read(), "pantalla de aprobar AR con badge")
     diff = subprocess.run(['git', 'diff', '--name-only', 'HEAD'], capture_output=True, text=True, cwd=BASE).stdout.split()
