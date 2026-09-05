@@ -6421,12 +6421,11 @@ svg.yvi{width:1em;height:1em;vertical-align:-0.125em;flex-shrink:0;display:inlin
     <div class="dropdown">
       <button class="btn-ref" onclick="toggleMenu('main-menu')" title="Ajustes, idioma y administración" style="font-size:16px;line-height:1;padding:5px 11px">⚙️</button>
       <div id="main-menu" class="menu">
-        <div class="menu-head" data-i18n="menu.reportes">Reportes</div>
-        <a href="/api/reportes/diario" class="menu-item">📄 Diario</a>
-        <a href="/api/reportes/semanal" class="menu-item">📊 Semanal</a>
-        <a href="/api/reportes/mensual" class="menu-item">📈 Mensual</a>
-        <a href="/api/reportes/ejecutivo.pdf" class="menu-item">🎯 Ejecutivo PDF</a>
-        <a href="/api/reportes/consolidado.xlsx" class="menu-item">📊 Consolidado Excel</a>
+        <!-- Pieza 10: TODAS las descargas salen de aqui. El selector solo
+             enseña los apartados que el rol puede ver (_TABS_ROL). -->
+        <div class="menu-head" data-i18n="menu.descargas">Descargas</div>
+        <div style="padding:0 6px 4px"><select id="dl-apartado" onchange="this.dataset.elegido='1';_pintarDescargas()" style="width:100%;background:var(--bg);border:1px solid var(--s2);color:var(--tx);padding:6px 8px;border-radius:7px;font-size:12px"></select></div>
+        <div id="dl-lista"></div>
         <div class="menu-sep"></div>
         <!-- Language switcher -->
         <div class="menu-head" data-i18n="nav.idioma" style="margin-top:0">Idioma</div>
@@ -6542,7 +6541,7 @@ svg.yvi{width:1em;height:1em;vertical-align:-0.125em;flex-shrink:0;display:inlin
 
   <div id="panel-ar" class="panel active">
     
-  <div style="display:flex;justify-content:flex-end;gap:12px;margin-bottom:14px"><a href="/api/exportar/ar" class="btn-ref" style="text-decoration:none">⬇️ Excel</a><a href="/api/exportar/ar/pdf" class="btn-ref" style="text-decoration:none">📄 PDF</a><a href="/aprobaciones-ar/" class="btn-ref" style="text-decoration:none" title="Abrir panel de aprobaciones AR">📲 Aprobar facturas AR</a></div>
+  <div style="display:flex;justify-content:flex-end;gap:12px;margin-bottom:14px"><a href="/aprobaciones-ar/" class="btn-ref" style="text-decoration:none" title="Abrir panel de aprobaciones AR">📲 Aprobar facturas AR</a></div>
   <!-- STATS -->
   <div class="stats" id="ar-stats-section">
     <div class="sc hl c-blu">
@@ -6642,9 +6641,9 @@ svg.yvi{width:1em;height:1em;vertical-align:-0.125em;flex-shrink:0;display:inlin
 
   <!-- PANEL AP -->
   <div id="panel-ap" class="panel">
-  <div style="display:flex;justify-content:flex-end;gap:12px;margin-bottom:14px"><a href="/api/exportar/ap" style="background:var(--acc);color:white;padding:8px 16px;border-radius:8px;text-decoration:none;font-weight:600;font-size:13px" data-i18n="btn.downloadExcel" data-i18n="btn.downloadExcel">⬇️ Descargar Excel</a><a href="/aprobaciones-ap/" class="btn-ref" style="text-decoration:none" title="Abrir panel de aprobaciones AP" data-i18n="btn.aprobarAP">📲 Aprobar facturas AP</a>
+  <div style="display:flex;justify-content:flex-end;gap:12px;margin-bottom:14px"><a href="/aprobaciones-ap/" class="btn-ref" style="text-decoration:none" title="Abrir panel de aprobaciones AP" data-i18n="btn.aprobarAP">📲 Aprobar facturas AP</a>
         <button class="btn-ref" onclick="aprobarMatchOK()" style="font-size:12px" title="Aprueba automáticamente todas las facturas con 3-way match correcto">✅ Aprobar Match OK</button>
-        <button class="btn-ref" id="btnOracle" onclick="procesarOracle()" style="font-size:12px" title="Genera los asientos de las facturas aprobadas">🔮 Contabilizar en Oracle</button><span id="oracle-modo-chip" style="display:none;font-size:11px;padding:3px 8px;border-radius:999px;background:rgba(245,158,11,.15);color:#f59e0b;border:1px solid rgba(245,158,11,.4);align-self:center"></span><a href="/api/oracle/export_excel" class="btn-ref" style="text-decoration:none;font-size:12px" data-i18n="oracle.exportGl" title="GL_INTERFACE con los asientos que ha producido el pipeline (simulación o real)">⬇️ Asientos GL</a>
+        <button class="btn-ref" id="btnOracle" onclick="procesarOracle()" style="font-size:12px" title="Genera los asientos de las facturas aprobadas">🔮 Contabilizar en Oracle</button><span id="oracle-modo-chip" style="display:none;font-size:11px;padding:3px 8px;border-radius:999px;background:rgba(245,158,11,.15);color:#f59e0b;border:1px solid rgba(245,158,11,.4);align-self:center"></span>
         <button class="btn-ref" onclick="filtrarAPPorEstado()" id="btn-filter-ap" style="font-size:12px">🔍 Filtrar</button>
         <select id="ap-estado-filter" onchange="filtrarAPPorEstado(this.value)" style="background:var(--s1);border:1px solid var(--s2);color:var(--tx);padding:6px 10px;border-radius:8px;font-size:12px;cursor:pointer">
           <option value="" data-i18n-opt="lbl.todos">Todos</option>
@@ -6678,7 +6677,6 @@ svg.yvi{width:1em;height:1em;vertical-align:-0.125em;flex-shrink:0;display:inlin
         <div class="card-title" style="margin:0" data-i18n="prov.titulo">Provisiones de cierre</div>
         <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap">
           <input type="month" id="prov-mes" onchange="loadProvisiones()" style="background:var(--s1);border:1px solid var(--s2);color:var(--tx);padding:6px 10px;border-radius:8px;font-size:12px">
-          <a id="prov-descarga" href="/api/exportar/provisiones" class="btn-ref" style="text-decoration:none;font-size:12px" data-i18n="prov.descargar">⬇️ Excel del cierre</a>
         </div>
       </div>
       <div id="prov-body" style="font-size:13px;color:var(--mut)"><div class="empty"><p data-i18n="prov.cargando">Calculando provisiones…</p></div></div>
@@ -6688,7 +6686,6 @@ svg.yvi{width:1em;height:1em;vertical-align:-0.125em;flex-shrink:0;display:inlin
     <div class="card" id="card-aging-ap" style="margin-top:22px">
       <div style="display:flex;align-items:center;justify-content:space-between;gap:12px;flex-wrap:wrap;margin-bottom:12px">
         <div class="card-title" style="margin:0" data-i18n="aging.titulo">Antigüedad de la deuda (aging AP)</div>
-        <a href="/api/exportar/aging_ap" class="btn-ref" style="text-decoration:none;font-size:12px" data-i18n="aging.descargar">⬇️ Excel del aging</a>
       </div>
       <div id="aging-tramos" style="display:grid;grid-template-columns:repeat(auto-fit,minmax(110px,1fr));gap:8px;margin-bottom:12px"></div>
       <div id="aging-body" style="font-size:13px;color:var(--mut)"><div class="empty"><p data-i18n="aging.cargando">Calculando antigüedad…</p></div></div>
@@ -6700,7 +6697,6 @@ svg.yvi{width:1em;height:1em;vertical-align:-0.125em;flex-shrink:0;display:inlin
         <div class="card-title" style="margin:0" data-i18n="alb.titulo">Albaranes de entrega</div>
         <div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap">
           <span id="alb-resumen" style="font-size:12px;color:var(--mut)"></span>
-          <a href="/api/exportar/albaranes" class="btn-ref" style="text-decoration:none;font-size:12px" data-i18n="alb.excel">⬇️ Excel</a>
         </div>
       </div>
       <div style="font-size:12px;color:var(--mut);margin-bottom:10px" data-i18n="alb.ayuda">Cada entrega con sus líneas y la factura con la que ha cruzado. Pulsa una fila para ver las líneas.</div>
@@ -6719,10 +6715,6 @@ svg.yvi{width:1em;height:1em;vertical-align:-0.125em;flex-shrink:0;display:inlin
   <div id="panel-drr" class="panel">
     <!-- Acciones (sin titulo ni chips: decision de diseno). El estado va oculto,
          que lo leen la subida y el onboarding; el OOB va dentro del panel. -->
-    <div class="rd-actions">
-      <a href="/api/exportar/drr" class="btn-ref" style="text-decoration:none;font-size:12px" data-i18n="btn.downloadExcel">⬇️ Excel</a>
-      <a href="/api/exportar/drr/pdf" class="btn-ref" style="text-decoration:none;font-size:12px">📄 PDF</a>
-    </div>
     <span class="drr-status" id="drr-status" style="display:none" data-i18n="drr.sinArchivo">Sin archivo cargado</span>
     <span id="drr-oob-badge" style="display:none"></span>
     <!-- Cuerpo: lo pinta renderDRR. #drr-metrics vive aqui (ancla del tour) y lo
@@ -6763,8 +6755,6 @@ svg.yvi{width:1em;height:1em;vertical-align:-0.125em;flex-shrink:0;display:inlin
       <div id="bk-alertas"><div class="empty"><p>—</p></div></div>
     </div>
     <div style="margin-top:16px;display:flex;flex-wrap:wrap;gap:8px;align-items:center">
-      <a href="/api/exportar/banco" class="btn-ref" style="text-decoration:none;font-size:12px">⬇️ Excel</a>
-        <a href="/api/exportar/asientos" class="btn-ref" style="text-decoration:none;font-size:12px;background:rgba(var(--acc-r,59),var(--acc-g,130),var(--acc-b,246),.15);border-color:rgba(var(--acc-r,59),var(--acc-g,130),var(--acc-b,246),.4);color:var(--acc2)" title="Exportar Libro Diario para A3, Sage, Holded...">📒 Libro Diario</a>
       <button class="btn-run" onclick="runConciliacion()" style="font-size:12px">⚡ Conciliar</button>
       <a href="/conciliacion/" class="btn-ref" style="text-decoration:none;font-size:12px" data-i18n="btn.verConciliacion">🏦 Ver conciliación</a>
     </div>
@@ -6843,7 +6833,6 @@ svg.yvi{width:1em;height:1em;vertical-align:-0.125em;flex-shrink:0;display:inlin
         <input type="month" id="cierre-mes" onchange="loadCierre(true)" style="background:var(--bg);border:1px solid var(--s2);color:var(--tx);padding:6px 8px;border-radius:8px;font-size:12px">
         <span id="cierre-hotel" style="font-size:12px;color:var(--dim)"></span>
       </div>
-      <a id="cierre-excel" href="/api/exportar/cierre" class="btn-ref" style="text-decoration:none;font-size:12px" data-i18n="cierre.descargar">⬇️ Excel del cierre</a>
     </div>
     <div class="stats" id="cierre-stats" style="margin-bottom:14px">
       <div class="stat"><div class="stat-label" data-i18n="cierre.kAsientos">Asientos</div><div class="stat-value" id="cierre-k-asientos">—</div></div>
@@ -6854,8 +6843,7 @@ svg.yvi{width:1em;height:1em;vertical-align:-0.125em;flex-shrink:0;display:inlin
     <div class="card" id="card-cierre-paquete" style="margin-bottom:22px">
       <div style="display:flex;align-items:center;justify-content:space-between;gap:12px;flex-wrap:wrap;margin-bottom:10px">
         <div class="card-title" style="margin:0" data-i18n="paq.titulo">Archivo de fin de mes para la central</div>
-        <div style="display:flex;align-items:center;gap:8px"><span id="paq-estado" style="font-size:12px;font-weight:700"></span>
-        <a id="paq-excel" href="/api/exportar/cierre_paquete" class="btn-ref" style="text-decoration:none;font-size:12px" data-i18n="paq.descargar">📦 Descargar paquete</a></div>
+        <div style="display:flex;align-items:center;gap:8px"><span id="paq-estado" style="font-size:12px;font-weight:700"></span></div>
       </div>
       <div id="paq-resultado" style="display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:8px;margin-bottom:12px"></div>
       <div id="paq-body" style="font-size:12px;color:var(--mut)"><div class="empty"><p data-i18n="cierre.cargando">Montando el mes…</p></div></div>
@@ -6867,8 +6855,7 @@ svg.yvi{width:1em;height:1em;vertical-align:-0.125em;flex-shrink:0;display:inlin
     <div class="card" id="card-cierre-banco" style="margin-bottom:22px">
       <div style="display:flex;align-items:center;justify-content:space-between;gap:12px;flex-wrap:wrap;margin-bottom:10px">
         <div class="card-title" style="margin:0" data-i18n="cbanco.titulo">Cuadre de banco por pestañas</div>
-        <div style="display:flex;align-items:center;gap:10px"><span id="cbanco-saldo" style="font-size:12px;color:var(--mut)"></span>
-        <a id="cbanco-excel" href="/api/exportar/cuadre_banco" class="btn-ref" style="text-decoration:none;font-size:12px" data-i18n="cbanco.descargar">⬇️ Excel</a></div>
+        <div style="display:flex;align-items:center;gap:10px"><span id="cbanco-saldo" style="font-size:12px;color:var(--mut)"></span></div>
       </div>
       <div id="cbanco-pestanas" style="display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:8px;margin-bottom:12px"></div>
       <div id="cbanco-body" style="font-size:12px;color:var(--mut);overflow-x:auto"><div class="empty"><p data-i18n="cierre.cargando">Montando el mes…</p></div></div>
@@ -6877,9 +6864,7 @@ svg.yvi{width:1em;height:1em;vertical-align:-0.125em;flex-shrink:0;display:inlin
       <div style="display:flex;align-items:center;justify-content:space-between;gap:12px;flex-wrap:wrap;margin-bottom:10px">
         <div class="card-title" style="margin:0" data-i18n="inv.titulo">Inventarios de cierre</div>
         <div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap">
-          <a id="inv-hoja" href="/api/inventarios/hoja_recuento" class="btn-ref" style="text-decoration:none;font-size:12px" data-i18n="inv.hoja">📋 Hoja de recuento</a>
           <button class="btn-ref" style="font-size:12px;margin:0" onclick="openUploadModal()" data-i18n="inv.subir">📤 Subir recuento (Procesar archivos)</button>
-          <a id="inv-excel" href="/api/exportar/inventarios" class="btn-ref" style="text-decoration:none;font-size:12px" data-i18n="inv.descargar">⬇️ Excel</a>
         </div>
       </div>
       <div id="inv-resumen" style="display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:8px;margin-bottom:12px"></div>
@@ -6889,7 +6874,6 @@ svg.yvi{width:1em;height:1em;vertical-align:-0.125em;flex-shrink:0;display:inlin
       <div style="display:flex;align-items:center;justify-content:space-between;gap:12px;flex-wrap:wrap;margin-bottom:10px">
         <div class="card-title" style="margin:0" data-i18n="fis.titulo">Fiscal: IVA 303, 349 y SII</div>
         <div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap"><span id="fis-estado" style="font-size:12px;font-weight:700"></span>
-          <a id="fis-excel" href="/api/exportar/fiscal" class="btn-ref" style="text-decoration:none;font-size:12px" data-i18n="fis.descargar">⬇️ Excel</a>
         </div>
       </div>
       <div style="font-size:12px;color:var(--mut);margin-bottom:10px" data-i18n="fis.ayuda">Preparado a partir de los mismos datos que los asientos del mes. Nada se envía a Hacienda: el envío del SII exige certificado digital y lo hace la gestoría.</div>
@@ -6901,7 +6885,6 @@ svg.yvi{width:1em;height:1em;vertical-align:-0.125em;flex-shrink:0;display:inlin
         <div class="card-title" style="margin:0" data-i18n="inm.titulo">Inmovilizado y amortizaciones</div>
         <div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap">
           <button class="btn-ref" style="font-size:12px" onclick="_inmForm()" data-i18n="inm.alta">➕ Dar de alta</button>
-          <a id="inm-excel" href="/api/exportar/inmovilizado" class="btn-ref" style="text-decoration:none;font-size:12px" data-i18n="inm.descargar">⬇️ Excel</a>
         </div>
       </div>
       <div id="inm-form" style="display:none;margin-bottom:12px;padding:10px;border:1px dashed var(--s2);border-radius:10px">
@@ -6943,7 +6926,6 @@ svg.yvi{width:1em;height:1em;vertical-align:-0.125em;flex-shrink:0;display:inlin
       <div class="fb-acciones" style="display:flex;gap:8px;align-items:center;flex-wrap:wrap">
         <label style="font-size:12px;color:var(--mut);display:flex;align-items:center;gap:6px"><span data-i18n="fb.mesLbl">Mes</span><input type="month" id="fb-mes" style="font-size:12px;padding:4px 6px;border-radius:6px;border:1px solid var(--s2);background:var(--s1);color:var(--tx)" onchange="fbCambiarMes()" title="Vacío = todo el periodo"></label>
         <button class="btn-ref" style="font-size:12px" onclick="openUploadModal()" data-i18n="btn.importarFB">📤 Subir ventas, inventario, mermas o recetas</button>
-        <a href="/api/exportar/fb/pdf" class="btn-ref" style="text-decoration:none;font-size:12px">📄 PDF</a>
       </div>
     </div>
     <div id="fb-resumen" class="lite-visible"><div class="empty"><p>Cargando...</p></div></div>
@@ -6966,7 +6948,6 @@ svg.yvi{width:1em;height:1em;vertical-align:-0.125em;flex-shrink:0;display:inlin
       <div style="display:flex;gap:8px;flex-wrap:wrap">
         <button class="btn-ref" onclick="abrirEmitirFactura()" style="font-size:12px">📄 Nueva factura</button>
         <button class="btn-ref" onclick="loadARRealData()" style="font-size:12px">🔄 Actualizar</button>
-        <a href="/api/exportar/ar_real" class="btn-ref" style="text-decoration:none;font-size:12px">⬇️ Excel</a>
         <a href="/aprobaciones-ar/" class="btn-run" style="text-decoration:none;font-size:12px;padding:8px 14px" data-i18n="btn.aprobarAR">📲 Aprobar AR</a>
       </div>
     </div>
@@ -7085,8 +7066,7 @@ svg.yvi{width:1em;height:1em;vertical-align:-0.125em;flex-shrink:0;display:inlin
     <div id="ar-bonos-section" class="card" style="margin-top:22px">
       <div style="display:flex;align-items:center;justify-content:space-between;gap:12px;flex-wrap:wrap;margin-bottom:10px">
         <div class="card-title" style="margin:0" data-i18n="bonos.titulo">Direct bill: factura vs bono de agencia</div>
-        <div style="display:flex;align-items:center;gap:10px"><span id="ar-bonos-resumen" style="font-size:12px;color:var(--mut)"></span>
-        <a href="/api/exportar/bonos" class="btn-ref" style="text-decoration:none;font-size:12px" data-i18n="bonos.descargar">⬇️ Excel</a></div>
+        <div style="display:flex;align-items:center;gap:10px"><span id="ar-bonos-resumen" style="font-size:12px;color:var(--mut)"></span></div>
       </div>
       <div id="ar-bonos-list" style="display:flex;flex-direction:column;gap:8px"><div class="empty"><p data-i18n="bonos.cargando">Cotejando bonos…</p></div></div>
     </div>
@@ -7130,7 +7110,6 @@ svg.yvi{width:1em;height:1em;vertical-align:-0.125em;flex-shrink:0;display:inlin
           <button id="mh-view-cards" onclick="setMHView('cards')" style="background:var(--acc2);color:#fff;border:none;padding:6px 13px;border-radius:6px;font-size:12px;cursor:pointer;font-weight:500;transition:background-color .15s,border-color .15s,color .15s,box-shadow .15s,transform .15s,opacity .15s">📊 Resumen</button>
           <button id="mh-view-ranking" onclick="setMHView('ranking')" style="background:transparent;color:var(--mut);border:none;padding:6px 13px;border-radius:6px;font-size:12px;cursor:pointer;font-weight:500;transition:background-color .15s,border-color .15s,color .15s,box-shadow .15s,transform .15s,opacity .15s">🏆 Ranking</button>
         </div>
-        <a href="/api/exportar/multihotel" class="btn-ref" style="text-decoration:none;font-size:12px">⬇️ Excel</a>
       </div>
     </div>
 
@@ -13887,7 +13866,80 @@ function toggleMenu(id) {
   const m = document.getElementById(id);
   const wasOpen = m.classList.contains('open');
   document.querySelectorAll('.menu.open').forEach(el => el.classList.remove('open'));
-  if (!wasOpen) m.classList.add('open');
+  if (!wasOpen) {
+    if (id === 'main-menu') { try { var _s = document.getElementById('dl-apartado'); if (_s) _s.dataset.elegido = ''; _pintarDescargas(); } catch (e) {} }
+    m.classList.add('open');
+  }
+}
+
+// ── Pieza 10: UNA sola salida de descargas ───────────────────────────
+// Cada apartado lista sus ficheros. `mes` = true añade ?mes= con el mes del
+// Cierre (o el de F&B / provisiones si estan puestos, o el mes actual). El
+// catalogo se pinta al abrir el menu, asi el mes es el de ese momento y no
+// el de cuando se cargo la pagina.
+var _DESCARGAS = [
+  {tab: 'general', nombre: 'menu.reportes', def: 'Reportes', items: [
+    {t: '📄 Diario', u: '/api/reportes/diario'},
+    {t: '📊 Semanal', u: '/api/reportes/semanal'},
+    {t: '📈 Mensual', u: '/api/reportes/mensual'},
+    {t: '🎯 Ejecutivo PDF', u: '/api/reportes/ejecutivo.pdf'},
+    {t: '📊 Consolidado Excel', u: '/api/reportes/consolidado.xlsx'}]},
+  {tab: 'ar', nombre: 'tab.ar', def: '📥 AR — OTAs', items: [
+    {t: '⬇️ Excel AR', u: '/api/exportar/ar'},
+    {t: '📄 PDF AR', u: '/api/exportar/ar/pdf'}]},
+  {tab: 'ap', nombre: 'tab.ap', def: '📦 AP — Proveedores', items: [
+    {t: '⬇️ Excel AP', u: '/api/exportar/ap'},
+    {t: '⬇️ Excel del aging', u: '/api/exportar/aging_ap', k: 'aging.descargar'},
+    {t: '⬇️ Provisiones del cierre', u: '/api/exportar/provisiones', mes: 'prov-mes'},
+    {t: '⬇️ Albaranes', u: '/api/exportar/albaranes'},
+    {t: '📒 Asientos GL (Oracle)', u: '/api/oracle/export_excel', k: 'oracle.exportGl'}]},
+  {tab: 'drr', nombre: 'tab.drr', def: '📊 DRR', items: [
+    {t: '⬇️ Excel DRR', u: '/api/exportar/drr'},
+    {t: '📄 PDF DRR', u: '/api/exportar/drr/pdf'}]},
+  {tab: 'banco', nombre: 'tab.banco', def: '🏦 Banco', items: [
+    {t: '⬇️ Excel del extracto', u: '/api/exportar/banco'},
+    {t: '📒 Libro Diario (A3, Sage, Holded…)', u: '/api/exportar/asientos'}]},
+  {tab: 'fb', nombre: 'tab.fb', def: '🍽️ F&B Cost', items: [
+    {t: '⬇️ Excel F&B', u: '/api/exportar/fb'},
+    {t: '📄 PDF F&B', u: '/api/exportar/fb/pdf'}]},
+  {tab: 'ar_real', nombre: 'tab.arreal', def: '🏢 AR Real', items: [
+    {t: '⬇️ Excel AR Real', u: '/api/exportar/ar_real'},
+    {t: '⬇️ Excel de bonos', u: '/api/exportar/bonos', k: 'bonos.descargar'}]},
+  {tab: 'multi_hotel', nombre: 'tab.multihotel', def: '🏨 Multi-Hotel', items: [
+    {t: '⬇️ Excel Multi-Hotel', u: '/api/exportar/multihotel'}]},
+  {tab: 'cierre', nombre: 'tab.cierre', def: '🧾 Cierre', items: [
+    {t: '⬇️ Excel del cierre', u: '/api/exportar/cierre', mes: 'cierre-mes', k: 'cierre.descargar'},
+    {t: '📦 Paquete para la central', u: '/api/exportar/cierre_paquete', mes: 'cierre-mes', k: 'paq.descargar'},
+    {t: '⬇️ Cuadre de banco', u: '/api/exportar/cuadre_banco', mes: 'cierre-mes'},
+    {t: '⬇️ Inventarios', u: '/api/exportar/inventarios', mes: 'cierre-mes'},
+    {t: '📋 Hoja de recuento (para contar)', u: '/api/inventarios/hoja_recuento', mes: 'cierre-mes', k: 'inv.hoja'},
+    {t: '⬇️ Fiscal (303, 349, SII)', u: '/api/exportar/fiscal', mes: 'cierre-mes'},
+    {t: '⬇️ Inmovilizado', u: '/api/exportar/inmovilizado', mes: 'cierre-mes'}]},
+];
+function _mesDescarga(idInput) {
+  var el = idInput && document.getElementById(idInput);
+  var v = (el && el.value) || ((document.getElementById('cierre-mes') || {}).value) || '';
+  if (!v) { var d = new Date(); v = d.getFullYear() + '-' + String(d.getMonth() + 1).padStart(2, '0'); }
+  return v.slice(0, 7);
+}
+function _apartadosDescarga() {
+  return _DESCARGAS.filter(function(a) { return a.tab === 'general' ? _rolVeTodo() : _rolVeApartado(a.tab); });
+}
+function _pintarDescargas() {
+  var sel = document.getElementById('dl-apartado'), lista = document.getElementById('dl-lista');
+  if (!sel || !lista) return;
+  var aps = _apartadosDescarga();
+  // el selector propone el apartado que esta abierto, salvo que el usuario ya haya elegido otro en este menu
+  var actual = (sel.dataset.elegido === '1' && sel.value) || (typeof _currentTab !== 'undefined' && _currentTab) || '';
+  if (!aps.some(function(a) { return a.tab === actual; })) actual = aps.length ? aps[0].tab : '';
+  sel.innerHTML = aps.map(function(a) {
+    return '<option value="' + a.tab + '"' + (a.tab === actual ? ' selected' : '') + '>' + t(a.nombre, a.def) + '</option>';
+  }).join('');
+  var ap = aps.filter(function(a) { return a.tab === actual; })[0];
+  lista.innerHTML = ap ? ap.items.map(function(it) {
+    var u = it.u + (it.mes ? '?mes=' + encodeURIComponent(_mesDescarga(it.mes)) : '');
+    return '<a href="' + u + '" class="menu-item">' + (it.k ? t(it.k, it.t) : it.t) + '</a>';
+  }).join('') : '<div class="menu-item" style="color:var(--dim)">—</div>';
 }
 
 // Cerrar menús al hacer click fuera
@@ -13972,7 +14024,9 @@ function eliminarArchivoServidor(nombre, rowEl) {
   .catch(function(e){ showNotification('Error de conexión', 'error'); });
 }
 
+var _currentTab = 'ar';       // apartado abierto: el selector de descargas arranca en el
 function switchTab(tab, el) {
+  _currentTab = tab;
   if (typeof t !== 'function' && typeof _T_FN === 'function') { try { t = _T_FN; } catch(e){} }
   if (typeof _onTabSwitch === 'function') _onTabSwitch(tab);
   document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
@@ -14022,7 +14076,6 @@ var _cbFiltro = '';
 async function loadCuadreBanco(){
   var inp = document.getElementById('cierre-mes'); if (!inp) return;
   var mes = inp.value;
-  var ex = document.getElementById('cbanco-excel'); if (ex) ex.href = '/api/exportar/cuadre_banco?mes=' + encodeURIComponent(mes);
   var pw = document.getElementById('cbanco-pestanas'), body = document.getElementById('cbanco-body'), sal = document.getElementById('cbanco-saldo');
   try {
     var r = await fetch('/api/cuadre_banco?mes=' + encodeURIComponent(mes));
@@ -14054,8 +14107,6 @@ async function _cbAsignar(sel){
 async function loadInventarios(){
   var inp = document.getElementById('cierre-mes'); if (!inp) return;
   var mes = inp.value;
-  var ex = document.getElementById('inv-excel'); if (ex) ex.href = '/api/exportar/inventarios?mes=' + encodeURIComponent(mes);
-  var hj = document.getElementById('inv-hoja'); if (hj) hj.href = '/api/inventarios/hoja_recuento?mes=' + encodeURIComponent(mes);
   var rs = document.getElementById('inv-resumen'), body = document.getElementById('inv-body');
   try {
     var r = await fetch('/api/inventarios?mes=' + encodeURIComponent(mes));
@@ -14086,7 +14137,6 @@ var _inmCats = null;
 async function loadFiscal(){
   var inp = document.getElementById('cierre-mes'); if (!inp) return;
   var mes = inp.value;
-  var ex = document.getElementById('fis-excel'); if (ex) ex.href = '/api/exportar/fiscal?mes=' + encodeURIComponent(mes);
   var rs = document.getElementById('fis-resumen'), body = document.getElementById('fis-body'), est = document.getElementById('fis-estado');
   try {
     var r = await fetch('/api/fiscal?mes=' + encodeURIComponent(mes));
@@ -14120,7 +14170,6 @@ async function loadFiscal(){
 async function loadInmovilizado(){
   var inp = document.getElementById('cierre-mes'); if (!inp) return;
   var mes = inp.value;
-  var ex = document.getElementById('inm-excel'); if (ex) ex.href = '/api/exportar/inmovilizado?mes=' + encodeURIComponent(mes);
   var rs = document.getElementById('inm-resumen'), body = document.getElementById('inm-body');
   try {
     var r = await fetch('/api/inmovilizado?mes=' + encodeURIComponent(mes));
@@ -14173,7 +14222,6 @@ async function _inmBaja(id){
 async function loadPaquete(){
   var inp = document.getElementById('cierre-mes'); if (!inp) return;
   var mes = inp.value;
-  var ex = document.getElementById('paq-excel'); if (ex) ex.href = '/api/exportar/cierre_paquete?mes=' + encodeURIComponent(mes);
   var rs = document.getElementById('paq-resultado'), body = document.getElementById('paq-body'), est = document.getElementById('paq-estado');
   try {
     var r = await fetch('/api/cierre/paquete?mes=' + encodeURIComponent(mes));
@@ -14213,7 +14261,6 @@ async function loadCierre(forzar){
   if (!inp) return;
   if (!inp.value) { var d=new Date(); inp.value = d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0'); }
   var mes = inp.value;
-  var ex = document.getElementById('cierre-excel'); if (ex) ex.href = '/api/exportar/cierre?mes=' + encodeURIComponent(mes);
   var rb = document.getElementById('cierre-recon-body'), mb = document.getElementById('cierre-mayor-body'), db = document.getElementById('cierre-diario-body'), av = document.getElementById('cierre-avisos');
   try { loadCuadreBanco(); } catch(e){}
   try { loadInventarios(); } catch(e){}
@@ -14781,8 +14828,6 @@ async function loadProvisiones() {
     const d = new Date(); mesEl.value = d.getFullYear() + '-' + String(d.getMonth()+1).padStart(2,'0');
   }
   const mes = mesEl ? mesEl.value : '';
-  const dl = document.getElementById('prov-descarga');
-  if (dl) dl.href = '/api/exportar/provisiones?mes=' + encodeURIComponent(mes);
   try {
     const d = await (await fetch('/api/provisiones?mes=' + encodeURIComponent(mes), {cache:'no-store'})).json();
     if (!d.ok) { body.innerHTML = '<div class="empty"><p>' + _provEsc(d.error || 'Error') + '</p></div>'; return; }
@@ -15708,17 +15753,22 @@ async function enviarNotificaciones() {
 }
 
 // ── Role-based visibility ──
+// Un solo mapa para las pestañas Y para el selector de descargas (pieza 10):
+// si el rol no ve el apartado, tampoco descarga lo suyo.
+var _USER_ROL = '__USER_ROL__';
+var _TABS_ROL = {
+  'income_auditor': ['drr'],
+  'fb_manager': ['ap', 'fb'],
+  'jefe_otras': ['ap'],
+};
+function _rolVeTodo() { return _USER_ROL === 'financial_controller' || _USER_ROL === 'admin'; }
+function _rolVeApartado(tab) { return _rolVeTodo() || (_TABS_ROL[_USER_ROL] || []).indexOf(tab) !== -1; }
 (function() {
-  var rol = '__USER_ROL__';
+  var rol = _USER_ROL;
   // financial_controller y admin ven todo
-  if (rol === 'financial_controller' || rol === 'admin') return;
+  if (_rolVeTodo()) return;
   var tabs = document.querySelectorAll('.tab');
-  var VISIBLE = {
-    'income_auditor': ['drr'],
-    'fb_manager': ['ap', 'fb'],
-    'jefe_otras': ['ap'],
-  };
-  var allowed = VISIBLE[rol] || [];
+  var allowed = _TABS_ROL[rol] || [];
   tabs.forEach(function(t) {
     var onclick = t.getAttribute('onclick') || '';
     var match = onclick.match(/switchTab\('(\w+)'/);
