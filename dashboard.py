@@ -6607,104 +6607,71 @@ svg.yvi{width:1em;height:1em;vertical-align:-0.125em;flex-shrink:0;display:inlin
     <button class="tab" onclick="switchTab('cierre',this)" id="tab-cierre" data-i18n="tab.cierre">🧾 Cierre</button>
   </div>
 
-  <div id="panel-ar" class="panel active">
-    
-  <div style="display:flex;justify-content:flex-end;gap:12px;margin-bottom:14px"><a href="/aprobaciones-ar/" class="btn-ref" style="text-decoration:none" title="Abrir panel de aprobaciones AR">📲 Aprobar facturas AR</a></div>
-  <!-- STATS -->
-  <div class="stats" id="ar-stats-section">
-    <div class="sc hl c-blu">
-      <div class="sc-lbl" data-i18n="sc.procesadas">Facturas procesadas</div>
-      <div class="sc-val" id="s-tot">—</div>
-      <div class="sc-sub" data-i18n="sc.ciclo">último ciclo AR</div>
-    </div>
-    <div class="sc">
-      <div class="sc-lbl" data-i18n="sc.importe">Importe total</div>
-      <div class="sc-val" id="s-imp" style="font-size:18px;letter-spacing:-0.5px">—</div>
-      <div class="sc-sub" data-i18n="sc.eurProcesados">EUR procesados</div>
-    </div>
-    <div class="sc c-grn">
-      <div class="sc-lbl" data-i18n="sc.correctas">Correctas</div>
-      <div class="sc-val" id="s-ok">—</div>
-      <div class="sc-sub" data-i18n="sc.sinIncidencias">sin incidencias</div>
-    </div>
-    <div class="sc c-red">
-      <div class="sc-lbl" data-i18n="sc.discrepancias">Discrepancias</div>
-      <div class="sc-val" id="s-disc">—</div>
-      <div class="sc-sub" id="s-disc-sub">reclamable: —</div>
-    </div>
-    <div class="sc c-ora">
-      <div class="sc-lbl" data-i18n="sc.di">Certif. DI pendiente</div>
-      <div class="sc-val" id="s-di">—</div>
-      <div class="sc-sub" data-i18n="sc.extranjer">facturas extranjeras</div>
-    </div>
-    <div class="sc c-pur">
-      <div class="sc-lbl" data-i18n="sc.pendiente">Pendientes firma</div>
-      <div class="sc-val" id="s-pend">—</div>
-      <div class="sc-sub" id="s-pend-sub">— apr · — rec</div>
-    </div>
-  </div>
-
-  <!-- MID ROW -->
-  <div class="mid">
-    <div class="card">
-      <div class="card-title" data-i18n="card.porOta">Facturas por OTA</div>
-      <div class="chart-wrap"><canvas id="ota-chart"></canvas></div>
-    </div>
-    <div class="card">
-      <div class="card-title" data-i18n="card.resumen">Resumen de estados</div>
-      <div id="activity" class="hide-lite">
-        <div class="empty"><div class="ei">📂</div><p>Sin datos.<br>Pulsa ⚡ Procesar Archivos.</p></div>
+  <div id="panel-ar" class="panel active g-panel">
+    <!-- Guia de estilo (b55). Ids de siempre: el JS no cambia, solo lo que pinta. -->
+    <div class="g-head">
+      <div><div class="g-h1" data-i18n="tab.ar">📥 AR — OTAs</div><div class="g-sub" data-i18n="ar.subtitulo">Liquidaciones de comisiones de las OTAs: cruce con el contrato, certificado DI y aprobación.</div></div>
+      <div class="g-actions">
+        <button id="btn-export-selected" class="g-btn g-ghost g-sm" style="display:none" onclick="exportarSeleccionados()">📤 Exportar selección</button>
+        <a href="/aprobaciones-ar/" class="g-btn g-primary g-sm" title="Abrir panel de aprobaciones AR" data-i18n="btn.aprobarARp">📲 Aprobar facturas AR</a>
       </div>
     </div>
-  </div>
-
-  <!-- TABLE -->
-  <div class="card">
-    <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:16px">
-      <div class="card-title" style="margin:0">Todas las facturas del ciclo</div>
-      <span id="tbl-count" style="font-size:11px;color:var(--dim)"></span>
+    <div class="g-tiles" id="ar-stats-section">
+      <div class="g-kpi k-acc"><div class="g-kpi-lbl" data-i18n="sc.procesadas">Facturas procesadas</div><div class="g-kpi-val" id="s-tot">—</div><div class="g-kpi-sub" data-i18n="sc.ciclo">último ciclo AR</div></div>
+      <div class="g-kpi"><div class="g-kpi-lbl" data-i18n="sc.importe">Importe total</div><div class="g-kpi-val g-num" id="s-imp">—</div><div class="g-kpi-sub" data-i18n="sc.eurProcesados">EUR procesados</div></div>
+      <div class="g-kpi k-grn"><div class="g-kpi-lbl" data-i18n="sc.correctas">Correctas</div><div class="g-kpi-val" id="s-ok">—</div><div class="g-kpi-sub" data-i18n="sc.sinIncidencias">sin incidencias</div></div>
+      <div class="g-kpi k-red"><div class="g-kpi-lbl" data-i18n="sc.discrepancias">Discrepancias</div><div class="g-kpi-val" id="s-disc">—</div><div class="g-kpi-sub" id="s-disc-sub">reclamable: —</div></div>
+      <div class="g-kpi k-ora"><div class="g-kpi-lbl" data-i18n="sc.di">Certif. DI pendiente</div><div class="g-kpi-val" id="s-di">—</div><div class="g-kpi-sub" data-i18n="sc.extranjer">facturas extranjeras</div></div>
+      <div class="g-kpi k-pur"><div class="g-kpi-lbl" data-i18n="sc.pendiente">Pendientes firma</div><div class="g-kpi-val" id="s-pend">—</div><div class="g-kpi-sub" id="s-pend-sub">— apr · — rec</div></div>
     </div>
-    <div class="tbl-wrap">
-      <table>
-        <thead>
-          <tr>
-            <th style="width:28px"><input type="checkbox" id="ar-select-all" onclick="toggleSelectAll(this,'ar-row-cb')" style="cursor:pointer;accent-color:var(--acc)"></th>
-            <th data-i18n="th.archivo">Archivo</th>
-            <th data-i18n="th.factura">Nº Factura</th>
-            <th data-i18n="th.ota">OTA</th>
 
-            <th data-i18n="th.fecha">Fecha</th>
-            <th data-i18n="th.importe">Importe bruto</th>
-            <th data-i18n="th.comision">% Com.</th>
-            <th data-i18n="th.estado">Estado</th>
-            <th data-i18n="th.estadoDI">Estado DI</th>
-            <th data-i18n="th.discrepancia">Discrepancia</th>
-            <th data-i18n="th.aprobacion">Aprobación</th>
-          </tr>
-        </thead>
-        <tbody id="tbl-body">
-          <tr><td colspan="11" class="empty"><p>Sin datos. Pulsa ⚡ Procesar Archivos para empezar.</p></td></tr>
-        </tbody>
-      </table>
+    <div class="g-grid2 g-mid">
+      <div class="g-card">
+        <div class="g-card-head"><div><div class="g-card-title" data-i18n="card.porOta">Facturas por OTA</div><div class="g-sub" data-i18n="ar.porOtaSub">Cuántas liquidaciones ha mandado cada canal este ciclo.</div></div></div>
+        <div class="chart-wrap"><canvas id="ota-chart"></canvas></div>
+      </div>
+      <div class="g-card">
+        <div class="g-card-head"><div><div class="g-card-title" data-i18n="card.resumen">Resumen de estados</div><div class="g-sub" data-i18n="ar.resumenSub">Lo que ha encontrado el cruce con el contrato.</div></div></div>
+        <div id="activity" class="hide-lite"><div class="g-empty" data-i18n="ar.vacio">Sin datos. Pulsa ⚡ Procesar Archivos.</div></div>
+      </div>
     </div>
-  </div>
+
+    <div class="g-card">
+      <div class="g-card-head"><div><div class="g-card-title" data-i18n="ar.todas">Todas las facturas del ciclo</div><div class="g-sub" data-i18n="ar.tablaAyuda">Pulsa una fila para ver el detalle; marca filas para exportarlas.</div></div><span id="tbl-count" class="g-small"></span></div>
+      <div class="g-tbl-wrap">
+        <table class="g-tbl">
+          <thead>
+            <tr>
+              <th class="g-chk"><input type="checkbox" id="ar-select-all" onclick="toggleSelectAll(this,'ar-row-cb')"></th>
+              <th data-i18n="th.archivo">Archivo</th>
+              <th data-i18n="th.factura">Nº Factura</th>
+              <th data-i18n="th.ota">OTA</th>
+              <th data-i18n="th.fecha">Fecha</th>
+              <th class="num" data-i18n="th.importe">Importe bruto</th>
+              <th class="num" data-i18n="th.comision">% Com.</th>
+              <th data-i18n="th.estado">Estado</th>
+              <th data-i18n="th.estadoDI">Estado DI</th>
+              <th class="num" data-i18n="th.discrepancia">Discrepancia</th>
+              <th data-i18n="th.aprobacion">Aprobación</th>
+            </tr>
+          </thead>
+          <tbody id="tbl-body">
+            <tr><td colspan="11"><div class="g-empty" data-i18n="ar.vacioTabla">Sin datos. Pulsa ⚡ Procesar Archivos para empezar.</div></td></tr>
+          </tbody>
+        </table>
+      </div>
+    </div>
 
     <!-- ── Reclamaciones OTA (loop de reclamación automática) ── -->
-    <div id="ar-recl-section" style="margin-top:24px">
-      <div style="display:flex;align-items:center;justify-content:space-between;gap:8px;margin-bottom:12px;flex-wrap:wrap">
-        <div style="display:flex;align-items:center;gap:8px">
-          <div style="font-size:13px;font-weight:700;letter-spacing:.2px">&#128257; Reclamaciones OTA pendientes de aprobar</div>
-          <span data-tip="Yve detecta comisiones cobradas por encima del contrato, redacta el email con IA y lo deja listo para que lo apruebes y env&iacute;es. Nada se env&iacute;a sin tu OK." style="cursor:help;color:var(--dim);font-size:12px">&#9432;</span>
-        </div>
-        <div id="ar-recl-resumen" style="font-size:12px;color:var(--mut)"></div>
+    <div class="g-card" id="ar-recl-section">
+      <div class="g-card-head">
+        <div><div class="g-card-title" data-i18n="recl.titulo">Reclamaciones OTA pendientes de aprobar</div><div class="g-sub" data-i18n="recl.sub">Comisiones cobradas por encima del contrato: Yve redacta el email y tú lo apruebas. Nada se envía sin tu OK.</div></div>
+        <div id="ar-recl-resumen" class="g-small"></div>
       </div>
-      <div id="ar-recl-list" style="display:flex;flex-direction:column;gap:12px">
-        <div class="empty card" style="padding:20px;text-align:center;color:var(--dim);font-size:12px;border-style:dashed;border-radius:12px">
-          Cuando Yve detecte comisiones cobradas por encima del contrato, aparecer&aacute;n aqu&iacute; para reclamar.
-        </div>
+      <div id="ar-recl-list" class="g-inline-list">
+        <div class="g-empty" data-i18n="recl.vacio">Cuando Yve detecte comisiones cobradas por encima del contrato, aparecerán aquí para reclamar.</div>
       </div>
     </div>
-
   </div><!-- /panel-ar -->
 
   <!-- PANEL AP -->
@@ -7436,38 +7403,38 @@ function eur(n) {
 }
 
 // ── Badges ───────────────────────────────────────────────────────────────
+// Guia de estilo: los mismos badges que AP (verde correcto, ambar revisar,
+// rojo discrepancia, violeta aprobado, gris sin dato), sin simbolos delante.
 function bEstado(e) {
   const m = {
-    CORRECTO:        ['b-ok',   '✓ Correcto'],
-    DISCREPANCIA:    ['b-disc', '⚠ Discrepancia'],
-    OTA_DESCONOCIDA: ['b-unk',  '? OTA desc.'],
-    SIN_PORCENTAJE:  ['b-na',   '~ Sin %'],
-    // Sin estos dos, el estado se pintaba con su nombre en crudo
-    // ('SIN_TARIFA_HOTEL') o se confundia con una discrepancia reclamable.
-    COBRO_POR_DEBAJO: ['b-unk', '↓ Cobrado por debajo'],
-    SIN_TARIFA_HOTEL: ['b-unk', '? Sin tarifa del hotel'],
-    SIN_TARIFA_PACTADA: ['b-unk', '? Sin tarifa pactada'],
+    CORRECTO:           ['g-ok',   t('est.correcto', 'Correcto')],
+    DISCREPANCIA:       ['g-err',  t('est.disc', 'Discrepancia')],
+    OTA_DESCONOCIDA:    ['g-mute', t('est.otaDesc', 'OTA no reconocida')],
+    SIN_PORCENTAJE:     ['g-mute', t('est.sinPct', 'Sin %')],
+    COBRO_POR_DEBAJO:   ['g-warn', t('est.porDebajo', 'Cobrado por debajo')],
+    SIN_TARIFA_HOTEL:   ['g-warn', t('est.sinTarifa', 'Sin tarifa pactada')],
+    SIN_TARIFA_PACTADA: ['g-warn', t('est.sinTarifa', 'Sin tarifa pactada')],
   };
-  const [c, l] = m[e] || ['b-na', e || '—'];
-  return '<span class="badge ' + c + '">' + l + '</span>';
+  const v = m[e] || ['g-mute', e || '—'];
+  return gBadge(v[0], v[1]);
 }
 
 function bDI(e) {
   const m = {
-    CERTIFICADO_OK:       ['b-cok', '✓ Cert. OK'],
-    FALTA_CERTIFICADO_DI: ['b-fdi', '✗ Falta DI'],
-    NO_APLICA:            ['b-na',  '— N/A'],
-    OTA_DESCONOCIDA:      ['b-unk', '? Desc.'],
+    CERTIFICADO_OK:       ['g-ok',   t('est.certOk', 'Cert. DI OK')],
+    FALTA_CERTIFICADO_DI: ['g-err',  t('est.faltaDI', 'Falta DI')],
+    NO_APLICA:            ['g-mute', t('est.noAplica', 'No aplica')],
+    OTA_DESCONOCIDA:      ['g-mute', t('est.otaDesc', 'OTA no reconocida')],
   };
-  const [c, l] = m[e] || ['b-na', e || '—'];
-  return '<span class="badge ' + c + '">' + l + '</span>';
+  const v = m[e] || ['g-mute', e || '—'];
+  return gBadge(v[0], v[1]);
 }
 
 function bApro(a) {
-  if (!a || a === '') return '<span class="badge b-pen">· ' + (t('lbl.pendiente', 'Pendiente')) + '</span>';
-  if (a === 'APROBADA')  return '<span class="badge b-apr">✓ ' + (t('lbl.aprobado', 'Aprobada')) + '</span>';
-  if (a === 'RECHAZADA') return '<span class="badge b-rec">✗ ' + (t('lbl.rechazado', 'Rechazada')) + '</span>';
-  return '<span class="badge b-na">—</span>';
+  if (!a || a === '') return gBadge('g-mute', t('est.sinDecision', 'Sin decisión'));
+  if (a === 'APROBADA')  return gBadge('g-pur', t('est.aprobada', 'Aprobada'));
+  if (a === 'RECHAZADA') return gBadge('g-err', t('est.rechazada', 'Rechazada'));
+  return gBadge('g-mute', '—');
 }
 
 // ── Carga datos ──────────────────────────────────────────────────────────
@@ -7753,24 +7720,23 @@ function renderTable(rows) {
   const tbody = document.getElementById('tbl-body');
   document.getElementById('tbl-count').textContent = rows.length ? rows.length + ' ' + (t('lbl.registros', 'registros')) : '';
   if (!rows.length) {
-    tbody.innerHTML = '<tr><td colspan="12" style="padding:32px;text-align:center"><div style="font-size:32px;margin-bottom:8px">📦</div><div style="font-weight:600;color:var(--mut);margin-bottom:4px">Sin facturas AP</div><div style="font-size:12px;color:var(--dim)">Pulsa ⚡ Procesar Archivos</div></td></tr>';
+    tbody.innerHTML = '<tr><td colspan="11"><div class="g-empty"><b>' + t('ar.sinFacturas', 'Sin facturas de OTAs') + '</b>' + t('ar.vacioTabla', 'Sin datos. Pulsa ⚡ Procesar Archivos para empezar.') + '</div></td></tr>';
     return;
   }
   tbody.innerHTML = rows.map((r, i) => {
     const hasDisc = r.discrepancia_euros && r.discrepancia_euros !== '';
     return [
-      '<tr style="cursor:pointer;transition:background .15s" data-idx="' + i + '" onclick="showInvoiceDetail(_arRows[parseInt(this.getAttribute(\'data-idx\'))])" onmouseover="this.style.background=\'rgba(59,130,246,.06)\';this.style.outline=\'1px solid rgba(59,130,246,.1)\'" onmouseout="this.style.background=\'\';this.style.outline=\'\'">',
-      '<td style="padding:6px 4px;text-align:center"><input type="checkbox" class="ar-row-cb" style="cursor:pointer;accent-color:var(--acc)" onchange="updateSelectionCount()"></td>',
-      '<td class="td-dim">' + (r.archivo || '—') + '</td>',
-      '<td class="td-b" onclick="copyToClip(\'' + (r.numero_factura||'') + '\', \'Nº factura\')" style="cursor:pointer" title="Clic para copiar">' + (r.numero_factura || '—') + '</td>',
-      '<td class="td-b" style="color:var(--acc3)">' + (r.nombre_ota || '—') + '</td>',
-
-      '<td class="td-dim">' + (r.fecha || '—') + '</td>',
-      '<td class="td-b">' + (r.importe_bruto || '—') + '</td>',
-      '<td>' + (r.porcentaje_factura || '—') + '</td>',
+      '<tr style="cursor:pointer" data-idx="' + i + '" onclick="showInvoiceDetail(_arRows[parseInt(this.getAttribute(\'data-idx\'))])">',
+      '<td class="g-chk" onclick="event.stopPropagation()"><input type="checkbox" class="ar-row-cb" onchange="updateSelectionCount()"></td>',
+      '<td class="mono">' + (r.archivo || '—') + '</td>',
+      '<td><b onclick="event.stopPropagation();copyToClip(\'' + (r.numero_factura||'') + '\', \'Nº factura\')" style="cursor:copy" title="Clic para copiar">' + (r.numero_factura || '—') + '</b></td>',
+      '<td>' + (r.nombre_ota || '—') + '</td>',
+      '<td class="g-small">' + (r.fecha || '—') + '</td>',
+      '<td class="num"><b>' + (r.importe_bruto || '—') + '</b></td>',
+      '<td class="num">' + (r.porcentaje_factura || '—') + '</td>',
       '<td>' + bEstado(r.estado) + '</td>',
       '<td>' + bDI(r.estado_di) + '</td>',
-      '<td class="' + (hasDisc ? 'td-red' : 'td-dim') + '">' + (hasDisc ? _fmtEurES(r.discrepancia_euros, 2) : '—') + '</td>',
+      '<td class="num"' + (hasDisc ? ' style="color:var(--red);font-weight:700"' : ' class="g-small"') + '>' + (hasDisc ? _fmtEurES(r.discrepancia_euros, 2) : '—') + '</td>',
       '<td>' + bApro(r.accion) + '</td>',
       '</tr>'
     ].join('');
@@ -7780,7 +7746,7 @@ function renderTable(rows) {
 function renderActivity(rows) {
   const el = document.getElementById('activity');
   if (!rows.length) {
-    el.innerHTML = '<div class="empty"><div class="ei">📂</div><p>Sin datos.<br>Pulsa ⚡ Procesar Archivos.</p></div>';
+    el.innerHTML = '<div class="g-empty">' + t('ar.vacio', 'Sin datos. Pulsa ⚡ Procesar Archivos.') + '</div>';
     return;
   }
   const c = {}, d = {};
@@ -7802,7 +7768,7 @@ function renderActivity(rows) {
   // '12.400,00' se leia como 12.4 (se quitaba la coma y quedaba el punto de miles): 'Total ciclo: €12,40'
   const totalAmount = rows.reduce((s, r) => s + (_numES(r.importe_bruto) || 0), 0);
   const totalStr = totalAmount > 0 ? _fmtEurES(totalAmount, 2) : '';
-  el.innerHTML = (totalStr ? '<div style="background:var(--bg);border-radius:8px;padding:8px 12px;margin-bottom:10px;font-size:12px;color:var(--mut)">Total ciclo: <strong style="color:var(--tx)">' + totalStr + '</strong></div>' : '') +
+  el.innerHTML = (totalStr ? '<div class="g-row" style="justify-content:space-between;margin-bottom:10px"><span class="g-small">' + t('ar.totalCiclo', 'Total ciclo') + '</span><strong class="g-num">' + totalStr + '</strong></div>' : '') +
     items.map(i =>
     '<div class="act-item">' +
     '<div class="adot ' + i.dot + '"></div>' +
@@ -10919,41 +10885,41 @@ function _vacioCard(texto){
          'font-size:12px;border-style:dashed;border-radius:12px">' + texto + '</div>';
 }
 function _reclVacio(){
-  return _vacioCard(t('recl.vacio', 'Cuando Yve detecte comisiones cobradas por encima del contrato, aparecerán aquí para reclamar.'));
+  return _gVacio(t('recl.vacio', 'Cuando Yve detecte comisiones cobradas por encima del contrato, aparecerán aquí para reclamar.'));
 }
 function _reclCard(it, i){
-  var badge, bg, col;
-  if (it.estado==='ENVIADA'){ badge='✓ Enviada'; bg='rgba(34,197,94,.12)'; col='#22c55e'; }
-  else if (it.estado==='DESCARTADA'){ badge='Descartada'; bg='rgba(148,163,184,.12)'; col='var(--mut)'; }
-  else { badge='Pendiente'; bg='rgba(245,158,11,.12)'; col='#f59e0b'; }
+  var badge;
+  if (it.estado==='ENVIADA') badge = gBadge('g-ok', t('recl.enviada', 'Enviada'));
+  else if (it.estado==='DESCARTADA') badge = gBadge('g-mute', t('recl.descartada', 'Descartada'));
+  else badge = gBadge('g-warn', t('est.pendiente', 'Pendiente'));
   var head = '<div style="display:flex;align-items:center;justify-content:space-between;gap:8px;flex-wrap:wrap;margin-bottom:8px">' +
-    '<div style="min-width:0"><div style="font-weight:700;font-size:13px">' + _reclEsc(it.ota||'OTA') + ' · factura ' + _reclEsc(it.numero_factura||'') + '</div>' +
-    '<div style="font-size:11px;color:var(--dim)">Cobrado ' + (it.comision_cobrada!=null?it.comision_cobrada+'%':'—') + ' vs contrato ' + (it.comision_contrato!=null?it.comision_contrato+'%':'—') +
-      ' · a devolver <b style="color:#f87171">' + _reclMoney(it.importe_reclamable) + '</b></div></div>' +
-    '<span style="font-size:11px;font-weight:700;padding:3px 10px;border-radius:20px;background:'+bg+';color:'+col+'">'+badge+'</span></div>';
+    '<div style="min-width:0"><div style="font-weight:700;font-size:13px;color:var(--tx)">' + _reclEsc(it.ota||'OTA') + ' · ' + t('reclap.factura','factura') + ' ' + _reclEsc(it.numero_factura||'') + '</div>' +
+    '<div class="g-small">' + t('recl.cobrado','Cobrado') + ' ' + (it.comision_cobrada!=null?it.comision_cobrada+'%':'—') + ' ' + t('recl.vsContrato','vs contrato') + ' ' + (it.comision_contrato!=null?it.comision_contrato+'%':'—') +
+      ' · ' + t('recl.aDevolver','a devolver') + ' <b class="g-num" style="color:var(--red)">' + _reclMoney(it.importe_reclamable) + '</b></div></div>' +
+    badge + '</div>';
   if (it.estado==='ENVIADA'){
-    return '<div class="card" style="padding:12px;border-radius:12px;opacity:.85">' + head +
-      '<div style="font-size:12px;color:var(--mut)">Enviada a ' + _reclEsc(it.destinatario) + ' · ' + _reclEsc(it.fecha_enviada) + '</div></div>';
+    return '<div class="g-row is-off" style="display:block">' + head +
+      '<div class="g-small">' + t('reclap.enviadaA','Enviada a') + ' ' + _reclEsc(it.destinatario) + ' · ' + _reclEsc(it.fecha_enviada) + '</div></div>';
   }
   if (it.estado==='DESCARTADA'){
-    return '<div class="card" style="padding:12px;border-radius:12px;opacity:.55">' + head + '</div>';
+    return '<div class="g-row is-off" style="display:block;opacity:.5">' + head + '</div>';
   }
   var body;
   if (!it.tiene_borrador){
-    body = '<button onclick="_reclGenerar('+i+',this)" class="btn-run" style="font-size:12px">✍️ Redactar con IA</button>';
+    body = '<button onclick="_reclGenerar('+i+',this)" class="g-btn g-secondary g-sm">✍️ ' + t('recl.redactar','Redactar con IA') + '</button>';
   } else {
     body = '<div style="display:flex;flex-direction:column;gap:8px">' +
-      '<label style="font-size:10px;color:var(--mut);text-transform:uppercase;letter-spacing:.4px">Enviar a</label>' +
-      '<input id="recl-dest-'+i+'" value="'+_reclEsc(it.destinatario)+'" placeholder="email de la OTA" style="background:var(--bg);border:1px solid var(--s2);color:var(--tx);padding:8px;border-radius:8px;font-size:12px">' +
-      '<input id="recl-asunto-'+i+'" value="'+_reclEsc(it.asunto)+'" style="background:var(--bg);border:1px solid var(--s2);color:var(--tx);padding:8px;border-radius:8px;font-size:12px;font-weight:600">' +
-      '<textarea id="recl-cuerpo-'+i+'" rows="8" style="background:var(--bg);border:1px solid var(--s2);color:var(--tx);padding:8px;border-radius:8px;font-size:12px;font-family:inherit;line-height:1.5;resize:vertical">'+_reclEsc(it.cuerpo)+'</textarea>' +
+      '<label class="g-label">' + t('reclap.enviarA','Enviar a') + '</label>' +
+      '<input id="recl-dest-'+i+'" class="g-input" value="'+_reclEsc(it.destinatario)+'" placeholder="' + t('recl.emailOta','email de la OTA') + '">' +
+      '<input id="recl-asunto-'+i+'" class="g-input" value="'+_reclEsc(it.asunto)+'" style="font-weight:600">' +
+      '<textarea id="recl-cuerpo-'+i+'" class="g-input" rows="8">'+_reclEsc(it.cuerpo)+'</textarea>' +
       '<div style="display:flex;gap:8px;flex-wrap:wrap">' +
-        '<button onclick="_reclEnviar('+i+',this)" class="btn-run" style="font-size:12px">✅ Aprobar y enviar</button>' +
-        '<button onclick="_reclGenerar('+i+',this)" class="btn-ref" style="font-size:12px">🔄 Regenerar</button>' +
-        '<button onclick="_reclDescartar('+i+')" class="btn-ref" style="font-size:12px">🗑 Descartar</button>' +
+        '<button onclick="_reclEnviar('+i+',this)" class="g-btn g-primary g-sm">' + t('reclap.aprobarEnviar','✅ Aprobar y enviar') + '</button>' +
+        '<button onclick="_reclGenerar('+i+',this)" class="g-btn g-secondary g-sm">' + t('reclap.regenerar','🔄 Regenerar') + '</button>' +
+        '<button onclick="_reclDescartar('+i+')" class="g-btn g-danger g-sm">' + t('reclap.descartar','🗑 Descartar') + '</button>' +
       '</div></div>';
   }
-  return '<div class="card" style="padding:12px;border-radius:12px">' + head + body + '</div>';
+  return '<div class="g-row" style="display:block">' + head + body + '</div>';
 }
 async function _reclGenerar(i, btn){
   var it=_reclItems[i]; if(!it) return;
@@ -13582,45 +13548,30 @@ function showInvoiceDetail(row) {
   if (!modal || !body) return;
 
   title.textContent = row.numero_factura || 'Factura';
-  const statusColor = row.estado === 'CORRECTA' ? 'var(--grn)' :
-                      row.estado === 'DISCREPANCIA' ? 'var(--red)' : 'var(--ora)';
 
   const fields = [
     ['OTA / Canal',           row.nombre_ota || '—'],
-
-    ['Fecha',                 row.fecha || '—'],
+    [t('lbl.fecha','Fecha'),  row.fecha || '—'],
     ['Mercado',               row.mercado || '—'],
-    ['Importe bruto',         row.importe_bruto ? _fmtEurES(row.importe_bruto, 2) : '—'],
+    [t('th.importe','Importe bruto'), row.importe_bruto ? _fmtEurES(row.importe_bruto, 2) : '—'],
     ['Comisión pactada %',    row.porcentaje_pactado ? row.porcentaje_pactado + '%' : '—'],
     ['Comisión facturada %',  row.porcentaje_factura ? row.porcentaje_factura + '%' : '—'],
     ['Diferencia €',          row.discrepancia_euros || '0'],
-    ['Estado',                row.estado || '—'],
-    ['Estado DI',             row.estado_di || '—'],
+    [t('th.estado','Estado'), bEstado(row.estado)],
+    [t('th.estadoDI','Estado DI'), bDI(row.estado_di)],
     ['Período',               (row.periodo_inicio || '—') + ' → ' + (row.periodo_fin || '—')],
   ];
 
   body.innerHTML =
-    '<div style="background:' + statusColor + '20;border:1px solid ' + statusColor + '40;border-radius:10px;padding:10px 14px;margin-bottom:16px;display:flex;align-items:center;gap:8px">' +
-      '<span style="font-size:18px">' + (row.estado === 'CORRECTA' ? '✅' : row.estado === 'DISCREPANCIA' ? '⚠️' : '📋') + '</span>' +
-      '<span style="color:' + statusColor + ';font-weight:700">' + (row.estado || 'Sin estado') + '</span>' +
-    '</div>' +
-    '<div style="display:grid;grid-template-columns:1fr 1fr;gap:8px">' +
-    fields.map(([k, v]) =>
-      '<div style="background:var(--bg);border-radius:8px;padding:10px">' +
-        '<div style="font-size:10px;color:var(--dim);font-weight:600;text-transform:uppercase;margin-bottom:3px">' + k + '</div>' +
-        '<div style="font-size:13px;font-weight:600">' + v + '</div>' +
-      '</div>'
-    ).join('') +
+    '<div class="g-modal-grid">' +
+    fields.map(([k, v]) => '<div class="g-modal-field"><div class="g-label">' + k + '</div><div class="g-modal-val">' + v + '</div></div>').join('') +
     '</div>' +
     (row.discrepancia_euros && parseFloat(row.discrepancia_euros) !== 0 ?
-      '<div style="margin-top:16px;background:rgba(239,68,68,.08);border:1px solid rgba(239,68,68,.2);border-radius:10px;padding:12px">' +
-        '<div style="font-size:12px;font-weight:700;color:var(--red);margin-bottom:6px">⚠ Discrepancia detectada</div>' +
-        '<div style="font-size:12px;color:var(--mut)">Diferencia: ' + _fmtEurES(row.discrepancia_euros) + ' · Acción recomendada: solicitar factura rectificativa</div>' +
-      '</div>'
+      '<div class="g-alert err" style="margin-top:16px"><span><b>' + t('est.disc','Discrepancia') + '</b> · ' + _fmtEurES(row.discrepancia_euros) + ' · ' + t('ar.accionRect','Acción recomendada: solicitar factura rectificativa') + '</span></div>'
     : '') +
-    '<div style="display:flex;gap:10px;margin-top:16px">' +
-      '<button onclick="closeInvoiceModal()" class="btn-ref" style="flex:1">Cerrar</button>' +
-      '<button onclick="generarEmailAR(this.getAttribute(\'data-num\'))" data-num="' + (row.numero_factura||'') + '" class="btn-run" style="flex:1;font-size:12px">&#x1F4E7; Generar email</button>' +
+    '<div class="g-modal-foot">' +
+      '<button onclick="closeInvoiceModal()" class="g-btn g-secondary">' + t('btn.cerrar','Cerrar') + '</button>' +
+      (typeof generarEmailAR === 'function' ? '<button onclick="generarEmailAR(this.getAttribute(\'data-num\'))" data-num="' + (row.numero_factura||'') + '" class="g-btn g-primary">&#x1F4E7; ' + t('ar.generarEmail','Generar email') + '</button>' : '') +
     '</div>';
 
   modal.style.display = 'flex';

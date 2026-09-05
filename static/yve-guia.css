@@ -213,3 +213,8 @@ body #paq-body table{table-layout:fixed}
 body table{min-width:0}
 body .tbl-wrap>table{min-width:640px}
 @media(max-width:768px){body .tbl-wrap>table{min-width:500px}}
+/* AR OTAs (b55) */
+.g-tbl th.g-chk,.g-tbl td.g-chk{width:32px;text-align:center;padding-left:10px;padding-right:6px}
+.g-tbl .g-chk input{cursor:pointer;accent-color:var(--acc);width:15px;height:15px}
+.g-mid{grid-template-columns:1fr 320px}
+@media(max-width:1000px){.g-mid{grid-template-columns:1fr}}
