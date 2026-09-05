@@ -29,6 +29,7 @@ import pandas as pd                     # noqa: E402
 SABOTAJE = '--sabotaje' in sys.argv
 DDIR = os.path.join(BASE, 'datos-referencia')
 BONOS = os.path.join(DDIR, 'bonos_agencia.xlsx')
+CLIENTES = os.path.join(DDIR, 'clientes_credito.xlsx')   # desde sep 2026 el bono crea la ficha del cliente
 RESERVAS = os.path.join(DDIR, 'reservas_credito.xlsx')
 BASELINE = json.load(open(os.path.join(BASE, 'tests', 'baseline_tipos_clasificador.json'), encoding='utf-8'))
 
@@ -118,7 +119,7 @@ def main():
     # ── 4 · enrutador + endpoint (con copia de seguridad de los ficheros) ──
     tmp = tempfile.mkdtemp(prefix='bono_')
     copias = {}
-    for ruta in (BONOS, RESERVAS):
+    for ruta in (BONOS, RESERVAS, CLIENTES):
         if os.path.exists(ruta):
             copias[ruta] = os.path.join(tmp, os.path.basename(ruta)); shutil.copy(ruta, copias[ruta])
     try:
@@ -157,7 +158,7 @@ def main():
         html = c.get('/').get_data(as_text=True)
         ok('id="ar-bonos-section"' in html and 'function cargarBonosAR' in html and 'cargarBonosAR();' in html, 'tarjeta y JS en AR Real')
     finally:
-        for ruta in (BONOS, RESERVAS):
+        for ruta in (BONOS, RESERVAS, CLIENTES):
             if os.path.exists(ruta):
                 os.remove(ruta)
             if ruta in copias:

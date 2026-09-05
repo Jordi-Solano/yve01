@@ -174,6 +174,55 @@ def _num_cliente(fila, *nombres):
         return 0.0
 
 
+def alta_cliente_desde_bono(agencia, nif="", numero_bono="", datos_dir=None, hotel_id=None):
+    """El cliente AR nace solo del bono (Jordi, sep 2026).
+
+    Si `agencia` no esta en clientes_credito.xlsx, se crea una ficha
+    "PENDIENTE de completar": nombre y NIF del bono, limite 0, 30 dias. Quien
+    lleva AR Real la completa (limite, email...) desde la pantalla. Si ya
+    existe, no se toca nada (ni el NIF: el de la ficha manda) salvo rellenar
+    el NIF si la ficha no tenia. Devuelve 'CREADO', 'NIF_RELLENADO' o 'YA_EXISTE'.
+    """
+    nombre = str(agencia or "").strip()
+    if not nombre or nombre.upper() == "NO_ENCONTRADO":
+        return "SIN_NOMBRE"
+    nif = str(nif or "").strip()
+    if nif.upper() in ("NO_ENCONTRADO", "NAN", "NONE"):
+        nif = ""
+    ruta = _os.path.join(str(datos_dir) if datos_dir else str(DATOS), 'clientes_credito.xlsx')
+    df = pd.DataFrame()
+    if _os.path.exists(ruta):
+        try:
+            df = pd.read_excel(ruta)
+        except Exception:
+            df = pd.DataFrame()
+    if len(df) and 'nombre_cliente' in df.columns:
+        m = df['nombre_cliente'].map(lambda v: str(v).strip().lower()) == nombre.lower()
+        if m.any():
+            i = df.index[m][0]
+            actual = df.at[i, 'nif'] if 'nif' in df.columns else ''
+            if nif and (actual is None or str(actual).strip().lower() in ('', 'nan', 'none')):
+                if 'nif' not in df.columns:
+                    df['nif'] = ''
+                df['nif'] = df['nif'].astype(object)
+                df.at[i, 'nif'] = nif
+                df.to_excel(ruta, index=False)
+                return "NIF_RELLENADO"
+            return "YA_EXISTE"
+    if hotel_id is None:
+        try:
+            import censo_hoteles as _censo
+            hotel_id = _censo.para_guardar()
+        except Exception:
+            hotel_id = ''
+    fila = {'nombre_cliente': nombre, 'nif': nif, 'credito_limite': 0.0, 'credito_usado': 0, 'dias_pago': 30,
+            'email': '', 'telefono': '', 'hotel_id': hotel_id, 'estado_ficha': 'PENDIENTE',
+            'origen': f'bono {numero_bono}'.strip()}
+    df = pd.concat([df, pd.DataFrame([fila])], ignore_index=True) if len(df) else pd.DataFrame([fila])
+    df.to_excel(ruta, index=False)
+    return "CREADO"
+
+
 @ar_real_bp.route('/api/ar_real/cliente', methods=['POST'])
 def api_crear_cliente():
     """Da de alta un cliente de credito.
@@ -210,6 +259,7 @@ def api_crear_cliente():
         'dias_pago': dias,
         'email': str(d.get('email') or '').strip(),
         'telefono': str(d.get('telefono') or '').strip(),
+        'estado_ficha': 'COMPLETA',        # guardada por una persona: deja de estar pendiente
     }
     try:
         import censo_hoteles as _censo
@@ -222,9 +272,15 @@ def api_crear_cliente():
         if _os.path.exists(ruta):
             df = pd.read_excel(ruta)
             if len(df) and 'nombre_cliente' in df.columns:
-                # el nombre es la identidad: se actualiza, no se duplica
-                df = df[df['nombre_cliente'].astype(str).str.strip().str.lower()
-                        != nombre.lower()]
+                # el nombre es la identidad: se actualiza, no se duplica. Lo que
+                # la ficha ya tenia (origen, credito_usado) se conserva.
+                _m = df['nombre_cliente'].astype(str).str.strip().str.lower() == nombre.lower()
+                if _m.any():
+                    _prev = df[_m].iloc[0].to_dict()
+                    for k in ('origen', 'credito_usado'):
+                        if k in _prev and str(_prev[k]) not in ('', 'nan', 'None'):
+                            fila[k] = _prev[k]
+                df = df[~_m]
             df = pd.concat([df, pd.DataFrame([fila])], ignore_index=True)
         else:
             df = pd.DataFrame([fila])
@@ -255,8 +311,11 @@ def api_clientes():
                         if days > 60: has_overdue = True; break
             limit = _num_cliente(c, 'credito_limite', 'limite_credito')
             uso_pct = round(total_pend / limit * 100, 1) if limit > 0 else 0
+            _estado_ficha = _txt_cliente(c, 'estado_ficha').upper()
             clientes.append({
                 'nombre':    nombre,
+                'pendiente_completar': _estado_ficha == 'PENDIENTE' or limit <= 0,
+                'origen':    _txt_cliente(c, 'origen'),
                 'NIF':       _txt_cliente(c, 'nif', 'NIF', 'cif'),
                 'email':     _txt_cliente(c, 'email', 'correo'),
                 'telefono':  _txt_cliente(c, 'telefono', 'teléfono', 'tel'),

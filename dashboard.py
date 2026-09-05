@@ -1633,6 +1633,14 @@ def _guardar_bono(fila):
             _old = _old[~_m]
         df_new = pd.concat([_old, df_new], ignore_index=True)
     df_new.to_excel(ruta, index=False)
+    # El cliente AR nace del bono: ficha "pendiente de completar" en AR Real
+    # (Jordi, sep 2026). Si ya existe no se toca.
+    try:
+        from tab_ar_real import alta_cliente_desde_bono
+        return alta_cliente_desde_bono(fila.get('agencia'), fila.get('NIF_agencia'), fila.get('numero_bono'), str(_ddir()), _hid)
+    except Exception as _e_cli:
+        print(f"[alta_cliente_desde_bono] {_e_cli}")
+        return ""
 
 
 def _eur_es(v, dec=2):
@@ -1907,8 +1915,8 @@ def _enrutar_tipo_doc(reg, fname, fpath=None):
                     f'extraer ni quien paga ni importe/fechas — revisar manualmente')
             _marca = 'SKIP'
         else:
-            _guardar_bono(_bono)
-            _msg = f'✓ Bono {_resumen_bono(_bono)}'
+            _res_cli = _guardar_bono(_bono)
+            _msg = f'✓ Bono {_resumen_bono(_bono)}' + (' · cliente nuevo en AR Real: completa su ficha (límite de crédito, email)' if _res_cli == 'CREADO' else '')
             _marca = 'BONO_OK'
             _flags['bono'] = True
     elif _tipo_doc == 'EXTRACTO_BANCO' and reg.get('movimientos'):
@@ -16213,7 +16221,14 @@ loadBanco();
 // ── Alta de un cliente de credito ────────────────────────────────────
 // Sin clientes no hay limite ni aviso de riesgo, y no habia forma de meter
 // ninguno: el generador de demo era el unico que escribia ese fichero.
-function abrirNuevoCliente() {
+// `cli` (opcional): ficha existente para completar/editar — el mismo modal, prellenado.
+// El cliente nacido de un bono llega aqui con estado "pendiente de completar".
+var _arClientesCache = [];
+function editarClienteAR(nombre) {
+  var c = _arClientesCache.find(function(x) { return x.nombre === nombre; });
+  abrirNuevoCliente(c || {nombre: nombre});
+}
+function abrirNuevoCliente(cli) {
   var v = document.getElementById('nuevo-cliente-modal');
   if (v) v.remove();
   var m = document.createElement('div');
@@ -16228,7 +16243,7 @@ function abrirNuevoCliente() {
   };
   m.innerHTML = '<div style="background:var(--s1);border:1px solid var(--s2);border-radius:16px;padding:22px;width:min(420px,100%);max-height:88vh;overflow:auto">' +
     '<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:16px">' +
-      '<h3 style="margin:0;font-size:16px;font-weight:800">➕ ' + t('ar.nuevoCliente', 'Nuevo cliente de crédito') + '</h3>' +
+      '<h3 style="margin:0;font-size:16px;font-weight:800">' + (cli ? '✎ ' + t('ar.completarCliente', 'Completar ficha del cliente') : '➕ ' + t('ar.nuevoCliente', 'Nuevo cliente de crédito')) + '</h3>' +
       '<button onclick="cerrarNuevoCliente()" style="background:none;border:none;color:var(--mut);font-size:22px;cursor:pointer;min-width:44px;min-height:44px">✕</button>' +
     '</div>' +
     campo('ncl-nombre', t('ar.clNombre', 'Nombre del cliente') + ' *', 'text', 'Viajes Meridiano S.A.') +
@@ -16245,7 +16260,15 @@ function abrirNuevoCliente() {
   m.addEventListener('click', function(e) { if (e.target === m) cerrarNuevoCliente(); });
   document.body.appendChild(m);
   if (typeof _bloquearFondo === 'function') _bloquearFondo(true);
-  var n = document.getElementById('ncl-nombre'); if (n) n.focus();
+  var n = document.getElementById('ncl-nombre');
+  if (cli) {
+    var pon = function(id, val) { var e = document.getElementById(id); if (e && val !== undefined && val !== null && val !== '') e.value = val; };
+    pon('ncl-nombre', cli.nombre); pon('ncl-nif', cli.NIF); pon('ncl-limite', cli.limite_credito > 0 ? cli.limite_credito : '');
+    pon('ncl-dias', cli.dias_pago); pon('ncl-email', cli.email); pon('ncl-tel', cli.telefono);
+    if (n) n.readOnly = true;     // el nombre es la identidad de la ficha
+    if (cli.origen) { var err = document.getElementById('ncl-err'); if (err) { err.style.display = 'block'; err.style.color = 'var(--mut)'; err.textContent = t('ar.fichaOrigen', 'Ficha creada automáticamente desde el') + ' ' + cli.origen + '. ' + t('ar.fichaFalta', 'Falta el límite de crédito.'); } }
+    var lim = document.getElementById('ncl-limite'); if (lim) lim.focus();
+  } else if (n) n.focus();
 }
 
 function cerrarNuevoCliente() {
@@ -16512,16 +16535,21 @@ async function cargarARRealData() {
     if (dc.ok && dc.clientes.length) {
       const listEl = document.getElementById('ar-clientes-list');
       if (listEl) {
+        _arClientesCache = dc.clientes;
         listEl.innerHTML = dc.clientes.map(c => {
           const uso = c.uso_credito_pct || 0;
+          const pend = c.pendiente_completar
+            ? '<div style="font-size:10px;color:var(--ora);margin-top:3px">⚠ ' + t('ar.pendienteCompletar', 'Ficha pendiente de completar') + (c.origen ? ' · ' + _cEsc(c.origen) : '') + '</div>'
+            : '';
+          const editBtn = '<button onclick="event.stopPropagation();editarClienteAR(\'' + c.nombre.replace(/'/g,"\\'") + '\')" title="' + t('ar.editarFicha', 'Editar ficha') + '" style="background:none;border:1px solid var(--s2);color:var(--mut);border-radius:6px;font-size:11px;padding:2px 6px;cursor:pointer;margin-left:6px">✎</button>';
           const usoPct = Math.min(100, uso);
           const usoColor = uso >= 90 ? 'var(--red)' : uso >= 70 ? 'var(--ora)' : 'var(--grn)';
           return '<div class="card" style="padding:12px;cursor:pointer;transition:background-color .15s,border-color .15s,color .15s,box-shadow .15s,transform .15s,opacity .15s" ' +
             'onclick="filtrarClienteAR(\'' + c.nombre.replace(/'/g,"\\'") + '\')" ' +
             'onmouseover="this.style.borderColor=\'var(--acc)\'" onmouseout="this.style.borderColor=\'\'"><div style="display:flex;justify-content:space-between;align-items:flex-start">' +
             '<div style="flex:1;min-width:0"><div style="font-weight:600;font-size:13px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">' + c.nombre.split(' ').slice(0,3).join(' ') + '</div>' +
-            '<div style="font-size:10px;color:var(--dim);margin-top:2px">' + c.dias_pago + 'd pago · ' + c.facturas_pendientes + ' fact.</div></div>' +
-            '<div style="text-align:right;flex-shrink:0;margin-left:8px">' +
+            '<div style="font-size:10px;color:var(--dim);margin-top:2px">' + c.dias_pago + 'd pago · ' + c.facturas_pendientes + ' fact.</div>' + pend + '</div>' +
+            '<div style="text-align:right;flex-shrink:0;margin-left:8px">' + editBtn +
             '<div style="font-size:13px;font-weight:700;color:' + usoColor + '">' + _fmtEurES(c.saldo_pendiente||0, 0) + '</div>' +
             (c.tiene_vencidas ? '<div style="font-size:10px;color:var(--red)">⚠ Vencida</div>' : '') +
             '</div></div>' +
