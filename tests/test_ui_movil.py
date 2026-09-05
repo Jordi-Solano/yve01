@@ -131,13 +131,18 @@ chk('y ya no está duplicado en la barra',
 chk('la burbuja existe', 'id="chat-fab"' in HTML)
 
 print('\n4 · el selector de hotel, más pequeño')
-chk('más estrecho que antes', '#hotel-activo-sel{max-width:92px!important' in MOVIL)
+# Fase 1 del movil (sep 2026): se deshizo el "mas estrecho" — a 92 px no se leia
+# el hotel. Ahora el selector MANDA y encogen los dos botones de icono.
+chk('el selector manda (ya no esta capado a 92 px)', '#hotel-activo-sel{max-width:none!important;flex:1 1 auto;min-width:118px' in MOVIL)
 chk('y las opciones sin emoji (el desplegable lo pinta el sistema)',
     "'>🏨 ' + _nom" not in HTML)
 
 print('\n6 + 7 · fotos y documentos, cada uno por su puerta')
-chk('hay una puerta solo para documentos',
-    'accept=".pdf,.xlsm,.xlsx,.xls,.csv"' in HTML)
+# Ronda 1 de Jordi (sep 2026): UN input de archivos que admite tambien imagenes
+# por extension (sin `image/*`, que es lo que abria la galeria) + un boton de
+# fotos solo en movil con su propio input `image/*`.
+chk('la puerta de documentos admite fotos por extension, sin image/*',
+    'accept=".pdf,.xlsm,.xlsx,.xls,.csv,.jpg,.jpeg,.png,.webp,.heic"' in HTML)
 chk('y otra solo para fotos', 'id="upload-photo-input"' in HTML
     and 'accept="image/*"' in HTML)
 chk('ya NO hay un accept mezclado (el que abría la galería)',

@@ -5603,11 +5603,16 @@ body::before{
      poder pulsarla. Quitando el texto sobra sitio para las tres. */
   #run-lbl{font-size:0;letter-spacing:0}
   #run-lbl::after{content:'⚡';font-size:15px;letter-spacing:normal}
-  .btn-run{padding:7px 11px}
   /* `!important` a proposito: el selector lleva `max-width:190px` EN LINEA
      (esta pintado con estilo inline), y sin esto la regla no gana nunca —
      medido en el navegador: seguia en 151 px. */
-  #hotel-activo-sel{max-width:92px!important;font-size:10.5px;padding:3px 8px}
+  /* Fase 1 del movil (2): el selector MANDA. Habia bajado a 92 px y no se
+     leia el hotel sin desplegarlo, que es justo lo que viene a evitar. Los
+     dos botones de icono (rayo y rueda) encogen y el selector se queda el
+     resto. El `!important` no es opcional: lleva `max-width:190px` en linea. */
+  #hotel-activo-sel{max-width:none!important;flex:1 1 auto;min-width:118px;font-size:11.5px;padding:4px 8px}
+  .btn-run{padding:5px 9px;min-width:0}
+  .dropdown>.btn-ref{font-size:13px!important;padding:4px 7px!important}
   /* El desplegable, anclado a la PANTALLA y no al boton. Da igual donde acabe
      la barra: siempre cabe entero. */
   .menu{position:fixed;top:calc(52px + env(safe-area-inset-top));right:8px;left:auto;
@@ -5625,7 +5630,7 @@ body::before{
   .hist-t td[data-r]::before{content:attr(data-r) ': ';color:var(--dim);font-size:10px;text-transform:uppercase;letter-spacing:.4px}
   .hist-t td:first-child{position:absolute;right:8px;top:8px;padding:0!important}
   .btn-ref{font-size:11px;padding:5px 8px}
-  .btn-run{font-size:12px;padding:7px 12px}
+  .btn-run{font-size:12px;padding:5px 9px;min-width:0}
   #btn-install-pwa{display:none}
   .hide-mobile{display:none!important}
   /* Tabs */
@@ -6755,7 +6760,7 @@ svg.yvi{width:1em;height:1em;vertical-align:-0.125em;flex-shrink:0;display:inlin
         <button class="fb-sub" onclick="fbSub('mermas',this)" data-i18n="fb.mermas">⚠️ Mermas</button>
         <button class="fb-sub" onclick="fbSub('recetas',this)" data-i18n="fb.recetas">📋 Recetas</button>
       </div>
-      <div style="display:flex;gap:8px;align-items:center">
+      <div class="fb-acciones" style="display:flex;gap:8px;align-items:center;flex-wrap:wrap">
         <label style="font-size:12px;color:var(--mut);display:flex;align-items:center;gap:6px"><span data-i18n="fb.mesLbl">Mes</span><input type="month" id="fb-mes" style="font-size:12px;padding:4px 6px;border-radius:6px;border:1px solid var(--s2);background:var(--s1);color:var(--tx)" onchange="fbCambiarMes()" title="Vacío = todo el periodo"></label>
         <label for="fb-upload-input" class="btn-ref" style="cursor:pointer;font-size:12px" data-i18n="btn.importarPos">📤 Importar ventas POS</label>
         <input type="file" id="fb-upload-input" accept=".xlsx,.xls,.csv" style="display:none" onchange="fbUploadPOS(this)">
@@ -15390,16 +15395,24 @@ function renderNotifConfig() {
   // Channels
   const cont = document.getElementById('notif-canales');
   if (cont) {
-    cont.innerHTML = NOTIF_CHANNELS.filter(ch => ch.key !== 'push' || yvePushSupported()).map(ch => {
+    // Fase 1 del movil (5): el canal Push se ve SIEMPRE. Si este navegador no
+    // lo soporta (iOS sin PWA instalada), sale apagado y dice por que — antes
+    // desaparecia y parecia una funcion perdida.
+    cont.innerHTML = NOTIF_CHANNELS.map(ch => {
       const on = c.canales && c.canales[ch.key];
-      return '<div onclick="toggleNotifCanal(\'' + ch.key + '\')" style="cursor:pointer;background:' +
+      const noSoportado = ch.key === 'push' && !yvePushSupported();
+      return '<div ' + (noSoportado ? '' : 'onclick="toggleNotifCanal(\'' + ch.key + '\')" ') + 'style="cursor:' + (noSoportado ? 'not-allowed;opacity:.55' : 'pointer') + ';background:' +
         (on ? 'rgba(var(--acc-r,59),var(--acc-g,130),var(--acc-b,246),.1)' : 'var(--s2)') + ';border:1px solid ' +
         (on ? 'var(--acc)' : 'var(--s2)') + ';border-radius:12px;padding:14px;text-align:center;transition:background-color .15s,border-color .15s,color .15s,box-shadow .15s,transform .15s,opacity .15s">' +
         '<div style="font-size:22px;margin-bottom:6px">' + ch.icon + '</div>' +
         '<div style="font-size:13px;font-weight:600;color:' + (on ? 'var(--acc2)' : 'var(--mut)') + '">' + ch.name + '</div>' +
-        '<div style="font-size:10px;color:' + (on ? 'var(--grn)' : 'var(--dim)') + ';margin-top:4px">' + (on ? '● Activo' : '○ Inactivo') + '</div>' +
+        '<div style="font-size:10px;color:' + (on ? 'var(--grn)' : 'var(--dim)') + ';margin-top:4px">' +
+        (noSoportado ? t('notif.pushNo', 'No disponible en este navegador (en iPhone: instala Yve como app)') : (on ? '● Activo' : '○ Inactivo')) + '</div>' +
         '</div>';
     }).join('');
+    // (6) lo que pinta JS no pasa por el iconizador solo: sin esto los emoji
+    // ignoran el acento elegido.
+    if (typeof _pintarYa === 'function') _pintarYa(cont);
   }
   // Channel fields (only for active channels needing input)
   const fields = document.getElementById('notif-channel-fields');
@@ -15425,6 +15438,7 @@ function renderNotifConfig() {
               '<button onclick="yvePushTest()" class="btn-ref" style="font-size:12px">🔔 Enviar push de prueba</button></div>';
     }
     fields.innerHTML = html;
+    if (typeof _pintarYa === 'function') _pintarYa(fields);
   }
   // Alertas
   const al = document.getElementById('notif-alertas');

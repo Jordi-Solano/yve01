@@ -497,6 +497,7 @@
   "notif.historial": "Benachrichtigungsverlauf",
   "notif.inactivo": "Inaktiv",
   "notif.pushDenegado": "Benachrichtigungs-Berechtigung vom Browser verweigert",
+  "notif.pushNo": "In diesem Browser nicht verfügbar (iPhone: Yve als App installieren)",
   "notif.pushOk": "Benachrichtigungen aktiviert ✓ Ich melde dir Abweichungen und Alerts.",
   "notif.sinDest": "kein Empfänger",
   "notif.telegram": "Telegram",

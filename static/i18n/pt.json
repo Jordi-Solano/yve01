@@ -497,6 +497,7 @@
   "notif.historial": "Histórico de Notificações",
   "notif.inactivo": "Inativo",
   "notif.pushDenegado": "Permissão de notificações negada pelo navegador",
+  "notif.pushNo": "Indisponível neste navegador (no iPhone: instala o Yve como app)",
   "notif.pushOk": "Notificações ativadas ✓ Avisarei sobre discrepâncias e alertas.",
   "notif.sinDest": "sem destinatário",
   "notif.telegram": "Telegram",
