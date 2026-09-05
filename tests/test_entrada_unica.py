@@ -113,6 +113,12 @@ def main():
         txt = lote(['recuento_hotel.xlsx'], {'recuento_hotel.xlsx': '2026-09'})
         inv = pd.read_excel(INV) if os.path.exists(INV) else pd.DataFrame(); sep_, _ = filtrar_mes(inv, '2026-09')
         ok('✓ Recuento' in txt and 'para 2026-09' in txt and len(sep_) >= 2, f"con ?meses= entra en 2026-09 ({len(sep_)} filas)")
+        # 4b. el recuento tambien en CSV (en produccion fallaba: leer_recuento solo sabia Excel)
+        rutas['recuento_csv_2026-10.csv'] = os.path.join(tmp, 'recuento_csv_2026-10.csv')
+        hoja.to_csv(rutas['recuento_csv_2026-10.csv'], index=False)
+        txt = lote(['recuento_csv_2026-10.csv'])
+        inv = pd.read_excel(INV) if os.path.exists(INV) else pd.DataFrame(); oct_, _ = filtrar_mes(inv, '2026-10')
+        ok('✓ Recuento recuento_csv_2026-10.csv: 2 articulos' in txt and len(oct_) >= 2, f"recuento en CSV: {[l for l in txt.splitlines() if 'Recuento' in l][:1]}")
         # 5. la pantalla: un solo sitio para subir
         html = cl.get('/').get_data(as_text=True)
         ok(all(x not in html for x in ('drr-file-input', 'inv-file"', 'fb-upload-input', 'fb-rec-input', 'uploadDRR(', 'fbUploadPOS(', 'fbUploadRecetas(', '_invSubir(')),
@@ -141,7 +147,7 @@ def main():
             if f in copias:
                 shutil.copy(copias[f], f)
         up = os.path.join(BASE, 'facturas-entrada')
-        for n in NOMBRES + ['recuento_hotel.xlsx']:
+        for n in NOMBRES + ['recuento_hotel.xlsx', 'recuento_csv_2026-10.csv']:
             p = os.path.join(up, n)
             if os.path.exists(p):
                 os.remove(p)

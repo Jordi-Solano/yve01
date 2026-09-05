@@ -260,13 +260,28 @@ def hoja_recuento(df_inv, mes, cfg=None):
     return buf, f"recuento_inventario_{mes}.xlsx"
 
 
+def _leer_hoja(fichero):
+    """Excel o CSV, por extension (ruta o fichero subido con `.filename`).
+    Pieza 9: por Procesar archivos el recuento puede llegar como .csv, y
+    `read_excel` sobre un CSV revienta con 'file format cannot be determined'."""
+    nombre = str(getattr(fichero, "filename", None) or fichero or "").lower()
+    if nombre.endswith(".csv"):
+        try:
+            return pd.read_csv(fichero, sep=None, engine="python")
+        except Exception:
+            if hasattr(fichero, "seek"):
+                fichero.seek(0)
+            return pd.read_csv(fichero)
+    return pd.read_excel(fichero)
+
+
 def leer_recuento(fichero):
     """Lee la hoja de recuento rellenada -> DataFrame para inventario.xlsx.
 
     Solo se toman las filas con `recuento` informado; el resto no se toca.
     `recuento` pasa a stock_actual_kg_l. Devuelve (df, n_contadas, n_saltadas).
     """
-    df = pd.read_excel(fichero)
+    df = _leer_hoja(fichero)
     cols = {c.lower().strip(): c for c in df.columns}
     c_nom = cols.get("ingrediente") or cols.get("producto") or cols.get("articulo")
     c_rec = cols.get("recuento") or cols.get("stock_final") or cols.get("stock_actual")
