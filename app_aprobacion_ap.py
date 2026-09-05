@@ -12,12 +12,37 @@ from flask_login import login_required, current_user
 from version_estaticos import SELLO as SELLO_ESTATICOS
 
 BASE_DIR         = os.path.dirname(os.path.abspath(__file__))
-PROCESADAS_DIR   = os.path.join(BASE_DIR, "facturas-procesadas")
-REPORTES_DIR     = os.path.join(BASE_DIR, "reportes")
-APROBACIONES_DIR = os.path.join(BASE_DIR, "aprobaciones")
-os.makedirs(APROBACIONES_DIR, exist_ok=True)
+# Rutas POR TENANT (hallazgo (b) de la bomba 1, cerrado sep 2026): este panel
+# escribia en la raiz y el dashboard leia `_adir()` del tenant; en el tenant
+# `default` coinciden y en cualquier otro se aprobaba una cosa y el panel
+# enseñaba otra. Ahora los dos resuelven por tenant_dirs. OJO: la zona Oracle
+# (`oracle_lector_facturas`) sigue leyendo la RAIZ y no se toca sin OK de
+# Jordi: para `default` es el mismo fichero; para otro tenant Oracle no veria
+# sus aprobaciones (apuntado).
+from tenant_dirs import (procesadas_dir as _t_pdir, reportes_dir as _t_rdir,
+                         aprobaciones_dir as _t_adir, datos_dir as _t_ddir)
 
-APRO_FILE = os.path.join(APROBACIONES_DIR, "aprobaciones_ap.xlsx")
+
+# Los tres de abajo son RANURAS para los tests (None = resolver por tenant).
+PROCESADAS_DIR = None
+REPORTES_DIR = None
+APRO_FILE = None
+
+
+def _PD():
+    return str(PROCESADAS_DIR or _t_pdir())
+
+
+def _RD():
+    return str(REPORTES_DIR or _t_rdir())
+
+
+def _apro_file():
+    if APRO_FILE:
+        return str(APRO_FILE)
+    d = str(_t_adir())
+    os.makedirs(d, exist_ok=True)
+    return os.path.join(d, "aprobaciones_ap.xlsx")
 NF        = "NO_ENCONTRADO"
 
 bp = Blueprint("aprob_ap", __name__, url_prefix="/aprobaciones-ap")
@@ -54,7 +79,7 @@ def _facturas_crudas():
     aprobaria una cosa y se contabilizaria otra.
     """
     import almacen_datos as _alm
-    return _alm.facturas_ap(PROCESADAS_DIR, REPORTES_DIR)
+    return _alm.facturas_ap(_PD(), _RD())
 
 
 def cargar_facturas_ap():
@@ -109,10 +134,10 @@ def _nombre_hotel(hid):
         return h
 
 def cargar_aprobaciones():
-    if not os.path.exists(APRO_FILE):
+    if not os.path.exists(_apro_file()):
         return pd.DataFrame()
     try:
-        return pd.read_excel(APRO_FILE)
+        return pd.read_excel(_apro_file())
     except Exception:
         return pd.DataFrame()
 
@@ -212,7 +237,7 @@ CONFIG_APRO_FILE = os.path.join(BASE_DIR, "datos-referencia", "config_aprobacion
 
 def umbral_doble_firma():
     try:
-        with open(CONFIG_APRO_FILE, encoding="utf-8") as fh:
+        with open(os.path.join(str(_t_ddir()), "config_aprobaciones.json"), encoding="utf-8") as fh:
             v = json.load(fh).get("umbral_doble_firma")
         if v is not None and str(v).strip() != "":
             return float(v)
@@ -453,7 +478,7 @@ def api_duplicados():
     except Exception:
         hotel = None
     try:
-        grupos = _alm.facturas_ap_duplicadas(str(PROCESADAS_DIR), str(REPORTES_DIR), hotel=hotel)
+        grupos = _alm.facturas_ap_duplicadas(_PD(), _RD(), hotel=hotel)
     except Exception as e:
         return jsonify({"ok": False, "error": str(e)[:200]}), 500
     for g in grupos:
@@ -471,7 +496,7 @@ def api_duplicados_elegir():
     if not clave or not archivo:
         return jsonify({"ok": False, "error": "Faltan clave y archivo"}), 400
     try:
-        reg = _alm.resolver_duplicado(clave, archivo, _usuario_actual(""), procesadas_dir=str(PROCESADAS_DIR), reportes_dir=str(REPORTES_DIR))
+        reg = _alm.resolver_duplicado(clave, archivo, _usuario_actual(""), procesadas_dir=_PD(), reportes_dir=_RD())
     except ValueError as e:
         return jsonify({"ok": False, "error": str(e)}), 404
     except Exception as e:
@@ -563,13 +588,14 @@ def registrar_acciones(filas):
     if not filas:
         return 0
     nueva = pd.DataFrame(filas)
-    if os.path.exists(APRO_FILE):
-        df_ex = pd.read_excel(APRO_FILE)
+    ruta = _apro_file()
+    if os.path.exists(ruta):
+        df_ex = pd.read_excel(ruta)
         df_ex = pd.concat([df_ex, nueva], ignore_index=True)
     else:
         df_ex = nueva
 
-    with pd.ExcelWriter(APRO_FILE, engine="openpyxl") as w:
+    with pd.ExcelWriter(ruta, engine="openpyxl") as w:
         df_ex.to_excel(w, index=False, sheet_name="Aprobaciones_AP")
     return len(filas)
 

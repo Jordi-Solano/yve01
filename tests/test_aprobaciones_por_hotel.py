@@ -212,34 +212,27 @@ def test_la_aprobacion_deja_constancia_del_hotel():
     print("  ✔ la aprobacion guarda el hotel y no mueve lo que lee Oracle")
 
 
-def test_las_rutas_siguen_siendo_las_de_oracle(ruta=None):
-    """El panel y Oracle tienen que mirar el MISMO fichero.
+def test_las_rutas_siguen_siendo_las_de_oracle(pd_fn=None):
+    """El panel y Oracle tienen que mirar el MISMO fichero en el tenant `default`.
 
-    Si el panel se pasara al arbol del tenant y Oracle siguiera en la raiz, se
-    aprobaria una cosa y se contabilizaria otra — un fallo mucho peor que el que
-    se esta arreglando. Este invariante existe para que nadie lo "mejore" sin
-    tocar Oracle a la vez.
+    Sep 2026 (hallazgo (b) de la bomba 1, pedido por Jordi): el panel resuelve
+    sus rutas POR TENANT como el dashboard (`_PD()`, `_RD()`, `_apro_file()`).
+    Oracle (`oracle_lector_facturas`, zona intocable) sigue en la raiz. Para el
+    tenant `default` —el unico en uso— las rutas son IDENTICAS, y eso es lo que
+    aqui se comprueba en ejecucion, no leyendo el fuente. Para otro tenant,
+    Oracle no es multi-tenant (tampoco lee sus facturas): apuntado, pendiente
+    de OK de Jordi para tocar la zona Oracle.
     """
-    import ast
-    ruta = ruta or os.path.join(BASE, "app_aprobacion_ap.py")
-    for fichero, nombres in ((ruta, ("PROCESADAS_DIR", "APROBACIONES_DIR")),
-                             (os.path.join(BASE, "oracle_lector_facturas.py"),
-                              ("PROCESADAS_DIR", "APROBACIONES_DIR"))):
-        arbol = ast.parse(open(fichero, encoding="utf-8").read())
-        vistos = {}
-        for n in arbol.body:
-            if isinstance(n, ast.Assign) and len(n.targets) == 1 \
-                    and isinstance(n.targets[0], ast.Name) and n.targets[0].id in nombres:
-                vistos[n.targets[0].id] = ast.unparse(n.value)
-        for nom in nombres:
-            assert nom in vistos, f"{os.path.basename(fichero)}: no encuentro {nom}"
-            assert "BASE_DIR" in vistos[nom], (
-                f"{os.path.basename(fichero)}: {nom} = {vistos[nom]} ya no sale de "
-                "BASE_DIR. Este panel y Oracle tienen que leer el MISMO fichero: "
-                "si uno se va al arbol del tenant y el otro se queda en la raiz, "
-                "se aprueba una factura y se contabiliza otra. Cambiarlo es "
-                "tocar Oracle, y eso va en su propio paso.")
-    print("  ✔ el panel y Oracle siguen leyendo las mismas rutas (AST)")
+    import app_aprobacion_ap as PANEL
+    import oracle_lector_facturas as ORA
+    pd_fn = pd_fn or PANEL._PD
+    os.environ.pop("YVE_TENANT", None)
+    assert os.path.realpath(pd_fn()) == os.path.realpath(str(ORA.PROCESADAS_DIR)), (
+        f"en el tenant default el panel lee {pd_fn()} y Oracle {ORA.PROCESADAS_DIR}: "
+        "se aprobaria una factura y se contabilizaria otra")
+    assert os.path.realpath(PANEL._apro_file()) == os.path.realpath(os.path.join(str(ORA.APROBACIONES_DIR), "aprobaciones_ap.xlsx")), (
+        f"el registro de aprobaciones del panel ({PANEL._apro_file()}) no es el que lee Oracle")
+    print("  ✔ en el tenant default el panel y Oracle leen las mismas rutas (en ejecucion)")
 
 
 PRUEBAS = [test_cada_hotel_ve_solo_sus_facturas,
@@ -280,23 +273,13 @@ def main():
         finally:
             A.facturas_sin_hotel = bueno2
 
-        # (c) alguien "mejora" las rutas y las separa de las de Oracle
-        src = open(os.path.join(BASE, "app_aprobacion_ap.py"), encoding="utf-8").read()
-        viejo = 'PROCESADAS_DIR   = os.path.join(BASE_DIR, "facturas-procesadas")'
-        assert src.count(viejo) == 1, "el sabotaje no encuentra la ruta que romper"
-        copia = os.path.join(BASE, "app_aprobacion_ap_SABOTAJE.py")
-        open(copia, "w", encoding="utf-8").write(src.replace(
-            viejo, "from tenant_dirs import procesadas_dir\nPROCESADAS_DIR = procesadas_dir()", 1))
+        # (c) alguien separa las rutas del panel de las de Oracle
         try:
-            try:
-                test_las_rutas_siguen_siendo_las_de_oracle(copia)
-                print("  ✗ con las rutas separadas de Oracle, el invariante NO ha fallado.")
-                malos += 1
-            except AssertionError as e:
-                print(f"  ✔ las rutas se separan de las de Oracle:\n      {str(e)[:150]}")
-        finally:
-            if os.path.exists(copia):
-                os.remove(copia)
+            test_las_rutas_siguen_siendo_las_de_oracle(lambda: os.path.join(BASE, "tenants", "otro", "facturas-procesadas"))
+            print("  ✗ con las rutas separadas de Oracle, el invariante NO ha fallado.")
+            malos += 1
+        except AssertionError as e:
+            print(f"  ✔ las rutas se separan de las de Oracle:\n      {str(e)[:150]}")
 
         print("=" * 70)
         return 1 if malos else 0

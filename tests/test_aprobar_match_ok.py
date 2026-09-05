@@ -182,8 +182,10 @@ def main():
 
         # ── 3 · el panel DESPUES ──────────────────────────────────────
         stats2 = c.get('/api/stats_ap').get_json()
-        ok(stats2['aprobadas'] == 3,
-           f"el tile Aprobadas pasa de 0 a 3 (las 3 con numero; dice {stats2['aprobadas']})")
+        # Sep 2026 (hallazgo (a) de la bomba 1): el tile cruza por la CLAVE, asi
+        # que la aprobada SIN numero tambien cuenta: 4, no 3.
+        ok(stats2['aprobadas'] == 4,
+           f"el tile Aprobadas pasa de 0 a 4 (3 con numero + la sin numero; dice {stats2['aprobadas']})")
         facts2 = {f['numero_factura']: f['accion'] for f in c.get('/api/facturas_ap').get_json()}
         ok(facts2.get('F-OK-1') == 'APROBADA' and facts2.get('F-ALB') == 'APROBADA'
            and facts2.get('F-DISC') == '' and facts2.get('F-RECH') == 'RECHAZADA',

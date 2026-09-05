@@ -624,8 +624,18 @@ def _audit(accion, detalle="", usuario=None):
     """Registra una acción en el audit log."""
     import json as _json
     from datetime import datetime as _dt
+    # Hallazgo (c) de la bomba 1: `session["username"]` no lo escribe nadie y
+    # todo salia como "sistema". El usuario real es `current_user` (flask-login)
+    # cuando hay peticion; "sistema" solo fuera de una peticion (scripts).
+    if not usuario:
+        try:
+            from flask import has_request_context as _hrc
+            if _hrc():
+                usuario = getattr(current_user, "username", None) or None
+        except Exception:
+            usuario = None
     try:
-        ruta = os.path.join(os.path.dirname(__file__), "datos-referencia", "audit_log.json")
+        ruta = os.path.join(_ddir(), "audit_log.json")
         entries = []
         if os.path.exists(ruta):
             with open(ruta) as f: entries = _json.load(f)
@@ -3970,8 +3980,19 @@ def cargar_datos_ap_sin_filtrar():
         try:
             df_apro = pd.read_excel(apro_path)
             if not df_apro.empty and "numero_factura" in df_apro.columns:
-                ultimas = df_apro.sort_values("fecha_hora").groupby("numero_factura").last().reset_index()
-                df = df.merge(ultimas[["numero_factura","accion","comentario"]], on="numero_factura", how="left")
+                # Hallazgo (a) de la bomba 1: el registro de aprobaciones guarda
+                # la CLAVE (numero de factura, o el fichero si no hay numero:
+                # `app_aprobacion_ap.clave_factura`). Cruzar solo por numero
+                # dejaba fuera del tile toda factura sin numero aprobada.
+                df = df.copy()
+                df["_clave_apro"] = [safe_str(n) or safe_str(a) for n, a in zip(df.get("numero_factura", pd.Series([""] * len(df))), df.get("archivo", pd.Series([""] * len(df))))]
+                df_apro = df_apro.copy()
+                df_apro["_clave_apro"] = df_apro["numero_factura"].map(safe_str)
+                if "fecha_hora" in df_apro.columns:
+                    df_apro = df_apro.sort_values("fecha_hora")
+                ultimas = df_apro.groupby("_clave_apro").last().reset_index()
+                cols = [c for c in ("accion", "comentario") if c in ultimas.columns]
+                df = df.merge(ultimas[["_clave_apro"] + cols], on="_clave_apro", how="left").drop(columns=["_clave_apro"])
         except Exception:
             pass
     return df
