@@ -7105,9 +7105,33 @@ const IS_MOBILE = window.innerWidth <= 768;
 var otaChart = null;
 
 // ── Formato ─────────────────────────────────────────────────────────────
+// UN solo formato de euro en todo el panel: '1.175,80 €' (miles con punto
+// SIEMPRE, tambien en 4 cifras: Intl es-ES no agrupa 1175 y salia '1175,80').
+function _fmtEurES(v, dec) {
+  if (dec === undefined) dec = 2;
+  var x = typeof v === 'number' ? v : _numES(v);
+  if (x === null || isNaN(x)) return '—';
+  var neg = x < 0; x = Math.abs(x);
+  var parts = x.toFixed(dec).split('.');
+  parts[0] = parts[0].replace(/\B(?=(\d{3})+(?!\d))/g, '.');
+  return (neg ? '-' : '') + parts[0] + (dec ? ',' + parts[1] : '') + ' €';
+}
+// '12.400,00' → 12400 · '1,175.80' → 1175.8 · '248.0' → 248 · '' → null
+function _numES(v) {
+  if (v === null || v === undefined || v === '') return null;
+  if (typeof v === 'number') return v;
+  var s = String(v).replace(/[€\s]/g, '').replace(/EUR/i, '');
+  if (!s) return null;
+  var lc = s.lastIndexOf(','), ld = s.lastIndexOf('.');
+  if (lc >= 0 && ld >= 0) s = lc > ld ? s.replace(/\./g, '').replace(',', '.') : s.replace(/,/g, '');
+  else if (lc >= 0) s = s.replace(/\./g, '').replace(',', '.');
+  else if (ld >= 0 && /^-?\d{1,3}(\.\d{3})+$/.test(s)) s = s.replace(/\./g, '');
+  var x = parseFloat(s);
+  return isNaN(x) ? null : x;
+}
 function eur(n) {
   if (n === null || n === undefined || n === '' || n === 0) return '—';
-  return new Intl.NumberFormat('es-ES', {minimumFractionDigits:2, maximumFractionDigits:2}).format(n) + ' €';
+  return _fmtEurES(n, 2);
 }
 
 // ── Badges ───────────────────────────────────────────────────────────────
@@ -7444,7 +7468,7 @@ function renderTable(rows) {
       '<td>' + (r.porcentaje_factura || '—') + '</td>',
       '<td>' + bEstado(r.estado) + '</td>',
       '<td>' + bDI(r.estado_di) + '</td>',
-      '<td class="' + (hasDisc ? 'td-red' : 'td-dim') + '">' + (hasDisc ? r.discrepancia_euros : '—') + '</td>',
+      '<td class="' + (hasDisc ? 'td-red' : 'td-dim') + '">' + (hasDisc ? _fmtEurES(r.discrepancia_euros, 2) : '—') + '</td>',
       '<td>' + bApro(r.accion) + '</td>',
       '</tr>'
     ].join('');
@@ -7473,8 +7497,9 @@ function renderActivity(rows) {
     { dot:'b', n: d.CERTIFICADO_OK       || 0, txt: 'con certificado DI OK',         key:'res.conDI' },
     { dot:'m', n: d.OTA_DESCONOCIDA      || 0, txt: 'OTA no reconocida',             key:'res.noReconocida' },
   ];
-  const totalAmount = rows.reduce((s, r) => s + parseFloat(String(r.importe_bruto||'0').replace(/[^0-9.]/g,'')) || 0, 0);
-  const totalStr = totalAmount > 0 ? '€' + totalAmount.toLocaleString('es-ES', {minimumFractionDigits:2}) : '';
+  // '12.400,00' se leia como 12.4 (se quitaba la coma y quedaba el punto de miles): 'Total ciclo: €12,40'
+  const totalAmount = rows.reduce((s, r) => s + (_numES(r.importe_bruto) || 0), 0);
+  const totalStr = totalAmount > 0 ? _fmtEurES(totalAmount, 2) : '';
   el.innerHTML = (totalStr ? '<div style="background:var(--bg);border-radius:8px;padding:8px 12px;margin-bottom:10px;font-size:12px;color:var(--mut)">Total ciclo: <strong style="color:var(--tx)">' + totalStr + '</strong></div>' : '') +
     items.map(i =>
     '<div class="act-item">' +
@@ -7754,7 +7779,7 @@ async function renderDRRChart() {
     const gv = v => getComputedStyle(document.body).getPropertyValue(v).trim();
     const acc = gv('--acc') || '#3b82f6', tx = gv('--tx') || '#f1f5f9', red = gv('--red') || '#ef4444', mut = gv('--mut') || '#94a3b8', s2v = gv('--s2') || '#334155', bg = gv('--bg') || '#0f172a';
     const _rgba = (c, a) => { c = (c || '').trim(); if (c[0] === '#') { let h = c.slice(1); if (h.length === 3) h = h.split('').map(x => x + x).join(''); const n = parseInt(h, 16); return 'rgba(' + ((n >> 16) & 255) + ',' + ((n >> 8) & 255) + ',' + (n & 255) + ',' + a + ')'; } const m = c.match(/(\d+)[,\s]+(\d+)[,\s]+(\d+)/); return m ? 'rgba(' + m[1] + ',' + m[2] + ',' + m[3] + ',' + a + ')' : c; };
-    const _eur = n => '€' + Math.round(n).toLocaleString('en-US');
+    const _eur = n => _fmtEurES(n, 0);
     const rev = d.revenue, minR = Math.min.apply(null, rev), maxR = Math.max.apply(null, rev);
     const _pad = Math.max((maxR - minR) * 0.5, maxR * 0.01) || 1000;
     const yMin = Math.max(0, Math.floor((minR - _pad) / 100) * 100), yMax = Math.ceil((maxR + _pad) / 100) * 100;
@@ -10562,7 +10587,7 @@ function _postJson(url, body) {
 
 // ── Reclamaciones OTA (loop dato -> IA -> gate humano -> envío -> registro) ──
 var _reclItems = [];
-function _reclMoney(v){ return '€' + (Number(v)||0).toLocaleString('es-ES',{minimumFractionDigits:2}); }
+function _reclMoney(v){ return _fmtEurES(Number(v)||0, 2); }
 function _reclEsc(s){ return String(s==null?'':s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;'); }
 async function cargarReclamacionesOTA(){
   var wrap = document.getElementById('ar-recl-list');
@@ -13045,7 +13070,7 @@ async function _procesarGrupoFotos(grupo, pref, addLine, cierre) {
       // AP y necesita cuenta y asiento). Antes solo las fotos sueltas pedian
       // el cierre, asi que la comision se quedaba sin contabilizar.
       if (cierre && _dc.cierre) { _dc.cierre.forEach(function(p){ if (p) cierre[p] = true; }); }
-      var _money = function(v){ return '€' + (Number(v)||0).toLocaleString('es-ES', {minimumFractionDigits:2}); };
+      var _money = function(v){ return _fmtEurES(Number(v)||0, 2); };
       addLine('✓ Contrato ' + (_dc.contrato || '') + ' · ' + (_dc.cliente || '') + ' · ' + _money(_dc.total_receivable) + ' → AR Real' + (_dc.beo_lineas ? ' · BEO con ' + _dc.beo_lineas + ' partidas' : ''), 'l-ok');
       var _di2 = _dc.distribucion || {};
       if (_di2.ap)    addLine('✓ AP comisión agencia: ' + _money(_di2.ap) + ' (pago pendiente)', 'l-ok');
@@ -13227,7 +13252,7 @@ function showInvoiceDetail(row) {
 
     ['Fecha',                 row.fecha || '—'],
     ['Mercado',               row.mercado || '—'],
-    ['Importe bruto',         row.importe_bruto ? '€' + row.importe_bruto : '—'],
+    ['Importe bruto',         row.importe_bruto ? _fmtEurES(row.importe_bruto, 2) : '—'],
     ['Comisión pactada %',    row.porcentaje_pactado ? row.porcentaje_pactado + '%' : '—'],
     ['Comisión facturada %',  row.porcentaje_factura ? row.porcentaje_factura + '%' : '—'],
     ['Diferencia €',          row.discrepancia_euros || '0'],
@@ -13910,7 +13935,7 @@ async function _paqGuardar(seccion){
 
 // ── Cierre de mes (Ola B) ─────────────────────────────────────────────────
 function _cEsc(s){ return String(s==null?'':s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;'); }
-function _cEur(v){ return (v==null||isNaN(Number(v))) ? '—' : Number(v).toLocaleString('es-ES',{minimumFractionDigits:2,maximumFractionDigits:2}) + ' €'; }
+function _cEur(v){ return (v==null||isNaN(Number(v))) ? '—' : _fmtEurES(Number(v), 2); }
 async function loadCierre(forzar){
   var inp = document.getElementById('cierre-mes');
   if (!inp) return;
@@ -14172,10 +14197,10 @@ async function loadFBResumen() {
 
     // ── KPIs: 4 cards en fila ──
     html += '<div class="fb-kpi-grid" style="display:grid;grid-template-columns:repeat(4,1fr);gap:12px;margin-bottom:16px">';
-    html += _fbKpi(t('fb.ventasFb', 'Ventas F&B'), '€' + Math.round(r.total_ventas).toLocaleString('es-ES'), t('fb.periodoCompleto', 'período completo'), 'var(--acc2)');
+    html += _fbKpi(t('fb.ventasFb', 'Ventas F&B'), _fmtEurES(r.total_ventas, 0), t('fb.periodoCompleto', 'período completo'), 'var(--acc2)');
     html += _fbKpi(t('fb.fcTeorico', 'FC Teórico'), r.fc_teorico_pct + '%', _fbSobre(cob), 'var(--grn)');
     html += _fbKpi(t('fb.fcReal', 'FC Real'), r.fc_real_pct + '%', fcSign + fcDiff + ' ' + (t('fb.vsObjetivo', 'pp vs objetivo')), fcColor);
-    html += _fbKpi(t('fb.mermasLabel', 'Mermas'), '€' + r.coste_mermas.toLocaleString('es-ES'), r.alerta ? t('fb.revisar', '⚠ Revisar') : t('fb.bajoControl', 'bajo control'), r.alerta ? 'var(--red)' : 'var(--mut)');
+    html += _fbKpi(t('fb.mermasLabel', 'Mermas'), _fmtEurES(r.coste_mermas, 2), r.alerta ? t('fb.revisar', '⚠ Revisar') : t('fb.bajoControl', 'bajo control'), r.alerta ? 'var(--red)' : 'var(--mut)');
     html += '</div>';
     html += _fbAvisoCobertura(cob);
 
@@ -14200,7 +14225,7 @@ async function loadFBResumen() {
       const cC = c.alerta ? 'var(--red)' : 'var(--grn)';
       const badge = c.alerta ? '<span class="badge b-disc">Alerta</span>' : '<span class="badge b-ok">OK</span>';
       html += '<tr><td style="font-weight:600">' + c.nombre + '</td>' +
-        '<td style="text-align:right">€' + Math.round(c.total_ventas).toLocaleString('es-ES') + '</td>' +
+        '<td style="text-align:right">' + _fmtEurES(c.total_ventas, 0) + '</td>' +
         '<td style="text-align:right;color:' + cC + ';font-weight:700">' + c.fc_real_pct + '%</td>' +
         '<td style="text-align:center">' + badge + '</td></tr>';
     });
@@ -14211,7 +14236,7 @@ async function loadFBResumen() {
     data.ranking_top.forEach((p, i) => {
       const pC = p.fc_real_pct > 30 ? 'var(--ora)' : 'var(--grn)';
       html += '<tr><td><span style="color:var(--dim);font-size:10px;margin-right:5px">#' + (i+1) + '</span>' + p.nombre + '</td>' +
-        '<td style="text-align:right">€' + Math.round(p.total_ventas).toLocaleString('es-ES') + '</td>' +
+        '<td style="text-align:right">' + _fmtEurES(p.total_ventas, 0) + '</td>' +
         '<td style="text-align:right;font-weight:700;color:' + pC + '">' + p.fc_real_pct + '%</td></tr>';
     });
     html += '</tbody></table></div></div></div>';
@@ -14260,7 +14285,7 @@ async function loadFBInventario() {
     const alertas = data.items.filter(i => i.alerta);
     let html = '<div class="fb-kpi-grid" style="display:grid;grid-template-columns:repeat(auto-fit,minmax(140px,1fr));gap:14px;margin-bottom:20px">';
     html += _fbKpi(t('fb.itemsStock', 'Items en Stock'), data.items.length, t('fb.ingredientes', 'ingredientes'), 'var(--acc2)');
-    html += _fbKpi(t('fb.valorInv', 'Valor Inventario'), '€' + data.valor_total.toLocaleString('es-ES'), t('fb.valorActual', 'valoración actual'), 'var(--grn)');
+    html += _fbKpi(t('fb.valorInv', 'Valor Inventario'), _fmtEurES(data.valor_total, 2), t('fb.valorActual', 'valoración actual'), 'var(--grn)');
     html += _fbKpi(t('fb.alertasStock', 'Alertas Stock Bajo'), alertas.length, alertas.length > 0 ? 'revisar urgente' : t('fb.todoOk', 'todo OK'), alertas.length > 0 ? 'var(--red)' : 'var(--grn)');
     html += '</div>';
 
@@ -14312,8 +14337,8 @@ async function loadFBMermas() {
       const topCat = Object.keys(porCategoria)[0] || '—';
       const topVal = Object.values(porCategoria)[0] || 0;
       html += '<div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(140px,1fr));gap:12px;margin-bottom:20px">' +
-        '<div class="sc"><div class="sc-lbl" data-tip="Coste total de mermas registradas">COSTE TOTAL MERMAS</div><div class="sc-val" style="color:var(--ora)">€' + totalCoste.toLocaleString('es-ES',{minimumFractionDigits:2}) + '</div></div>' +
-        '<div class="sc"><div class="sc-lbl">CATEGORÍA CON MÁS MERMA</div><div class="sc-val" style="font-size:16px;font-weight:700">' + topCat + '</div><div class="sc-sub">€' + topVal.toLocaleString('es-ES',{minimumFractionDigits:2}) + '</div></div>' +
+        '<div class="sc"><div class="sc-lbl" data-tip="Coste total de mermas registradas">COSTE TOTAL MERMAS</div><div class="sc-val" style="color:var(--ora)">' + _fmtEurES(totalCoste, 2) + '</div></div>' +
+        '<div class="sc"><div class="sc-lbl">CATEGORÍA CON MÁS MERMA</div><div class="sc-val" style="font-size:16px;font-weight:700">' + topCat + '</div><div class="sc-sub">' + _fmtEurES(topVal, 2) + '</div></div>' +
         '<div class="sc"><div class="sc-lbl">REGISTROS</div><div class="sc-val">' + data.mermas.length + '</div></div>' +
         '</div>';
       window._fbCriticalAlerts = data.criticos_count || 0;
@@ -14493,7 +14518,7 @@ function _fcBar(label, pct, maxG, color) {
 
 function fmtEurAP(v) {
   if (!v && v !== 0) return '—';
-  return new Intl.NumberFormat('es-ES', {minimumFractionDigits:2, maximumFractionDigits:2}).format(v) + ' €';
+  return _fmtEurES(v, 2);
 }
 
 function estadoBadgeAP(est) {
@@ -14512,7 +14537,7 @@ function estadoBadgeAP(est) {
 
 // ── Provisiones de cierre (Ola A) ─────────────────────────────────────
 function _provEsc(s){ return String(s==null?'':s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;'); }
-function _provFmt(v){ return (Number(v)||0).toLocaleString('es-ES',{minimumFractionDigits:2,maximumFractionDigits:2}) + ' €'; }
+function _provFmt(v){ return _fmtEurES(Number(v)||0, 2); }
 async function loadProvisiones() {
   const body = document.getElementById('prov-body');
   if (!body) return;
@@ -15010,7 +15035,7 @@ async function renderDRR(s) {
 
   const M = s.metricas || {};
   const _num = v => parseFloat(String(v == null ? '' : v).replace(/[^0-9.]/g,'')) || 0;
-  const _eur = n => '€' + Math.round(n).toLocaleString('en-US');
+  const _eur = n => _fmtEurES(n, 0);
 
   // Una tarjeta KPI: MTD grande (el numero del que se habla) y Hoy/Prev/Ppto en
   // una linea compacta debajo. Los cuatro periodos siguen; cambia la jerarquia.
@@ -15665,7 +15690,7 @@ function _mhFilaHotelera(d) {
       '<div style="font-size:9px;color:var(--mut);text-transform:uppercase;letter-spacing:.3px">' + et + '</div>' +
       '<div style="font-size:14px;font-weight:700">' +
         (v === null || v === undefined ? '<span style="color:var(--dim);font-weight:500">N/D</span>'
-                                       : (suf === '%' ? v + '%' : '€' + Math.round(v))) +
+                                       : (suf === '%' ? v + '%' : _fmtEurES(v, 0))) +
       '</div></div>';
   };
   // El GOP lleva su procedencia pegada: si es derivado se dice, y si no hay
@@ -15767,7 +15792,7 @@ async function loadMultiHotel() {
           return '<div><div style="font-size:9px;color:var(--mut);text-transform:uppercase">' + et + '</div>' +
             '<div style="font-size:18px;font-weight:800">' +
             (v === null || v === undefined ? '<span style="color:var(--dim);font-size:14px">N/D</span>'
-                                           : (suf === '%' ? v + '%' : '€' + Math.round(v))) +
+                                           : (suf === '%' ? v + '%' : _fmtEurES(v, 0))) +
             '</div></div>';
         };
         trozos.push(
@@ -16183,7 +16208,7 @@ function calcularFactura() {
   const subHab  = noches * hab * precio;
   const iva     = (subHab + fb) * 0.10;
   const total   = subHab + fb + iva;
-  const fmt = v => '€' + v.toLocaleString('es-ES', {minimumFractionDigits:2});
+  const fmt = v => _fmtEurES(v, 2);
   document.getElementById('ef-sub-hab').textContent = fmt(subHab) + ' (' + noches + ' noche' + (noches!==1?'s':'') + ')';
   document.getElementById('ef-sub-fb').textContent  = fmt(fb);
   document.getElementById('ef-iva').textContent     = fmt(iva);
@@ -16209,7 +16234,7 @@ async function emitirFactura() {
     });
     const d = await resp.json();
     if (d.ok) {
-      msg.style.color='var(--grn)';msg.textContent='✓ Factura '+d.numero+' emitida — €'+total.toLocaleString('es-ES');
+      msg.style.color='var(--grn)';msg.textContent='✓ Factura '+d.numero+' emitida — '+_fmtEurES(total, 2);
       setTimeout(()=>{ cerrarEmitirFactura(); cargarARRealData(); },1500);
     } else {
       msg.style.color='var(--red)';msg.textContent=d.error||'Error emitiendo factura';
@@ -16260,7 +16285,7 @@ async function loadARRealData() {
 }
 // ── Direct bill: bono de agencia vs factura a credito ──
 function _bonoEsc(s){ return String(s==null?'':s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;'); }
-function _bonoEur(v){ return (v==null||isNaN(Number(v))) ? '—' : Number(v).toLocaleString('es-ES',{minimumFractionDigits:2,maximumFractionDigits:2}) + ' €'; }
+function _bonoEur(v){ return (v==null||isNaN(Number(v))) ? '—' : _fmtEurES(Number(v), 2); }
 async function cargarBonosAR(){
   var wrap = document.getElementById('ar-bonos-list');
   var res = document.getElementById('ar-bonos-resumen');
@@ -16311,7 +16336,7 @@ async function cargarBeosAR() {
       wrap.innerHTML = _vacioCard(t('beos.vacio', 'Procesa un contrato de grupo en <b>Procesar Archivos</b> y aquí verás su BEO con el cotejo de la factura.'));
       return;
     }
-    var eur = function(v){ return '€' + (Number(v)||0).toLocaleString('es-ES',{minimumFractionDigits:2}); };
+    var eur = function(v){ return _fmtEurES(Number(v)||0, 2); };
     wrap.innerHTML = beos.map(function(b){
       var c = b.cotejo || {};
       var badge, bg, col;
@@ -16353,7 +16378,7 @@ async function cargarARRealData() {
     // Render stats
     if (df.ok && df.stats) {
       const s = df.stats;
-      const fmt = v => '\u20AC' + (v||0).toLocaleString('es-ES',{minimumFractionDigits:2});
+      const fmt = v => _fmtEurES(v||0, 2);
       _setText('arp-pendiente', fmt(s.pendiente));
       _setText('arp-vencido',   fmt(s.vencido));
       _setText('arp-cobrado',   fmt(s.cobrado_mes));
@@ -16369,7 +16394,7 @@ async function cargarARRealData() {
         agingEl.innerHTML = '<div style="font-size:10px;color:var(--mut);font-weight:600;text-transform:uppercase;letter-spacing:.4px;margin-bottom:6px">Antigüedad de saldo</div>' +
           '<div style="display:flex;height:8px;border-radius:4px;overflow:hidden;gap:2px">' +
           Object.entries(s.aging).filter(([k,v]) => v > 0).map(([k,v]) =>
-            '<div style="flex:' + v + ';background:' + (colors[k]||'var(--mut)') + ';border-radius:3px" title="' + k + ': \u20AC' + v.toLocaleString('es-ES',{minimumFractionDigits:0}) + '"></div>'
+            '<div style="flex:' + v + ';background:' + (colors[k]||'var(--mut)') + ';border-radius:3px" title="' + k + ': ' + _fmtEurES(v, 0) + '"></div>'
           ).join('') + '</div>' +
           '<div style="display:flex;gap:12px;margin-top:5px;flex-wrap:wrap">' +
           Object.entries(s.aging).filter(([k,v]) => v > 0).map(([k,v]) =>
@@ -16392,11 +16417,11 @@ async function cargarARRealData() {
             '<div style="flex:1;min-width:0"><div style="font-weight:600;font-size:13px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">' + c.nombre.split(' ').slice(0,3).join(' ') + '</div>' +
             '<div style="font-size:10px;color:var(--dim);margin-top:2px">' + c.dias_pago + 'd pago · ' + c.facturas_pendientes + ' fact.</div></div>' +
             '<div style="text-align:right;flex-shrink:0;margin-left:8px">' +
-            '<div style="font-size:13px;font-weight:700;color:' + usoColor + '">\u20AC' + (c.saldo_pendiente||0).toLocaleString('es-ES',{minimumFractionDigits:0}) + '</div>' +
+            '<div style="font-size:13px;font-weight:700;color:' + usoColor + '">' + _fmtEurES(c.saldo_pendiente||0, 0) + '</div>' +
             (c.tiene_vencidas ? '<div style="font-size:10px;color:var(--red)">⚠ Vencida</div>' : '') +
             '</div></div>' +
             '<div style="background:var(--s2);border-radius:3px;height:4px;margin-top:8px;overflow:hidden"><div style="height:100%;border-radius:3px;background:' + usoColor + ';width:' + usoPct + '%"></div></div>' +
-            '<div style="font-size:9px;color:var(--dim);margin-top:2px">' + uso + '% crédito usado (límite \u20AC' + (c.limite_credito||0).toLocaleString('es-ES') + ')</div>' +
+            '<div style="font-size:9px;color:var(--dim);margin-top:2px">' + uso + '% crédito usado (límite ' + _fmtEurES(c.limite_credito||0, 0) + ')</div>' +
             '</div>';
         }).join('');
       }
@@ -16447,7 +16472,7 @@ function _renderFacturasAR(facturas, stats) {
         '<div style="font-size:11px;color:var(--mut);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:140px">' + f.cliente.split(' ').slice(0,2).join(' ') + '</div>' +
         (f.aging_bucket && f.aging_bucket !== 'N/A' ? '<div style="font-size:10px;color:' + (f.days_pending > 60 ? 'var(--red)' : 'var(--dim)') + '">' + f.aging_bucket + '</div>' : '') +
       '</td>' +
-      '<td style="text-align:right;padding:8px;font-weight:700">\u20AC' + (f.total||0).toLocaleString('es-ES',{minimumFractionDigits:2}) + '</td>' +
+      '<td style="text-align:right;padding:8px;font-weight:700">' + _fmtEurES(f.total||0, 2) + '</td>' +
       '<td style="text-align:center;padding:8px">' +
         (f.days_pending > 0 ? '<span style="font-size:13px;font-weight:700;color:' + (f.days_pending > 60 ? 'var(--red)' : f.days_pending > 30 ? 'var(--ora)' : 'var(--grn)') + '">' + f.days_pending + 'd</span>' : '<span style="color:var(--dim)">—</span>') +
       '</td>' +

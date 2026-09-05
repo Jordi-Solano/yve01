@@ -56,6 +56,17 @@ def main():
     ok(rm["estado_matching"] == "ANTERIOR_AL_REGISTRO", f"mercancia anterior al primer albaran → {rm['estado_matching']} (sin cambios)")
     ok('INCIDENCIAS_DETALLE' in open(os.path.join(BASE, 'matching_ap_albaran.py'), encoding='utf-8').read() and '_NOMBRE_INC' in src,
        "el cruce dice QUE facturas tienen incidencia y el log las nombra")
+    # el formateador unico del panel, ejecutado de verdad con node sobre el HTML servido
+    cl = D.app.test_client(); cl.post('/api/login', json={'username': 'admin', 'password': 'admin123'})
+    html = cl.get('/').get_data(as_text=True)
+    m1 = re.search(r"function _fmtEurES\(v, dec\) \{.*?\n\}", html, re.S); m2 = re.search(r"function _numES\(v\) \{.*?\n\}", html, re.S)
+    ok(m1 and m2, "el panel sirve _fmtEurES y _numES")
+    if m1 and m2:
+        js = m1.group(0) + "\n" + m2.group(0) + "\nconsole.log(JSON.stringify([_fmtEurES(1175.8), _fmtEurES(12400), _fmtEurES(248.0), _fmtEurES(23410, 0), _numES('12.400,00'), _numES('1,175.80'), _numES('248.0'), _numES('')]));"
+        open('/tmp/_fmt.js', 'w').write(js)
+        out = subprocess.run(['node', '/tmp/_fmt.js'], capture_output=True, text=True).stdout.strip()
+        ok(out == '["1.175,80 €","12.400,00 €","248,00 €","23.410 €",12400,1175.8,248,null]', f"node: {out}")
+    ok(html.count("'€' + ") <= 3, f"sin '€' delante en el panel (quedan {html.count(chr(39)+'€'+chr(39)+' + ')}: solo los compactos '€12K' de graficas y multi-hotel)")
     diff = subprocess.run(['git', 'diff', '--name-only', 'HEAD'], capture_output=True, text=True, cwd=BASE).stdout.split()
     ok(not [f for f in diff if f.startswith('oracle_') or f == 'lector_facturas_ap.py'], 'ni oracle_* ni clasificador')
     print()

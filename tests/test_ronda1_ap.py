@@ -103,7 +103,7 @@ def main():
     html = cl.get('/').get_data(as_text=True)
     ok('class="show-mobile" onclick="event.stopPropagation();document.getElementById(\'upload-photo-input\').click()"' in html, "1 · el boton de fotos solo sale en movil")
     ok('accept=".pdf,.xlsm,.xlsx,.xls,.csv,.jpg,.jpeg,.png,.webp,.heic"' in html, "1 · en escritorio las fotos entran por 'Seleccionar archivos'")
-    ok("maximumFractionDigits:2}).format(v) + ' €'" in html and 'maximumFractionDigits:0}).format(v)' not in html, "6 · fmtEurAP con dos decimales")
+    ok("return _fmtEurES(v, 2);" in html and 'maximumFractionDigits:0}).format(v)' not in html, "6 · fmtEurAP con dos decimales (formateador unico)")
     ok('id="card-albaranes"' in html and 'function cargarAlbaranes' in html and 'cargarAlbaranes();' in html, "5 · tarjeta de albaranes en AP")
     a = cl.get('/api/albaranes').get_json() or {}
     ok(a.get('ok') and 'albaranes' in a and 'resumen' in a, f"5 · /api/albaranes responde ({a.get('resumen', {}).get('n')} albaranes)")
