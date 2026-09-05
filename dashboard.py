@@ -13650,7 +13650,9 @@ async function generarDemo() {
     showNotification('🎭 ' + d.hoteles + ' ' + t('demo.hotelesListos', 'hotel(es) con datos de ejemplo listos'), 'success');
     _mhClasicaLoaded = false;
     _initHotelActivo();
-    loadAll(); loadAP(); loadBanco();
+    // todo lo cacheado es de ANTES del demo: se invalida y se repuebla lo que este a la vista
+    try { if (typeof _invalidarPaneles === 'function') _invalidarPaneles(); } catch(e){}
+    loadAll(); loadAP(); _panelCargado.ap = true; loadBanco();
     var tabDestino = d.hoteles > 1 ? 'multi_hotel' : 'ar';
     var tabEl = document.getElementById('tab-' + tabDestino) || document.getElementById('tab-' + tabDestino.replace(/_/g, '-'));
     if (tabEl) switchTab(tabDestino, tabEl);
@@ -13840,6 +13842,11 @@ function switchTab(tab, el) {
 // Cargadores por apartado, en un solo sitio. Antes estaban sueltos dentro de
 // switchTab y se llamaban CADA VEZ que entrabas, repintando el panel entero.
 var _CARGADORES = {
+  // Hallazgo (g): AP no estaba aqui, asi que al entrar en la pestaña tras
+  // generar el demo (o cambiar de hotel) se veia lo cacheado hasta el
+  // siguiente tick de 60 s. Ahora `_invalidarPaneles()` lo repuebla igual que
+  // al resto.
+  ap:          function(){ return loadAP(); },
   fb:          function(){ return loadFBTab(); },
   ar_real:     function(){ return cargarARRealData(); },
   drr:         function(){ return loadDRR(); },
@@ -16244,8 +16251,9 @@ async function loadBanco() {
   }
 }
 
-// Cargar datos AP e iniciar
-loadAP();
+// Cargar datos AP e iniciar (y marcarlo cargado: la primera pulsacion en la
+// pestaña no tiene que volver a pedirlo)
+loadAP(); _panelCargado.ap = true;
 setInterval(loadAP, 60000);
 loadDRR();
 loadNotif();
