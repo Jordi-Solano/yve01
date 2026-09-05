@@ -300,6 +300,8 @@ function badgeEstado(estado, estadoDi) {
     'CORRECTO':   ['badge-verde',   '✓ Comision OK'],
     'DISCREPANCIA':['badge-rojo',   '⚠ Discrepancia'],
     'OTA_DESCONOCIDA':['badge-gris','? OTA desconocida'],
+    'SIN_TARIFA_PACTADA':['badge-gris','? Sin tarifa pactada'],
+    'SIN_TARIFA_HOTEL':['badge-gris','? Sin tarifa del hotel'],
     'SIN_PORCENTAJE':['badge-gris', '? Sin porcentaje'],
   };
   const [cls, lbl] = map[estado] || ['badge-gris', estado];

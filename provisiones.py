@@ -232,7 +232,7 @@ def provision_comisiones(mes=None, hotel=None, reportes_dir=None, datos_dir=None
             pct_pact = _num(r.get("porcentaje_pactado"))
             fact = _num(r.get("importe_comision_factura"))
             estado = _txt(r.get("estado")).upper()
-            if bruto > 0 and pct_pact > 0 and estado not in ("OTA_DESCONOCIDA", "SIN_TARIFA_HOTEL"):
+            if bruto > 0 and pct_pact > 0 and estado not in ("OTA_DESCONOCIDA", "SIN_TARIFA_HOTEL", "SIN_TARIFA_PACTADA"):
                 importe, base = round(bruto * pct_pact / 100, 2), "pactado"
             else:
                 importe, base = round(fact, 2), "facturado"

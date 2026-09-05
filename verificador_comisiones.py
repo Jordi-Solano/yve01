@@ -85,7 +85,11 @@ def buscar_tarifa(comisiones_df, ota_norm, hotel_norm):
     """
     de_la_ota = comisiones_df[comisiones_df["OTA_norm"] == ota_norm]
     if de_la_ota.empty:
-        return None, "OTA_DESCONOCIDA"
+        # La OTA SI se ha reconocido en la factura (Booking, Expedia...) pero no
+        # hay contrato subido para ella: no es "OTA desconocida", es "sin
+        # tarifa pactada" (decision de Jordi, ronda de pruebas fase 7). Solo
+        # cuando ni siquiera hay nombre de OTA es desconocida.
+        return None, ("SIN_TARIFA_PACTADA" if ota_norm else "OTA_DESCONOCIDA")
     if hotel_norm:
         propia = de_la_ota[de_la_ota["Hotel_norm"] == hotel_norm]
         if not propia.empty:
@@ -138,7 +142,7 @@ def verificar_factura(fila, comisiones_df):
     tarifa_aplicada = NF
 
     if ota_norm == "" or tarifa is None:
-        estado = origen if origen == "SIN_TARIFA_HOTEL" else "OTA_DESCONOCIDA"
+        estado = origen if origen in ("SIN_TARIFA_HOTEL", "SIN_TARIFA_PACTADA") else "OTA_DESCONOCIDA"
     else:
         comision_pactada = float(tarifa["Porcentaje_Comision"])
         mercado = tarifa["Mercado"]
@@ -212,7 +216,7 @@ def aplicar_formato_excel(ws, df):
     for row_idx, row in enumerate(ws.iter_rows(min_row=2), 2):
         estado = ws.cell(row=row_idx, column=col_estado).value
         fill = {"CORRECTO": VERDE, "DISCREPANCIA": ROJO, "OTA_DESCONOCIDA": AMARILLO, "SIN_PORCENTAJE": AMARILLO,
-                "SIN_TARIFA_HOTEL": AMARILLO}.get(estado)
+                "SIN_TARIFA_HOTEL": AMARILLO, "SIN_TARIFA_PACTADA": AMARILLO}.get(estado)
         if fill:
             for cell in row:
                 cell.fill = fill
@@ -250,7 +254,7 @@ def main():
     resultados = []
     for _, fila in df_facturas.iterrows():
         resultado = verificar_factura(fila, df_comisiones)
-        icono = {"CORRECTO":"v","DISCREPANCIA":"X","OTA_DESCONOCIDA":"?","SIN_PORCENTAJE":"~"}.get(resultado["estado"],".")
+        icono = {"CORRECTO":"v","DISCREPANCIA":"X","OTA_DESCONOCIDA":"?","SIN_PORCENTAJE":"~","SIN_TARIFA_PACTADA":"~","SIN_TARIFA_HOTEL":"~"}.get(resultado["estado"],".")
         disc_str = f"  ({resultado['discrepancia_euros']} EUR)" if resultado["estado"]=="DISCREPANCIA" and resultado["discrepancia_euros"]!=NF else ""
         print(f"  [{icono}] {resultado['archivo']} -> {resultado['estado']}{disc_str}")
         resultados.append(resultado)

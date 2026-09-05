@@ -500,7 +500,7 @@ def calcular_stats(df):
     # Los dos estados que NO son ni correcto ni reclamable, y que antes no se
     # contaban en ningun sitio: una factura asi desaparecia del resumen.
     cobro_debajo  = int((estado_col == "COBRO_POR_DEBAJO").sum())
-    sin_tarifa    = int((estado_col.isin(["SIN_TARIFA_HOTEL", "OTA_DESCONOCIDA"])).sum())
+    sin_tarifa    = int((estado_col.isin(["SIN_TARIFA_HOTEL", "SIN_TARIFA_PACTADA", "OTA_DESCONOCIDA"])).sum())
 
     if "discrepancia_euros" in df.columns:
         # SIN abs(). El valor absoluto es justo como se perdia el signo: una
@@ -7180,6 +7180,7 @@ function bEstado(e) {
     // ('SIN_TARIFA_HOTEL') o se confundia con una discrepancia reclamable.
     COBRO_POR_DEBAJO: ['b-unk', '↓ Cobrado por debajo'],
     SIN_TARIFA_HOTEL: ['b-unk', '? Sin tarifa del hotel'],
+    SIN_TARIFA_PACTADA: ['b-unk', '? Sin tarifa pactada'],
   };
   const [c, l] = m[e] || ['b-na', e || '—'];
   return '<span class="badge ' + c + '">' + l + '</span>';
@@ -7527,7 +7528,7 @@ function renderActivity(rows) {
     // Las dos que antes no se contaban en ninguna linea: una factura sin
     // tarifa del hotel, o cobrada por debajo, no salia en el resumen.
     { dot:'o', n: c.COBRO_POR_DEBAJO     || 0, txt: 'cobradas por debajo de lo pactado', key:'res.porDebajo' },
-    { dot:'m', n: (c.SIN_TARIFA_HOTEL||0) + (c.OTA_DESCONOCIDA||0), txt: 'sin tarifa pactada con la que comparar', key:'res.sinTarifa' },
+    { dot:'m', n: (c.SIN_TARIFA_HOTEL||0) + (c.SIN_TARIFA_PACTADA||0), txt: 'sin tarifa pactada con la que comparar', key:'res.sinTarifa' },
     { dot:'o', n: d.FALTA_CERTIFICADO_DI || 0, txt: 'sin certificado DI',            key:'res.sinDI' },
     { dot:'b', n: d.CERTIFICADO_OK       || 0, txt: 'con certificado DI OK',         key:'res.conDI' },
     { dot:'m', n: d.OTA_DESCONOCIDA      || 0, txt: 'OTA no reconocida',             key:'res.noReconocida' },
