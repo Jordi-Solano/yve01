@@ -36,8 +36,23 @@ def api_exportar(tipo):
             import almacen_datos as _alm
             from io import BytesIO
             _df_bk, _info_bk = _alm.movimientos_banco(reportes_dir=_t_rdir())
+            # Mismo filtro que la pestaña Banco (config grupo / por hotel): antes
+            # el Excel mandaba los movimientos de TODOS los hoteles con un hotel
+            # elegido (cajon 28), y sin datos devolvia un JSON de error que el
+            # navegador "descargaba" como fichero.
+            try:
+                import config_banco as _cfgb, censo_hoteles as _censo
+                if _df_bk is not None and not _df_bk.empty and _cfgb.modo() == "por_hotel" and _censo.activo():
+                    if "hotel_id" in _df_bk.columns:
+                        _h = _df_bk["hotel_id"].fillna("").astype(str).str.strip()
+                        _df_bk = _df_bk[_h == _censo.activo()]
+                    else:
+                        _df_bk = _df_bk.iloc[0:0]
+            except Exception:
+                pass
+            import pandas as _pdb
             if _df_bk is None or _df_bk.empty:
-                return jsonify({'error': 'No hay datos bancarios'}), 404
+                _df_bk = _pdb.DataFrame([{"fecha": "", "concepto": "Sin movimientos del extracto (sube el extracto en la pestaña Banco)", "importe": ""}])
             _buf = BytesIO()
             _df_bk.to_excel(_buf, index=False)
             _buf.seek(0)
