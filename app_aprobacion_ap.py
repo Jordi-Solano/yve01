@@ -324,6 +324,8 @@ def facturas_a_lista(df):
             "hotel":             _nombre_hotel(r.get("hotel_id")),
             "duplicados":        _n_dup(r.get("duplicados")),
             "duplicado_de":      safe_str(r.get("duplicado_de")),
+            "importes_cuadran":  safe_str(r.get("importes_cuadran")),
+            "aviso_importes":    safe_str(r.get("aviso_importes")),
             "accion":            apro_map.get(_clave, ""),
             # doble firma: cuantas lleva y quien puso la primera
             "doble_firma":       _importe(r.get("total_factura")) > umbral,
@@ -954,6 +956,7 @@ async function loadData() {
       alertHtml +
       (r.accion && r.accion!=='FIRMA_1' ? '<div class="estado-row"><span class="badge '+(r.accion==='APROBADA'?'b-apr':'b-rec')+'">'+(r.accion==='APROBADA'?'✓ ':'✗ ')+r.accion+'</span></div>' : '') +
       (r.doble_firma ? '<div class="estado-row"><span class="badge b-firma">'+(r.firmas===1 ? '✍ 1/2 firmas · firmó '+txt(r.firma1_por)+' · falta otra persona' : '🔒 Importe alto: necesita dos firmas')+'</span></div>' : '') +
+      (r.importes_cuadran === 'NO' ? '<div class="alerta-box warn">⚠ Los importes no cuadran: '+txt(r.aviso_importes)+'. Comprueba la factura antes de aprobar.</div>' : '') +
       (r.duplicados > 1 ? '<div class="alerta-box warn">⚠ Hay '+r.duplicados+' documentos con este número ('+txt(r.duplicado_de)+'). No se puede aprobar ni rechazar hasta elegir cuál vale, arriba en "Duplicados por resolver".</div>' : '') +
       (r.accion!=='APROBADA' && r.accion!=='RECHAZADA' && !(r.duplicados > 1) ? (
         '<div class="sep"></div>' +

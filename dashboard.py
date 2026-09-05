@@ -1405,6 +1405,12 @@ def _guardar_factura_ap(filas):
         _CP.normalizar(_crudas, str(_ddir()))
     except Exception as _e_cp:
         print(f"[cuentas_proveedor] no aplicado: {_e_cp}")
+    # ¿base + IVA = total? Se anota, no se corrige (control_importes).
+    try:
+        import control_importes as _CI
+        _CI.anotar(_crudas)
+    except Exception as _e_ci:
+        print(f"[control_importes] no aplicado: {_e_ci}")
     # las claves internas (_facturas, _skip, _lineas...) no son columnas de la
     # factura: se quitan de la hoja plana. `_crudas` las conserva porque las
     # lineas de la Fase 3c viajan justamente en una de ellas.
@@ -1650,17 +1656,21 @@ def _resumen_factura_ap(filas):
         return float(v) if isinstance(v, (int, float)) else 0.0
     if not filas:
         return 'sin datos aprovechables'
+    _mal = [f for f in filas if str(f.get('importes_cuadran') or '') == 'NO']
+    _aviso = ''
+    if _mal:
+        _aviso = ' ⚠ ' + '; '.join(f"{f.get('numero_factura') or f.get('nombre_proveedor') or '?'}: {f.get('aviso_importes')}" for f in _mal[:3])
     if len(filas) == 1:
         prov = str(filas[0].get('nombre_proveedor', '') or '')
         v = filas[0].get('total_factura')
-        return f'{prov} — {_eur_es(v)}' if isinstance(v, (int, float)) else prov
+        return (f'{prov} — {_eur_es(v)}' if isinstance(v, (int, float)) else prov) + _aviso
     provs = []
     for f in filas:
         p = str(f.get('nombre_proveedor') or '').strip()
         if p and p != 'NO_ENCONTRADO' and p not in provs:
             provs.append(p)
     quien = provs[0] if len(provs) == 1 else f'{len(provs)} proveedores'
-    return f'{len(filas)} facturas · {quien} — {_eur_es(sum(_importe(f) for f in filas))}'
+    return f'{len(filas)} facturas · {quien} — {_eur_es(sum(_importe(f) for f in filas))}' + _aviso
 
 
 def _hoja_a_texto(fpath, max_filas=200, max_chars=8000):
@@ -4064,6 +4074,8 @@ def df_ap_a_lista(df):
             "detalle_alerta":    safe_str(r.get("detalle_alerta")),
             "duplicados":        int(pd.to_numeric(r.get("duplicados"), errors="coerce") or 0) if r.get("duplicados") is not None else 0,
             "duplicado_de":      safe_str(r.get("duplicado_de")),
+            "importes_cuadran":  safe_str(r.get("importes_cuadran")),
+            "aviso_importes":    safe_str(r.get("aviso_importes")),
         })
     return rows
 
@@ -14711,11 +14723,14 @@ async function loadAP() {
         alertaHtml = `<div class="disc-box">${f.detalle_alerta}</div>`;
       }
 
+      const impHtml = (f.importes_cuadran === 'NO')
+        ? ` <span class="ap-badge disc" title="${(f.aviso_importes||'').replace(/"/g,'&quot;')}" style="cursor:help">⚠ base + IVA ≠ total</span>`
+        : '';
       const dupHtml = (f.duplicados > 1)
         ? ` <span class="ap-badge disc" title="${(f.duplicado_de||'').replace(/"/g,'&quot;')}" style="cursor:help">⚠ ${f.duplicados} documentos con este número</span>`
         : '';
       tr.innerHTML = `
-        <td><strong>${f.numero_factura}</strong>${dupHtml}</td>
+        <td><strong>${f.numero_factura}</strong>${dupHtml}${impHtml}</td>
         <td>${f.proveedor}</td>
         <td><span class="ap-badge ${tipoCls}">${f.tipo}</span></td>
         <td>${fmtEurAP(f.total)}</td>
