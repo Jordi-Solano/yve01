@@ -1143,14 +1143,35 @@ _CAB_TIPOS = {
         'excluye': {'saldo', 'concepto', 'stock_actual', 'stock_inicial',
                     'existencias', 'merma', 'habitacion',
                     'numero_po', 'importe_aprobado', 'orden_compra',
-                    'purchase_order', 'num_po', 'n_po'},
+                    'purchase_order', 'num_po', 'n_po',
+                    # un escandallo lleva ingredientes; una hoja de ventas no
+                    'ingrediente'},
     },
     'INVENTARIO': {
         'requiere': [
             {'ingrediente', 'producto', 'articulo', 'material', 'item', 'nombre'},
             {'stock', 'existencias', 'cantidad_actual', 'cantidad_inicial'},
         ],
-        'excluye': {'saldo', 'concepto', 'plato', 'merma', 'habitacion'},
+        # 'recuento': la hoja de recuento del cierre trae `stock_sistema` y
+        # `recuento`; sin esto entraba como inventario y el stock del sistema
+        # pisaba... al stock del sistema, ignorando lo contado (pieza 9).
+        'excluye': {'saldo', 'concepto', 'plato', 'merma', 'habitacion', 'recuento'},
+    },
+    # Pieza 9 (entrada unica): la hoja de recuento y el escandallo entran por
+    # Procesar archivos como todo lo demas. Antes tenian su boton propio.
+    'RECUENTO': {
+        'requiere': [
+            {'ingrediente', 'producto', 'articulo'},
+            {'recuento', 'stock_final'},
+        ],
+        'excluye': {'saldo', 'concepto', 'plato', 'merma', 'receta'},
+    },
+    'RECETAS': {
+        'requiere': [
+            {'receta', 'plato', 'nombre_plato', 'elaboracion', 'nombre', 'id_receta'},
+            {'ingrediente', 'materia_prima'},
+        ],
+        'excluye': {'saldo', 'concepto', 'stock', 'existencias', 'merma', 'recuento'},
     },
     'MERMAS': {
         'requiere': [
@@ -1172,6 +1193,8 @@ _CAB_TIPOS = {
 # nombre -> tipo que PROPONE, en el orden en que se prueban
 _CAB_KEYWORDS = [
     ('BANCO',      ['extracto', 'bank', 'statement', 'movimientos', 'bancario']),
+    ('RECUENTO',   ['recuento', 'conteo', 'count']),
+    ('RECETAS',    ['receta', 'escandallo', 'recipe', 'ficha tecnica', 'ficha_tecnica']),
     ('F&B',        ['pos', 'ventas', 'sales', 'tpv', 'food', 'beverage', 'f&b', 'fnb',
                     'restaurante', 'bar ', 'menu_mix', 'product_mix', 'ticket']),
     ('INVENTARIO', ['inventario', 'inventory', 'stock', 'almacen']),
@@ -1238,7 +1261,8 @@ def _cabeceras_encajan(tipo, cabeceras):
 
 def _destino_capa1(fname, fpath):
     """A donde manda la capa 1: 'DRR', 'BANCO', 'F&B', 'INVENTARIO', 'MERMAS',
-    'ROOMING' o 'IA' (que el clasificador lo decida abriendo el fichero).
+    'RECUENTO', 'RECETAS', 'ROOMING' o 'IA' (que el clasificador lo decida
+    abriendo el fichero).
 
     El DRR es la excepcion y sigue mandando por NOMBRE: el prompt del
     clasificador no tenia tipo DRR y, sobre todo, un DRR de 33 hojas no cabe en
@@ -2281,8 +2305,8 @@ def _enrutar_tipo_doc(reg, fname, fpath=None):
         if fpath:
             _msg, _marca = _procesar_drr(fpath, fname)
         else:
-            _msg = (f'ℹ {fname}: parece un DRR — subelo desde el boton "Subir DRR" '
-                    f'del tab DRR para procesarlo')
+            _msg = (f'ℹ {fname}: parece un DRR — subelo como fichero .xlsm en '
+                    f'Procesar archivos para procesarlo')
             _marca = 'DRR_RECIBIDO'
     else:
         _msg = f'ℹ {fname}: tipo {_tipo_doc} detectado por IA'
@@ -2305,6 +2329,14 @@ def api_procesar_batch_stream():
         archivos = _json.loads(archivos_str)
     except Exception:
         archivos = []
+    # Pieza 9: el mes que el usuario escribio en la lista de subida para los
+    # ficheros que no lo llevan en el nombre (recuento, inventario).
+    try:
+        meses_subida = _json.loads(request.args.get('meses', '{}') or '{}')
+        if not isinstance(meses_subida, dict):
+            meses_subida = {}
+    except Exception:
+        meses_subida = {}
 
     log = _load_proc_log()
     from datetime import datetime as _dt2
@@ -2409,6 +2441,9 @@ def api_procesar_batch_stream():
                     is_inventory= _destino == 'INVENTARIO'
                     is_merma    = _destino == 'MERMAS'
                     is_rooming  = _destino == 'ROOMING'
+                    is_recuento = _destino == 'RECUENTO'
+                    is_recetas  = _destino == 'RECETAS'
+                    _mes_pedido = str(meses_subida.get(fname) or '').strip()[:7]
 
                     if is_drr_file:
                         yield f'data: >> Procesando DRR {fname} (puede tardar)...\n\n'
@@ -2483,7 +2518,7 @@ def api_procesar_batch_stream():
                             import pandas as _pdi
                             _df_i = _pdi.read_csv(fpath) if ext == '.csv' else _pdi.read_excel(fpath)
                             _df_i = _normalize_cols(_df_i, _INV_COL_MAP)
-                            _df_i, _n_i = _guardar_fb_del_hotel(_df_i, 'inventario.xlsx', mes=_mes_de_nombre(fname))
+                            _df_i, _n_i = _guardar_fb_del_hotel(_df_i, 'inventario.xlsx', mes=_mes_pedido or _mes_de_nombre(fname))
                             yield (f'data: ✓ Inventario {fname}: {_n_i} items integrados '
                                    f'· {len(_df_i)} en el hotel\n\n')
                         except Exception:
@@ -2506,6 +2541,47 @@ def api_procesar_batch_stream():
                             _sh5m.copy2(fpath, os.path.join(_ddir(), 'mermas_upload' + ext))
                             yield f'data: ✓ Mermas {fname}: archivo cargado (revisar columnas)\n\n'
                         _mark(fname, 'INV_OK')
+                        continue
+                    if is_recuento:
+                        # Pieza 9: la hoja de recuento del cierre entra por aqui.
+                        # El mes es obligatorio: sale del nombre del fichero o
+                        # del campo que la lista de subida pide cuando falta.
+                        _mes_rec = _mes_pedido or _mes_de_nombre(fname)
+                        if not _mes_rec:
+                            yield (f'data: ✗ Recuento {fname}: falta el mes. Escribelo en la '
+                                   f'lista de archivos (o ponlo en el nombre, p.ej. recuento_2026-08.xlsx) '
+                                   f'y vuelve a procesar\n\n')
+                            _mark(fname, 'ERR:SIN_MES')
+                            continue
+                        try:
+                            from tab_cierre import importar_recuento as _imp_rec
+                            _r = _imp_rec(fpath, _mes_rec, censo_hoteles.activo() or None)
+                            yield (f'data: ✓ Recuento {fname}: {_r["contados"]} articulos contados '
+                                   f'({_r["nuevos"]} nuevos) para {_mes_rec}\n\n')
+                            _mark(fname, 'INV_OK')
+                        except Exception as _er:
+                            yield f'data: ✗ Recuento {fname}: {str(_er)[:120]}\n\n'
+                            _mark(fname, f'ERR:{str(_er)[:30]}')
+                        continue
+                    if is_recetas:
+                        # Pieza 9: el escandallo entra por aqui (misma lectura que
+                        # tenia el boton "Importar recetario" de F&B).
+                        try:
+                            import pandas as _pdr
+                            _df_r = _pdr.read_csv(fpath, sep=None, engine='python') if _ext_lower == '.csv' else _pdr.read_excel(fpath)
+                            _r = _importar_recetas_df(_df_r)
+                            if not _r.get('ok'):
+                                yield f'data: ✗ Recetas {fname}: {_r.get("error", "")[:140]}\n\n'
+                                _mark(fname, 'ERR:RECETAS')
+                                continue
+                            _av = ' · '.join(_r.get('avisos') or [])
+                            yield (f'data: {"⚠" if _av else "✓"} Recetas {fname}: {_r["recetas_importadas"]} recetas '
+                                   f'({_r["ingredientes"]} ingredientes) · total {_r["total_recetas"]}'
+                                   + (f' · {_av}' if _av else '') + '\n\n')
+                            _mark(fname, 'FB_OK')
+                        except Exception as _er:
+                            yield f'data: ✗ Recetas {fname}: {str(_er)[:120]}\n\n'
+                            _mark(fname, f'ERR:{str(_er)[:30]}')
                         continue
                     if is_rooming:
                         # Este camino NO extrae nada: solo reconoce el nombre del
@@ -5284,9 +5360,7 @@ def api_upload_recetas():
     no vengan en el fichero se conservan. Asi se puede subir un fichero con dos
     platos para arreglarlos sin perder la carta entera.
     """
-    import pandas as pd, json as _json
-    from tab_fb_dashboard import (_clave_plato, _invalidate as _fb_inv,
-                                  _num_fb, _txt_ing)
+    import pandas as pd
 
     f = request.files.get("file")
     if not f:
@@ -5301,6 +5375,16 @@ def api_upload_recetas():
             return jsonify({"ok": False, "error": "Formato no soportado. Usa .xlsx o .csv"}), 400
     except Exception as e:
         return jsonify({"ok": False, "error": f"No se ha podido leer el archivo: {str(e)[:120]}"}), 400
+    r = _importar_recetas_df(df)
+    return jsonify(r), (200 if r.get('ok') else 400)
+
+
+def _importar_recetas_df(df):
+    """Lo que hacia /fb/api/upload_recetas, ya leido el fichero. Lo usa esa
+    ruta y el lote de Procesar archivos (pieza 9). Devuelve el mismo dict."""
+    import pandas as pd, json as _json
+    from tab_fb_dashboard import (_clave_plato, _invalidate as _fb_inv,
+                                  _num_fb, _txt_ing)
 
     df = df.rename(columns={c: (_rec_norm_cab(c) or c) for c in df.columns})
     filas = df.to_dict('records')
@@ -5333,10 +5417,10 @@ def api_upload_recetas():
     else:
         # ── formato del hotelero: una fila por ingrediente ─────────────────
         if 'ingrediente' not in df.columns or 'nombre' not in df.columns:
-            return jsonify({"ok": False, "error":
+            return {"ok": False, "error":
                 "No encuentro las columnas mínimas. El archivo debe tener una fila por "
                 "ingrediente con al menos: receta (o plato) e ingrediente. Y a poder ser "
-                "cantidad, unidad, coste y precio de venta."}), 400
+                "cantidad, unidad, coste y precio de venta."}
         grupos, orden = {}, []
         for r in filas:
             nombre = str(r.get('nombre') or '').strip()
@@ -5391,8 +5475,8 @@ def api_upload_recetas():
         formato = 'una fila por ingrediente'
 
     if not nuevas:
-        return jsonify({"ok": False, "error":
-            "No se ha podido leer ninguna receta del archivo. " + (avisos[0] if avisos else "")}), 400
+        return {"ok": False, "error":
+            "No se ha podido leer ninguna receta del archivo. " + (avisos[0] if avisos else "")}
 
     # ── avisar de lo que costara de menos ─────────────────────────────────
     # Un ingrediente que no esta en el inventario Y no trae coste propio vale 0:
@@ -5443,11 +5527,11 @@ def api_upload_recetas():
     except Exception:
         pass
 
-    return jsonify({"ok": True, "formato": formato,
-                    "recetas_importadas": len(nuevas),
-                    "ingredientes": n_ing,
-                    "total_recetas": len(df_fin),
-                    "avisos": avisos})
+    return {"ok": True, "formato": formato,
+            "recetas_importadas": len(nuevas),
+            "ingredientes": n_ing,
+            "total_recetas": len(df_fin),
+            "avisos": avisos}
 
 
 @app.route("/api/cache/clear", methods=["POST"])
@@ -6636,8 +6720,6 @@ svg.yvi{width:1em;height:1em;vertical-align:-0.125em;flex-shrink:0;display:inlin
     <!-- Acciones (sin titulo ni chips: decision de diseno). El estado va oculto,
          que lo leen la subida y el onboarding; el OOB va dentro del panel. -->
     <div class="rd-actions">
-      <label for="drr-file-input" class="btn-run" style="cursor:pointer;font-size:13px;margin:0" data-i18n="btn.uploadDrr">📂 Subir DRR</label>
-      <input type="file" id="drr-file-input" accept=".xlsm,.xlsx" style="display:none" onchange="uploadDRR(this)">
       <a href="/api/exportar/drr" class="btn-ref" style="text-decoration:none;font-size:12px" data-i18n="btn.downloadExcel">⬇️ Excel</a>
       <a href="/api/exportar/drr/pdf" class="btn-ref" style="text-decoration:none;font-size:12px">📄 PDF</a>
     </div>
@@ -6651,11 +6733,11 @@ svg.yvi{width:1em;height:1em;vertical-align:-0.125em;flex-shrink:0;display:inlin
       style="border:2px dashed var(--s3);border-radius:12px;padding:32px;cursor:pointer;transition:background-color .2s,border-color .2s,color .2s,box-shadow .2s,transform .2s,opacity .2s"
       ondragover="event.preventDefault();this.style.borderColor='var(--acc)';this.style.background='rgba(var(--acc-r,59),var(--acc-g,130),var(--acc-b,246),.05)'"
       ondragleave="this.style.borderColor='var(--s3)';this.style.background=''"
-      ondrop="event.preventDefault();this.style.borderColor='var(--s3)';this.style.background='';uploadDRR({files:event.dataTransfer.files})"
-      onclick="document.getElementById('drr-file-input').click()">
+      ondrop="event.preventDefault();this.style.borderColor='var(--s3)';this.style.background='';_recibirEnProcesar(event.dataTransfer.files)"
+      onclick="openUploadModal()">
     <div class="ei">📊</div>
-    <p style="margin-bottom:6px">Arrastra tu DRR aquí o</p>
-    <p style="font-size:12px;color:var(--acc2);font-weight:600" data-i18n="drr.hazClic">haz clic para seleccionar (.xlsm/.xlsx)</p>
+    <p style="margin-bottom:6px" data-i18n="drr.arrastra">Arrastra tu DRR aquí o</p>
+    <p style="font-size:12px;color:var(--acc2);font-weight:600" data-i18n="drr.hazClic">súbelo con ⚡ Procesar archivos (.xlsm/.xlsx)</p>
   </div>
       </div>
     </div>
@@ -6796,7 +6878,7 @@ svg.yvi{width:1em;height:1em;vertical-align:-0.125em;flex-shrink:0;display:inlin
         <div class="card-title" style="margin:0" data-i18n="inv.titulo">Inventarios de cierre</div>
         <div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap">
           <a id="inv-hoja" href="/api/inventarios/hoja_recuento" class="btn-ref" style="text-decoration:none;font-size:12px" data-i18n="inv.hoja">📋 Hoja de recuento</a>
-          <label for="inv-file" class="btn-ref" style="cursor:pointer;font-size:12px;margin:0" data-i18n="inv.subir">📤 Subir recuento</label><input type="file" id="inv-file" accept=".xlsx,.xls,.csv" style="display:none" onchange="_invSubir(this)">
+          <button class="btn-ref" style="font-size:12px;margin:0" onclick="openUploadModal()" data-i18n="inv.subir">📤 Subir recuento (Procesar archivos)</button>
           <a id="inv-excel" href="/api/exportar/inventarios" class="btn-ref" style="text-decoration:none;font-size:12px" data-i18n="inv.descargar">⬇️ Excel</a>
         </div>
       </div>
@@ -6860,14 +6942,10 @@ svg.yvi{width:1em;height:1em;vertical-align:-0.125em;flex-shrink:0;display:inlin
       </div>
       <div class="fb-acciones" style="display:flex;gap:8px;align-items:center;flex-wrap:wrap">
         <label style="font-size:12px;color:var(--mut);display:flex;align-items:center;gap:6px"><span data-i18n="fb.mesLbl">Mes</span><input type="month" id="fb-mes" style="font-size:12px;padding:4px 6px;border-radius:6px;border:1px solid var(--s2);background:var(--s1);color:var(--tx)" onchange="fbCambiarMes()" title="Vacío = todo el periodo"></label>
-        <label for="fb-upload-input" class="btn-ref" style="cursor:pointer;font-size:12px" data-i18n="btn.importarPos">📤 Importar ventas POS</label>
-        <input type="file" id="fb-upload-input" accept=".xlsx,.xls,.csv" style="display:none" onchange="fbUploadPOS(this)">
-        <label for="fb-rec-input" class="btn-ref" style="cursor:pointer;font-size:12px" data-i18n="btn.importarRecetario">📋 Importar recetario</label>
-        <input type="file" id="fb-rec-input" accept=".xlsx,.xls,.csv" style="display:none" onchange="fbUploadRecetas(this)">
+        <button class="btn-ref" style="font-size:12px" onclick="openUploadModal()" data-i18n="btn.importarFB">📤 Subir ventas, inventario, mermas o recetas</button>
         <a href="/api/exportar/fb/pdf" class="btn-ref" style="text-decoration:none;font-size:12px">📄 PDF</a>
       </div>
     </div>
-    <div id="fb-upload-msg" style="font-size:12px;margin-bottom:12px;min-height:16px"></div>
     <div id="fb-resumen" class="lite-visible"><div class="empty"><p>Cargando...</p></div></div>
     <div id="fb-inventario" style="display:none"></div>
     <div id="fb-mermas-panel" style="display:none"></div>
@@ -12266,6 +12344,35 @@ function _readDir(dirEntry, files, done) {
   });
 }
 
+// Pieza 9: el mes que el usuario escribe en la lista para los ficheros que
+// no lo llevan en el nombre. Viaja al lote como ?meses={nombre: 'YYYY-MM'}.
+var _mesesSubida = {};
+var _MESES_NOMBRE = /\b(enero|febrero|marzo|abril|mayo|junio|julio|agosto|septiembre|setiembre|octubre|noviembre|diciembre|gener|febrer|mar[cç]|abril|maig|juny|juliol|agost|setembre|octubre|novembre|desembre|january|february|march|april|may|june|july|august|september|october|november|december)\b/i;
+function _nombreLlevaMes(nombre) {
+  var s = String(nombre || '').replace(/\.[^.]+$/, '').toLowerCase();
+  if (/(20\d\d)[-_/ .]?(0[1-9]|1[0-2])(?!\d)/.test(s)) return true;
+  if (/(?:^|\D)(0[1-9]|1[0-2])[-_/ .](20\d\d)/.test(s)) return true;
+  return _MESES_NOMBRE.test(s.replace(/[_.\-/]+/g, ' ')) && /\b20\d\d\b/.test(s);
+}
+function _pideMes(f) {
+  var tipo = _detectType(f.name);
+  if (tipo !== 'Recuento' && tipo !== 'Inventario') return '';
+  return _nombreLlevaMes(f.name) ? '' : tipo;
+}
+function _setMesSubida(idx, v) {
+  var f = _uploadFiles[idx]; if (!f) return;
+  f._mes = (v || '').slice(0, 7);
+  if (f._mes) _mesesSubida[f.name] = f._mes; else delete _mesesSubida[f.name];
+  _renderFileList();
+}
+// Ficheros que caen en una zona de otro apartado (p.ej. la del DRR): van a la
+// lista de Procesar archivos, que es la unica entrada.
+async function _recibirEnProcesar(files) {
+  var lista = Array.from(files || []);
+  await openUploadModal();
+  if (lista.length) handleUploadFiles(lista, null);
+}
+
 function _pareceDocumento(f) {
   return /\.(pdf|xlsm|xlsx|xls|csv|jpe?g|png|webp|heic)$/i.test(f.name || '') ||
          (f.type || '').indexOf('image/') === 0;
@@ -12424,6 +12531,10 @@ function _detectType(fname) {
   if (n.includes('extracto') || n.includes('bank') || n.includes('statement') || n.includes('movimientos')) return 'Banco';
   // F&B / Ventas
   if (n.includes('ventas') || n.includes('sales') || n.includes('pos') || n.includes('tpv') || n.includes('ticket') || n.includes('restaurante')) return 'F&B';
+  // Recuento (antes que inventario: 'recuento_inventario_2026-08' es un recuento)
+  if (n.includes('recuento') || n.includes('conteo')) return 'Recuento';
+  // Recetas / escandallo
+  if (n.includes('receta') || n.includes('escandallo') || n.includes('recipe')) return 'Recetas';
   // Inventario
   if (n.includes('inventario') || n.includes('inventory') || n.includes('stock') || n.includes('almacen')) return 'Inventario';
   // Mermas
@@ -12449,7 +12560,7 @@ function _typeColor(t) {
   if (t === 'Factura' || t.includes('AP')) return '#f59e0b';
   if (t === 'Banco') return '#22c55e';
   if (t === 'Foto') return '#a855f7';
-  if (t === 'F&B' || t === 'Inventario' || t === 'Mermas') return '#f97316';
+  if (t === 'F&B' || t === 'Inventario' || t === 'Mermas' || t === 'Recuento' || t === 'Recetas') return '#f97316';
   if (t === 'Rooming') return '#06b6d4';
   if (t === 'BEO' || t === 'TM' || t === 'Contrato') return '#a78bfa';
   if (t === 'Omitir') return '#64748b';
@@ -12633,6 +12744,14 @@ function _renderFileList() {
           '<div style="font-size:11px;color:var(--dim)">' + _tam(f.size) + ' · <span style="color:' + _typeColor(_detectType(f.name)) + '">' + _detectType(f.name) + '</span>' +
             (isProc ? ' · <span style="color:var(--ora)">⚠ Ya procesado</span>' : '') +
           '</div>' +
+          ((!isProc && _pideMes(f)) ?
+            '<label onclick="event.stopPropagation()" style="display:flex;align-items:center;gap:6px;margin-top:6px;font-size:11px;color:' + (f._mes ? 'var(--dim)' : 'var(--ora)') + '">' +
+              (_pideMes(f) === 'Recuento'
+                ? t('upload.mesRecuento', 'Mes del recuento (obligatorio)')
+                : t('upload.mesInventario', 'Mes del inventario (opcional)')) +
+              '<input type="month" value="' + (f._mes || '') + '" onchange="_setMesSubida(' + i + ',this.value)" ' +
+                'style="font-size:12px;padding:3px 6px;border-radius:6px;border:1px solid ' + (f._mes ? 'var(--s2)' : 'var(--ora)') + ';background:var(--s1);color:var(--tx)">' +
+            '</label>' : '') +
         '</div>' +
         '<button onclick="event.stopPropagation();_removeUploadFile(' + i + ')" title="' + t('upload.quitar', 'Quitar') + '" ' +
           'style="background:none;border:none;color:var(--dim);cursor:pointer;font-size:20px;line-height:1;' +
@@ -12674,6 +12793,14 @@ function _removeUploadFile(idx) {
 async function uploadAndProcess() {
   var newFiles = _uploadFiles.filter(function(f) { return !_processedNames.has(f.name); });
   if (!newFiles.length) { showNotification(_tSSE('No hay archivos nuevos que procesar'), 'info'); return; }
+  // Pieza 9: un recuento sin mes no se procesa — se pide aqui, no despues.
+  var sinMes = newFiles.filter(function(f) { return _pideMes(f) === 'Recuento' && !f._mes; });
+  if (sinMes.length) {
+    showNotification(t('upload.faltaMes', 'Indica el mes del recuento en la lista: {f}').replace('{f}', sinMes.map(function(f){ return f.name; }).join(', ')), 'error');
+    return;
+  }
+  _mesesSubida = {};
+  _uploadFiles.forEach(function(f) { if (f._mes) _mesesSubida[f.name] = f._mes; });
   // Ultima red antes de subir nada: si el censo cambio en otra pestaña
   // mientras este modal estaba abierto, el boton podria estar encendido.
   await _cargarCensoSubida();
@@ -12903,7 +13030,8 @@ function _runBatchPipeline(fileNames, keepLog, cierreInicial) {
     if (batchIdx > 0) _log('⚡ Lote ' + (batchIdx+1) + '/' + batches.length + '...', 'l-dim');
     var batch = batches[batchIdx];
     var batchFiles = encodeURIComponent(JSON.stringify(batch));
-    var evtSrc = new EventSource('/api/procesar_batch_stream?archivos=' + batchFiles);
+    var evtSrc = new EventSource('/api/procesar_batch_stream?archivos=' + batchFiles +
+      '&meses=' + encodeURIComponent(JSON.stringify(_mesesSubida || {})));
     var timer = setTimeout(function() {
       evtSrc.close();
       _log('⚠ Timeout en lote ' + (batchIdx+1) + ' — continuando', 'l-warn');
@@ -13952,18 +14080,6 @@ async function loadInventarios(){
     body.innerHTML = h;
   } catch(e) { if (body) body.innerHTML = '<div class="empty"><p>' + _cEsc(e.message) + '</p></div>'; }
 }
-async function _invSubir(input){
-  var f = input.files && input.files[0]; if (!f) return;
-  var fd = new FormData(); fd.append('archivo', f);
-  try {
-    var tok = ''; try { tok = (await (await fetch('/api/csrf_token')).json()).token || ''; } catch(e){}
-    var r = await fetch('/api/inventarios/recuento?mes=' + encodeURIComponent((document.getElementById('cierre-mes')||{}).value||''), {method:'POST', body: fd, headers: tok ? {'X-CSRF-Token': tok} : {}});
-    var d = await r.json();
-    if (d && d.ok) { showNotification(t('inv.subido','✓ Recuento subido: {n} artículos').replace('{n}', d.contados), 'success'); loadInventarios(); }
-    else showNotification('✗ ' + ((d&&d.error)||'Error'), 'error');
-  } catch(e){ showNotification('✗ ' + e.message, 'error'); }
-  input.value = '';
-}
 
 // ── Inmovilizado y amortizaciones (Ola B·4) ──────────────────────────────
 var _inmCats = null;
@@ -14197,67 +14313,7 @@ function loadFB() { if (typeof cargarFB === 'function') cargarFB(); else if (typ
 var _fbLoaded = {resumen:false, inventario:false, mermas:false, recetas:false};
 var _fbActive = 'resumen';
 
-async function fbUploadRecetas(input) {
-  const file = input.files[0];
-  if (!file) return;
-  const msg = document.getElementById('fb-upload-msg');
-  msg.style.color = 'var(--mut)';
-  msg.textContent = 'Subiendo ' + file.name + '...';
-  const form = new FormData();
-  form.append('file', file);
-  try {
-    const r = await fetch('/fb/api/upload_recetas', {method: 'POST', body: form,
-                          headers: {'X-CSRF-Token': _csrfToken}});
-    const d = await r.json();
-    if (d.ok) {
-      // Los avisos NO son un fallo, pero tampoco se pueden esconder: dicen que
-      // parte del escandallo va a contar de menos.
-      const hayAvisos = d.avisos && d.avisos.length;
-      msg.style.color = hayAvisos ? 'var(--ora)' : 'var(--grn)';
-      msg.textContent = (hayAvisos ? '⚠ ' : '✓ ') + d.recetas_importadas +
-        ' recetas (' + d.ingredientes + ' ingredientes) — total ' + d.total_recetas +
-        (hayAvisos ? ' · ' + d.avisos.join(' · ') : '');
-      _fbLoaded.recetas = false; _fbLoaded.resumen = false;
-      if (_fbActive === 'recetas') loadFBRecetas();
-      else if (_fbActive === 'resumen') loadFBResumen();
-    } else {
-      msg.style.color = 'var(--red)';
-      msg.textContent = '✗ ' + (d.error || 'Error al importar');
-    }
-  } catch(e) {
-    msg.style.color = 'var(--red)';
-    msg.textContent = '✗ ' + e.message;
-  }
-  input.value = '';
-}
 
-async function fbUploadPOS(input) {
-  const file = input.files[0];
-  if (!file) return;
-  const msg = document.getElementById('fb-upload-msg');
-  msg.style.color = 'var(--mut)';
-  msg.textContent = 'Subiendo ' + file.name + '...';
-  const form = new FormData();
-  form.append('file', file);
-  try {
-    const r = await fetch('/fb/api/upload_ventas', {method: 'POST', body: form});
-    const d = await r.json();
-    if (d.ok) {
-      msg.style.color = 'var(--grn)';
-      msg.textContent = '✓ ' + d.filas_importadas + ' ventas importadas de ' + file.name + ' — Total acumulado: ' + d.total_filas + ' registros';
-      // Reload resumen
-      _fbLoaded.resumen = false;
-      if (_fbActive === 'resumen') loadFBResumen(); else fbSub('resumen', document.querySelector('.fb-sub'));
-    } else {
-      msg.style.color = 'var(--red)';
-      msg.textContent = '✗ ' + (d.error || 'Error al importar');
-    }
-  } catch(e) {
-    msg.style.color = 'var(--red)';
-    msg.textContent = '✗ Error de conexion: ' + e.message;
-  }
-  input.value = '';
-}
 
 // Mes seleccionado en F&B Cost ('' = todo el periodo). Filtra Resumen y Mermas (Jordi, sep 2026).
 function _fbMesQS() {
@@ -14608,7 +14664,7 @@ async function loadFBRecetas() {
     const res = await fetch('/fb/api/recetas');
     const data = await res.json();
     if (!data.ok) { cont.innerHTML = '<div class="empty"><p>Error recetas</p></div>'; return; }
-    if (!data.recetas || !data.recetas.length) { cont.innerHTML = _emptyState('📖', t('fb.recVacioTitulo', 'Sin recetas cargadas'), t('fb.sinRecetas', 'Aún no hay recetario. Súbelo con «Importar recetario»: una fila por ingrediente (receta, ingrediente, cantidad, coste) y Yve calcula el food cost de cada plato.')); return; }
+    if (!data.recetas || !data.recetas.length) { cont.innerHTML = _emptyState('📖', t('fb.recVacioTitulo', 'Sin recetas cargadas'), t('fb.sinRecetas', 'Aún no hay recetario. Súbelo con ⚡ Procesar archivos: una fila por ingrediente (receta, ingrediente, cantidad, coste) y Yve calcula el food cost de cada plato.')); return; }
 
     const avg = data.recetas.length ? data.recetas.reduce((a,r)=>a+r.fc_pct,0)/data.recetas.length : 0;
     let html = '<div class="fb-kpi-grid" style="display:grid;grid-template-columns:repeat(3,1fr);gap:14px;margin-bottom:20px">';
@@ -15148,46 +15204,6 @@ function autoResize(el) {
 // MÓDULO DRR — JavaScript
 // ══════════════════════════════════════════════════════════════
 
-async function uploadDRR(input) {
-  // Accept both file input and DataTransfer (drag-drop)
-  const file = (input.files || input)[0];
-  if (!file) return;
-  
-  // Hide drag-drop zone, show loading
-  const dropZone = document.getElementById('drr-drop-zone');
-  if (dropZone) dropZone.style.display = 'none';
-  const status  = document.getElementById('drr-status');
-  const label   = input.previousElementSibling;
-  const origLbl = label ? label.textContent : '';
-  status.textContent = '⏳ Procesando ' + file.name + '...';
-  if (label) label.textContent = '⏳ Procesando...';
-
-  const form = new FormData();
-  form.append('file', file);
-
-  try {
-    const resp = await fetch('/api/upload_drr', { method: 'POST', body: form });
-    const data = await resp.json();
-    if (data.ok && data.stats) {
-      const diasStr = data.stats.total_dias || '?';
-      const oob     = data.stats.dias_oob   || 0;
-      status.textContent = '✓ ' + file.name + ' · ' + diasStr + ' ' + (t('drr.diasLabel', 'días'));
-      // renderDRR reconstruye el panel entero (grupos, budget, gráfico y el
-      // Estado diario, que ya marca los OOB por día), así que no hace falta el
-      // badge suelto ni recargar el gráfico aparte.
-      await renderDRR(data.stats);
-      if (dropZone) dropZone.style.display = 'none';
-      showNotification('✓ DRR procesado — ' + diasStr + ' días · ' + oob + ' OOB', 'success');
-    } else {
-      status.textContent = '✗ Error: ' + (data.error || 'desconocido');
-      showNotification('✗ Error procesando DRR: ' + (data.error || ''), 'error');
-    }
-  } catch(e) {
-    status.textContent = '✗ Error de conexión al procesar';
-  }
-  input.value = '';
-  if (label) label.textContent = origLbl;
-}
 
 async function renderDRR(s) {
   const body = document.getElementById('drr-body');
@@ -16855,7 +16871,7 @@ function showSetupChecklist() {
   document.getElementById('main-menu').classList.remove('open');
   const items = [
     {label:'Configurar SMTP para notificaciones email', check: () => true, link:'/admin/', action:'Ir a Admin → Conexiones'},
-    {label:'Subir primer DRR (.xlsm)', check: () => document.getElementById('drr-status')?.textContent?.includes('días'), link:null, action:'Tab DRR → Subir DRR'},
+    {label:'Subir primer DRR (.xlsm)', check: () => document.getElementById('drr-status')?.textContent?.includes('días'), link:null, action:'⚡ Procesar archivos → DRR (.xlsm)'},
     {label:'Procesar archivos (⚡)', check: () => (parseInt(document.getElementById('sc-procesadas')?.textContent)||0) > 0, link:null, action:'Tab AR → Procesar Archivos'},
     {label:'Revisar discrepancias AP', check: () => document.getElementById('tab-ap')?.classList?.contains('active'), link:null, action:'Tab AP'},
     {label:'Configurar canal de notificaciones', check: () => localStorage.getItem('notif_configured'), link:null, action:'Tab Notificaciones'},

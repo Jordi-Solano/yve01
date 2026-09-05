@@ -194,18 +194,32 @@ def api_subir_recuento():
     solo cambia el stock final de las filas contadas. Los articulos nuevos
     entran con lo que traiga la hoja.
     """
-    import pandas as pd
-    import inventarios as INV
     f = request.files.get('archivo') or request.files.get('file')
     if not f:
         return jsonify({'ok': False, 'error': 'Falta el fichero (campo "archivo")'}), 400
+    mes, hotel = _args()
     try:
-        df_c, n, saltadas = INV.leer_recuento(f)
+        r = importar_recuento(f, mes, hotel)
+    except ValueError as e:
+        return jsonify({'ok': False, 'error': str(e)[:200]}), 400
     except Exception as e:
         return jsonify({'ok': False, 'error': str(e)[:200]}), 400
+    return jsonify(dict(r, ok=True))
+
+
+def importar_recuento(fichero, mes, hotel):
+    """Integra una hoja de recuento (ruta o fichero abierto) en inventario.xlsx.
+
+    Lo usa la ruta de arriba y el lote de Procesar archivos (pieza 9, entrada
+    unica). `mes` puede venir vacio: se resuelve al mes de cierre por defecto
+    igual que antes. Lanza ValueError si la hoja no sirve.
+    Devuelve {'contados', 'nuevos', 'saltadas', 'mes'}.
+    """
+    import pandas as pd
+    import inventarios as INV
+    df_c, n, saltadas = INV.leer_recuento(fichero)
     if df_c.empty:
-        return jsonify({'ok': False, 'error': 'La hoja no trae ningun recuento informado', 'saltadas': saltadas}), 400
-    mes, hotel = _args()
+        raise ValueError('La hoja no trae ningun recuento informado')
     actual = _inventario_hotel(hotel)
     por_nombre = {}
     if actual is not None and not actual.empty and 'ingrediente' in actual.columns:
@@ -240,7 +254,7 @@ def api_subir_recuento():
         _audit('INVENTARIO_RECUENTO', f'{n} articulos contados, {nuevos} nuevos', getattr(current_user, 'username', None) or 'sistema')
     except Exception:
         pass
-    return jsonify({'ok': True, 'contados': n, 'nuevos': nuevos, 'saltadas': saltadas})
+    return {'contados': n, 'nuevos': nuevos, 'saltadas': saltadas, 'mes': mes}
 
 
 # ── Inmovilizado y amortizaciones (Ola B · bloque 4) ────────────────────────

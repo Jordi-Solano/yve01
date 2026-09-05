@@ -304,8 +304,7 @@ tr:hover td{background:rgba(255,255,255,.02)}
   </div>
 
   <div class="actions">
-    <label class="btn btn-sec" for="upload-input" style="cursor:pointer">📂 Subir extracto (.xlsx/.csv)</label>
-    <input type="file" id="upload-input" accept=".xlsx,.csv" style="display:none" onchange="uploadFile(this)">
+    <a class="btn btn-sec" href="/" style="text-decoration:none">📂 Subir extracto: Dashboard → ⚡ Procesar archivos</a>
     <button class="btn btn-blue" id="btn-conc" onclick="runConciliacion()">⚡ Ejecutar conciliacion</button>
     <span class="status-msg" id="status-msg"></span>
   </div>
@@ -393,20 +392,6 @@ async function runConciliacion() {
   btn.disabled = false; btn.textContent = '⚡ ' + tt('Ejecutar conciliacion');
 }
 
-async function uploadFile(input) {
-  var file = input.files[0];
-  if (!file) return;
-  var msg = document.getElementById('status-msg');
-  msg.textContent = tt('Subiendo ') + file.name + '...';
-  var form = new FormData();
-  form.append('file', file);
-  try {
-    var r = await fetch('/conciliacion/api/upload', {method:'POST', body:form});
-    var d = await r.json();
-    msg.textContent = d.ok ? tt('Extracto subido. Ejecuta la conciliacion.') : ('Error: ' + d.error);
-  } catch(e) { msg.textContent = tt('Error subiendo archivo'); }
-  input.value = '';
-}
 
 async function asignarManual(clave) {
   var factura = prompt(tt('Numero de factura para asignar a este movimiento:'));
