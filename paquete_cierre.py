@@ -130,8 +130,10 @@ def montar(mes, asientos=None, reconciliacion=None, banco=None, provisiones=None
         alb = provisiones[0] if len(provisiones) > 0 else {}
         com = provisiones[1] if len(provisiones) > 1 else {}
         tot = _r((alb or {}).get("total", 0) + (com or {}).get("total", 0))
-        item("provisiones", "Provisiones (albaran sin factura, comisiones)", "OK" if provisiones else "SIN_DATO",
-             f"{_eur(tot)} · {(alb or {}).get('n', 0)} albaranes · {(com or {}).get('n', 0)} liquidaciones", "")
+        _n_prov = int((alb or {}).get("n", 0) or 0) + int((com or {}).get("n", 0) or 0)
+        # 0 albaranes y 0 liquidaciones no es un OK a cero: es que no hay nada
+        item("provisiones", "Provisiones (albaran sin factura, comisiones)", "OK" if _n_prov else "SIN_DATO",
+             f"{_eur(tot)} · {(alb or {}).get('n', 0)} albaranes · {(com or {}).get('n', 0)} liquidaciones" if _n_prov else "sin albaranes ni liquidaciones pendientes", "")
     else:
         item("provisiones", "Provisiones", "SIN_DATO", "", "")
     if inventarios and inventarios.get("resumen", {}).get("n_articulos"):

@@ -65,6 +65,11 @@ def main():
     ok(not p_vacio["listo"] and p_vacio.get("sin_datos"), f"mes vacio: listo={p_vacio['listo']} sin_datos={p_vacio.get('sin_datos')}")
     ok(est["reconciliacion"]["estado"] == "SIN_DATO", f"reconciliacion sin asientos → {est['reconciliacion']['estado']}")
     ok(est["inventarios"]["estado"] == "SIN_DATO" and "2026-08" in est["inventarios"]["cifra"], f"inventarios → {est['inventarios']['estado']} · {est['inventarios']['cifra']}")
+    ok(est["provisiones"]["estado"] == "SIN_DATO", f"provisiones a cero → {est['provisiones']['estado']} (no un OK con ceros)")
+    p_prov = PQ.montar("2026-08", None, None, None, [{"n": 1, "total": 640.0}, {"n": 0, "total": 0}], None, None, None, None)
+    ok(next(c for c in p_prov["checklist"] if c["clave"] == "provisiones")["estado"] == "OK", "provisiones con un albaran → OK")
+    import fiscal as FI
+    ok(FI._es(1234.5) == "1.234,50" and FI._es(0) == "0,00", f"fiscal en formato español: {FI._es(1234.5)}")
     p_ok = PQ.montar("2026-08", {"n_asientos": 39, "debe": 62261.3, "cuadra": True}, {"ok": True, "resumen": {"CUADRA": 7}, "checks": []}, None, None, ago, None, None, None)
     ok(p_ok["listo"], "con asientos y sin pendientes: listo")
     cifras = " | ".join(c["cifra"] for c in p_ok["checklist"])

@@ -33,6 +33,11 @@ from io import BytesIO
 import pandas as pd
 
 from provisiones import _fecha, _num, _txt, _mes_a_rango
+
+
+def _es(v):
+    """1234.5 -> '1.234,50' (formato español, como el resto del panel)."""
+    return f"{float(v or 0):,.2f}".replace(",", "X").replace(".", ",").replace("X", ".")
 from cierre_mes import IVA_GENERAL, IVA_REDUCIDO, regimen_ota, config_cierre, _r
 
 BASE_DIR = os.path.dirname(os.path.abspath(__file__))
@@ -263,8 +268,8 @@ def calcular(mes, fuentes, cfg=None, cfg_fiscal=None):
                                "n": len(filas349), "nif_propio": cf.get("nif_propio", "")},
         "sii": sii, "avisos": avisos, "nif_pendientes": sorted(nif_pend),
         "estado": estado,
-        "cifra": f"303 {m303['signo'].lower()}: {resultado:,.2f} € · devengado {devengado:,.2f} · deducible {deducible:,.2f}",
-        "detalle": (f"349: {len(filas349)} operadores UE, base {_r(sum(x['base'] for x in filas349)):,.2f} € · "
+        "cifra": f"303 {m303['signo'].lower()}: {_es(resultado)} € · devengado {_es(devengado)} € · deducible {_es(deducible)} €",
+        "detalle": (f"349: {len(filas349)} operadores UE, base {_es(_r(sum(x['base'] for x in filas349)))} € · "
                     f"SII: {len(exp)} expedidas / {len(rec)} recibidas"
                     + (f" · {len(nif_pend)} NIF pendientes" if nif_pend else "")),
     }
@@ -307,7 +312,7 @@ def resumen_para_paquete(mes, asientos=None, reconciliacion=None, hotel=None, **
             abs(sop - res["m303"]["c45_deducible"]) <= 0.011
         if not out["cuadra_con_libro"]:
             out["estado"] = "PENDIENTE"
-            out["detalle"] += f" · NO cuadra con el libro (477 {rep:,.2f} / 472 {sop:,.2f})"
+            out["detalle"] += f" · NO cuadra con el libro (477 {_es(rep)} € / 472 {_es(sop)} €)"
     return out
 
 
