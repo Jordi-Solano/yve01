@@ -16,7 +16,7 @@ _BASE = os.path.dirname(os.path.abspath(__file__))
 
 def sello():
     partes = []
-    ficheros = [os.path.join(_BASE, 'static', 'yve-icons.js')]
+    ficheros = [os.path.join(_BASE, 'static', 'yve-icons.js'), os.path.join(_BASE, 'static', 'yve-guia.css')]
     ficheros += sorted(glob.glob(os.path.join(_BASE, 'static', 'i18n', '*.json')))
     for p in ficheros:
         try:

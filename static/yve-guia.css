@@ -1,0 +1,145 @@
+/* ============================================================
+   Yve.01 — GUIA DE ESTILO (sep 2026). Un solo lenguaje visual.
+   Variante A (Sereno) en PC; variante B (Nitido) en movil, con UN
+   punto de corte: 768 px, el mismo que ya usa la app. Sin mezclas.
+   Badges, colores de significado, iconos y textos son IDENTICOS en
+   las dos: solo cambian radios, tipografia de cifras y la forma de
+   pestañas/botones.
+   Los colores salen de las variables que ya pone Personalizacion
+   (--acc, --acc2, --acc-dark, --acc-r/g/b, --bg) y de yve.css
+   (--s1/--s2/--s3, --tx/--mut/--dim, --grn/--red/--ora/--pur).
+   Todo lo de aqui lleva prefijo g- y se aplica apartado a apartado.
+   ============================================================ */
+:root{
+  --g-line:rgba(255,255,255,.07);
+  --g-r-sm:8px; --g-r-md:12px; --g-r-lg:16px; --g-r-btn:8px;
+  --g-f-head:'Inter',-apple-system,'Segoe UI',Roboto,sans-serif;
+  --g-shadow:0 1px 0 rgba(255,255,255,.03) inset, 0 8px 24px rgba(0,0,0,.25);
+  --g-kpi-bar:3px; --g-kpi-top:0;
+}
+@media(max-width:768px){
+  :root{
+    --g-r-sm:6px; --g-r-md:10px; --g-r-lg:14px; --g-r-btn:999px;
+    --g-f-head:'Space Grotesk','Inter',sans-serif;
+    --g-line:rgba(255,255,255,.09);
+    --g-shadow:0 1px 0 rgba(255,255,255,.05) inset, 0 12px 30px rgba(0,0,0,.35);
+    --g-kpi-bar:0; --g-kpi-top:2px;
+  }
+}
+body.light-mode{--g-line:rgba(15,23,42,.08);--g-shadow:0 1px 2px rgba(15,23,42,.06),0 8px 24px rgba(15,23,42,.06)}
+
+/* ── Tipografia ─────────────────────────────────────── */
+.g-h1{font-family:var(--g-f-head);font-size:20px;font-weight:700;letter-spacing:-.2px;color:var(--tx)}
+.g-sub{font-size:12px;color:var(--dim);margin-top:2px}
+.g-label{font-size:11px;font-weight:700;color:var(--mut);text-transform:uppercase;letter-spacing:.6px}
+.g-small{font-size:12px;color:var(--mut)}
+.g-num{font-variant-numeric:tabular-nums;letter-spacing:-.2px}
+.g-mono{font-family:ui-monospace,SFMono-Regular,Menlo,monospace;font-size:12px;color:var(--mut)}
+
+/* ── Cabecera de apartado ───────────────────────────── */
+.g-head{display:flex;align-items:flex-start;justify-content:space-between;gap:12px;flex-wrap:wrap;margin-bottom:16px}
+.g-head .g-actions{display:flex;gap:8px;align-items:center;flex-wrap:wrap}
+
+/* ── Botones ────────────────────────────────────────── */
+.g-btn{display:inline-flex;align-items:center;justify-content:center;gap:7px;font:600 13px 'Inter',-apple-system,'Segoe UI',Roboto,sans-serif;padding:9px 16px;border-radius:var(--g-r-btn);border:1px solid transparent;cursor:pointer;white-space:nowrap;line-height:1.2;text-decoration:none;color:var(--tx);background:transparent;transition:background-color .15s,border-color .15s,color .15s,box-shadow .15s,transform .12s}
+.g-btn:active{transform:translateY(1px)}
+.g-primary{background:var(--acc);color:#fff;box-shadow:0 4px 14px rgba(var(--acc-r,59),var(--acc-g,130),var(--acc-b,246),.28)}
+.g-primary:hover{background:var(--acc-dark,var(--acc))}
+.g-secondary{border-color:var(--s3);color:var(--tx)}
+.g-secondary:hover{background:var(--s1);border-color:var(--acc)}
+.g-ghost{color:var(--mut)}
+.g-ghost:hover{background:var(--s1);color:var(--tx)}
+.g-danger{color:var(--red);border-color:rgba(239,68,68,.45)}
+.g-danger:hover{background:rgba(239,68,68,.12)}
+.g-btn[disabled],.g-btn.is-disabled{opacity:.42;cursor:not-allowed;box-shadow:none;transform:none}
+.g-btn.g-sm{padding:6px 11px;font-size:12px}
+.g-btn.g-icon{padding:8px;width:36px}
+@media(max-width:768px){.g-primary{background:linear-gradient(180deg,var(--acc2),var(--acc))}.g-btn{min-height:40px}}
+
+/* ── Tarjetas ───────────────────────────────────────── */
+.g-card{background:var(--s1);border:1px solid var(--g-line);border-radius:var(--g-r-lg);padding:24px;box-shadow:var(--g-shadow)}
+.g-card+.g-card,.g-card+.g-grid2,.g-grid2+.g-card{margin-top:24px}
+.g-card-head{display:flex;align-items:center;justify-content:space-between;gap:12px;flex-wrap:wrap;margin-bottom:16px}
+.g-card-title{font-size:11px;font-weight:700;color:var(--mut);text-transform:uppercase;letter-spacing:.6px}
+.g-grid2{display:grid;grid-template-columns:repeat(auto-fit,minmax(300px,1fr));gap:16px}
+@media(max-width:768px){.g-card{padding:16px}.g-grid2{grid-template-columns:1fr}}
+
+/* ── Tiles (KPI) ────────────────────────────────────── */
+.g-tiles{display:grid;grid-template-columns:repeat(auto-fit,minmax(168px,1fr));gap:12px;margin-bottom:24px}
+.g-kpi{background:var(--s1);border:1px solid var(--g-line);border-radius:var(--g-r-md);padding:16px 18px;position:relative;overflow:hidden;box-shadow:var(--g-shadow);min-width:0}
+.g-kpi-lbl{font-size:11px;font-weight:700;color:var(--mut);text-transform:uppercase;letter-spacing:.5px}
+.g-kpi-val{font-family:var(--g-f-head);font-size:26px;font-weight:700;letter-spacing:-.6px;margin:6px 0 2px;font-variant-numeric:tabular-nums;color:var(--tx);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.g-kpi-sub{font-size:12px;color:var(--dim)}
+.g-kpi::before{content:'';position:absolute;left:0;top:0;bottom:0;width:var(--g-kpi-bar);background:var(--k,transparent)}
+@media(max-width:768px){
+  .g-tiles{grid-template-columns:repeat(2,1fr);gap:8px}
+  .g-kpi{padding:12px 12px}.g-kpi-val{font-size:22px}
+  .g-kpi::before{left:0;right:0;top:0;bottom:auto;height:var(--g-kpi-top);width:auto}
+}
+.g-kpi.k-acc{--k:var(--acc)} .g-kpi.k-grn{--k:var(--grn)} .g-kpi.k-red{--k:var(--red)} .g-kpi.k-ora{--k:var(--ora)} .g-kpi.k-pur{--k:var(--pur)}
+.g-kpi.k-acc .g-kpi-val{color:var(--acc2)} .g-kpi.k-grn .g-kpi-val{color:var(--grn)} .g-kpi.k-red .g-kpi-val{color:var(--red)} .g-kpi.k-ora .g-kpi-val{color:var(--ora)} .g-kpi.k-pur .g-kpi-val{color:var(--pur)}
+.g-kpi.is-empty .g-kpi-val{color:var(--dim)}
+.g-kpi .g-kpi-val.skeleton{color:transparent}
+
+/* ── Tablas ─────────────────────────────────────────── */
+.g-tbl-wrap{overflow-x:auto;-webkit-overflow-scrolling:touch;border:1px solid var(--g-line);border-radius:var(--g-r-md);max-width:100%}
+.g-tbl{width:100%;border-collapse:collapse;font-size:13px;min-width:0}
+.g-tbl th{background:var(--s2);color:var(--mut);font-size:10.5px;font-weight:700;text-transform:uppercase;letter-spacing:.5px;padding:10px 14px;text-align:left;white-space:nowrap;border:none}
+.g-tbl td{padding:11px 14px;border-top:1px solid var(--g-line);border-bottom:none;vertical-align:middle;color:var(--tx)}
+.g-tbl tbody tr:hover td{background:rgba(var(--acc-r,59),var(--acc-g,130),var(--acc-b,246),.06)}
+.g-tbl td.num,.g-tbl th.num{text-align:right;font-variant-numeric:tabular-nums}
+.g-tbl td.mono{font-family:ui-monospace,SFMono-Regular,Menlo,monospace;font-size:12px;color:var(--mut)}
+.g-tbl tr.is-selected td{background:rgba(var(--acc-r,59),var(--acc-g,130),var(--acc-b,246),.12)}
+.g-tbl-foot{display:flex;justify-content:space-between;align-items:center;gap:8px;flex-wrap:wrap;padding:8px 2px 0;font-size:12px;color:var(--dim)}
+.g-tbl-sub{background:rgba(127,127,127,.06)}
+.g-tbl-sub .g-tbl{font-size:12px}
+@media(max-width:768px){.g-tbl{font-size:12px}.g-tbl th,.g-tbl td{padding:9px 10px}}
+
+/* ── Badges de estado (IDENTICOS en A y B) ──────────── */
+.g-badge{display:inline-flex;align-items:center;gap:6px;font-size:11px;font-weight:700;padding:3px 10px;border-radius:999px;white-space:nowrap;letter-spacing:.2px;border:1px solid transparent;line-height:1.4;vertical-align:middle}
+.g-badge::before{content:'';width:6px;height:6px;border-radius:50%;background:currentColor;flex:0 0 auto}
+.g-ok{color:var(--grn);background:rgba(34,197,94,.12);border-color:rgba(34,197,94,.25)}
+.g-warn{color:var(--ora);background:rgba(245,158,11,.12);border-color:rgba(245,158,11,.25)}
+.g-err{color:var(--red);background:rgba(239,68,68,.12);border-color:rgba(239,68,68,.25)}
+.g-info{color:var(--acc2);background:rgba(var(--acc-r,59),var(--acc-g,130),var(--acc-b,246),.12);border-color:rgba(var(--acc-r,59),var(--acc-g,130),var(--acc-b,246),.28)}
+.g-pur{color:var(--pur);background:rgba(139,92,246,.12);border-color:rgba(139,92,246,.25)}
+.g-mute{color:var(--mut);background:var(--s2);border-color:var(--g-line)}
+.g-mute::before{background:var(--dim)}
+
+/* ── Inputs ─────────────────────────────────────────── */
+.g-input{background:var(--bg);border:1px solid var(--s3);color:var(--tx);padding:8px 12px;border-radius:var(--g-r-sm);font:400 13px 'Inter',-apple-system,'Segoe UI',Roboto,sans-serif;outline:none;max-width:100%;transition:border-color .15s,box-shadow .15s}
+.g-input:focus{border-color:var(--acc);box-shadow:0 0 0 3px rgba(var(--acc-r,59),var(--acc-g,130),var(--acc-b,246),.2)}
+.g-input::placeholder{color:var(--dim)}
+select.g-input{cursor:pointer;padding-right:28px}
+textarea.g-input{line-height:1.5;resize:vertical;font-family:inherit}
+.g-field{display:flex;flex-direction:column;gap:6px;min-width:0}
+.g-field label{font-size:11.5px;font-weight:600;color:var(--mut)}
+.g-search{position:relative;flex:1 1 180px;min-width:140px}
+.g-search .g-input{width:100%;padding-left:30px}
+.g-search::before{content:'⌕';position:absolute;left:10px;top:6px;font-size:16px;color:var(--dim);pointer-events:none}
+
+/* ── Alertas, vacios, filas de lista ────────────────── */
+.g-alert{display:flex;gap:10px;align-items:flex-start;padding:12px 14px;border-radius:var(--g-r-md);border:1px solid;font-size:13px;line-height:1.5}
+.g-alert.info{color:var(--acc2);border-color:rgba(var(--acc-r,59),var(--acc-g,130),var(--acc-b,246),.3);background:rgba(var(--acc-r,59),var(--acc-g,130),var(--acc-b,246),.08)}
+.g-alert.warn{color:var(--ora);border-color:rgba(245,158,11,.35);background:rgba(245,158,11,.08)}
+.g-alert.err{color:var(--red);border-color:rgba(239,68,68,.35);background:rgba(239,68,68,.08)}
+.g-empty{text-align:center;padding:36px 20px;color:var(--mut);border:1px dashed var(--s3);border-radius:var(--g-r-md);font-size:13px}
+.g-empty b{display:block;color:var(--tx);margin-bottom:4px}
+.g-row{border:1px solid var(--g-line);border-radius:var(--g-r-md);padding:12px 14px;background:var(--bg);display:flex;align-items:center;gap:14px;flex-wrap:wrap}
+.g-row+.g-row{margin-top:8px}
+.g-row .g-who{flex:1;min-width:160px}.g-row .g-who b{display:block;color:var(--tx)}.g-row .g-who span{font-size:12px;color:var(--dim)}
+.g-row.is-off{opacity:.6}
+.g-note{font-size:11.5px;color:var(--dim);margin-top:8px}
+.g-inline-list{display:flex;flex-direction:column;gap:10px}
+body.light-mode .g-row{background:#fff}
+
+/* ── Modal ──────────────────────────────────────────── */
+.g-overlay{position:fixed;inset:0;background:rgba(0,0,0,.6);z-index:9000;display:flex;align-items:center;justify-content:center;padding:16px}
+.g-modal{background:var(--s1);border:1px solid var(--g-line);border-radius:var(--g-r-lg);width:100%;max-width:560px;max-height:calc(100vh - 32px);overflow:auto;padding:24px;box-shadow:0 30px 80px rgba(0,0,0,.5)}
+.g-modal-head{display:flex;align-items:flex-start;justify-content:space-between;gap:12px;margin-bottom:16px}
+.g-modal-title{font-family:var(--g-f-head);font-size:17px;font-weight:700;color:var(--tx)}
+.g-modal-grid{display:grid;grid-template-columns:1fr 1fr;gap:8px}
+.g-modal-field{background:var(--bg);border:1px solid var(--g-line);border-radius:var(--g-r-sm);padding:10px 12px;min-width:0}
+.g-modal-val{font-size:13px;font-weight:600;color:var(--tx);margin-top:4px;overflow-wrap:anywhere}
+.g-modal-foot{display:flex;justify-content:flex-end;gap:10px;margin-top:20px;padding-top:16px;border-top:1px solid var(--g-line)}
+@media(max-width:768px){.g-modal{padding:16px}.g-overlay{padding:8px}}

@@ -5640,6 +5640,7 @@ HTML = r"""<!DOCTYPE html>
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&display=swap" rel="stylesheet">
 <link rel="stylesheet" href="/static/yve.css">
+<link rel="stylesheet" href="/static/yve-guia.css?v=__ASSETS_V__">
 <title>Yve.01 — Dashboard</title>
 <script async src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
 <style>
@@ -6372,6 +6373,8 @@ svg.yvi{width:1em;height:1em;vertical-align:-0.125em;flex-shrink:0;display:inlin
 @keyframes spLetter{from{max-width:0;opacity:0;transform:translateY(6px)}45%{opacity:.6}to{max-width:var(--w);opacity:1;transform:none}}
 @keyframes spFade{from{opacity:0;transform:translateY(10px)}to{opacity:1;transform:none}}
 @media(max-width:480px){#yve-splash .sp-logo,#yve-splash .sp-glow{width:84px;height:84px}#yve-splash .sp-word{font-size:46px}#yve-splash .sp-l.sp-01{font-size:32px}}
+/* Entre 769 y 900 px la barra no cabia y ⚙️ quedaba fuera de pantalla (medido a 794 px). */
+@media(max-width:900px){.nav .pill{display:none}}
 /* ── Arreglos responsive móvil ── */
 @media(max-width:480px){
   .stats,#stats-ap-grid,#ar-real-stats{grid-template-columns:repeat(2,1fr)!important;gap:8px!important}
@@ -6705,74 +6708,76 @@ svg.yvi{width:1em;height:1em;vertical-align:-0.125em;flex-shrink:0;display:inlin
   </div><!-- /panel-ar -->
 
   <!-- PANEL AP -->
-  <div id="panel-ap" class="panel">
-  <div style="display:flex;justify-content:flex-end;gap:12px;margin-bottom:14px"><a href="/aprobaciones-ap/" class="btn-ref" style="text-decoration:none" title="Abrir panel de aprobaciones AP" data-i18n="btn.aprobarAP">📲 Aprobar facturas AP</a>
-        <button class="btn-ref" onclick="aprobarMatchOK()" style="font-size:12px" title="Aprueba automáticamente todas las facturas con 3-way match correcto">✅ Aprobar Match OK</button>
-        <button class="btn-ref" id="btnOracle" onclick="procesarOracle()" style="font-size:12px" title="Genera los asientos de las facturas aprobadas">🔮 Contabilizar en Oracle</button><span id="oracle-modo-chip" style="display:none;font-size:11px;padding:3px 8px;border-radius:999px;background:rgba(245,158,11,.15);color:#f59e0b;border:1px solid rgba(245,158,11,.4);align-self:center"></span>
-        <button class="btn-ref" onclick="filtrarAPPorEstado()" id="btn-filter-ap" style="font-size:12px">🔍 Filtrar</button>
-        <select id="ap-estado-filter" onchange="filtrarAPPorEstado(this.value)" style="background:var(--s1);border:1px solid var(--s2);color:var(--tx);padding:6px 10px;border-radius:8px;font-size:12px;cursor:pointer">
+  <div id="panel-ap" class="panel g-panel">
+    <!-- Guia de estilo (b53): cabecera con titulo + acciones (UN primario), tiles,
+         tabla, y cuatro tarjetas iguales. Los ids son los de siempre: el JS no cambia. -->
+    <div class="g-head">
+      <div><div class="g-h1" data-i18n="tab.ap">📦 AP — Proveedores</div><div class="g-sub" data-i18n="ap.subtitulo">Facturas recibidas, cruce con albarán y PO, aprobación y contabilización.</div></div>
+      <div class="g-actions">
+        <select id="ap-estado-filter" class="g-input" onchange="filtrarAPPorEstado(this.value)">
           <option value="" data-i18n-opt="lbl.todos">Todos</option>
           <option value="PENDIENTE">Pendientes</option>
           <option value="MATCH_3WAY_OK">Match OK</option>
           <option value="DISCREPANCIA_PO">Discrepancias</option>
           <option value="ALERTA_CONSUMO">Alertas</option>
-        </select></div>
-    <div class="stats" id="stats-ap-grid">
-      <div class="sc hl c-blu"><div class="sc-lbl" data-i18n="ap.totalLabel">Total Facturas AP</div><div class="sc-val" id="ap-total" data-tip="Facturas AP registradas este ciclo">—</div><div class="sc-sub" data-i18n="ap.proveedores">proveedores</div></div>
-      <div class="sc"><div class="sc-lbl" data-i18n="ap.importe">Importe Total</div><div class="sc-val" id="ap-importe" data-tip="Importe bruto total de facturas AP" style="font-size:18px;letter-spacing:-.5px">—</div><div class="sc-sub">EUR</div></div>
-      <div class="sc c-grn"><div class="sc-lbl" data-i18n="ap.matchOk">Matches OK</div><div class="sc-val" id="ap-matches" data-tip="Facturas con 3-way match correcto">—</div><div class="sc-sub" data-i18n="ap.fbOtras">F&B + OTRAS</div></div>
-      <div class="sc c-red"><div class="sc-lbl" data-i18n="sc.discrepancias">Discrepancias</div><div class="sc-val" id="ap-disc" data-tip="Facturas con discrepancia vs PO">—</div><div class="sc-sub" data-i18n="ap.vsPo">vs PO</div></div>
-      <div class="sc c-ora"><div class="sc-lbl" data-i18n="ap.sinPO">Sin PO</div><div class="sc-val" id="ap-sinpo">—</div><div class="sc-sub" data-i18n="ap.sinOrden">sin orden compra</div></div>
-      <div class="sc c-pur"><div class="sc-lbl" data-i18n="ap.aprobadas">Aprobadas</div><div class="sc-val" id="ap-aprobadas">—</div><div class="sc-sub" data-i18n="ap.firmadas">firmadas</div></div>
+        </select>
+        <button class="g-btn g-secondary g-sm" onclick="aprobarMatchOK()" title="Aprueba automáticamente todas las facturas con 3-way match correcto" data-i18n="btn.aprobarMatchOk">Aprobar match OK</button>
+        <button class="g-btn g-secondary g-sm" id="btnOracle" onclick="procesarOracle()" title="Genera los asientos de las facturas aprobadas" data-i18n="btn.contabilizarOracle">Contabilizar en Oracle</button>
+        <a href="/aprobaciones-ap/" class="g-btn g-primary g-sm" title="Abrir panel de aprobaciones AP" data-i18n="btn.aprobarAP">📲 Aprobar facturas AP</a>
+      </div>
     </div>
-    <div class="card" style="margin-bottom:22px">
-      <div class="card-title" data-i18n="card.facturasAP">Facturas AP</div>
-      <div class="tbl-wrap">
-        <table>
-          <thead><tr><th>Factura</th><th data-i18n="th.proveedor">Proveedor</th><th data-i18n="th.tipo">Tipo</th><th>Total</th><th data-i18n="th.cuenta">Cuenta</th><th data-i18n="th.matching">Matching</th><th data-i18n="th.aprobacion">Aprobación</th></tr></thead>
-          <tbody id="ap-tbody"><tr><td colspan="7" class="empty"><p>Sin datos AP.</p></td></tr></tbody>
+    <div style="margin:-6px 0 14px"><span id="oracle-modo-chip" class="g-badge g-warn" style="display:none"></span></div>
+    <div class="g-tiles" id="stats-ap-grid">
+      <div class="g-kpi k-acc"><div class="g-kpi-lbl" data-i18n="ap.totalLabel">Total Facturas AP</div><div class="g-kpi-val" id="ap-total" data-tip="Facturas AP registradas este ciclo">—</div><div class="g-kpi-sub" data-i18n="ap.proveedores">proveedores</div></div>
+      <div class="g-kpi"><div class="g-kpi-lbl" data-i18n="ap.importe">Importe Total</div><div class="g-kpi-val g-num" id="ap-importe" data-tip="Importe bruto total de facturas AP">—</div><div class="g-kpi-sub">EUR</div></div>
+      <div class="g-kpi k-grn"><div class="g-kpi-lbl" data-i18n="ap.matchOk">Matches OK</div><div class="g-kpi-val" id="ap-matches" data-tip="Facturas con 3-way match correcto">—</div><div class="g-kpi-sub" data-i18n="ap.fbOtras">F&B + OTRAS</div></div>
+      <div class="g-kpi k-red"><div class="g-kpi-lbl" data-i18n="sc.discrepancias">Discrepancias</div><div class="g-kpi-val" id="ap-disc" data-tip="Facturas con discrepancia vs PO">—</div><div class="g-kpi-sub" data-i18n="ap.vsPo">vs PO</div></div>
+      <div class="g-kpi k-ora"><div class="g-kpi-lbl" data-i18n="ap.sinPO">Sin PO</div><div class="g-kpi-val" id="ap-sinpo">—</div><div class="g-kpi-sub" data-i18n="ap.sinOrden">sin orden compra</div></div>
+      <div class="g-kpi k-pur"><div class="g-kpi-lbl" data-i18n="ap.aprobadas">Aprobadas</div><div class="g-kpi-val" id="ap-aprobadas">—</div><div class="g-kpi-sub" data-i18n="ap.firmadas">firmadas</div></div>
+    </div>
+    <div class="g-card">
+      <div class="g-card-head"><div><div class="g-card-title" data-i18n="card.facturasAP">Facturas AP</div><div class="g-sub" data-i18n="ap.tablaAyuda">Pulsa una fila para ver el detalle.</div></div><span class="g-small" id="ap-count"></span></div>
+      <div class="g-tbl-wrap">
+        <table class="g-tbl">
+          <thead><tr><th>Factura</th><th data-i18n="th.proveedor">Proveedor</th><th data-i18n="th.tipo">Tipo</th><th class="num">Total</th><th data-i18n="th.cuenta">Cuenta</th><th data-i18n="th.matching">Matching</th><th data-i18n="th.aprobacion">Aprobación</th></tr></thead>
+          <tbody id="ap-tbody"><tr><td colspan="7"><div class="g-empty" data-i18n="ap.vacio">Sin datos AP.</div></td></tr></tbody>
         </table>
       </div>
-      <span id="ap-count" style="font-size:.75rem;color:var(--dim);margin-top:8px;display:block"></span>
     </div>
 
-    <!-- Provisiones de cierre (Ola A): solo lectura, sale de lo que ya hay -->
-    <div class="card" id="card-provisiones" style="margin-top:22px">
-      <div style="display:flex;align-items:center;justify-content:space-between;gap:12px;flex-wrap:wrap;margin-bottom:12px">
-        <div class="card-title" style="margin:0" data-i18n="prov.titulo">Provisiones de cierre</div>
-        <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap">
-          <input type="month" id="prov-mes" onchange="loadProvisiones()" style="background:var(--s1);border:1px solid var(--s2);color:var(--tx);padding:6px 10px;border-radius:8px;font-size:12px">
+    <div class="g-grid2" style="margin-top:24px">
+      <!-- Provisiones de cierre (Ola A): solo lectura, sale de lo que ya hay -->
+      <div class="g-card" id="card-provisiones">
+        <div class="g-card-head">
+          <div><div class="g-card-title" data-i18n="prov.titulo">Provisiones de cierre</div><div class="g-sub" data-i18n="prov.sub">Albaranes sin factura y comisiones pendientes.</div></div>
+          <input type="month" id="prov-mes" class="g-input" onchange="loadProvisiones()">
         </div>
+        <div id="prov-body" class="g-small"><div class="g-empty" data-i18n="prov.cargando">Calculando provisiones…</div></div>
       </div>
-      <div id="prov-body" style="font-size:13px;color:var(--mut)"><div class="empty"><p data-i18n="prov.cargando">Calculando provisiones…</p></div></div>
-    </div>
-
-    <!-- Aging AP (Ola A): a quien debemos y desde cuando. Solo lectura. -->
-    <div class="card" id="card-aging-ap" style="margin-top:22px">
-      <div style="display:flex;align-items:center;justify-content:space-between;gap:12px;flex-wrap:wrap;margin-bottom:12px">
-        <div class="card-title" style="margin:0" data-i18n="aging.titulo">Antigüedad de la deuda (aging AP)</div>
-      </div>
-      <div id="aging-tramos" style="display:grid;grid-template-columns:repeat(auto-fit,minmax(110px,1fr));gap:8px;margin-bottom:12px"></div>
-      <div id="aging-body" style="font-size:13px;color:var(--mut)"><div class="empty"><p data-i18n="aging.cargando">Calculando antigüedad…</p></div></div>
-    </div>
-
-    <!-- Reclamar al proveedor (Ola A): factura rectificativa o abono. Nada sale sin "Aprobar y enviar". -->
-    <div class="card" id="card-albaranes" style="margin-top:22px">
-      <div style="display:flex;align-items:center;justify-content:space-between;gap:12px;flex-wrap:wrap;margin-bottom:12px">
-        <div class="card-title" style="margin:0" data-i18n="alb.titulo">Albaranes de entrega</div>
-        <div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap">
-          <span id="alb-resumen" style="font-size:12px;color:var(--mut)"></span>
+      <!-- Aging AP (Ola A): a quien debemos y desde cuando. Solo lectura. -->
+      <div class="g-card" id="card-aging-ap">
+        <div class="g-card-head">
+          <div><div class="g-card-title" data-i18n="aging.titulo">Antigüedad de la deuda (aging AP)</div><div class="g-sub" data-i18n="aging.sub">A quién debemos y desde cuándo.</div></div>
         </div>
+        <div id="aging-tramos" class="g-tiles" style="grid-template-columns:repeat(auto-fit,minmax(110px,1fr));gap:8px;margin-bottom:12px"></div>
+        <div id="aging-body" class="g-small"><div class="g-empty" data-i18n="aging.cargando">Calculando antigüedad…</div></div>
       </div>
-      <div style="font-size:12px;color:var(--mut);margin-bottom:10px" data-i18n="alb.ayuda">Cada entrega con sus líneas y la factura con la que ha cruzado. Pulsa una fila para ver las líneas.</div>
+    </div>
+
+    <div class="g-card" id="card-albaranes">
+      <div class="g-card-head">
+        <div><div class="g-card-title" data-i18n="alb.titulo">Albaranes de entrega</div><div class="g-sub" data-i18n="alb.ayuda">Cada entrega con sus líneas y la factura con la que ha cruzado. Pulsa una fila para ver las líneas.</div></div>
+        <span id="alb-resumen" class="g-small"></span>
+      </div>
       <div id="alb-list"></div>
     </div>
-    <div class="card" id="card-recl-ap" style="margin-top:22px">
-      <div style="display:flex;align-items:center;justify-content:space-between;gap:12px;flex-wrap:wrap;margin-bottom:12px">
-        <div class="card-title" style="margin:0" data-i18n="reclap.titulo">Reclamar al proveedor (rectificativa / abono)</div>
-        <span id="ap-recl-resumen" style="font-size:12px;color:var(--mut)"></span>
+    <!-- Reclamar al proveedor (Ola A): factura rectificativa o abono. Nada sale sin "Aprobar y enviar". -->
+    <div class="g-card" id="card-recl-ap">
+      <div class="g-card-head">
+        <div><div class="g-card-title" data-i18n="reclap.titulo">Reclamar al proveedor (rectificativa / abono)</div><div class="g-sub" data-i18n="reclap.sub">Nada sale sin «Aprobar y enviar».</div></div>
+        <span id="ap-recl-resumen" class="g-small"></span>
       </div>
-      <div id="ap-recl-list" style="display:flex;flex-direction:column;gap:12px"><div class="empty"><p data-i18n="reclap.cargando">Buscando facturas que reclamar…</p></div></div>
+      <div id="ap-recl-list" class="g-inline-list"><div class="g-empty" data-i18n="reclap.cargando">Buscando facturas que reclamar…</div></div>
     </div>
   </div><!-- /panel-ap -->
 
@@ -7252,6 +7257,13 @@ Gestoría Nord: Hotel Pirineus, Hotel Vall" style="width:100%;background:var(--b
       <button onclick="document.getElementById('demo-setup-modal').style.display='none'" style="background:var(--s2);border:1px solid var(--s3);color:var(--tx);padding:9px 18px;border-radius:9px;font-size:13px;cursor:pointer">Cancelar</button>
       <button id="btn-demo-generar" onclick="generarDemo()" style="background:linear-gradient(135deg,#f59e0b,#d97706);border:none;color:#000;padding:9px 20px;border-radius:9px;font-size:13px;font-weight:700;cursor:pointer">🎭 Generar demo</button>
     </div>
+  </div>
+</div>
+<!-- Detalle de factura (AP y AR OTAs). Guia de estilo b53. Antes el JS lo buscaba y no existia. -->
+<div id="invoice-modal" class="g-overlay" style="display:none" onclick="if(event.target===this)closeInvoiceModal()">
+  <div class="g-modal" role="dialog" aria-modal="true">
+    <div class="g-modal-head"><div class="g-modal-title" id="inv-modal-title">Factura</div><button class="g-btn g-ghost g-icon" onclick="closeInvoiceModal()" aria-label="Cerrar">✕</button></div>
+    <div id="inv-modal-body"></div>
   </div>
 </div>
 <div id="upload-modal" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,.7);z-index:9000;align-items:center;justify-content:center">
@@ -10983,30 +10995,31 @@ async function cargarAlbaranes(){
   if (!wrap) return;
   try {
     var r = await fetch('/api/albaranes'); var d = await r.json();
-    if (!d || !d.ok) { wrap.innerHTML = '<div class="empty"><p>' + _cEsc((d && d.error) || 'Error') + '</p></div>'; return; }
+    if (!d || !d.ok) { wrap.innerHTML = '<div class="g-empty">' + _cEsc((d && d.error) || 'Error') + '</div>'; return; }
     var s = d.resumen || {};
     res.textContent = s.n ? (s.n + ' ' + t('alb.kN','albaranes') + ' · ' + (s.facturados||0) + ' ' + t('alb.kFact','facturados') + ' · ' + (s.sin_facturar||0) + ' ' + t('alb.kSin','sin facturar') + ' · ' + eur(s.total)) : '';
-    if (!s.n) { wrap.innerHTML = _vacioCard(t('alb.vacio','Todavía no hay albaranes. Súbelos con ⚡ Procesar archivos (PDF o foto) y aparecerán aquí con sus líneas.')); return; }
-    var est = {ALBARAN_FACTURADO:['ok', t('alb.eFact','Facturado')], ALBARAN_SIN_FACTURAR:['sinpo', t('alb.eSin','Sin facturar')], SIN_CRUZAR:['', t('alb.eSinCruzar','Sin cruzar aún')]};
-    var h = '<div class="tbl-wrap"><table class="tbl" style="width:100%;font-size:12px"><thead><tr><th>' + _cEsc(t('alb.cNum','Albarán')) + '</th><th>' + _cEsc(t('alb.cProv','Proveedor')) + '</th><th>' + _cEsc(t('alb.cFecha','Entrega')) + '</th><th style="text-align:right">' + _cEsc(t('alb.cTotal','Total sin IVA')) + '</th><th>' + _cEsc(t('alb.cEstado','Estado')) + '</th><th>' + _cEsc(t('alb.cFactura','Factura')) + '</th><th>' + _cEsc(t('alb.cLineas','Líneas')) + '</th></tr></thead><tbody>';
+    if (!s.n) { wrap.innerHTML = _gVacio(t('alb.vacio','Todavía no hay albaranes. Súbelos con ⚡ Procesar archivos (PDF o foto) y aparecerán aquí con sus líneas.')); return; }
+    // mismos badges que la tabla de facturas: verde cruzado, ambar sin factura, gris sin cruzar
+    var est = {ALBARAN_FACTURADO:['g-ok', t('alb.eFact','Facturado')], ALBARAN_SIN_FACTURAR:['g-warn', t('alb.eSin','Sin facturar')], SIN_CRUZAR:['g-mute', t('alb.eSinCruzar','Sin cruzar aún')]};
+    var h = '<div class="g-tbl-wrap"><table class="g-tbl"><thead><tr><th>' + _cEsc(t('alb.cNum','Albarán')) + '</th><th>' + _cEsc(t('alb.cProv','Proveedor')) + '</th><th>' + _cEsc(t('alb.cFecha','Entrega')) + '</th><th class="num">' + _cEsc(t('alb.cTotal','Total sin IVA')) + '</th><th>' + _cEsc(t('alb.cEstado','Estado')) + '</th><th>' + _cEsc(t('alb.cFactura','Factura')) + '</th><th class="num">' + _cEsc(t('alb.cLineas','Líneas')) + '</th></tr></thead><tbody>';
     d.albaranes.forEach(function(a, i){
-      var e = est[a.estado] || ['', a.estado];
+      var e = est[a.estado] || ['g-mute', a.estado];
       h += '<tr style="cursor:pointer" onclick="var x=document.getElementById(\'alb-lin-' + i + '\');x.style.display=x.style.display===\'none\'?\'\':\'none\'">' +
-        '<td><b>' + _cEsc(a.numero_albaran) + '</b>' + (a.referencia_pedido ? '<div style="font-size:11px;color:var(--mut)">' + _cEsc(t('alb.pedido','pedido')) + ' ' + _cEsc(a.referencia_pedido) + '</div>' : '') + '</td>' +
-        '<td>' + _cEsc(a.proveedor) + '</td><td>' + _cEsc(a.fecha_entrega || '—') + '</td><td style="text-align:right">' + eur(a.total) + '</td>' +
-        '<td><span class="ap-badge ' + e[0] + '">' + _cEsc(e[1]) + '</span></td>' +
-        '<td>' + (a.numero_factura ? '<b>' + _cEsc(a.numero_factura) + '</b>' : '<span style="color:var(--mut)">—</span>') + (a.detalle ? '<div style="font-size:11px;color:var(--mut)">' + _cEsc(a.detalle) + '</div>' : '') + '</td>' +
-        '<td>' + a.n_lineas + ' ▾</td></tr>';
-      h += '<tr id="alb-lin-' + i + '" style="display:none"><td colspan="7" style="padding:4px 10px 10px 24px;background:rgba(127,127,127,.06)">';
+        '<td><b>' + _cEsc(a.numero_albaran) + '</b>' + (a.referencia_pedido ? '<div class="g-small" style="font-size:11px">' + _cEsc(t('alb.pedido','pedido')) + ' ' + _cEsc(a.referencia_pedido) + '</div>' : '') + '</td>' +
+        '<td>' + _cEsc(a.proveedor) + '</td><td>' + _cEsc(a.fecha_entrega || '—') + '</td><td class="num">' + eur(a.total) + '</td>' +
+        '<td>' + gBadge(e[0], _cEsc(e[1])) + '</td>' +
+        '<td>' + (a.numero_factura ? '<b>' + _cEsc(a.numero_factura) + '</b>' : '<span style="color:var(--mut)">—</span>') + (a.detalle ? '<div class="g-small" style="font-size:11px">' + _cEsc(a.detalle) + '</div>' : '') + '</td>' +
+        '<td class="num">' + a.n_lineas + ' ▾</td></tr>';
+      h += '<tr id="alb-lin-' + i + '" style="display:none" class="g-tbl-sub"><td colspan="7" style="padding:4px 10px 10px 24px">';
       if (a.lineas.length) {
-        h += '<table style="width:100%;font-size:12px"><thead><tr><th>#</th><th>' + _cEsc(t('alb.lDesc','Artículo')) + '</th><th style="text-align:right">' + _cEsc(t('alb.lCant','Cantidad')) + '</th><th style="text-align:right">' + _cEsc(t('alb.lPrecio','Precio')) + '</th><th style="text-align:right">' + _cEsc(t('alb.lImp','Importe')) + '</th></tr></thead><tbody>';
-        a.lineas.forEach(function(l){ h += '<tr><td>' + l.n + '</td><td>' + _cEsc(l.descripcion) + '</td><td style="text-align:right">' + (l.cantidad==null?'—':l.cantidad + ' ' + _cEsc(l.unidad)) + '</td><td style="text-align:right">' + eur(l.precio_unitario) + '</td><td style="text-align:right">' + eur(l.importe) + '</td></tr>'; });
+        h += '<table class="g-tbl"><thead><tr><th>#</th><th>' + _cEsc(t('alb.lDesc','Artículo')) + '</th><th class="num">' + _cEsc(t('alb.lCant','Cantidad')) + '</th><th class="num">' + _cEsc(t('alb.lPrecio','Precio')) + '</th><th class="num">' + _cEsc(t('alb.lImp','Importe')) + '</th></tr></thead><tbody>';
+        a.lineas.forEach(function(l){ h += '<tr><td>' + l.n + '</td><td>' + _cEsc(l.descripcion) + '</td><td class="num">' + (l.cantidad==null?'—':l.cantidad + ' ' + _cEsc(l.unidad)) + '</td><td class="num">' + eur(l.precio_unitario) + '</td><td class="num">' + eur(l.importe) + '</td></tr>'; });
         h += '</tbody></table>';
-      } else { h += '<span style="color:var(--mut);font-size:12px">' + _cEsc(t('alb.sinLineas','Sin líneas legibles en este albarán.')) + '</span>'; }
-      h += (a.archivo ? '<div style="font-size:11px;color:var(--dim);margin-top:6px">' + _cEsc(a.archivo) + '</div>' : '') + '</td></tr>';
+      } else { h += '<span class="g-small">' + _cEsc(t('alb.sinLineas','Sin líneas legibles en este albarán.')) + '</span>'; }
+      h += (a.archivo ? '<div class="g-note">' + _cEsc(a.archivo) + '</div>' : '') + '</td></tr>';
     });
     wrap.innerHTML = h + '</tbody></table></div>';
-  } catch(e) { wrap.innerHTML = '<div class="empty"><p>' + _cEsc(e.message) + '</p></div>'; }
+  } catch(e) { wrap.innerHTML = '<div class="g-empty">' + _cEsc(e.message) + '</div>'; }
 }
 async function cargarReclamacionesAP(){
   var wrap = document.getElementById('ap-recl-list');
@@ -11019,45 +11032,46 @@ async function cargarReclamacionesAP(){
     if (resumen) resumen.textContent = (d && d.n_pendientes)
       ? t('reclap.resumen', '{n} pendiente(s) · {total} en disputa').replace('{n}', d.n_pendientes).replace('{total}', _reclMoney(d.total_en_disputa))
       : '';
-    if (!_reclApItems.length) { wrap.innerHTML = _vacioCard(t('reclap.vacio', 'Cuando una factura no cuadre con el albarán/pedido o se rechace, aparecerá aquí para pedir al proveedor la rectificativa o el abono.')); return; }
+    if (!_reclApItems.length) { wrap.innerHTML = _gVacio(t('reclap.vacio', 'Cuando una factura no cuadre con el albarán/pedido o se rechace, aparecerá aquí para pedir al proveedor la rectificativa o el abono.')); return; }
     wrap.innerHTML = _reclApItems.map(function(it,i){ return _reclApCard(it,i); }).join('');
   } catch(e) {}
 }
 function _reclApCard(it, i){
-  var badge, bg, col;
-  if (it.estado==='ENVIADA'){ badge=t('reclap.enviada','✓ Enviada'); bg='rgba(34,197,94,.12)'; col='#22c55e'; }
-  else if (it.estado==='DESCARTADA'){ badge=t('reclap.descartada','Descartada'); bg='rgba(148,163,184,.12)'; col='var(--mut)'; }
-  else { badge=t('reclap.pendiente','Pendiente'); bg='rgba(245,158,11,.12)'; col='#f59e0b'; }
+  var badge;
+  if (it.estado==='ENVIADA') badge = gBadge('g-ok', t('reclap.enviada','✓ Enviada').replace('✓ ', ''));
+  else if (it.estado==='DESCARTADA') badge = gBadge('g-mute', t('reclap.descartada','Descartada'));
+  else badge = gBadge('g-warn', t('reclap.pendiente','Pendiente'));
   var tipo = it.tipo==='ABONO' ? t('reclap.tipoAbono','Pedir abono (rechazada)') : t('reclap.tipoCorreccion','Pedir rectificativa');
   var motivo = it.detalle || it.comentario || it.estado_matching || '';
   var head = '<div style="display:flex;align-items:center;justify-content:space-between;gap:8px;flex-wrap:wrap;margin-bottom:8px">' +
-    '<div style="min-width:0"><div style="font-weight:700;font-size:13px">' + _reclEsc(it.proveedor||'—') + ' · ' + t('reclap.factura','factura') + ' ' + _reclEsc(it.numero_factura||it.id) + (it.hotel?' · '+_reclEsc(it.hotel):'') + '</div>' +
-    '<div style="font-size:11px;color:var(--dim)">' + _reclEsc(tipo) + ' · <b style="color:#f87171">' + _reclMoney(it.total_factura) + '</b>' + (motivo?' · '+_reclEsc(motivo):'') + '</div></div>' +
-    '<span style="font-size:11px;font-weight:700;padding:3px 10px;border-radius:20px;background:'+bg+';color:'+col+'">'+_reclEsc(badge)+'</span></div>';
+    '<div style="min-width:0"><div style="font-weight:700;font-size:13px;color:var(--tx)">' + _reclEsc(it.proveedor||'—') + ' · ' + t('reclap.factura','factura') + ' ' + _reclEsc(it.numero_factura||it.id) + (it.hotel?' · '+_reclEsc(it.hotel):'') + '</div>' +
+    '<div class="g-small">' + _reclEsc(tipo) + ' · <b class="g-num" style="color:var(--red)">' + _reclMoney(it.total_factura) + '</b>' + (motivo?' · '+_reclEsc(motivo):'') + '</div></div>' +
+    badge + '</div>';
   if (it.estado==='ENVIADA'){
-    return '<div class="card" style="padding:12px;border-radius:12px;opacity:.85">' + head +
-      '<div style="font-size:12px;color:var(--mut)">' + t('reclap.enviadaA','Enviada a') + ' ' + _reclEsc(it.destinatario) + ' · ' + _reclEsc(it.fecha_enviada) + '</div></div>';
+    return '<div class="g-row is-off" style="display:block">' + head +
+      '<div class="g-small">' + t('reclap.enviadaA','Enviada a') + ' ' + _reclEsc(it.destinatario) + ' · ' + _reclEsc(it.fecha_enviada) + '</div></div>';
   }
   if (it.estado==='DESCARTADA'){
-    return '<div class="card" style="padding:12px;border-radius:12px;opacity:.55">' + head + '</div>';
+    return '<div class="g-row is-off" style="display:block;opacity:.5">' + head + '</div>';
   }
   var body;
   if (!it.tiene_borrador){
-    body = '<button onclick="_reclApGenerar('+i+',this)" class="btn-run" style="font-size:12px">' + t('reclap.redactar','✍️ Redactar') + '</button>';
+    body = '<button onclick="_reclApGenerar('+i+',this)" class="g-btn g-secondary g-sm">' + t('reclap.redactar','✍️ Redactar') + '</button>';
   } else {
     body = '<div style="display:flex;flex-direction:column;gap:8px">' +
-      '<label style="font-size:10px;color:var(--mut);text-transform:uppercase;letter-spacing:.4px">' + t('reclap.enviarA','Enviar a') + '</label>' +
-      '<input id="reclap-dest-'+i+'" value="'+_reclEsc(it.destinatario)+'" placeholder="' + t('reclap.emailProveedor','email del proveedor') + '" style="background:var(--bg);border:1px solid var(--s2);color:var(--tx);padding:8px;border-radius:8px;font-size:12px">' +
-      '<input id="reclap-asunto-'+i+'" value="'+_reclEsc(it.asunto)+'" style="background:var(--bg);border:1px solid var(--s2);color:var(--tx);padding:8px;border-radius:8px;font-size:12px;font-weight:600">' +
-      '<textarea id="reclap-cuerpo-'+i+'" rows="9" style="background:var(--bg);border:1px solid var(--s2);color:var(--tx);padding:8px;border-radius:8px;font-size:12px;font-family:inherit;line-height:1.5;resize:vertical">'+_reclEsc(it.cuerpo)+'</textarea>' +
+      '<label class="g-label">' + t('reclap.enviarA','Enviar a') + '</label>' +
+      '<input id="reclap-dest-'+i+'" class="g-input" value="'+_reclEsc(it.destinatario)+'" placeholder="' + t('reclap.emailProveedor','email del proveedor') + '">' +
+      '<input id="reclap-asunto-'+i+'" class="g-input" value="'+_reclEsc(it.asunto)+'" style="font-weight:600">' +
+      '<textarea id="reclap-cuerpo-'+i+'" class="g-input" rows="9">'+_reclEsc(it.cuerpo)+'</textarea>' +
       '<div style="display:flex;gap:8px;flex-wrap:wrap">' +
-        '<button onclick="_reclApEnviar('+i+',this)" class="btn-run" style="font-size:12px">' + t('reclap.aprobarEnviar','✅ Aprobar y enviar') + '</button>' +
-        '<button onclick="_reclApGenerar('+i+',this)" class="btn-ref" style="font-size:12px">' + t('reclap.regenerar','🔄 Regenerar') + '</button>' +
-        '<button onclick="_reclApDescartar('+i+')" class="btn-ref" style="font-size:12px">' + t('reclap.descartar','🗑 Descartar') + '</button>' +
+        '<button onclick="_reclApEnviar('+i+',this)" class="g-btn g-primary g-sm">' + t('reclap.aprobarEnviar','✅ Aprobar y enviar') + '</button>' +
+        '<button onclick="_reclApGenerar('+i+',this)" class="g-btn g-secondary g-sm">' + t('reclap.regenerar','🔄 Regenerar') + '</button>' +
+        '<button onclick="_reclApDescartar('+i+')" class="g-btn g-danger g-sm">' + t('reclap.descartar','🗑 Descartar') + '</button>' +
       '</div></div>';
   }
-  return '<div class="card" style="padding:12px;border-radius:12px">' + head + body + '</div>';
+  return '<div class="g-row" style="display:block">' + head + body + '</div>';
 }
+function _gVacio(texto){ return '<div class="g-empty">' + texto + '</div>'; }
 async function _reclApGenerar(i, btn){
   var it=_reclApItems[i]; if(!it) return;
   var txt = btn ? btn.textContent : '';
@@ -12115,20 +12129,23 @@ function showAPDetail(row) {
   var title = document.getElementById('inv-modal-title');
   if (!modal || !body || !row) return;
   title.textContent = row.numero_factura || 'Factura AP';
-  var stC = row.aprobacion === 'APROBADA' ? '#22c55e' : row.aprobacion === 'RECHAZADA' ? '#ef4444' : '#f59e0b';
+  var esc = function(v){ return String(v==null?'':v).replace(/&/g,'&amp;').replace(/</g,'&lt;'); };
+  var apro = row.aprobacion === 'APROBADA' ? gBadge('g-pur', t('est.aprobada','Aprobada'))
+           : row.aprobacion === 'RECHAZADA' ? gBadge('g-err', t('est.rechazada','Rechazada'))
+           : gBadge('g-mute', t('est.sinDecision','Sin decisión'));
   var fields = [
-    ['Proveedor', row.proveedor||'—'], ['Fecha', row.fecha_factura||'—'],
+    [t('th.proveedor','Proveedor'), esc(row.proveedor||'—')], [t('lbl.fecha','Fecha'), esc(row.fecha_factura||'—')],
     ['Total', row.importe_con_iva ? _fmtEurES(row.importe_con_iva) : '—'],
-    ['Cuenta', row.cuenta_contable||'—'], ['Tipo', row.tipo||'—'],
-    ['Estado', row.estado||'—'], ['Aprobación', row.aprobacion||'—'],
-    ['PO', row.tiene_po ? '✅' : '❌'], ['Albarán', row.tiene_alb ? '✅' : '❌'],
+    [t('th.cuenta','Cuenta'), esc(row.cuenta_contable||'—')], [t('th.tipo','Tipo'), esc(row.tipo||'—')],
+    [t('th.matching','Matching'), estadoBadgeAP(row.estado)], [t('th.aprobacion','Aprobación'), apro],
+    ['PO', gBadge(row.tiene_po ? 'g-ok' : 'g-mute', row.tiene_po ? t('lbl.si','Sí') : 'No')],
+    [t('alb.cNum','Albarán'), gBadge(row.tiene_alb ? 'g-ok' : 'g-mute', row.tiene_alb ? t('lbl.si','Sí') : 'No')],
   ];
   body.innerHTML =
-    '<div style="background:'+stC+'20;border:1px solid '+stC+'40;border-radius:10px;padding:10px 14px;margin-bottom:16px;font-weight:700;color:'+stC+'">'+(row.aprobacion||'Pendiente')+'</div>' +
-    '<div style="display:grid;grid-template-columns:1fr 1fr;gap:8px">' +
-    fields.map(function(f){ return '<div style="background:var(--bg);border-radius:8px;padding:10px"><div style="font-size:10px;color:var(--dim);font-weight:600;text-transform:uppercase;margin-bottom:3px">'+f[0]+'</div><div style="font-size:13px;font-weight:600">'+f[1]+'</div></div>'; }).join('') +
+    '<div class="g-modal-grid">' +
+    fields.map(function(f){ return '<div class="g-modal-field"><div class="g-label">'+f[0]+'</div><div class="g-modal-val">'+f[1]+'</div></div>'; }).join('') +
     '</div>' +
-    '<div style="display:flex;gap:10px;margin-top:16px"><button onclick="closeInvoiceModal()" class="btn-ref" style="flex:1">Cerrar</button></div>';
+    '<div class="g-modal-foot"><button onclick="closeInvoiceModal()" class="g-btn g-secondary">' + t('btn.cerrar','Cerrar') + '</button></div>';
   modal.style.display = 'flex';
 }
 
@@ -14868,18 +14885,25 @@ function fmtEurAP(v) {
   return _fmtEurES(v, 2);
 }
 
+// Guia de estilo: UN badge por significado y el MISMO texto en toda la app
+// (antes convivian 'MATCH_3WAY_OK', 'Match OK' y '✓ Cuadra').
+function gBadge(cls, texto, title) {
+  return '<span class="g-badge ' + cls + '"' + (title ? ' title="' + String(title).replace(/"/g, '&quot;') + '" style="cursor:help"' : '') + '>' + texto + '</span>';
+}
 function estadoBadgeAP(est) {
   const m = {
-    'MATCH_CORRECTO':'ok','MATCH_3WAY_OK':'ok',
-    'DISCREPANCIA_PO':'disc','DISCREPANCIA':'disc',
-    'SIN_PO':'sinpo',
-    'ALERTA_CONSUMO':'alerta',
-    'REVISAR_MANUAL':'manual',
-    'NO_REQUIERE_ALBARAN':'sinpo',
-    'PENDIENTE':''
+    'MATCH_CORRECTO':   ['g-ok',   t('est.matchOk', 'Match OK')],
+    'MATCH_3WAY_OK':    ['g-ok',   t('est.matchOk', 'Match OK')],
+    'DISCREPANCIA_PO':  ['g-err',  t('est.discPo', 'Discrepancia PO')],
+    'DISCREPANCIA':     ['g-err',  t('est.disc', 'Discrepancia')],
+    'SIN_PO':           ['g-warn', t('est.sinPo', 'Sin PO')],
+    'ALERTA_CONSUMO':   ['g-warn', t('est.alertaConsumo', 'Alerta consumo')],
+    'REVISAR_MANUAL':   ['g-warn', t('est.revisar', 'Revisar')],
+    'NO_REQUIERE_ALBARAN': ['g-info', t('est.sinAlbaran', 'Sin albarán')],
+    'PENDIENTE':        ['g-mute', t('est.pendiente', 'Pendiente')],
   };
-  const cls = m[est] || '';
-  return `<span class="ap-badge ${cls}">${est || 'PENDIENTE'}</span>`;
+  const v = m[est] || (est ? ['g-mute', est] : m['PENDIENTE']);
+  return gBadge(v[0], v[1]);
 }
 
 // ── Provisiones de cierre (Ola A) ─────────────────────────────────────
@@ -14895,20 +14919,20 @@ async function loadProvisiones() {
   const mes = mesEl ? mesEl.value : '';
   try {
     const d = await (await fetch('/api/provisiones?mes=' + encodeURIComponent(mes), {cache:'no-store'})).json();
-    if (!d.ok) { body.innerHTML = '<div class="empty"><p>' + _provEsc(d.error || 'Error') + '</p></div>'; return; }
+    if (!d.ok) { body.innerHTML = '<div class="g-empty">' + _provEsc(d.error || 'Error') + '</div>'; return; }
     const a = d.albaranes, c = d.comisiones;
     const bloque = (titulo, n, total, cuenta, filas, vacio, extra) =>
       '<div style="margin-bottom:14px">' +
         '<div style="display:flex;justify-content:space-between;align-items:baseline;gap:10px;flex-wrap:wrap">' +
           '<strong style="color:var(--tx)">' + titulo + '</strong>' +
-          '<span>' + n + ' · <strong style="color:var(--tx)">' + _provFmt(total) + '</strong> · ' + t('prov.cuenta','cuenta') + ' <code>' + _provEsc(cuenta) + '</code></span>' +
+          '<span class="g-small">' + n + ' · <strong class="g-num" style="color:var(--tx)">' + _provFmt(total) + '</strong> · ' + t('prov.cuenta','cuenta') + ' <span class="g-mono">' + _provEsc(cuenta) + '</span></span>' +
         '</div>' +
-        (filas.length ? '<div class="tbl-wrap" style="margin-top:6px"><table style="font-size:12px">' + filas.join('') + '</table></div>'
-                      : '<div style="font-size:12px;color:var(--dim);margin-top:4px">' + vacio + '</div>') +
-        (extra ? '<div style="font-size:11px;color:var(--dim);margin-top:4px">' + extra + '</div>' : '') +
+        (filas.length ? '<div class="g-tbl-wrap" style="margin-top:8px"><table class="g-tbl" style="font-size:12px"><tbody>' + filas.join('') + '</tbody></table></div>'
+                      : '<div class="g-note">' + vacio + '</div>') +
+        (extra ? '<div class="g-note">' + extra + '</div>' : '') +
       '</div>';
-    const fa = a.por_proveedor.map(p => '<tr><td>' + _provEsc(p.nombre_proveedor) + '</td><td>' + p.n_albaranes + ' ' + t('prov.albaranes','albaranes') + '</td><td><code>' + _provEsc(p.cuenta_gasto) + '</code></td><td style="text-align:right">' + _provFmt(p.importe) + '</td></tr>');
-    const fc = c.por_ota.map(p => '<tr><td>' + _provEsc(p.nombre_ota) + '</td><td>' + p.n_facturas + ' ' + t('prov.liquidaciones','liquidaciones') + '</td><td>' + t('prov.facturado','facturado') + ' ' + _provFmt(p.importe_facturado) + '</td><td style="text-align:right">' + _provFmt(p.importe_provision) + '</td></tr>');
+    const fa = a.por_proveedor.map(p => '<tr><td>' + _provEsc(p.nombre_proveedor) + '</td><td>' + p.n_albaranes + ' ' + t('prov.albaranes','albaranes') + '</td><td class="mono">' + _provEsc(p.cuenta_gasto) + '</td><td class="num">' + _provFmt(p.importe) + '</td></tr>');
+    const fc = c.por_ota.map(p => '<tr><td>' + _provEsc(p.nombre_ota) + '</td><td>' + p.n_facturas + ' ' + t('prov.liquidaciones','liquidaciones') + '</td><td>' + t('prov.facturado','facturado') + ' ' + _provFmt(p.importe_facturado) + '</td><td class="num">' + _provFmt(p.importe_provision) + '</td></tr>');
     let extraA = '';
     if (a.sin_cruzar) extraA += t('prov.sinCruzar','{n} albaranes sin cruzar todavía: no entran hasta que corra el cruce.').replace('{n}', a.sin_cruzar) + ' ';
     if (a.sin_importe) extraA += t('prov.sinImporte','{n} sin importe legible (cuentan 0).').replace('{n}', a.sin_importe);
@@ -14918,9 +14942,9 @@ async function loadProvisiones() {
              t('prov.albVacio','Nada que provisionar: todo lo entregado hasta el corte tiene factura.'), extraA) +
       bloque(t('prov.comisiones','Comisiones OTA del mes'), c.n + ' ' + t('prov.liquidaciones','liquidaciones'), c.total, c.cuenta_provision.codigo, fc,
              t('prov.comVacio','Sin liquidaciones OTA con periodo en este mes.'), extraC) +
-      '<div style="font-size:11px;color:var(--dim)">' + t('prov.nota','Solo lectura: los asientos van en el Excel del cierre. Las comisiones devengadas sin liquidación necesitan la producción OTA del PMS.') + '</div>';
+      '<div class="g-note">' + t('prov.nota','Solo lectura: los asientos van en el Excel del cierre. Las comisiones devengadas sin liquidación necesitan la producción OTA del PMS.') + '</div>';
     if (typeof _pintarYa === 'function') _pintarYa(body);
-  } catch(e) { body.innerHTML = '<div class="empty"><p>Error</p></div>'; }
+  } catch(e) { body.innerHTML = '<div class="g-empty">Error</div>'; }
 }
 
 // ── Aging AP (Ola A) ─────────────────────────────────────────────────
@@ -14929,25 +14953,26 @@ async function loadAgingAP() {
   if (!body || !tr) return;
   try {
     const d = await (await fetch('/api/aging_ap', {cache:'no-store'})).json();
-    if (!d.ok) { body.innerHTML = '<div class="empty"><p>' + _provEsc(d.error || 'Error') + '</p></div>'; return; }
+    if (!d.ok) { body.innerHTML = '<div class="g-empty">' + _provEsc(d.error || 'Error') + '</div>'; return; }
     const orden = ['0-30','31-60','61-90','>90','sin fecha'];
-    const color = {'0-30':'var(--grn)','31-60':'var(--tx)','61-90':'#f59e0b','>90':'var(--red)','sin fecha':'var(--dim)'};
+    // colores de significado: verde al dia, ambar a revisar, rojo vencido; el mismo criterio que los badges
+    const kcls = {'0-30':'k-grn','31-60':'','61-90':'k-ora','>90':'k-red','sin fecha':'is-empty'};
     tr.innerHTML = orden.filter(k => k !== 'sin fecha' || d.tramos[k] > 0).map(k =>
-      '<div class="sc" style="padding:10px"><div class="sc-lbl">' + (k === 'sin fecha' ? t('aging.sinFecha','sin fecha') : k + ' ' + t('aging.dias','días')) + '</div>' +
-      '<div class="sc-val" style="font-size:16px;color:' + color[k] + '">' + _provFmt(d.tramos[k]) + '</div></div>').join('') +
-      '<div class="sc" style="padding:10px"><div class="sc-lbl">' + t('aging.total','pendiente') + '</div><div class="sc-val" style="font-size:16px">' + _provFmt(d.total) + '</div><div class="sc-sub">' + d.n + ' ' + t('lbl.facturas','facturas') + '</div></div>';
+      '<div class="g-kpi ' + kcls[k] + '" style="padding:10px 12px"><div class="g-kpi-lbl">' + (k === 'sin fecha' ? t('aging.sinFecha','sin fecha') : k + ' ' + t('aging.dias','días')) + '</div>' +
+      '<div class="g-kpi-val" style="font-size:18px">' + _provFmt(d.tramos[k]) + '</div></div>').join('') +
+      '<div class="g-kpi" style="padding:10px 12px"><div class="g-kpi-lbl">' + t('aging.total','pendiente') + '</div><div class="g-kpi-val" style="font-size:18px">' + _provFmt(d.total) + '</div><div class="g-kpi-sub">' + d.n + ' ' + t('lbl.facturas','facturas') + '</div></div>';
     if (!d.por_acreedor.length) {
-      body.innerHTML = '<div style="font-size:12px;color:var(--dim)">' + t('aging.vacio','Nada pendiente de pago.') + '</div>';
+      body.innerHTML = '<div class="g-note">' + t('aging.vacio','Nada pendiente de pago.') + '</div>';
       return;
     }
-    body.innerHTML = '<div class="tbl-wrap"><table style="font-size:12px"><thead><tr><th>' + t('aging.acreedor','Acreedor') + '</th><th>' + t('aging.masAntigua','Más antigua') + '</th><th>0-30</th><th>31-60</th><th>61-90</th><th>&gt;90</th><th style="text-align:right">' + t('aging.total','pendiente') + '</th></tr></thead><tbody>' +
+    body.innerHTML = '<div class="g-tbl-wrap"><table class="g-tbl" style="font-size:12px"><thead><tr><th>' + t('aging.acreedor','Acreedor') + '</th><th>' + t('aging.masAntigua','Más antigua') + '</th><th class="num">0-30</th><th class="num">31-60</th><th class="num">61-90</th><th class="num">&gt;90</th><th class="num">' + t('aging.total','pendiente') + '</th></tr></thead><tbody>' +
       d.por_acreedor.map(p => '<tr><td>' + _provEsc(p.acreedor) + ' <span style="color:var(--dim)">· ' + _provEsc(p.origen) + (p.sin_aprobar ? ' · ' + p.sin_aprobar + ' ' + t('aging.sinAprobar','sin aprobar') : '') + '</span></td>' +
-        '<td>' + (p.mas_antigua ? _provEsc(p.mas_antigua) + ' <span style="color:' + (p.dias_max > 60 ? 'var(--red)' : 'var(--dim)') + '">(' + p.dias_max + ' ' + t('aging.dias','días') + ')</span>' : '—') + '</td>' +
-        ['0-30','31-60','61-90','>90'].map(k => '<td>' + (p[k] ? _provFmt(p[k]) : '—') + '</td>').join('') +
-        '<td style="text-align:right"><strong>' + _provFmt(p.importe) + '</strong></td></tr>').join('') +
-      '</tbody></table></div><div style="font-size:11px;color:var(--dim);margin-top:6px">' + t('aging.nota','Pendiente = sin conciliar en el extracto bancario; sin extracto, todo cuenta como pendiente.') + '</div>';
+        '<td>' + (p.mas_antigua ? _provEsc(p.mas_antigua) + ' ' + gBadge(p.dias_max > 60 ? 'g-err' : 'g-mute', p.dias_max + ' ' + t('aging.dias','días')) : '—') + '</td>' +
+        ['0-30','31-60','61-90','>90'].map(k => '<td class="num">' + (p[k] ? _provFmt(p[k]) : '—') + '</td>').join('') +
+        '<td class="num"><strong>' + _provFmt(p.importe) + '</strong></td></tr>').join('') +
+      '</tbody></table></div><div class="g-note">' + t('aging.nota','Pendiente = sin conciliar en el extracto bancario; sin extracto, todo cuenta como pendiente.') + '</div>';
     if (typeof _pintarYa === 'function') _pintarYa(body);
-  } catch(e) { body.innerHTML = '<div class="empty"><p>Error</p></div>'; }
+  } catch(e) { body.innerHTML = '<div class="g-empty">Error</div>'; }
 }
 
 async function loadAP() {
@@ -14986,8 +15011,6 @@ async function loadAP() {
       tr.setAttribute('data-clave', f.clave || '');
       tr.setAttribute('data-accion', f.accion || '');
       tr.style.cursor = 'pointer';
-      tr.addEventListener('mouseover', function(){ this.style.background='rgba(var(--acc-r,59),var(--acc-g,130),var(--acc-b,246),.04)'; });
-      tr.addEventListener('mouseout',  function(){ this.style.background=''; });
       tr.addEventListener('click', function(){ showAPDetail({
         numero_factura: f.numero_factura, proveedor: f.proveedor,
         fecha_factura: f.fecha, base_imponible: f.total_sin_iva || '',
@@ -14996,32 +15019,32 @@ async function loadAP() {
         estado: f.estado, aprobacion: f.accion,
         tiene_po: f.tiene_po, tiene_alb: f.tiene_albarán
       }); });
-      const tipoCls = f.tipo === 'FB' ? 'fb' : 'otras';
+      const tipoHtml = gBadge(f.tipo === 'FB' ? 'g-pur' : 'g-info', f.tipo);
       const accionHtml = f.accion === 'APROBADA'
-        ? '<span class="badge ok">✓ Aprobada</span>'
+        ? gBadge('g-pur', t('est.aprobada', 'Aprobada'))
         : f.accion === 'RECHAZADA'
-          ? '<span class="badge err">✗ Rechazada</span>'
-          : '<span class="badge" style="background:rgba(100,116,139,.3);color:var(--mut)">Pendiente</span>';
+          ? gBadge('g-err', t('est.rechazada', 'Rechazada'))
+          : gBadge('g-mute', t('est.sinDecision', 'Sin decisión'));
 
       let alertaHtml = '';
       if (f.estado === 'ALERTA_CONSUMO' && f.detalle_alerta) {
-        alertaHtml = `<div class="alerta-box">${f.detalle_alerta}</div>`;
+        alertaHtml = `<div class="g-alert warn" style="margin-top:8px;font-size:12px">${f.detalle_alerta}</div>`;
       } else if ((f.estado === 'DISCREPANCIA_PO' || f.estado === 'DISCREPANCIA') && f.detalle_alerta) {
-        alertaHtml = `<div class="disc-box">${f.detalle_alerta}</div>`;
+        alertaHtml = `<div class="g-alert err" style="margin-top:8px;font-size:12px">${f.detalle_alerta}</div>`;
       }
 
       const impHtml = (f.importes_cuadran === 'NO')
-        ? ` <span class="ap-badge disc" title="${(f.aviso_importes||'').replace(/"/g,'&quot;')}" style="cursor:help">⚠ base + IVA ≠ total</span>`
+        ? ' ' + gBadge('g-err', t('est.importeNoCuadra', 'base + IVA ≠ total'), f.aviso_importes || '')
         : '';
       const dupHtml = (f.duplicados > 1)
-        ? ` <span class="ap-badge disc" title="${(f.duplicado_de||'').replace(/"/g,'&quot;')}" style="cursor:help">⚠ ${f.duplicados} documentos con este número</span>`
+        ? ' ' + gBadge('g-err', t('est.duplicados', '{n} documentos con este número').replace('{n}', f.duplicados), f.duplicado_de || '')
         : '';
       tr.innerHTML = `
         <td><strong>${f.numero_factura}</strong>${dupHtml}${impHtml}</td>
         <td>${f.proveedor}</td>
-        <td><span class="ap-badge ${tipoCls}">${f.tipo}</span></td>
-        <td>${fmtEurAP(f.total)}</td>
-        <td><code style="font-size:.8rem;color:var(--acc3)">${f.cuenta_contable}</code></td>
+        <td>${tipoHtml}</td>
+        <td class="num">${fmtEurAP(f.total)}</td>
+        <td class="mono">${f.cuenta_contable}</td>
         <td>${estadoBadgeAP(f.estado)}${alertaHtml}</td>
         <td>${accionHtml}</td>
       `;
@@ -15117,7 +15140,7 @@ async function _cargarModoOracle() {
   const chip = document.getElementById('oracle-modo-chip');
   const btn = document.getElementById('btnOracle');
   if (chip) {
-    chip.style.display = 'inline-block';
+    chip.style.display = 'inline-flex';
     chip.textContent = _oracleSim ? t('oracle.chipSim', 'simulación · sin Oracle real')
                                   : t('oracle.chipReal', 'Oracle real conectado');
   }
