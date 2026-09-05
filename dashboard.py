@@ -6334,14 +6334,25 @@ svg.yvi{width:1em;height:1em;vertical-align:-0.125em;flex-shrink:0;display:inlin
   background:linear-gradient(180deg,#101a2e 0%,#0c1424 55%,#090e1a 100%);padding:24px;
   transition:opacity .55s ease,visibility .55s ease}
 #yve-splash.hide{opacity:0;visibility:hidden;pointer-events:none}
-#yve-splash .sp-logo{width:110px;height:110px;border-radius:27px;box-shadow:0 22px 60px rgba(0,0,0,.55);animation:spPop .6s cubic-bezier(.2,.8,.2,1)}
-#yve-splash .sp-brand{font-family:'Space Grotesk','Inter',sans-serif;margin-top:24px;font-size:31px;font-weight:700;letter-spacing:-.4px;color:#fff;animation:spFade .6s ease .12s both}
-#yve-splash .sp-brand span{color:var(--acc2,#60a5fa)}
-#yve-splash .sp-sub{margin-top:9px;font-size:13px;color:#94a3b8;animation:spFade .6s ease .22s both}
-#yve-splash .sp-loader{margin-top:30px;width:32px;height:32px;border-radius:50%;border:3px solid rgba(148,163,184,.22);border-top-color:var(--acc,#3b82f6);animation:spSpin .8s linear infinite}
-@keyframes spPop{from{opacity:0;transform:scale(.82)}to{opacity:1;transform:scale(1)}}
-@keyframes spFade{from{opacity:0;transform:translateY(8px)}to{opacity:1;transform:none}}
-@keyframes spSpin{to{transform:rotate(360deg)}}
+/* Pieza 11 (intro): primero la bola —con el color de acento que el usuario
+   haya elegido en Personalizacion, leido de localStorage ANTES de pintar—,
+   luego el nombre, luego la frase. Sin rueda de "cargando". */
+#yve-splash{--sp-acc:#3b82f6;--sp-acc2:#60a5fa;--sp-dark:#1d4ed8;--sp-r:59;--sp-g:130;--sp-b:246}
+#yve-splash .sp-ball{width:96px;height:96px;border-radius:50%;position:relative;
+  background:radial-gradient(circle at 34% 30%,rgba(255,255,255,.75) 0,var(--sp-acc2) 16%,var(--sp-acc) 58%,var(--sp-dark) 100%);
+  box-shadow:0 0 0 0 rgba(var(--sp-r),var(--sp-g),var(--sp-b),.5),0 26px 70px rgba(var(--sp-r),var(--sp-g),var(--sp-b),.45);
+  animation:spBall 1s cubic-bezier(.2,.9,.3,1.25) both,spHalo 1.5s ease-out .45s both,spBreath 2.6s ease-in-out 1.5s infinite}
+#yve-splash .sp-ball::after{content:'';position:absolute;inset:-14px;border-radius:50%;
+  border:1px solid rgba(var(--sp-r),var(--sp-g),var(--sp-b),.35);animation:spRing 1.6s ease-out .55s both}
+#yve-splash .sp-brand{font-family:'Space Grotesk','Inter',sans-serif;margin-top:28px;font-size:32px;font-weight:700;letter-spacing:-.4px;color:#fff;animation:spFade .7s cubic-bezier(.2,.8,.2,1) .8s both}
+#yve-splash .sp-brand span{color:var(--sp-acc2)}
+#yve-splash .sp-sub{margin-top:9px;font-size:13px;color:#94a3b8;animation:spFade .7s ease 1.05s both}
+@keyframes spBall{from{opacity:0;transform:scale(.25) translateY(22px)}60%{opacity:1}to{opacity:1;transform:none}}
+@keyframes spHalo{from{box-shadow:0 0 0 0 rgba(var(--sp-r),var(--sp-g),var(--sp-b),.5),0 26px 70px rgba(var(--sp-r),var(--sp-g),var(--sp-b),.45)}
+  to{box-shadow:0 0 0 34px rgba(var(--sp-r),var(--sp-g),var(--sp-b),0),0 26px 70px rgba(var(--sp-r),var(--sp-g),var(--sp-b),.45)}}
+@keyframes spRing{from{opacity:0;transform:scale(.6)}30%{opacity:1}to{opacity:0;transform:scale(1.9)}}
+@keyframes spBreath{0%,100%{transform:scale(1)}50%{transform:scale(1.045)}}
+@keyframes spFade{from{opacity:0;transform:translateY(10px)}to{opacity:1;transform:none}}
 /* ── Arreglos responsive móvil ── */
 @media(max-width:480px){
   .stats,#stats-ap-grid,#ar-real-stats{grid-template-columns:repeat(2,1fr)!important;gap:8px!important}
@@ -6356,21 +6367,35 @@ svg.yvi{width:1em;height:1em;vertical-align:-0.125em;flex-shrink:0;display:inlin
 }
 </style>
 <div id="yve-splash" role="status" aria-label="Cargando Yve.01">
-  <img class="sp-logo" src="/static/icons/yve-logo-192.png" alt="Yve.01">
+  <div class="sp-ball"></div>
   <div class="sp-brand">Yve<span>.01</span></div>
   <div class="sp-sub">Automatización financiera para hoteles</div>
-  <div class="sp-loader"></div>
 </div>
 <script>
 (function(){
   var sp=document.getElementById('yve-splash'); if(!sp) return;
+  // El color de la bola es el de Personalizacion (yve_accent), como el del
+  // nombre. Se lee aqui, antes del primer frame, y no cuando arranque el
+  // resto de la app: si no, la bola saldria azul y cambiaria a medias.
+  try{
+    var acc=(localStorage.getItem('yve_accent')||'').trim();
+    if(/^#[0-9a-f]{6}$/i.test(acc)){
+      var R=parseInt(acc.slice(1,3),16),G=parseInt(acc.slice(3,5),16),B=parseInt(acc.slice(5,7),16);
+      var hx=function(v){ v=Math.max(0,Math.min(255,Math.round(v))); return (v<16?'0':'')+v.toString(16); };
+      var mix=function(v,w){ return v+(255-v)*w; };
+      sp.style.setProperty('--sp-acc',acc);
+      sp.style.setProperty('--sp-acc2','#'+hx(mix(R,.25))+hx(mix(G,.25))+hx(mix(B,.25)));
+      sp.style.setProperty('--sp-dark','#'+hx(R*.6)+hx(G*.6)+hx(B*.6));
+      sp.style.setProperty('--sp-r',String(R)); sp.style.setProperty('--sp-g',String(G)); sp.style.setProperty('--sp-b',String(B));
+    }
+  }catch(e){}
   var shown=false;
   try{ shown=sessionStorage.getItem('yve_splash_shown')==='1'; }catch(e){}
   if(shown){ if(sp.parentNode) sp.parentNode.removeChild(sp); return; }
   try{ sessionStorage.setItem('yve_splash_shown','1'); }catch(e){}
   // Precargar la traducción del idioma guardado mientras se ve el splash
   try{ var lang=localStorage.getItem('yve_lang'); if(lang && lang!=='es'){ fetch('/static/i18n/'+lang+'.json?v=__ASSETS_V__').catch(function(){}); } }catch(e){}
-  var start=Date.now(), MIN=1500, MAX=6000, done=false;
+  var start=Date.now(), MIN=1900, MAX=6000, done=false;   // 1,9 s: que de tiempo a bola → nombre → frase
   // El servidor manda el HTML SIEMPRE en español (no sabe tu idioma), asi que
   // al entrar con otro idioma se veia español antes de traducir. El splash ya
   // dura 1,5 s: se aprovecha para traducir DEBAJO y no se suelta hasta que la
