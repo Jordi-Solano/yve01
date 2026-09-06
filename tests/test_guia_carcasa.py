@@ -93,7 +93,7 @@ def main():
                       var mn=document.getElementById('main-menu'); var mr=mn.getBoundingClientRect();
                       document.querySelector('.dropdown > .btn-ref').click();
                       var run=document.getElementById('btn-run'); var rr=run.getBoundingClientRect();
-                      return {tabRadius:cs?cs.borderRadius:'', tabBg:cs?cs.backgroundColor:'', ruedaDer:Math.round(dr.right), menuIzq:Math.round(mr.left), menuDer:Math.round(mr.right), runRadius:getComputedStyle(run).borderRadius, runDer:Math.round(rr.right)};
+                      const tb=document.querySelector('.tabs'), tcs=getComputedStyle(tb); return {tabsOvY:tcs.overflowY, tabsSb:tcs.scrollbarWidth, tabsBarra: tb.scrollHeight - tb.clientHeight, tabRadius:cs?cs.borderRadius:'', tabBg:cs?cs.backgroundColor:'', ruedaDer:Math.round(dr.right), menuIzq:Math.round(mr.left), menuDer:Math.round(mr.right), runRadius:getComputedStyle(run).borderRadius, runDer:Math.round(rr.right)};
                     })()""")
                     res[w] = (anchos, m); ctx.close()
                 br.close()
@@ -103,6 +103,8 @@ def main():
                 ok(m['ruedaDer'] <= w and m['runDer'] <= w and m['menuIzq'] >= 0 and m['menuDer'] <= w, f"{w} px: barra y menu ⚙️ dentro de pantalla (rueda {m['ruedaDer']}, menu {m['menuIzq']}–{m['menuDer']})")
             ok(res[370][1]['tabRadius'] == '999px' and res[370][1]['tabBg'] != 'rgba(0, 0, 0, 0)', f"movil: pestaña activa en pildora rellena ({res[370][1]['tabRadius']}, {res[370][1]['tabBg']})")
             ok(res[1280][1]['tabRadius'] == '0px' and res[770][1]['tabRadius'] == '0px', "PC (y 770): pestañas subrayadas, sin mezclas")
+            # (b73) la fila de pestañas no enseña barra de scroll (en Windows salia una vertical con flechas)
+            ok(all(res[w][1]['tabsOvY'] == 'hidden' and res[w][1]['tabsSb'] == 'none' and res[w][1]['tabsBarra'] == 0 for w in res), f"la fila de pestañas sin barra de scroll ({[(w, res[w][1]['tabsOvY'], res[w][1]['tabsSb'], res[w][1]['tabsBarra']) for w in res]})")
             ok(res[370][1]['runRadius'] == '999px' and res[1280][1]['runRadius'] == '8px', f"boton Procesar: pildora en movil ({res[370][1]['runRadius']}), 8 px en PC ({res[1280][1]['runRadius']})")
         finally:
             srv.shutdown()
