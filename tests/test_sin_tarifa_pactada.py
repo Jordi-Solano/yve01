@@ -49,7 +49,8 @@ def main():
     ok(r_a["estado"] == "SIN_TARIFA_HOTEL", f"Airbnb con tarifa solo de otro hotel → {r_a['estado']}")
     # DI: con SIN_TARIFA_PACTADA el detector clasifica por el nombre y busca el certificado
     d = DI.analizar_factura(pd.Series({**r_b, "estado": "SIN_TARIFA_PACTADA", "mercado": NF}))
-    ok(d["estado_di"] != "OTA_DESCONOCIDA" and d["tipo_mercado"] == "extranjera", f"DI de Booking sin tarifa → {d['estado_di']} ({d['tipo_mercado']})")
+    # (b77) Booking.com B.V. es de la UE: reconocida, pero YA NO se le pide certificado
+    ok(d["estado_di"] == "NO_APLICA" and d["tipo_mercado"] == "ue", f"DI de Booking sin tarifa → reconocida y de la UE, sin certificado: {d['estado_di']} ({d['tipo_mercado']})")
     d2 = DI.analizar_factura(pd.Series({**r_nf, "estado": "OTA_DESCONOCIDA", "mercado": NF}))
     ok(d2["estado_di"] == "OTA_DESCONOCIDA", "DI de una OTA sin nombre sigue siendo desconocida")
     src = open(os.path.join(BASE, 'dashboard.py'), encoding='utf-8').read()

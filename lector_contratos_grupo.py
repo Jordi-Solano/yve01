@@ -137,7 +137,9 @@ def transformar(datos):
     imp_salas = _f(salas.get("total"))
     total = round(imp_hab + imp_fb + imp_salas, 2)
     comis = calcular_comisiones(datos)
-    di = bool(datos.get("doble_imposicion")) or (str(cli.get("pais", "")).lower() not in ("", "españa", "espana", "spain"))
+    # DI solo si el cliente es de un pais fuera de la UE con convenio (config_di, regla de finanzas 7 sep 2026)
+    from config_di import requiere_di
+    di = bool(datos.get("doble_imposicion")) or requiere_di(cli.get("pais", ""))
 
     nombre_cli = (cli.get("nombre") or "Cliente grupo").strip()
     cliente_row = {

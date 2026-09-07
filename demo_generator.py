@@ -129,7 +129,7 @@ def generar_demo(cadenas):
         desvio = rng.choice([0, 0, 0, 0, 0.8, 1.5, -0.7])
         pct_fact = round(pct_pactado + desvio, 1)
         discrepancia = round(bruto * desvio / 100, 2) if desvio else 0.0
-        extranjera = ota in ("Booking.com", "Expedia", "Agoda")
+        extranjera = ota in ("Expedia", "Agoda")   # fuera de la UE con convenio (b77); Booking es holandesa
         ar_rows.append({
             "archivo": f"{ota.lower().replace('.', '').replace(' ', '_')}_{stamp}_{i+1:02d}.pdf",
             "numero_factura": f"{ota[:3].upper()}-{2026000 + rng.randint(100, 999)}-{i+1:03d}",

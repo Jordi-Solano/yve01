@@ -6,7 +6,10 @@ Lee el Excel de verificación, clasifica cada factura y actualiza el reporte.
 Estados posibles:
   - CERTIFICADO_OK        → OTA extranjera con certificado detectado en el PDF
   - FALTA_CERTIFICADO_DI  → OTA extranjera sin certificado en el PDF
-  - NO_APLICA             → OTA española o mercado nacional (no requiere certificado)
+  - NO_APLICA             → OTA española, de la UE, o de un pais SIN convenio con España
+                            (regla validada por finanzas, 7 sep 2026: el certificado solo
+                            se pide a OTAs de paises fuera de la UE CON convenio; ver
+                            config_di.py — Booking.com B.V. es holandesa y deja de pedirse)
   - OTA_DESCONOCIDA       → OTA no reconocida, no se puede determinar
 """
 
@@ -38,25 +41,10 @@ REPORTE_DI_SALIDA = os.path.join(REPORTES_DIR, f"doble_imposicion_{FECHA_HOY}.xl
 
 NF = "NO_ENCONTRADO"
 
-# ── OTAs clasificadas por mercado ──────────────────────────────────────────
-# "Nacional" = española → NO_APLICA
-# "Internacional" o "Latinoamerica" = extranjera → requiere certificado
-
-OTAS_NACIONALES = {
-    "booking.es",
-}
-
-OTAS_EXTRANJERAS = {
-    "booking.com",
-    "expedia",
-    "hotels.com",
-    "despegar",
-    "airbnb",
-    "agoda",
-    "trip.com",
-    "trivago",
-    "hrs",
-}
+# ── OTAs por pais de facturacion, UE y convenios: en config_di.py ──────────
+# Antes habia aqui dos listas (nacionales / extranjeras) y a toda "extranjera" se
+# le pedia certificado. Ahora manda el PAIS desde el que factura la OTA.
+from config_di import pais_de_ota, regimen_di
 
 # ── Palabras clave que indican la presencia de un certificado de DI ────────
 KEYWORDS_CERTIFICADO = [
@@ -89,29 +77,27 @@ PATRON_CERTIFICADO = re.compile(
 
 def clasificar_mercado(nombre_ota: str, mercado: str) -> str:
     """
-    Determina si la OTA es nacional o extranjera.
-    Devuelve: 'nacional', 'extranjera', o 'desconocida'
+    Que regimen de DI toca segun el PAIS desde el que factura la OTA (config_di).
+    Devuelve: 'nacional' (España), 'ue', 'convenio' (fuera de la UE con convenio:
+    la UNICA que pide certificado), 'sin_convenio', o 'desconocida'.
+    La columna Mercado del verificador solo sirve para reconocer lo nacional:
+    "internacional" sin pais no dice si hay convenio, asi que queda desconocida.
     """
     if not isinstance(nombre_ota, str) or nombre_ota in (NF, ""):
         return "desconocida"
-
-    ota_norm = nombre_ota.strip().lower()
-
-    # Primero verificar en listas explícitas
-    if ota_norm in OTAS_NACIONALES:
-        return "nacional"
-    if ota_norm in OTAS_EXTRANJERAS:
-        return "extranjera"
-
-    # Fallback: usar columna Mercado del verificador si existe
+    _, pais = pais_de_ota(nombre_ota)
+    if pais:
+        r = regimen_di(pais)
+        return r if r != "desconocido" else "desconocida"
     if isinstance(mercado, str) and mercado not in (NF, ""):
-        mercado_norm = mercado.strip().lower()
-        if mercado_norm == "nacional":
+        if mercado.strip().lower() == "nacional":
             return "nacional"
-        elif mercado_norm in ("internacional", "latinoamerica", "latinoamérica"):
-            return "extranjera"
-
     return "desconocida"
+
+
+def _pais_ota(nombre_ota):
+    ent, pais = pais_de_ota(nombre_ota)
+    return (ent or ""), (pais or "")
 
 
 def extraer_texto_pdf(archivo: str) -> str | None:
@@ -163,11 +149,17 @@ def analizar_factura(fila: pd.Series) -> dict:
         }
 
     tipo_mercado = clasificar_mercado(nombre_ota, mercado)
+    entidad_ota, pais_ota = _pais_ota(nombre_ota)
 
-    if tipo_mercado == "nacional":
+    if tipo_mercado in ("nacional", "ue", "sin_convenio"):
+        motivo = {"nacional": "OTA española", "ue": f"OTA de la UE ({pais_ota})",
+                  "sin_convenio": f"pais sin convenio con España ({pais_ota})"}[tipo_mercado]
         return {
             **fila.to_dict(),
-            "tipo_mercado": "nacional",
+            "tipo_mercado": tipo_mercado,
+            "pais_ota": pais_ota,
+            "entidad_ota": entidad_ota,
+            "motivo_di": motivo,
             "certificado_encontrado": "N/A",
             "estado_di": "NO_APLICA",
             "keywords_detectadas": "N/A",
@@ -182,12 +174,14 @@ def analizar_factura(fila: pd.Series) -> dict:
             "keywords_detectadas": NF,
         }
 
-    # OTA extranjera → buscar certificado en el PDF
+    # OTA fuera de la UE con convenio → buscar certificado en el PDF
     texto_pdf = extraer_texto_pdf(archivo)
+    extra = {"pais_ota": pais_ota, "entidad_ota": entidad_ota, "motivo_di": f"fuera de la UE con convenio ({pais_ota})"}
 
     if texto_pdf is None:
         return {
             **fila.to_dict(),
+            **extra,
             "tipo_mercado": "extranjera",
             "certificado_encontrado": "PDF_NO_ENCONTRADO",
             "estado_di": "FALTA_CERTIFICADO_DI",
@@ -208,6 +202,7 @@ def analizar_factura(fila: pd.Series) -> dict:
 
     return {
         **fila.to_dict(),
+        **extra,
         "tipo_mercado": "extranjera",
         "certificado_encontrado": "SÍ" if tiene_certificado else "NO",
         "estado_di": "CERTIFICADO_OK" if tiene_certificado else "FALTA_CERTIFICADO_DI",
