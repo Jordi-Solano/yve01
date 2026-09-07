@@ -400,6 +400,21 @@ def api_exportar_fiscal():
                      mimetype='application/vnd.openxmlformats-officedocument.spreadsheetml.sheet')
 
 
+@cierre_bp.route('/api/exportar/sii')
+def api_exportar_sii():
+    """Fichero del SII (b79): ?libro=emitidas|recibidas. Formato de la AEAT
+    (SuministroLRFacturasEmitidas / Recibidas, v1.1). Nada se envia."""
+    import fiscal as FI
+    import sii_xml
+    from io import BytesIO
+    mes, hotel = _args()
+    libro = 'recibidas' if request.args.get('libro') == 'recibidas' else 'emitidas'
+    d = _dirs()
+    res = FI.fiscal_completo(mes, hotel, **d)
+    xml, nombre = sii_xml.generar(res, FI.config_fiscal(d.get('datos_dir')), libro)
+    return send_file(BytesIO(xml.encode('utf-8')), as_attachment=True, download_name=nombre, mimetype='application/xml')
+
+
 # ── Archivo de fin de mes para la central (Ola B · bloque 5) ────────────────
 def _aging(hotel):
     try:

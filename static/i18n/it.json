@@ -778,6 +778,8 @@
   "sc.reclamable": "reclamabile",
   "sc.sinIncidencias": "nessun problema",
   "search.placeholder": "Cerca fatture, fornitori...",
+  "sii.emitidas": "📄 SII · fatture emesse (XML AEAT)",
+  "sii.recibidas": "📄 SII · fatture ricevute (XML AEAT)",
   "status.actualizado": "Aggiornato",
   "status.actualizando": "Aggiornamento...",
   "status.cargando": "Caricamento...",

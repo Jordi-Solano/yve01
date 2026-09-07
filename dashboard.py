@@ -13963,6 +13963,8 @@ var _DESCARGAS = [
     {t: '⬇️ Inventarios', u: '/api/exportar/inventarios', mes: 'cierre-mes'},
     {t: '📋 Hoja de recuento (para contar)', u: '/api/inventarios/hoja_recuento', mes: 'cierre-mes', k: 'inv.hoja'},
     {t: '⬇️ Fiscal (303, 349, SII)', u: '/api/exportar/fiscal', mes: 'cierre-mes'},
+    {t: '📄 SII · facturas emitidas (XML AEAT)', u: '/api/exportar/sii?libro=emitidas', mes: 'cierre-mes', k: 'sii.emitidas'},
+    {t: '📄 SII · facturas recibidas (XML AEAT)', u: '/api/exportar/sii?libro=recibidas', mes: 'cierre-mes', k: 'sii.recibidas'},
     {t: '⬇️ Inmovilizado', u: '/api/exportar/inmovilizado', mes: 'cierre-mes'}]},
 ];
 function _mesDescarga(idInput) {
@@ -13986,7 +13988,7 @@ function _pintarDescargas() {
   }).join('');
   var ap = aps.filter(function(a) { return a.tab === actual; })[0];
   lista.innerHTML = ap ? ap.items.map(function(it) {
-    var u = it.u + (it.mes ? '?mes=' + encodeURIComponent(_mesDescarga(it.mes)) : '');
+    var u = it.u + (it.mes ? (it.u.indexOf('?') >= 0 ? '&' : '?') + 'mes=' + encodeURIComponent(_mesDescarga(it.mes)) : '');
     return '<a href="' + u + '" class="menu-item">' + (it.k ? t(it.k, it.t) : it.t) + '</a>';
   }).join('') : '<div class="menu-item" style="color:var(--dim)">—</div>';
 }

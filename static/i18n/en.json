@@ -778,6 +778,8 @@
   "sc.reclamable": "claimable",
   "sc.sinIncidencias": "no issues",
   "search.placeholder": "Search invoices, suppliers, metrics...",
+  "sii.emitidas": "📄 SII · issued invoices (AEAT XML)",
+  "sii.recibidas": "📄 SII · received invoices (AEAT XML)",
   "status.actualizado": "Updated",
   "status.actualizando": "Updating...",
   "status.cargando": "Loading data...",

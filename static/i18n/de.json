@@ -778,6 +778,8 @@
   "sc.reclamable": "forderbar",
   "sc.sinIncidencias": "keine Probleme",
   "search.placeholder": "Rechnungen, Lieferanten suchen...",
+  "sii.emitidas": "📄 SII · Ausgangsrechnungen (AEAT-XML)",
+  "sii.recibidas": "📄 SII · Eingangsrechnungen (AEAT-XML)",
   "status.actualizado": "Aktualisiert",
   "status.actualizando": "Aktualisierung...",
   "status.cargando": "Daten laden...",
