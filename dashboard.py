@@ -13221,9 +13221,10 @@ function _showTabBadges(logText) {
 // con el color de contorno personalizado.
 var _PANEL_DE_TAB = { ap:'panel-ap', ar:'panel-ar', banco:'panel-banco', fb:'panel-fb', drr:'panel-drr', ar_real:'panel-ar_real' };
 function _statCardsDe(panelId) {
-  var panel = document.getElementById(panelId);
-  if (!panel) return [];
-  return panel.querySelectorAll('.sc, .fb-kpi-card, .card');
+  // (b74) Con la guia, los tiles son todos iguales y no se marcan: el verde de
+  // "recien actualizado" hacia que ALGUNOS tiles (los .fb-kpi-card) salieran mas
+  // claros que el resto, como si fueran botones. La pestaña ya lleva el punto.
+  return [];
 }
 function _marcarStatsActualizadas() {
   // 1) siempre limpiar el verde anterior

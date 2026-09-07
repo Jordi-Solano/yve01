@@ -349,3 +349,12 @@ body.acentuar-todo .g-kpi:not(.k-grn):not(.k-red):not(.k-ora):not(.k-pur):not(.i
 body.acentuar-todo .g-kpi:not(.k-grn):not(.k-red):not(.k-ora):not(.k-pur):not(.is-empty){--k:var(--acc)}
 body.acentuar-todo .g-card-title,body.acentuar-todo .g-kpi-lbl,body.acentuar-todo .g-label{color:var(--acc2)!important;opacity:.85}
 body.acentuar-todo .g-tbl th{background:rgba(var(--acc-r,59),var(--acc-g,130),var(--acc-b,246),.12)}
+
+/* Tiles (b74): todos iguales y quietos. Solo lo que se puede pulsar reacciona al
+   raton: los tiles-boton del cuadre de banco y las tarjetas de hotel. */
+.g-kpi{cursor:default;transition:none;transform:none}
+.g-kpi:hover{background:var(--s1);border-color:var(--g-line);transform:none;box-shadow:var(--g-shadow)}
+.g-kpi.g-kpi-btn{cursor:pointer;transition:border-color .15s,background-color .15s}
+.g-kpi.g-kpi-btn:hover{border-color:var(--acc);background:rgba(var(--acc-r,59),var(--acc-g,130),var(--acc-b,246),.06)}
+.g-kpi.upd-green,.g-kpi.hl{background:var(--s1)!important;border-color:var(--g-line)!important}
+body.acentuar-todo .g-kpi:hover{background:rgba(var(--acc-r,59),var(--acc-g,130),var(--acc-b,246),.06)!important}
