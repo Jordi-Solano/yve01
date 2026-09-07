@@ -5658,7 +5658,7 @@ HTML = r"""<!DOCTYPE html>
 <html lang="es">
 <head>
 <meta charset="UTF-8">
-<meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=5,viewport-fit=cover">
+<meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=5,viewport-fit=cover,interactive-widget=resizes-content">
 <meta id="csrf-token-meta" name="csrf-token" content="">
 <link rel="manifest" href="/static/manifest.json">
 <meta name="theme-color" content="#0f172a">
@@ -6061,8 +6061,8 @@ tr:hover td{background:rgba(255,255,255,.025)}
 #chat-panel.open{transform:translateX(0)}
 @media(max-width:768px){
   #chat-panel{
-    width:100%;height:100%;
-    top:0;left:0;right:0;bottom:0;
+    width:100%;height:100vh;height:100dvh;   /* alto dinamico: con el teclado abierto encoge (b76) */
+    top:0;left:0;right:0;bottom:auto;
     border-left:none;
     transform:translateY(100%);
   }
@@ -15216,6 +15216,40 @@ function toggleChat() {
   // FAB: hide when open
   if (fab) fab.style.opacity = chatOpen ? '0' : '1';
   if (fab) fab.style.pointerEvents = chatOpen ? 'none' : 'auto';
+  _chatTeclado(chatOpen);
+}
+
+// ── Teclado del movil (b76) ─────────────────────────────────────────────────
+// Al escribir, el teclado cambia el alto de la ventana. iOS NO encoge la
+// ventana de maquetacion (solo la visual) y desplaza la pagina: el panel fijo
+// se quedaba a medias y, al cerrar el teclado, descolocado. Se sigue el
+// visualViewport: el panel mide lo que se ve y esta donde se ve; al cerrar el
+// chat se deshace todo y la pagina vuelve a donde estaba.
+var _chatScrollAntes = 0, _chatVVListo = false;
+function _chatAjustar() {
+  var panel = document.getElementById('chat-panel'); if (!panel || !chatOpen || !IS_MOBILE) return;
+  var vv = window.visualViewport;
+  if (!vv) return;
+  panel.style.height = Math.round(vv.height) + 'px';
+  panel.style.top = Math.round(vv.offsetTop) + 'px';
+  var msgs = document.getElementById('chat-msgs'); if (msgs) msgs.scrollTop = msgs.scrollHeight;
+}
+function _chatTeclado(abrir) {
+  var panel = document.getElementById('chat-panel'); if (!panel) return;
+  if (!IS_MOBILE) return;
+  if (abrir) {
+    _chatScrollAntes = window.scrollY || 0;
+    if (window.visualViewport && !_chatVVListo) {
+      _chatVVListo = true;
+      window.visualViewport.addEventListener('resize', _chatAjustar);
+      window.visualViewport.addEventListener('scroll', _chatAjustar);
+    }
+    _chatAjustar();
+  } else {
+    panel.style.height = ''; panel.style.top = '';
+    var inp = document.getElementById('chat-input'); if (inp) inp.blur();
+    window.scrollTo(0, _chatScrollAntes);
+  }
 }
 
 function renderMarkdown(text) {

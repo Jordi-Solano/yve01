@@ -75,6 +75,18 @@ JS_MEDIR = r"""
 """
 
 
+JS_CHAT = r"""
+() => {
+  const H = window.innerHeight, p = document.getElementById('chat-panel'), pr = p.getBoundingClientRect();
+  const inp = document.getElementById('chat-input').getBoundingClientRect();
+  const head = document.getElementById('chat-header').getBoundingClientRect();
+  const saTop = parseFloat(getComputedStyle(document.documentElement).getPropertyValue('--sa-top')) || 0;
+  return {H, panelAlto: Math.round(pr.height), panelTop: Math.round(pr.top), inputVisible: inp.top >= 0 && inp.bottom <= H + 1 && inp.height > 10,
+          headerArriba: head.top >= 0 && head.top <= 2 && head.bottom > saTop, scrollY: Math.round(window.scrollY)};
+}
+"""
+
+
 def main():
     import dashboard as D
     from werkzeug.serving import make_server
@@ -94,7 +106,7 @@ def main():
         if os.path.isdir(d): shutil.copytree(d, os.path.join(copia, d))
     srv = make_server('127.0.0.1', PORT, D.app, threaded=True)
     threading.Thread(target=srv.serve_forever, daemon=True).start()
-    css_sab = "#chat-fab{bottom:4px!important} #ap-tbody{margin-left:-40px}" if SABOTAJE else ""
+    css_sab = "#chat-fab{bottom:4px!important} #ap-tbody{margin-left:-40px} #chat-panel{height:900px!important}" if SABOTAJE else ""
     try:
       with sync_playwright() as p:
           br = p.chromium.launch(executable_path='/opt/pw-browsers/chromium')
@@ -134,7 +146,21 @@ def main():
               r = pg.evaluate(JS_MEDIR, {'saTop': SA_TOP, 'saBottom': SA_BOTTOM})
               ok(not r['fijos'], f"{nombre} · chat abierto: cabecera y entrada fuera de la barra de estado/gestos {r['fijos'][:3]}")
               ok(not r['solapes'], f"{nombre} · chat abierto: sin solapes {r['solapes'][:3]}")
-              pg.evaluate("toggleChat()")
+              # teclado abierto (b76): la ventana encoge ~40 % (lo que hace un teclado); el panel del
+              # chat tiene que medir lo que se ve, con la entrada visible y la cabecera arriba
+              vp = pg.viewport_size; H0 = vp['height']
+              pg.evaluate("document.getElementById('chat-input').focus()")
+              pg.set_viewport_size({'width': vp['width'], 'height': int(H0 * 0.58)}); pg.wait_for_timeout(500)
+              k = pg.evaluate(JS_CHAT)
+              ok(k['panelAlto'] <= k['H'] + 1 and k['inputVisible'] and k['headerArriba'] and k['scrollY'] == 0, f"{nombre} · chat con teclado abierto: panel {k['panelAlto']} px en ventana de {k['H']}, entrada visible, cabecera arriba, sin desplazar la pagina ({k})")
+              r = pg.evaluate(JS_MEDIR, {'saTop': SA_TOP, 'saBottom': 0})
+              ok(not r['solapes'], f"{nombre} · chat con teclado abierto: sin solapes {r['solapes'][:3]}")
+              # teclado cerrado: todo vuelve a su sitio
+              pg.set_viewport_size({'width': vp['width'], 'height': H0}); pg.wait_for_timeout(500)
+              k2 = pg.evaluate(JS_CHAT)
+              ok(k2['panelAlto'] >= k2['H'] - 1 and k2['inputVisible'] and k2['scrollY'] == 0, f"{nombre} · chat con teclado cerrado: el panel vuelve a llenar la pantalla y nada queda descolocado ({k2})")
+              pg.evaluate("toggleChat()"); pg.wait_for_timeout(300)
+              ok(pg.evaluate("window.scrollY") == 0 and pg.evaluate("!document.getElementById('chat-panel').style.height"), f"{nombre} · al cerrar el chat, la pagina esta donde estaba y el panel sin medidas forzadas")
               pg.evaluate("_postJson('/api/demo/toggle', {}).then(r=>r.json())")
               ctx.close()
           br.close()
