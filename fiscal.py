@@ -7,10 +7,18 @@ Nada de aqui se envia a la AEAT: el SII se PREPARA como libros registro
 (expedidas / recibidas) listos para el envio, que exige certificado digital y
 lo hace la gestoria o el conector, no Yve.
 
+VALIDACION DE FINANZAS (7 sep 2026): el ENFOQUE del 303 y del 349 esta validado;
+los NUMEROS DE CASILLA quedan como NO VERIFICADOS (se apuntan tal cual y la
+gestoria los comprueba antes de presentar). Se dice en los avisos del panel.
+
 Criterio (revisable por la gestoria — cada cifra lleva su casilla):
   · Ventas alojamiento y F&B: IVA reducido (10 %) salvo config → casillas 04-06.
     Si la config pone 21 % en algo, va a 07-09.
   · Facturas AP: IVA soportado corriente → casillas 28-29 (base, cuota).
+    Si el proveedor lleva NIF-IVA comunitario (prefijo de otro pais de la UE:
+    DE, FR, NL, IT… — no ES) es una ADQUISICION INTRACOMUNITARIA DE BIENES
+    (finanzas, 7 sep 2026): devengado 10-11 y deducible 36-37 sobre la base,
+    y fila del 349 con clave 'A' (Adquisiciones). En el SII, clave 09.
   · Comisiones OTA (cierre_mes.regimen_ota):
       'es'    → IVA incluido, soportado corriente 28-29.
       'ue'    → adquisicion intracomunitaria de servicios: devengado 10-11 y
@@ -124,6 +132,21 @@ def _nif_cliente(nombre, fuentes, cfg):
     return _nif(nombre, cfg)
 
 
+# Prefijos del NIF-IVA de los 27 (+ XI, Irlanda del Norte, que sigue en la UE
+# para bienes). Grecia usa EL. ES no cuenta: es nacional.
+PREFIJOS_NIF_UE = {"AT", "BE", "BG", "CY", "CZ", "DE", "DK", "EE", "EL", "FI", "FR", "HR", "HU", "IE",
+                   "IT", "LT", "LU", "LV", "MT", "NL", "PL", "PT", "RO", "SE", "SI", "SK", "XI"}
+
+
+def pais_nif_ue(nif):
+    """'DE123456789' -> 'DE' si es un NIF-IVA de otro pais de la UE; '' si no."""
+    n = _limpia_nif(nif)
+    if len(n) < 4 or not n[:2].isalpha():
+        return ""
+    pre = n[:2]
+    return pre if pre in PREFIJOS_NIF_UE else ""
+
+
 def _pct_key(pct):
     p = round(float(pct or 0))
     return {4: "dev_4", 10: "dev_10", 21: "dev_21"}.get(p, "dev_21")
@@ -224,14 +247,28 @@ def calcular(mes, fuentes, cfg=None, cfg_fiscal=None):
             total = _num(r.get("total_factura"))
             if not total:
                 continue
-            base, cuota, pct = _desglose_ap(r)
-            suma("ded_int", base, cuota)
             prov = _txt(r.get("nombre_proveedor")) or "proveedor"
             # el lector escribe `NIF_proveedor` (mayusculas): antes se buscaba en
             # minusculas y el NIF que la IA habia leido se perdia
             nif = _limpia_nif(_col(r, "NIF_proveedor", "nif", "cif")) or _nif(prov, cf)
             if not nif:
                 nif_pend.add(prov)
+            pais_ue = pais_nif_ue(nif)
+            if pais_ue:
+                # adquisicion intracomunitaria de bienes: la factura viene sin IVA
+                # español; la base es lo facturado y la cuota se autoliquida
+                base = _num(r.get("base_imponible")) or total
+                cuota = _r(base * IVA_GENERAL / 100)
+                suma("dev_aib", base, cuota); suma("ded_aib", base, cuota)
+                m = m349.setdefault(prov.lower() + "|A", {"operador": prov, "nif": nif, "clave": "A", "base": 0.0, "pais": pais_ue})
+                m["base"] = _r(m["base"] + base)
+                rec.append({"tipo_factura": "F1", "fecha": f.isoformat(),
+                            "numero": _txt(r.get("numero_factura")) or _txt(r.get("archivo")),
+                            "nif": nif, "nombre": prov, "clave_regimen": "09", "base": base, "tipo": IVA_GENERAL,
+                            "cuota": cuota, "total": total, "inversion_sujeto_pasivo": "N", "origen": "AP"})
+                continue
+            base, cuota, pct = _desglose_ap(r)
+            suma("ded_int", base, cuota)
             rec.append({"tipo_factura": "F1", "fecha": f.isoformat(),
                         "numero": _txt(r.get("numero_factura")) or _txt(r.get("archivo")),
                         "nif": nif, "nombre": prov, "clave_regimen": "01", "base": base, "tipo": pct,
@@ -267,7 +304,7 @@ def calcular(mes, fuentes, cfg=None, cfg_fiscal=None):
                 cuota = _r(imp * IVA_GENERAL / 100)
                 if reg == "ue":
                     suma("dev_aib", imp, cuota); suma("ded_aib", imp, cuota)
-                    m = m349.setdefault(ota.lower(), {"operador": ota, "nif": nif, "clave": "S", "base": 0.0})
+                    m = m349.setdefault(ota.lower() + "|S", {"operador": ota, "nif": nif, "clave": "S", "base": 0.0})
                     m["base"] = _r(m["base"] + imp)
                     clave = "09"       # adquisiciones intracomunitarias de servicios
                 else:
@@ -290,6 +327,7 @@ def calcular(mes, fuentes, cfg=None, cfg_fiscal=None):
             "signo": "A INGRESAR" if resultado > 0 else ("A COMPENSAR" if resultado < 0 else "SIN ACTIVIDAD"),
             "periodicidad": cf.get("periodicidad", "mensual")}
     avisos.append("Casilla 67 (compensacion de periodos anteriores) no se conoce: el resultado es antes de compensar.")
+    avisos.append("Enfoque del 303/349 validado por finanzas (7 sep 2026); los numeros de casilla NO estan verificados: comprobarlos antes de presentar.")
     if acc["ded_inv"][0] == 0:
         avisos.append("Bienes de inversion (30-31), importaciones (32-35) y prorrata (44) no se distinguen: "
                       "las compras de inmovilizado van en 28-29 como corriente.")
@@ -297,7 +335,7 @@ def calcular(mes, fuentes, cfg=None, cfg_fiscal=None):
         avisos.append("Periodicidad trimestral: sumar los 3 meses antes de presentar.")
 
     # ── modelo 349 ───────────────────────────────────────────────────────
-    filas349 = sorted(m349.values(), key=lambda x: x["operador"])
+    filas349 = sorted(m349.values(), key=lambda x: (x["operador"], x["clave"]))
     if filas349 and any(not x["nif"] for x in filas349):
         avisos.append("349: falta el NIF-IVA de " + ", ".join(x["operador"] for x in filas349 if not x["nif"])
                       + " (config_fiscal.json → nif).")
