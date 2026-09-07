@@ -49,6 +49,27 @@ JS_MEDIR = r"""
 """
 
 
+JS_MOVIL = r"""
+(tab) => {
+  const W = innerWidth, p = document.getElementById('panel-' + tab);
+  const vis = e => { const r = e.getBoundingClientRect(); return r.width > 2 && r.height > 2; };
+  const vac = [...p.querySelectorAll('.g-empty')].filter(e => vis(e) && !e.classList.contains('g-cargando') && !e.classList.contains('is-ok'));
+  const malos = [];
+  vac.forEach(e => {
+    const cs = getComputedStyle(e), r = e.getBoundingClientRect(), b = e.querySelector('b'), btn = e.querySelector('.g-empty-cta .g-btn');
+    const pb = [];
+    if (cs.borderStyle !== 'solid') pb.push('borde ' + cs.borderStyle);
+    if (r.left < 0 || r.right > W + 1) pb.push('fuera de pantalla ' + Math.round(r.left) + '-' + Math.round(r.right));
+    if (b && !/Space Grotesk/.test(getComputedStyle(b).fontFamily)) pb.push('titulo sin Space Grotesk');
+    if (btn) { const br = btn.getBoundingClientRect(); if (getComputedStyle(btn).borderRadius !== '999px') pb.push('boton sin pildora'); if (br.right > W + 1 || br.width < r.width * 0.8) pb.push('boton cortado o estrecho ' + Math.round(br.width) + '/' + Math.round(r.width)); }
+    const sub = e.querySelector('.g-empty-sub'); if (sub && sub.scrollWidth > sub.clientWidth + 2) pb.push('texto cortado');
+    if (pb.length) malos.push(pb.join(', '));
+  });
+  return {n: vac.length, malos};
+}
+"""
+
+
 def main():
     import dashboard as D
     from werkzeug.serving import make_server
@@ -133,6 +154,23 @@ def main():
                 r = pg.evaluate(JS_MEDIR, tab)
                 ok(len(r['tilesConNumero']) >= 3 and all(v != '—' for v in r['tilesConNumero']), f"con datos · {tab}: los tiles vuelven a tener numero ({r['tilesConNumero'][:4]})")
             pg.evaluate("_postJson('/api/demo/toggle', {}).then(r=>r.json())"); pg.wait_for_timeout(400)
+            # PC: variante A (caja discontinua)
+            pg.evaluate("switchTab('ap', document.querySelector('.tab[onclick*=\"\\'ap\\'\"]'))"); pg.wait_for_timeout(1500)
+            ok(pg.evaluate("getComputedStyle(document.querySelector('#panel-ap .g-empty')).borderStyle") == 'dashed', 'PC: el vacio va en variante A (caja discontinua)')
+            ctx.close()
+            # Movil: variante B (b75) — caja solida como un tile, titulo con la tipografia de las cifras,
+            # boton pildora a todo el ancho, y NADA cortado aunque este dentro de una tabla
+            ctx = br.new_context(**p.devices['iPhone 13']); pg = ctx.new_page()
+            pg.goto(f'http://127.0.0.1:{PORT}/login'); pg.fill('#username', 'admin'); pg.fill('#password', 'admin123'); pg.click('#btn-login')
+            pg.wait_for_url(lambda u: '/login' not in u, timeout=20000); pg.wait_for_load_state('networkidle')
+            pg.evaluate("sessionStorage.setItem('yve_splash_shown','1'); localStorage.setItem('tour_skipped','1'); localStorage.setItem('yve_bancomodo_visto','1')")
+            pg.reload(); pg.wait_for_load_state('networkidle'); pg.wait_for_timeout(800)
+            if SABOTAJE:
+                pg.add_style_tag(content=".g-empty-cta .g-btn{width:60%!important}")
+            for tab in TABS:
+                pg.evaluate(f"switchTab('{tab}', document.querySelector('.tab[onclick*=\"\\'{tab}\\'\"]'))"); pg.wait_for_timeout(2200)
+                r = pg.evaluate(JS_MOVIL, tab)
+                ok(r['n'] >= 1 and not r['malos'], f"movil · {tab}: {r['n']} vacio(s) en variante B, enteros en pantalla ({r['malos'][:2]})")
             ctx.close(); br.close()
     finally:
         srv.shutdown()

@@ -358,3 +358,28 @@ body.acentuar-todo .g-tbl th{background:rgba(var(--acc-r,59),var(--acc-g,130),va
 .g-kpi.g-kpi-btn:hover{border-color:var(--acc);background:rgba(var(--acc-r,59),var(--acc-g,130),var(--acc-b,246),.06)}
 .g-kpi.upd-green,.g-kpi.hl{background:var(--s1)!important;border-color:var(--g-line)!important}
 body.acentuar-todo .g-kpi:hover{background:rgba(var(--acc-r,59),var(--acc-g,130),var(--acc-b,246),.06)!important}
+/* Estado vacio en movil (b75): variante B, como el resto del panel en ese
+   formato — caja solida como un tile, titulo en la tipografia de las cifras,
+   boton pildora a todo el ancho, menos aire. En PC sigue la variante A. */
+@media(max-width:768px){
+  .g-empty{border:1px solid var(--g-line);background:var(--s1);border-radius:var(--g-r-md);padding:20px 14px;box-shadow:var(--g-shadow)}
+  .g-empty.g-empty-lg{padding:28px 14px}
+  .g-empty .g-empty-ico{font-size:22px;margin-bottom:6px}
+  .g-empty-lg .g-empty-ico{font-size:30px}
+  .g-empty>b{font-family:var(--g-f-head);font-size:14px;letter-spacing:-.2px}
+  .g-empty-sub{font-size:12px;line-height:1.45}
+  .g-empty-cta{margin-top:12px}
+  .g-empty-cta .g-btn{width:100%;justify-content:center}
+  .g-empty.g-cargando{background:transparent;box-shadow:none;border-color:transparent}
+}
+/* Vacio dentro de una tabla (b75): la tabla es mas ancha que la pantalla en
+   movil (columnas), asi que el vacio se pega al borde izquierdo y no pasa del
+   ancho visible; en PC la celda ya cabe y no cambia nada. */
+.g-tbl td>.g-empty{white-space:normal}
+@media(max-width:768px){
+  /* la tabla vacia deja de ser tabla: sin cabecera, y el vacio a todo el ancho visible */
+  .g-tbl:has(td>.g-empty){display:block;min-width:0}
+  .g-tbl:has(td>.g-empty) thead{display:none}
+  .g-tbl-wrap:has(td>.g-empty){border:none;border-radius:0}
+  .g-tbl:has(td>.g-empty) tbody,.g-tbl:has(td>.g-empty) tr,.g-tbl:has(td>.g-empty) td{display:block;width:auto;padding:0;border:none}
+}
