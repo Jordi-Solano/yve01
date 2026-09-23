@@ -6,9 +6,12 @@ todavia no se han PAGADO. "Pagada" es lo unico que Yve puede saber sin
 conector: el extracto bancario la ha conciliado (`estado == CONCILIADO` con
 `factura_ref` = su numero). Lo demas esta pendiente, aprobado o no.
 
-Tramos por dias desde la fecha de factura: 0-30 · 31-60 · 61-90 · >90.
-No se inventa vencimiento: sin fecha de factura la fila va a "sin fecha" y
-se cuenta aparte, nunca a un tramo.
+Tramos por dias desde el VENCIMIENTO (b84: fecha de factura + dias de pago del
+proveedor, o el que una persona ponga en la ficha); si una fila no trae
+vencimiento, desde la fecha de factura como antes. Dias negativos = todavia no
+vence (tramo 0-30). Sin ninguna fecha la fila va a "sin fecha", nunca a un tramo.
+Tambien se excluye lo marcado PAGADA a mano en la ficha (b84), ademas de lo
+conciliado en el banco.
 
 SOLO LEE. Funciones puras sobre DataFrames para poder probarlas sin Flask.
 """
@@ -25,7 +28,7 @@ TRAMOS = ("0-30", "31-60", "61-90", ">90")
 def _tramo(dias):
     if dias is None:
         return "sin fecha"
-    if dias <= 30:
+    if dias <= 30:           # incluye lo que aun no vence (dias negativos)
         return "0-30"
     if dias <= 60:
         return "31-60"
@@ -55,19 +58,25 @@ def calcular_aging(df_ap, df_ar=None, df_banco=None, hoy=None):
     """
     hoy = hoy or date.today()
     pagadas = _pagadas(df_banco)
+    pagadas_mano = [0]
     filas = []
 
-    def _add(origen, num, acreedor, fecha, importe, aprobacion, hotel):
+    def _add(origen, num, acreedor, fecha, importe, aprobacion, hotel, vencimiento=None, pagada_mano=False):
         num = _txt(num)
         if num and num.upper() in pagadas:
             return
+        if pagada_mano:
+            pagadas_mano[0] += 1
+            return
         f = _fecha(fecha)
-        dias = (hoy - f).days if f else None
+        v = _fecha(vencimiento) if vencimiento is not None and _txt(vencimiento) else None
+        dias = (hoy - (v or f)).days if (v or f) else None
         filas.append({
             "origen":      origen,
             "numero_factura": num or "N/D",
             "acreedor":    _txt(acreedor) or "Desconocido",
             "fecha":       f.isoformat() if f else "",
+            "vencimiento": v.isoformat() if v else "",
             "dias":        dias,
             "tramo":       _tramo(dias),
             "importe":     round(importe, 2),
@@ -80,7 +89,8 @@ def calcular_aging(df_ap, df_ar=None, df_banco=None, hoy=None):
             imp = _num(r.get("total_factura")) or _num(r.get("importe_total")) or _num(r.get("total"))
             _add("Proveedor", r.get("numero_factura"), r.get("nombre_proveedor"),
                  r.get("fecha_factura") if _txt(r.get("fecha_factura")) else r.get("fecha"),
-                 imp, r.get("accion"), r.get("hotel_id"))
+                 imp, r.get("accion"), r.get("hotel_id"),
+                 vencimiento=r.get("vencimiento"), pagada_mano=bool(r.get("pagada")) if "pagada" in df_ap.columns else False)
     if df_ar is not None and not df_ar.empty:
         for _, r in df_ar.iterrows():
             imp = _num(r.get("importe_comision")) or _num(r.get("importe_comision_factura"))
@@ -118,10 +128,11 @@ def calcular_aging(df_ap, df_ar=None, df_banco=None, hoy=None):
         "total": total,
         "n": len(filas),
         "n_pagadas_excluidas": len(pagadas),
+        "n_pagadas_mano": pagadas_mano[0],
         "mas_de_60": vencido,
         "sin_fecha": sum(1 for f in filas if f["dias"] is None),
-        "nota": ("Pendiente = sin conciliar en el extracto bancario. Sin extracto subido, "
-                 "todo cuenta como pendiente."),
+        "nota": ("Pendiente = sin conciliar en el extracto bancario ni marcada como pagada en la ficha. "
+                 "Los dias cuentan desde el vencimiento (fecha de factura + dias de pago)."),
     }
 
 

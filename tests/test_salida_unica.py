@@ -42,6 +42,10 @@ def main():
     # 1. ningun enlace de descarga suelto fuera del catalogo
     cat_ini = html.index('var _DESCARGAS = ['); cat_fin = html.index('function _mesDescarga')
     fuera = html[:cat_ini] + html[cat_fin:]
+    # b84: la ficha de UNA factura lleva sus dos descargas (PDF de la ficha y su asiento),
+    # pedidas por Jordi; son contextuales, no botones sueltos de panel
+    f_ini = fuera.index('function _pintarFichaAP('); f_fin = fuera.index('async function _fichaPost(')
+    fuera = fuera[:f_ini] + fuera[f_fin:]
     sueltos = re.findall(r'href="(/api/(?:exportar|reportes|oracle/export|inventarios/hoja)[^"]*)"', fuera)
     ok(not sueltos, f"sin botones de descarga sueltos en los paneles: {sueltos[:5]}")
     ok('id="dl-apartado"' in html and 'id="dl-lista"' in html and 'menu.descargas' in html, "el menu ⚙️ tiene el selector de apartado y la lista")

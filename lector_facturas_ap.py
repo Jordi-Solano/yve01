@@ -257,12 +257,12 @@ FACTURA (UNA sola factura en el documento — el caso normal de un PDF o una fot
 factura de un concepto suelto (luz, alquiler, una comisión), OMITE "lineas".
 Tener líneas NO convierte la factura en albarán: manda la regla de arriba (con
 número de factura E IVA es FACTURA):
-{"es_factura":true,"numero_factura":"X","fecha":"DD/MM/YYYY","nombre_proveedor":"X","NIF_proveedor":"X","descripcion_concepto":"X","base_imponible":0.0,"porcentaje_iva":21,"cuota_iva":0.0,"total_factura":0.0,"moneda":"EUR","lineas":[{"descripcion":"X","cantidad":0.0,"unidad":"kg|ud|l|caja","precio_unitario":0.0,"importe":0.0}]}
+{"es_factura":true,"numero_factura":"X","fecha":"DD/MM/YYYY","nombre_proveedor":"X","NIF_proveedor":"X","descripcion_concepto":"X","base_imponible":0.0,"porcentaje_iva":21,"cuota_iva":0.0,"total_factura":0.0,"moneda":"EUR","periodo_inicio":"DD/MM/YYYY","periodo_fin":"DD/MM/YYYY","lineas":[{"descripcion":"X","cantidad":0.0,"unidad":"kg|ud|l|caja","precio_unitario":0.0,"importe":0.0}]}
 
 FACTURA (VARIAS facturas en el MISMO documento, tipico en una hoja de cálculo con
 una factura por fila. Usa esta forma SOLO si de verdad hay más de una; si hay una
 sola, usa la de arriba):
-{"es_factura":true,"facturas":[{"numero_factura":"X","fecha":"DD/MM/YYYY","nombre_proveedor":"X","NIF_proveedor":"X","descripcion_concepto":"X","base_imponible":0.0,"porcentaje_iva":21,"cuota_iva":0.0,"total_factura":0.0,"moneda":"EUR","lineas":[{"descripcion":"X","cantidad":0.0,"unidad":"kg|ud|l|caja","precio_unitario":0.0,"importe":0.0}]}]}
+{"es_factura":true,"facturas":[{"numero_factura":"X","fecha":"DD/MM/YYYY","nombre_proveedor":"X","NIF_proveedor":"X","descripcion_concepto":"X","base_imponible":0.0,"porcentaje_iva":21,"cuota_iva":0.0,"total_factura":0.0,"moneda":"EUR","periodo_inicio":"DD/MM/YYYY","periodo_fin":"DD/MM/YYYY","lineas":[{"descripcion":"X","cantidad":0.0,"unidad":"kg|ud|l|caja","precio_unitario":0.0,"importe":0.0}]}]}
 
 ORDEN_COMPRA (lo PEDIDO, no lo entregado ni lo cobrado).
 "importe_aprobado" es el total del pedido. "iva_incluido": true SOLO si ese
@@ -324,6 +324,8 @@ REGLAS:
 - IVA 0% intracomunitaria: base=total, iva=0, cuota=0
 - Extrae TODOS los items/movimientos/platos que veas, no solo los primeros
 - Si no encuentras un campo → null. NUNCA inventes datos
+- "periodo_inicio"/"periodo_fin" SOLO si la factura dice a qué periodo corresponde
+  (consumo del 01/07 al 31/07, cuota de agosto, alquiler del mes…); si no lo dice, null
 - Un % de comisión NO convierte un documento en factura: sin nº de factura
   ni importes facturados, es CONTRATO_OTA, no COMISIONES_OTA
 - Responde SOLO con JSON, sin markdown, sin explicaciones, sin ```
@@ -774,6 +776,14 @@ def facturas_de_respuesta(datos, nombre, proveedores, como_dict=False):
     return una if como_dict else [una]
 
 
+def _fecha_o_vacio(v):
+    """'DD/MM/YYYY' tal cual si parece fecha; '' si no (nunca NO_ENCONTRADO: es un campo opcional, b84)."""
+    v = str(v or "").strip()
+    if not v or v.lower() in ("null", "none", "nan", NF.lower()):
+        return ""
+    return v[:10] if (re.match(r"^\d{1,2}[/-]\d{1,2}[/-]\d{2,4}", v) or re.match(r"^\d{4}-\d{2}-\d{2}", v)) else ""
+
+
 def normalizar_factura_ap(datos, nombre, proveedores):
     """Los campos de UNA factura -> la fila que se guarda en facturas_ap_*.xlsx.
 
@@ -825,6 +835,8 @@ def normalizar_factura_ap(datos, nombre, proveedores):
         "nombre_proveedor":   datos.get("nombre_proveedor") or NF,
         "NIF_proveedor":      datos.get("NIF_proveedor") or NF,
         "descripcion_concepto": datos.get("descripcion_concepto") or NF,
+        "periodo_inicio":     _fecha_o_vacio(datos.get("periodo_inicio")),
+        "periodo_fin":        _fecha_o_vacio(datos.get("periodo_fin")),
         "base_imponible":     base or NF,
         "porcentaje_iva":     iva_pct or NF,
         "cuota_iva":          cuota or NF,
@@ -836,12 +848,12 @@ def normalizar_factura_ap(datos, nombre, proveedores):
     }
 
     campos_ok = sum(1 for k,v in resultado.items() 
-                    if k not in ("archivo","tipo_proveedor","cuenta_contable","moneda","error") 
+                    if k not in ("archivo","tipo_proveedor","cuenta_contable","moneda","error","periodo_inicio","periodo_fin") 
                     and v not in (NF, None, ""))
     campos_total = 9  # campos de factura
     print(f"    Extraídos: {campos_ok}/{campos_total} campos")
     for k, v in resultado.items():
-        if k in ("archivo","tipo_proveedor","cuenta_contable","moneda","error"):
+        if k in ("archivo","tipo_proveedor","cuenta_contable","moneda","error") or (k.startswith("periodo_") and not v):
             continue
         icono = "✓" if v not in (NF, None, "") else "✗"
         print(f"    [{icono}] {k}: {v}")

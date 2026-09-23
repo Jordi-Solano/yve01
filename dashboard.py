@@ -223,6 +223,7 @@ from reclamaciones_ap import recl_ap_bp
 from oracle_export_dryrun import oracle_export_bp   # exporta SOLO lo producido por el pipeline
 from tab_cierre import cierre_bp
 from tab_albaranes import albaranes_bp
+from tab_ficha_ap import ficha_ap_bp          # b84: ficha de la factura, ajustes, pagada, descargas
 from oracle_export_dryrun import oracle_export_bp
 from pricing import pricing_bp
 from tab_multi_hotel import multi_hotel_bp
@@ -244,7 +245,7 @@ from about import about_bp
 from exportador_pdf import pdf_bp
 # pricing_bp estaba importado pero NO registrado: /precios daba 404 mientras la
 # landing, el blog y "Quienes somos" enlazaban a el (Ola A).
-for _bp in (auth_bp, config_bp, admin_bp, aprob_ar_bp, aprob_ap_bp, concil_bp, fb_bp, ar_real_bp, recl_ota_bp, recl_ap_bp, oracle_export_bp, cierre_bp, albaranes_bp, multi_hotel_bp, self_service_bp, exportador_bp, demo_bp, demo_sim_bp, reportes_pdf_bp, blog_bp, billing_bp, asientos_bp, signup_bp, about_bp, pdf_bp, legal_bp, pricing_bp):
+for _bp in (auth_bp, config_bp, admin_bp, aprob_ar_bp, aprob_ap_bp, concil_bp, fb_bp, ar_real_bp, recl_ota_bp, recl_ap_bp, oracle_export_bp, cierre_bp, albaranes_bp, ficha_ap_bp, multi_hotel_bp, self_service_bp, exportador_bp, demo_bp, demo_sim_bp, reportes_pdf_bp, blog_bp, billing_bp, asientos_bp, signup_bp, about_bp, pdf_bp, legal_bp, pricing_bp):
     app.register_blueprint(_bp)
 
 
@@ -4260,6 +4261,15 @@ def df_ap_a_lista(df):
             "duplicado_de":      safe_str(r.get("duplicado_de")),
             "importes_cuadran":  safe_str(r.get("importes_cuadran")),
             "aviso_importes":    safe_str(r.get("aviso_importes")),
+            # b84: lo que decide una persona y lo que describe la factura
+            "concepto":          safe_str(r.get("descripcion_concepto")),
+            "periodo_inicio":    safe_str(r.get("periodo_inicio")),
+            "periodo_fin":       safe_str(r.get("periodo_fin")),
+            "fecha_contable":    safe_str(r.get("fecha_contable")),
+            "vencimiento":       safe_str(r.get("vencimiento")),
+            "pagada":            bool(r.get("pagada")) if r.get("pagada") is not None and str(r.get("pagada")) != "nan" else False,
+            "pagada_fecha":      safe_str(r.get("pagada_fecha")),
+            "pagada_cuenta":     safe_str(r.get("pagada_cuenta")),
         })
     return rows
 
@@ -6784,7 +6794,10 @@ svg.yvi{width:1em;height:1em;vertical-align:-0.125em;flex-shrink:0;display:inlin
           <option value="MATCH_3WAY_OK">Match OK</option>
           <option value="DISCREPANCIA_PO">Discrepancias</option>
           <option value="ALERTA_CONSUMO">Alertas</option>
+          <option value="@PAGADA" data-i18n-opt="ap.fPagadas">Pagadas</option>
+          <option value="@PENDIENTE_PAGO" data-i18n-opt="ap.fPendPago">Pendientes de pago</option>
         </select>
+        <button class="g-btn g-secondary g-sm" id="btn-ap-asientos" onclick="descargarAsientosAP()" title="Excel con el asiento de las facturas marcadas (o de todas si no marcas ninguna)" data-i18n="ap.btnAsientos" data-i18n-title="ap.btnAsientosT">⬇️ Asientos</button>
         <button class="g-btn g-secondary g-sm" onclick="aprobarMatchOK()" title="Aprueba automáticamente todas las facturas con 3-way match correcto" data-i18n="btn.aprobarMatchOk">Aprobar match OK</button>
         <button class="g-btn g-secondary g-sm" id="btnOracle" onclick="procesarOracle()" title="Genera los asientos de las facturas aprobadas" data-i18n="btn.contabilizarOracle">Contabilizar en Oracle</button>
         <a href="/aprobaciones-ap/" class="g-btn g-primary g-sm" title="Abrir panel de aprobaciones AP" data-i18n="btn.aprobarAP">📲 Aprobar facturas AP</a>
@@ -6803,8 +6816,8 @@ svg.yvi{width:1em;height:1em;vertical-align:-0.125em;flex-shrink:0;display:inlin
       <div class="g-card-head"><div><div class="g-card-title" data-i18n="card.facturasAP" title="Pulsa una fila para ver el detalle." data-i18n-title="ap.tablaAyuda">Facturas AP</div></div><span class="g-small" id="ap-count"></span></div>
       <div class="g-tbl-wrap">
         <table class="g-tbl">
-          <thead><tr><th>Factura</th><th data-i18n="th.proveedor">Proveedor</th><th data-i18n="th.tipo">Tipo</th><th class="num">Total</th><th data-i18n="th.cuenta">Cuenta</th><th data-i18n="th.matching">Matching</th><th data-i18n="th.aprobacion">Aprobación</th></tr></thead>
-          <tbody id="ap-tbody"><tr><td colspan="7"><div class="g-empty g-cargando" data-i18n="lbl.cargando">Cargando…</div></td></tr></tbody>
+          <thead><tr><th class="g-chk"><input type="checkbox" id="ap-select-all" onclick="toggleSelectAll(this,'ap-row-cb')"></th><th>Factura</th><th data-i18n="th.proveedor">Proveedor</th><th data-i18n="th.tipo">Tipo</th><th class="num">Total</th><th data-i18n="th.cuenta">Cuenta</th><th data-i18n="th.matching">Matching</th><th data-i18n="th.aprobacion">Aprobación</th><th data-i18n="th.pago">Pago</th></tr></thead>
+          <tbody id="ap-tbody"><tr><td colspan="9"><div class="g-empty g-cargando" data-i18n="lbl.cargando">Cargando…</div></td></tr></tbody>
         </table>
       </div>
     </div>
@@ -12167,6 +12180,81 @@ async function generarEmailAR(numero) {
 
 // (generarEmailAP eliminada: llamaba a /ap/api/generar_email, una ruta que no existe, y nadie la usaba)
 
+// ── Ficha de la factura AP (b84) ─────────────────────────────────────
+function showToast(msg, color){
+  var el = document.getElementById('yve-toast');
+  if (!el) { el = document.createElement('div'); el.id = 'yve-toast'; el.style.cssText = 'position:fixed;left:50%;bottom:calc(24px + var(--sa-bottom,0px));transform:translateX(-50%);background:var(--s1);color:var(--tx);border:1px solid var(--s3);border-left:4px solid #22c55e;border-radius:999px;padding:10px 18px;font-size:13px;z-index:10000;box-shadow:0 8px 24px rgba(0,0,0,.35);max-width:90vw;transition:opacity .3s'; document.body.appendChild(el); }
+  el.style.borderLeftColor = color || '#22c55e'; el.textContent = msg; el.style.opacity = '1'; el.style.display = 'block';
+  clearTimeout(el._t); el._t = setTimeout(function(){ el.style.opacity = '0'; setTimeout(function(){ el.style.display = 'none'; }, 300); }, 3500);
+}
+function _fechaCorta(iso){ if(!iso) return ''; var s=String(iso).slice(0,10); var m=s.match(/^(\d{4})-(\d{2})-(\d{2})$/); return m ? m[3]+'/'+m[2]+'/'+m[1].slice(2) : s; }
+function _venceCls(iso){ if(!iso) return 'g-mute'; var d=(new Date(iso)-new Date())/86400000; return d < 0 ? 'g-err' : d <= 7 ? 'g-warn' : 'g-info'; }
+var _fichaAP = null;
+async function abrirFichaAP(clave){
+  var modal = document.getElementById('invoice-modal'), body = document.getElementById('inv-modal-body'), title = document.getElementById('inv-modal-title');
+  if (!modal || !body) return;
+  title.textContent = clave || 'Factura AP'; body.innerHTML = '<div class="g-empty g-cargando">' + t('lbl.cargando','Cargando…') + '</div>'; modal.style.display = 'flex';
+  try {
+    var d = await (await fetch('/api/ap/ficha?clave=' + encodeURIComponent(clave), {cache:'no-store'})).json();
+    if (!d.ok) { body.innerHTML = _gError(_provEsc(d.error || 'Error')); return; }
+    _fichaAP = d; _pintarFichaAP(d);
+  } catch(e) { body.innerHTML = _gError('Error'); }
+}
+function _pintarFichaAP(f){
+  var body = document.getElementById('inv-modal-body'), title = document.getElementById('inv-modal-title');
+  var esc = _provEsc, eur = function(v){ return (v==null) ? '—' : _fmtEurES(v, 2); };
+  title.textContent = (f.numero_factura || f.archivo) + ' · ' + f.proveedor;
+  var apro = f.accion === 'APROBADA' ? gBadge('g-pur', t('est.aprobada','Aprobada')) : f.accion === 'RECHAZADA' ? gBadge('g-err', t('est.rechazada','Rechazada')) : gBadge('g-mute', t('est.sinDecision','Sin decisión'));
+  var pago = f.pagada
+    ? '<div class="g-alert ok" style="margin:10px 0"><span>✓ ' + t('ap.pagadaEl','Pagada el') + ' ' + _fechaCorta(f.pagada_fecha) + (f.pagada_cuenta ? ' · ' + esc(f.pagada_cuenta) : '') + (f.pagada_por ? ' · ' + esc(f.pagada_por) : '') + (f.pagada_nota ? ' · ' + esc(f.pagada_nota) : '') + '</span> <button class="g-btn g-ghost g-sm" onclick="despagarAP()">' + t('ap.deshacerPago','Deshacer') + '</button></div>'
+    : '<div class="g-card" style="margin:10px 0;padding:10px 12px"><div class="g-label">' + t('ap.marcarPagada','Marcar como pagada') + '</div><div style="display:flex;gap:6px;flex-wrap:wrap;align-items:center;margin-top:6px">'
+      + '<input type="date" id="fap-pago-fecha" class="g-input" value="' + (new Date()).toISOString().slice(0,10) + '">'
+      + '<input list="fap-cuentas" id="fap-pago-cuenta" class="g-input" placeholder="' + t('ap.cuentaBanc','Cuenta bancaria (p. ej. BBVA principal)') + '" style="min-width:200px"><datalist id="fap-cuentas">' + (f.cuentas_bancarias||[]).map(function(c){ return '<option value="' + esc(c.nombre) + '">' + esc(c.iban||'') + '</option>'; }).join('') + '</datalist>'
+      + '<input id="fap-pago-nota" class="g-input" placeholder="' + t('ap.nota','Nota (opcional)') + '" style="min-width:140px">'
+      + '<button class="g-btn g-primary g-sm" onclick="pagarAP()">💰 ' + t('ap.pagada','Pagada') + '</button></div></div>';
+  var cuentas = (f.plan_cuentas||[]).map(function(c){ return '<option value="' + esc(c.codigo) + '">' + esc(c.codigo) + ' ' + esc(c.nombre) + '</option>'; }).join('');
+  var asiento = '<table class="g-tbl" style="font-size:12px"><thead><tr><th>' + t('th.cuenta','Cuenta') + '</th><th></th><th class="num">' + t('cierre.debe','Debe') + '</th><th class="num">' + t('cierre.haber','Haber') + '</th></tr></thead><tbody>'
+    + (f.asiento.lineas||[]).map(function(l){ return '<tr><td class="mono">' + esc(l.cuenta) + '</td><td>' + esc(l.nombre) + '</td><td class="num">' + (l.debe ? eur(l.debe) : '') + '</td><td class="num">' + (l.haber ? eur(l.haber) : '') + '</td></tr>'; }).join('')
+    + '</tbody></table><div class="g-small">' + esc(f.asiento.concepto) + ' · ' + _fechaCorta(f.asiento.fecha) + (f.asiento.cuadra ? '' : ' · <span style="color:var(--red)">' + t('ap.noCuadra','no cuadra') + '</span>') + '</div>';
+  var lineas = (f.lineas||[]).length ? '<table class="g-tbl" style="font-size:12px"><tbody>' + f.lineas.map(function(l){ return '<tr><td>' + l.n + '</td><td>' + esc(l.descripcion) + '</td><td class="num">' + (l.cantidad!=null ? l.cantidad + ' ' + esc(l.unidad) : '') + '</td><td class="num">' + (l.precio_unitario!=null ? eur(l.precio_unitario) : '') + '</td><td class="num">' + (l.importe!=null ? eur(l.importe) : '') + '</td></tr>'; }).join('') + '</tbody></table>' : '';
+  var hist = (f.historial||[]).slice().reverse().slice(0,6).map(function(h){ return '<div class="g-small">' + esc(h.fecha) + ' · ' + esc(h.usuario||'') + ' · ' + esc(h.campo) + ' → ' + esc(h.valor===''?'—':h.valor) + '</div>'; }).join('');
+  var campo = function(l, v){ return '<div class="g-modal-field"><div class="g-label">' + l + '</div><div class="g-modal-val">' + v + '</div></div>'; };
+  body.innerHTML =
+    (f.aviso_importes ? '<div class="g-alert err" style="margin-bottom:10px"><span>' + esc(f.aviso_importes) + '</span></div>' : '') +
+    '<div class="g-modal-grid">' +
+    campo(t('th.proveedor','Proveedor'), esc(f.proveedor) + (f.nif ? ' <span class="g-small">' + esc(f.nif) + '</span>' : '')) +
+    campo(t('ap.concepto','Concepto'), esc(f.concepto || '—') + (f.periodo_inicio || f.periodo_fin ? '<div class="g-small">' + t('ap.periodo','Periodo') + ' ' + _fechaCorta(f.periodo_inicio) + ' → ' + _fechaCorta(f.periodo_fin) + '</div>' : '')) +
+    campo(t('ap.importes','Importes'), eur(f.base) + ' + ' + t('ap.iva','IVA') + ' ' + (f.porcentaje_iva||0) + ' % ' + eur(f.cuota_iva) + ' = <b>' + eur(f.total) + '</b>') +
+    campo(t('th.matching','Matching') + ' · ' + t('th.aprobacion','Aprobación'), estadoBadgeAP(f.estado) + ' ' + apro + ' ' + gBadge(f.tipo === 'FB' ? 'g-pur' : 'g-info', f.tipo)) +
+    campo(t('lbl.fecha','Fecha factura'), _fechaCorta(f.fecha_factura) + (f.fecha_registro ? '<div class="g-small">' + t('ap.registrada','registrada el') + ' ' + _fechaCorta(f.fecha_registro) + '</div>' : '')) +
+    campo(t('ap.fechaContable','Fecha contable') + ' <span class="g-small">(' + (f.criterio_fecha === 'contable' ? t('ap.mesRegistro','mes en que se registra') : t('ap.mesFactura','mes de la factura')) + ')</span>', '<input type="date" id="fap-fecha-contable" class="g-input" value="' + esc(f.fecha_contable) + '" onchange="ajustarAP({fecha_contable:this.value})">') +
+    campo(t('th.cuenta','Cuenta') + (f.cuenta_ajustada ? ' <span class="g-small">(' + t('ap.corregida','corregida') + ')</span>' : ''), '<div style="display:flex;gap:6px;flex-wrap:wrap"><input list="fap-plan" id="fap-cuenta" class="g-input mono" value="' + esc(f.cuenta_contable) + '" style="width:110px"><datalist id="fap-plan">' + cuentas + '</datalist><button class="g-btn g-secondary g-sm" onclick="ajustarAP({cuenta_contable:document.getElementById(\'fap-cuenta\').value})">' + t('btn.guardar','Guardar') + '</button><button class="g-btn g-ghost g-sm" onclick="ajustarAP({cuenta_contable:document.getElementById(\'fap-cuenta\').value, aplicar_proveedor:true})" title="' + t('ap.aplicarProvT','La próxima factura de este proveedor saldrá con esta cuenta') + '">' + t('ap.aplicarProv','y al proveedor') + '</button></div><div class="g-small">' + esc(f.cuenta_nombre) + '</div>') +
+    campo(t('ap.vencimiento','Vencimiento'), '<div style="display:flex;gap:6px;flex-wrap:wrap;align-items:center"><input type="date" id="fap-venc" class="g-input" value="' + esc(f.vencimiento) + '" onchange="ajustarAP({vencimiento:this.value})"><span class="g-small">' + t('ap.diasPago','días de pago') + '</span><input type="number" id="fap-dias" class="g-input" value="' + f.dias_pago + '" style="width:70px" onchange="ajustarAP({dias_pago:this.value, vencimiento:\'\'})"></div>') +
+    '</div>' + pago +
+    '<div class="g-card" style="margin-top:10px;padding:10px 12px"><div class="g-label">' + t('ap.asiento','Asiento') + '</div>' + asiento + '</div>' +
+    (lineas ? '<div class="g-card" style="margin-top:10px;padding:10px 12px"><div class="g-label">' + t('ap.lineas','Líneas') + '</div>' + lineas + '</div>' : '') +
+    (hist ? '<div style="margin-top:10px"><div class="g-label">' + t('ap.historial','Cambios') + '</div>' + hist + '</div>' : '') +
+    '<div class="g-modal-foot"><a class="g-btn g-secondary" href="/api/ap/ficha.pdf?clave=' + encodeURIComponent(f.clave) + '">📄 PDF</a><a class="g-btn g-secondary" href="/api/exportar/ap_asientos?claves=' + encodeURIComponent(f.clave) + '">⬇️ ' + t('ap.asientoExcel','Asiento (Excel)') + '</a><button onclick="closeInvoiceModal()" class="g-btn g-primary">' + t('btn.cerrar','Cerrar') + '</button></div>';
+  if (typeof _pintarYa === 'function') _pintarYa(body);
+}
+async function _fichaPost(url, datos){
+  if (!_fichaAP) return;
+  var body = document.getElementById('inv-modal-body');
+  try {
+    var r = await _postJson(url, Object.assign({clave: _fichaAP.clave}, datos));
+    var d = await r.json();
+    if (!d.ok) { showToast('⚠ ' + (d.error || 'Error'), '#ef4444'); return; }
+    _fichaAP = d; _pintarFichaAP(d);
+    if (d.aprendido_en) showToast('✓ ' + t('ap.aprendido','Cuenta guardada para el proveedor') + ' (' + d.aprendido_en + ')', '#22c55e');
+    if (typeof _invalidarPaneles === 'function') _invalidarPaneles();
+    loadAP(); if (typeof loadAgingAP === 'function') loadAgingAP();
+  } catch(e) { showToast('⚠ Error', '#ef4444'); }
+}
+function ajustarAP(c){ return _fichaPost('/api/ap/ajustar', c); }
+function pagarAP(){ var v = function(id){ var e = document.getElementById(id); return e ? e.value : ''; }; if (!v('fap-pago-cuenta')) { showToast('⚠ ' + t('ap.faltaCuenta','Di desde qué cuenta se ha pagado'), '#f59e0b'); return; } return _fichaPost('/api/ap/pagar', {fecha: v('fap-pago-fecha'), cuenta: v('fap-pago-cuenta'), nota: v('fap-pago-nota')}); }
+function despagarAP(){ return _fichaPost('/api/ap/despagar', {}); }
+function descargarAsientosAP(){ var cl = [...document.querySelectorAll('.ap-row-cb:checked')].map(function(cb){ return cb.getAttribute('data-clave'); }).filter(Boolean); window.location.href = '/api/exportar/ap_asientos' + (cl.length ? '?claves=' + encodeURIComponent(cl.join(',')) : ''); }
+
 function showAPDetail(row) {
   var modal = document.getElementById('invoice-modal');
   var body  = document.getElementById('inv-modal-body');
@@ -14002,6 +14090,7 @@ var _DESCARGAS = [
   {tab: 'ap', nombre: 'tab.ap', def: '📦 AP — Proveedores', items: [
     {t: '⬇️ Excel AP', u: '/api/exportar/ap'},
     {t: '⬇️ Excel del aging', u: '/api/exportar/aging_ap', k: 'aging.descargar'},
+    {t: '⬇️ Asientos de las facturas AP', u: '/api/exportar/ap_asientos', k: 'ap.dlAsientos'},
     {t: '⬇️ Provisiones del cierre', u: '/api/exportar/provisiones', mes: 'prov-mes'},
     {t: '⬇️ Albaranes', u: '/api/exportar/albaranes'},
     {t: '📒 Asientos GL (Oracle)', u: '/api/oracle/export_excel', k: 'oracle.exportGl'}]},
@@ -15035,7 +15124,7 @@ async function loadAP() {
     setTimeout(() => injectSparklines(AP_SPARKS), 60);
 
     const tbody = el('ap-tbody');
-    if (tbody) tbody.innerHTML = facts.length ? '' : '<tr><td colspan="7">' + _vacio(t('ap.vacio', 'Sube las facturas de proveedores (PDF o foto) y Yve las cruzará con albarán y pedido.')) + '</td></tr>';
+    if (tbody) tbody.innerHTML = facts.length ? '' : '<tr><td colspan="9">' + _vacio(t('ap.vacio', 'Sube las facturas de proveedores (PDF o foto) y Yve las cruzará con albarán y pedido.')) + '</td></tr>';
     document.getElementById('ap-count').textContent = facts.length + ' ' + (t('lbl.facturas', 'facturas'));
 
     facts.forEach(f => {
@@ -15043,15 +15132,9 @@ async function loadAP() {
       tr.setAttribute('data-estado', f.estado || '');
       tr.setAttribute('data-clave', f.clave || '');
       tr.setAttribute('data-accion', f.accion || '');
+      tr.setAttribute('data-pagada', f.pagada ? '1' : '0');
       tr.style.cursor = 'pointer';
-      tr.addEventListener('click', function(){ showAPDetail({
-        numero_factura: f.numero_factura, proveedor: f.proveedor,
-        fecha_factura: f.fecha, base_imponible: f.total_sin_iva || '',
-        iva_pct: f.iva_pct || '', importe_con_iva: f.total,
-        cuenta_contable: f.cuenta_contable, tipo: f.tipo,
-        estado: f.estado, aprobacion: f.accion,
-        tiene_po: f.tiene_po, tiene_alb: f.tiene_albarán
-      }); });
+      tr.addEventListener('click', function(ev){ if (ev.target && ev.target.classList && ev.target.classList.contains('ap-row-cb')) return; abrirFichaAP(f.clave); });
       const tipoHtml = gBadge(f.tipo === 'FB' ? 'g-pur' : 'g-info', f.tipo);
       const accionHtml = f.accion === 'APROBADA'
         ? gBadge('g-pur', t('est.aprobada', 'Aprobada'))
@@ -15072,14 +15155,20 @@ async function loadAP() {
       const dupHtml = (f.duplicados > 1)
         ? ' ' + gBadge('g-err', t('est.duplicados', '{n} documentos con este número').replace('{n}', f.duplicados), f.duplicado_de || '')
         : '';
+      const concHtml = f.concepto ? '<div class="g-small" style="font-weight:400;max-width:260px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap" title="' + _provEsc(f.concepto) + '">' + _provEsc(f.concepto) + (f.periodo_inicio ? ' · ' + _fechaCorta(f.periodo_inicio) + '→' + _fechaCorta(f.periodo_fin) : '') + '</div>' : '';
+      const pagoHtml = f.pagada
+        ? gBadge('g-ok', t('ap.pagada', 'Pagada') + (f.pagada_fecha ? ' ' + _fechaCorta(f.pagada_fecha) : ''), f.pagada_cuenta || '')
+        : (f.vencimiento ? gBadge(_venceCls(f.vencimiento), t('ap.vence', 'Vence') + ' ' + _fechaCorta(f.vencimiento)) : gBadge('g-mute', t('ap.sinVenc', 'Sin vencimiento')));
       tr.innerHTML = `
-        <td><strong>${f.numero_factura}</strong>${dupHtml}${impHtml}</td>
+        <td class="g-chk"><input type="checkbox" class="ap-row-cb" data-clave="${_provEsc(f.clave)}"></td>
+        <td><strong>${f.numero_factura}</strong>${dupHtml}${impHtml}${concHtml}</td>
         <td>${f.proveedor}</td>
         <td>${tipoHtml}</td>
         <td class="num">${fmtEurAP(f.total)}</td>
         <td class="mono">${f.cuenta_contable}</td>
         <td>${estadoBadgeAP(f.estado)}${alertaHtml}</td>
         <td>${accionHtml}</td>
+        <td>${pagoHtml}</td>
       `;
       tbody.appendChild(tr);
     });
@@ -15570,7 +15659,11 @@ function filtrarAPPorEstado(estado) {
   const rows = document.querySelectorAll('#ap-tbody tr[data-estado]');
   rows.forEach(row => {
     const re = row.getAttribute('data-estado') || '';
-    row.style.display = (!estado || re === estado) ? '' : 'none';
+    const pag = row.getAttribute('data-pagada') === '1';
+    let ver = !estado || re === estado;
+    if (estado === '@PAGADA') ver = pag;
+    else if (estado === '@PENDIENTE_PAGO') ver = !pag;
+    row.style.display = ver ? '' : 'none';
   });
   const visible = [...rows].filter(r => r.style.display !== 'none').length;
   const countEl = document.getElementById('ap-count');

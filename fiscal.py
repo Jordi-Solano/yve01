@@ -174,6 +174,8 @@ def calcular(mes, fuentes, cfg=None, cfg_fiscal=None):
     ini, fin, mes = _mes_a_rango(mes)
     cfg = cfg or config_cierre()
     cf = cfg_fiscal or {"nif": {}, "nif_propio": "", "razon_social": "", "periodicidad": "mensual"}
+    from cierre_mes import criterio_fecha_ap, fecha_ap
+    crit_ap = criterio_fecha_ap(cfg)        # b84: el IVA se deduce en el mes en que se registra
     acc = {k: [0.0, 0.0] for k in CASILLAS}   # base, cuota
     avisos = []
     exp, rec = [], []          # libros SII
@@ -240,7 +242,7 @@ def calcular(mes, fuentes, cfg=None, cfg_fiscal=None):
     ap = fuentes.get("ap")
     if ap is not None and not ap.empty:
         for _, r in ap.iterrows():
-            fecha = r.get("fecha_factura") if _txt(r.get("fecha_factura")) else r.get("fecha")
+            fecha = fecha_ap(r, crit_ap)
             f = _fecha(fecha)
             if f is None or not (ini <= f <= fin):
                 continue

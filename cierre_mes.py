@@ -76,6 +76,28 @@ def regimen_ota(nombre, cfg=None):
 
 
 # ── configuracion y plan ─────────────────────────────────────────────────────
+# ── con que fecha entra una factura AP en el mes (b84, decision de Jordi 23 sep 2026) ──
+# "contable": el dia en que se registra en Yve (o el que una persona ajuste en la
+# ficha): lo que se hace en un hotel (la factura de julio que llega en septiembre se
+# contabiliza en septiembre). "factura": la fecha impresa, como hasta b83. Se elige
+# en config_cierre.json → ap_fecha. Aplica a asientos, reconciliacion, 303/SII e
+# inmovilizado; el aging y el 349 no dependen de ella.
+AP_FECHA_DEFECTO = "contable"
+
+
+def criterio_fecha_ap(cfg=None):
+    v = str((cfg or {}).get("ap_fecha") or AP_FECHA_DEFECTO).strip().lower()
+    return v if v in ("contable", "factura") else AP_FECHA_DEFECTO
+
+
+def fecha_ap(r, criterio=None):
+    """La fecha con la que la factura AP `r` entra en el mes (ver AP_FECHA_DEFECTO)."""
+    crit = criterio if criterio in ("contable", "factura") else criterio_fecha_ap(criterio if isinstance(criterio, dict) else None)
+    if crit == "contable" and _txt(r.get("fecha_contable")):
+        return r.get("fecha_contable")
+    return r.get("fecha_factura") if _txt(r.get("fecha_factura")) else r.get("fecha")
+
+
 def config_cierre(datos_dir=None):
     cfg = {"ota_iva": "", "iva_fb": IVA_REDUCIDO, "iva_alojamiento": IVA_REDUCIDO, "otas": {}}
     ruta = os.path.join(datos_dir or os.path.join(BASE_DIR, "datos-referencia"), CONFIG_FILE)
@@ -153,6 +175,7 @@ def generar_asientos(mes, fuentes, plan=None, cfg=None):
     ini, fin, mes = _mes_a_rango(mes)
     plan = plan or dict(CUENTAS_BASE)
     cfg = cfg or {"ota_iva": "", "iva_fb": IVA_REDUCIDO, "iva_alojamiento": IVA_REDUCIDO, "otas": {}}
+    crit_ap = criterio_fecha_ap(cfg)
     D = _Diario(plan)
     cont = {"ap": 0, "ar_ota": 0, "ventas_fb": 0, "ar_facturas": 0, "ar_cobros": 0,
             "banco": 0, "provisiones": 0}
@@ -163,7 +186,7 @@ def generar_asientos(mes, fuentes, plan=None, cfg=None):
     ap = fuentes.get("ap")
     if ap is not None and not ap.empty:
         for _, r in ap.iterrows():
-            fecha = r.get("fecha_factura") if _txt(r.get("fecha_factura")) else r.get("fecha")
+            fecha = fecha_ap(r, crit_ap)
             if not _en_mes(fecha, ini, fin):
                 continue
             total = _num(r.get("total_factura"))
@@ -354,9 +377,10 @@ def _check(cuenta, concepto, libro, justificado, nota="", tolerancia=0.011):
             "diferencia": dif, "estado": "CUADRA" if abs(dif) <= tolerancia else "DIFERENCIA", "nota": nota}
 
 
-def reconciliar(mes, res, fuentes, drr=None):
+def reconciliar(mes, res, fuentes, drr=None, cfg=None):
     """Cuenta a cuenta: lo asentado (libro) contra lo que lo justifica."""
     ini, fin, mes = _mes_a_rango(mes)
+    crit_ap = criterio_fecha_ap(cfg if cfg is not None else config_cierre())
     my = {m["cuenta"]: m for m in mayor(res["asientos"])}
     def s(c, lado=None):
         m = my.get(c, {"debe": 0.0, "haber": 0.0})
@@ -372,7 +396,7 @@ def reconciliar(mes, res, fuentes, drr=None):
     fact_ap = 0.0
     if ap is not None and not ap.empty:
         for _, r in ap.iterrows():
-            fecha = r.get("fecha_factura") if _txt(r.get("fecha_factura")) else r.get("fecha")
+            fecha = fecha_ap(r, crit_ap)
             if _en_mes(fecha, ini, fin):
                 fact_ap = _r(fact_ap + _num(r.get("total_factura")))
     checks.append(_check("400", "Proveedores: facturas AP del mes (haber)", s("400", "H"), fact_ap,
@@ -391,7 +415,7 @@ def reconciliar(mes, res, fuentes, drr=None):
     iva_ap = 0.0
     if ap is not None and not ap.empty:
         for _, r in ap.iterrows():
-            fecha = r.get("fecha_factura") if _txt(r.get("fecha_factura")) else r.get("fecha")
+            fecha = fecha_ap(r, crit_ap)
             if _en_mes(fecha, ini, fin) and _num(r.get("total_factura")):
                 iva = _num(r.get("cuota_iva"))
                 if not iva:
@@ -541,7 +565,7 @@ def cierre_completo(mes, hotel=None, **dirs):
     plan = plan_cuentas(dd); cfg = config_cierre(dd)
     fuentes = recoger_fuentes(mes, hotel, **dirs)
     res = generar_asientos(mes, fuentes, plan, cfg)
-    rec = reconciliar(mes, res, fuentes, drr_del_mes(res["mes"], hotel))
+    rec = reconciliar(mes, res, fuentes, drr_del_mes(res["mes"], hotel), cfg)
     return res, rec
 
 

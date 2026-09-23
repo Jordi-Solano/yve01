@@ -117,6 +117,7 @@ def main():
                     pg.evaluate("""(async function(){
                       var orig=window.fetch; window.fetch=function(u,o){ if(String(u).indexOf('/api/facturas_ap')===0) return Promise.resolve(new Response(JSON.stringify(window.__facts),{headers:{'Content-Type':'application/json'}}));
                         if(String(u).indexOf('/api/stats_ap')===0) return Promise.resolve(new Response(JSON.stringify({total:3,importe:8465.82,matches:1,discrepancias:1,sin_po:1,aprobadas:1}),{headers:{'Content-Type':'application/json'}}));
+                        if(String(u).indexOf('/api/ap/ficha?')===0){ var f=window.__facts[0]; return Promise.resolve(new Response(JSON.stringify({ok:true,clave:f.clave,numero_factura:f.numero_factura,archivo:'x.pdf',proveedor:f.proveedor,nif:'B1',concepto:'Prueba',periodo_inicio:'',periodo_fin:'',fecha_factura:'2026-08-01',fecha_registro:'2026-08-02',fecha_contable:'2026-08-02',criterio_fecha:'contable',dias_pago:30,vencimiento:'2026-08-31',base:100,porcentaje_iva:21,cuota_iva:21,total:121,tipo:f.tipo,cuenta_contable:f.cuenta_contable,cuenta_nombre:'',cuenta_ajustada:false,estado:f.estado,accion:f.accion,importes_cuadran:'',aviso_importes:'',pagada:false,asiento:{fecha:'2026-08-02',concepto:'Fra.',lineas:[],cuadra:true},lineas:[],historial:[],plan_cuentas:[],cuentas_bancarias:[]}),{headers:{'Content-Type':'application/json'}})); }
                         return orig(u,o); };
                       await loadAP();
                     })()""")
@@ -130,14 +131,15 @@ def main():
                       var sel=document.getElementById('ap-estado-filter'); sel.value='DISCREPANCIA_PO'; sel.dispatchEvent(new Event('change'));
                       var visibles=[...document.querySelectorAll('#ap-tbody tr[data-estado]')].filter(function(r){return r.style.display!=='none'}).length;
                       sel.value=''; sel.dispatchEvent(new Event('change'));
-                      var fila=document.querySelector('#ap-tbody tr[data-estado]'); fila && fila.click();
-                      var modal=document.getElementById('invoice-modal'); var abierto=!!(modal && getComputedStyle(modal).display!=='none' && modal.querySelectorAll('.g-badge').length>=2);
-                      if (typeof closeInvoiceModal==='function') closeInvoiceModal();
+                      var fila=document.querySelector('#ap-tbody tr[data-estado]'); fila && fila.querySelector('td:nth-child(2)').click();
+                      var abierto=null;   // se mira despues: la ficha (b84) se carga con fetch
                       var btn=document.querySelector('#panel-ap .g-primary'); var r=btn.getBoundingClientRect();
                       var tabRadius=getComputedStyle(btn).borderRadius; var kpiFont=getComputedStyle(pa.querySelector('.g-kpi-val')).fontFamily;
                       var chipOk=getComputedStyle(document.getElementById('oracle-modo-chip')).display;
                       return {body:body, peor:Math.round(peor), badges:badges, tiles:tiles, visibles:visibles, abierto:abierto, radius:tabRadius, kpiFont:kpiFont, nav:document.querySelector('.dropdown').getBoundingClientRect().right};
                     })()""")
+                    pg.wait_for_timeout(700)
+                    m['abierto'] = pg.evaluate("(function(){ var modal=document.getElementById('invoice-modal'); var ab=!!(modal && getComputedStyle(modal).display!=='none' && modal.querySelectorAll('.g-badge').length>=2 && document.getElementById('fap-cuenta')); if (typeof closeInvoiceModal==='function') closeInvoiceModal(); return ab; })()")
                     anchos[w] = m
                     ctx.close()
                 br.close()
@@ -148,7 +150,7 @@ def main():
             ok('Match OK' in m['badges'] and 'Discrepancia PO' in m['badges'] and 'Sin PO' in m['badges'] and 'Aprobada' in m['badges'] and 'Rechazada' in m['badges'] and 'Sin decisión' in m['badges'] and 'base + IVA ≠ total' in m['badges'],
                f"la tabla pinta los badges unificados ({m['badges']})")
             ok(m['visibles'] == 1, f"el filtro por estado sigue funcionando (1 visible con DISCREPANCIA_PO → {m['visibles']})")
-            ok(m['abierto'], "pulsar una fila abre el detalle de la factura (antes #invoice-modal no existia y no se abria nada)")
+            ok(m['abierto'], "pulsar una fila abre la ficha de la factura (b84: con badges, cuenta editable)")
             ok(m['radius'] == '8px' and 'Space Grotesk' not in m['kpiFont'], f"PC = variante A (radio {m['radius']}, cifras {m['kpiFont'][:20]})")
             mm = anchos[370]
             ok(mm['radius'] == '999px' and 'Space Grotesk' in mm['kpiFont'], f"movil = variante B (radio {mm['radius']}, cifras {mm['kpiFont'][:22]})")

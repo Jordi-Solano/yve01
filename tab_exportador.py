@@ -16,7 +16,37 @@ def api_exportar(tipo):
         return jsonify({"error": "Tipo de reporte inválido"}), 400
     
     try:
-        if tipo == 'ar_real':
+        if tipo == 'ap':
+            # b84: antes salian cuatro filas INVENTADAS (exportador_reportes.crear_reporte_ap_excel)
+            from tab_ficha_ap import excel_facturas_ap
+            result = excel_facturas_ap()
+        elif tipo == 'ar':
+            # b84: antes salian tres filas INVENTADAS (Booking/Expedia/Hotels.com de junio 2025)
+            from io import BytesIO as _BIOa
+            from datetime import datetime as _dta
+            import pandas as _pda
+            from dashboard import cargar_datos as _cd
+            try:
+                _df_ar, _ = _cd()
+            except Exception:
+                _df_ar = None
+            if _df_ar is None or getattr(_df_ar, 'empty', True):
+                _df_ar = _pda.DataFrame([{'numero_factura': 'Sin liquidaciones OTA: sube las facturas de comision con Procesar archivos'}])
+            _bufa = _BIOa(); _df_ar.to_excel(_bufa, index=False, sheet_name='AR - OTAs'); _bufa.seek(0)
+            result = (_bufa, f'AR_otas_{_dta.now().strftime("%Y%m%d")}.xlsx')
+        elif tipo == 'drr':
+            # b84: antes salia un DRR INVENTADO; ahora, el ultimo DRR procesado del hotel tal cual
+            import os as _osd
+            from io import BytesIO as _BIOd
+            from datetime import datetime as _dtd
+            from dashboard import drr_del_hotel as _drr
+            _ruta = _drr()
+            if not _ruta or not _osd.path.exists(_ruta):
+                return jsonify({'error': 'Sin DRR procesado: sube el DRR con Procesar archivos'}), 404
+            with open(_ruta, 'rb') as fh:
+                _datad = fh.read()
+            result = (_BIOd(_datad), f'DRR_{_dtd.now().strftime("%Y%m%d")}.xlsx')
+        elif tipo == 'ar_real':
             output_file = procesar_ar_real_completo()
             if not output_file:
                 return jsonify({"error": "No se pudo procesar AR Real"}), 500

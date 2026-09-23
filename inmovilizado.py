@@ -188,8 +188,9 @@ def amortizar_mes(mes, df_activos, df_ap=None, cfg=None):
     docs = {_txt(a.get("documento")).upper() for a in activos if _txt(a.get("documento"))}
     pend = []
     if df_ap is not None and not df_ap.empty:
+        from cierre_mes import fecha_ap
         for _, r in df_ap.iterrows():
-            fecha = r.get("fecha_factura") if _txt(r.get("fecha_factura")) else r.get("fecha")
+            fecha = fecha_ap(r)              # b84: mismo criterio que el cierre
             f = _fecha(fecha)
             if not f or not (ini <= f <= fin):
                 continue

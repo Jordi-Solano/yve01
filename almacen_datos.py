@@ -224,6 +224,13 @@ def ficheros_ilegibles():
     return list(_ILEGIBLES)
 
 
+def _fecha_de_fichero(ruta):
+    """'facturas_ap_20260912.xlsx' -> '2026-09-12'. '' si el nombre no lleva fecha."""
+    import re
+    m = re.search(r"(20\d{2})(\d{2})(\d{2})", os.path.basename(str(ruta)))
+    return f"{m.group(1)}-{m.group(2)}-{m.group(3)}" if m else ""
+
+
 def _leer_etapas(etapas, procesadas_dir, reportes_dir, hoja=None):
     """Lee TODOS los ficheros de TODAS las etapas y TODOS los dias.
 
@@ -249,6 +256,7 @@ def _leer_etapas(etapas, procesadas_dir, reportes_dir, hoja=None):
                 continue
             df = df.copy()
             df["_etapa"] = prio
+            df["_origen_fecha"] = _fecha_de_fichero(ruta)      # dia en que se registro (b84)
             trozos.append(df)
             rutas.append(ruta)
     if not trozos:
@@ -419,7 +427,175 @@ def _consolidar(df, campos_id, resueltos=None):
     if "duplicados" in out.columns:
         out["duplicados"] = pd.to_numeric(out["duplicados"], errors="coerce").fillna(0).astype(int)
         out["duplicado_de"] = out["duplicado_de"].map(lambda v: "" if v is None or (isinstance(v, float) and v != v) else str(v))
-    return out.drop(columns=[c for c in ("_clave", "_etapa") if c in out.columns])
+    return out.drop(columns=[c for c in ("_clave", "_etapa", "_origen_fecha") if c in out.columns])
+
+
+# ── Ajustes a mano sobre una factura AP (b84) ────────────────────────────
+# Lo que una persona decide sobre una factura y el clasificador no puede
+# saber: la cuenta corregida, el vencimiento, la fecha contable (el mes en que
+# se registra) y que esta pagada (fecha, quien, desde que cuenta). Vive en
+# datos-referencia/ajustes_ap.json, {clave: {...}}, con la MISMA clave que las
+# aprobaciones (numero de factura, o fichero si no hay numero). Nunca se toca
+# el Excel del clasificador: se aplica por encima al leer (facturas_ap).
+AJUSTES_AP_FILE = "ajustes_ap.json"
+CAMPOS_AJUSTE_AP = ("cuenta_contable", "vencimiento", "fecha_contable", "dias_pago")
+DIAS_PAGO_DEFECTO = 30
+
+
+def _ruta_ajustes(datos_dir=None):
+    if datos_dir is None:
+        try:
+            from tenant_dirs import datos_dir as _d
+            datos_dir = str(_d())
+        except Exception:
+            datos_dir = os.path.join(os.path.dirname(os.path.abspath(__file__)), "datos-referencia")
+    return os.path.join(str(datos_dir), AJUSTES_AP_FILE)
+
+
+def ajustes_ap(datos_dir=None):
+    try:
+        with open(_ruta_ajustes(datos_dir), encoding="utf-8") as fh:
+            d = json.load(fh)
+        return d if isinstance(d, dict) else {}
+    except Exception:
+        return {}
+
+
+def clave_ap(fila):
+    """La identidad con la que se aprueba y se ajusta: numero, o fichero sin numero."""
+    num = _txt(fila.get("numero_factura"))
+    if num:
+        return str(fila.get("numero_factura")).strip()
+    return str(fila.get("archivo") or "").strip()
+
+
+def guardar_ajuste_ap(clave, cambios, usuario="", datos_dir=None):
+    """Apunta un ajuste. `cambios` puede llevar cuenta_contable, vencimiento (YYYY-MM-DD),
+    fecha_contable (YYYY-MM-DD), dias_pago (int), pagada ({fecha, cuenta, nota} o None para
+    deshacer). Cada cambio queda en `historial` con fecha y usuario. Devuelve el registro."""
+    clave = str(clave or "").strip()
+    if not clave:
+        raise ValueError("falta la clave de la factura")
+    todos = ajustes_ap(datos_dir)
+    reg = todos.get(clave) or {}
+    hist = reg.get("historial") or []
+    ahora = _dt.datetime.now().strftime("%Y-%m-%d %H:%M")
+    for k, v in (cambios or {}).items():
+        if k in CAMPOS_AJUSTE_AP:
+            v = "" if v is None else str(v).strip()
+            if k == "dias_pago":
+                try:
+                    v = int(float(v)) if v != "" else ""
+                except ValueError:
+                    raise ValueError("dias_pago tiene que ser un numero")
+            if v == "":
+                reg.pop(k, None)
+            else:
+                reg[k] = v
+            hist.append({"fecha": ahora, "usuario": usuario, "campo": k, "valor": v})
+        elif k == "pagada":
+            if v:
+                reg["pagada"] = {"fecha": str(v.get("fecha") or _dt.date.today().isoformat())[:10],
+                                 "cuenta": str(v.get("cuenta") or "").strip(),
+                                 "nota": str(v.get("nota") or "").strip()[:200], "por": usuario, "cuando": ahora}
+                hist.append({"fecha": ahora, "usuario": usuario, "campo": "pagada", "valor": reg["pagada"]["fecha"] + " · " + reg["pagada"]["cuenta"]})
+            else:
+                reg.pop("pagada", None)
+                hist.append({"fecha": ahora, "usuario": usuario, "campo": "pagada", "valor": ""})
+        else:
+            raise ValueError(f"campo no ajustable: {k}")
+    reg["historial"] = hist[-50:]
+    todos[clave] = reg
+    ruta = _ruta_ajustes(datos_dir)
+    os.makedirs(os.path.dirname(ruta), exist_ok=True)
+    tmp = ruta + ".tmp"
+    with open(tmp, "w", encoding="utf-8") as fh:
+        json.dump(todos, fh, ensure_ascii=False, indent=2)
+    os.replace(tmp, ruta)
+    return reg
+
+
+def _iso(v):
+    """Fecha en 'YYYY-MM-DD' desde dd/mm/aaaa, aaaa-mm-dd, Timestamp…; '' si no hay."""
+    if v is None or (isinstance(v, float) and v != v):
+        return ""
+    s = str(v).strip()
+    if not s or s.lower() in _VACIOS:
+        return ""
+    try:
+        t = pd.to_datetime(s[:10], dayfirst=("/" in s[:10]), errors="coerce")
+        return "" if pd.isna(t) else t.strftime("%Y-%m-%d")
+    except Exception:
+        return ""
+
+
+def dias_pago_proveedores(datos_dir=None):
+    """{proveedor (normalizado): dias} desde proveedores.xlsx (columna dias_pago, si existe)."""
+    out = {}
+    if datos_dir is None:
+        try:
+            from tenant_dirs import datos_dir as _d
+            datos_dir = str(_d())
+        except Exception:
+            return out
+    try:
+        df = pd.read_excel(os.path.join(str(datos_dir), "proveedores.xlsx"))
+        if "dias_pago" in df.columns:
+            for _, r in df.iterrows():
+                n = _txt(r.get("nombre_proveedor"))
+                d = _num(r.get("dias_pago"))
+                if n and d:
+                    out[n] = int(d)
+    except Exception:
+        pass
+    return out
+
+
+def aplicar_ajustes_ap(df, ajustes=None, dias_prov=None, dias_defecto=DIAS_PAGO_DEFECTO):
+    """Añade a las facturas AP las columnas que decide una persona (b84):
+      fecha_contable  (ajuste, o el dia en que se registro, o la fecha de factura)
+      dias_pago       (ajuste, o los del proveedor, o los de defecto)
+      vencimiento     (ajuste, o fecha de factura + dias_pago)
+      pagada / pagada_fecha / pagada_cuenta / pagada_por
+    y pisa cuenta_contable con la corregida. Funcion pura: no lee disco si se le pasan los dicts."""
+    if df is None or df.empty:
+        return df
+    ajustes = ajustes_ap() if ajustes is None else ajustes
+    dias_prov = dias_pago_proveedores() if dias_prov is None else dias_prov
+    df = df.copy()
+    cols = {c: [] for c in ("fecha_contable", "dias_pago", "vencimiento", "pagada", "pagada_fecha", "pagada_cuenta", "pagada_por", "cuenta_ajustada")}
+    cuentas = []
+    for fila in df.to_dict("records"):
+        a = ajustes.get(clave_ap(fila)) or {}
+        f_fac = _iso(fila.get("fecha_factura") if _txt(fila.get("fecha_factura")) else fila.get("fecha"))
+        f_reg = _iso(fila.get("fecha_registro"))
+        f_con = _iso(a.get("fecha_contable")) or f_reg or f_fac
+        dias = a.get("dias_pago") or dias_prov.get(_txt(fila.get("nombre_proveedor"))) or dias_defecto
+        try:
+            dias = int(dias)
+        except (TypeError, ValueError):
+            dias = dias_defecto
+        venc = _iso(a.get("vencimiento"))
+        if not venc and f_fac:
+            venc = (pd.Timestamp(f_fac) + pd.Timedelta(days=dias)).strftime("%Y-%m-%d")
+        pag = a.get("pagada") or {}
+        cols["fecha_contable"].append(f_con)
+        cols["dias_pago"].append(dias)
+        cols["vencimiento"].append(venc)
+        cols["pagada"].append(bool(pag))
+        cols["pagada_fecha"].append(pag.get("fecha", "") if pag else "")
+        cols["pagada_cuenta"].append(pag.get("cuenta", "") if pag else "")
+        cols["pagada_por"].append(pag.get("por", "") if pag else "")
+        cols["cuenta_ajustada"].append(bool(a.get("cuenta_contable")))
+        cuentas.append(a.get("cuenta_contable") or fila.get("cuenta_contable"))
+    for c, v in cols.items():
+        df[c] = v
+    df["cuenta_contable"] = cuentas
+    if "cuenta_debe_gasto" in df.columns:
+        # el asignador escribe la cuenta del asiento en cuenta_debe_gasto y el cierre
+        # la lee ANTES que cuenta_contable: la corregida tiene que pisar las dos
+        df["cuenta_debe_gasto"] = [c if aj else v for c, aj, v in zip(cuentas, cols["cuenta_ajustada"], df["cuenta_debe_gasto"])]
+    return df
 
 
 # ── API publica ───────────────────────────────────────────────────────────
@@ -428,7 +604,23 @@ def facturas_ap(procesadas_dir=None, reportes_dir=None, hotel=None):
     """Todas las facturas AP del tenant, de TODOS los dias, deduplicadas."""
     p, r = _dirs(procesadas_dir, reportes_dir)
     df, rutas = _leer_etapas(_ETAPAS_AP, p, r)
-    return _filtrar_hotel(_consolidar(df, _ID_AP, duplicados_resueltos()), hotel)
+    if not df.empty:
+        # fecha de registro = el PRIMER fichero crudo (facturas_ap_<dia>) en el
+        # que aparece la factura; reprocesarla otro dia no la mueve de mes (b84)
+        crudo = df[df["_etapa"] == len(_ETAPAS_AP) - 1]
+        primera = {}
+        for fila in crudo.to_dict("records"):
+            k = _clave_doc(fila, _ID_AP) or ("#" + str(fila.get("archivo") or ""))
+            f = str(fila.get("_origen_fecha") or "")
+            if f and (k not in primera or f < primera[k]):
+                primera[k] = f
+        if "fecha_registro" not in df.columns:
+            df["fecha_registro"] = ""
+        df["fecha_registro"] = [
+            (str(v) if v is not None and str(v) not in ("nan", "None", "") else "") or primera.get(_clave_doc(fila, _ID_AP) or ("#" + str(fila.get("archivo") or "")), "") or str(fila.get("_origen_fecha") or "")
+            for v, fila in zip(df["fecha_registro"], df.to_dict("records"))]
+    out = _filtrar_hotel(_consolidar(df, _ID_AP, duplicados_resueltos()), hotel)
+    return aplicar_ajustes_ap(out)
 
 
 def facturas_ar(procesadas_dir=None, reportes_dir=None, hotel=None):

@@ -139,6 +139,7 @@ body.light-mode .g-row{background:#fff}
 .g-modal-head{display:flex;align-items:flex-start;justify-content:space-between;gap:12px;margin-bottom:16px}
 .g-modal-title{font-family:var(--g-f-head);font-size:17px;font-weight:700;color:var(--tx)}
 .g-modal-grid{display:grid;grid-template-columns:1fr 1fr;gap:8px}
+@media(max-width:480px){.g-modal-grid{grid-template-columns:1fr}}  /* b84: la ficha de la factura en el movil, a una columna */
 .g-modal-field{background:var(--bg);border:1px solid var(--g-line);border-radius:var(--g-r-sm);padding:10px 12px;min-width:0}
 .g-modal-val{font-size:13px;font-weight:600;color:var(--tx);margin-top:4px;overflow-wrap:anywhere}
 .g-modal-foot{display:flex;justify-content:flex-end;gap:10px;margin-top:20px;padding-top:16px;border-top:1px solid var(--g-line)}
