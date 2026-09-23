@@ -146,6 +146,13 @@ def _invalidate_cache(path_fragment=None):
 app = Flask(__name__)
 DEMO_MODE = False
 app.secret_key = os.environ.get("SECRET_KEY") or os.urandom(32).hex()
+# Aviso por email de errores 5xx y excepciones (b82): alertas.py. Sin
+# YVE_ALERTAS_EMAIL solo apunta en memoria (/admin/api/alertas).
+try:
+    import alertas as _ALERTAS
+    _ALERTAS.instalar(app)
+except Exception as _e_al:
+    print(f"[alertas] NO instaladas: {_e_al}")
 
 # ── CSRF ────────────────────────────────────────────────────────────────────
 import hmac as _hmac, secrets as _sec_mod
@@ -763,6 +770,35 @@ def sitemap_xml():
     return Response(xml, mimetype="application/xml")
 
 @app.route("/health")
+def health_check():
+    """Para Render (healthCheckPath) y el vigilante externo (UptimeRobot) — b82.
+
+    200 si la app responde y puede leer su carpeta de datos; 503 si no (disco
+    caido: que Render reinicie y que el vigilante avise). Antes /health era un
+    alias de /api/oracle/status. Publico y barato: no toca Excel ninguno."""
+    from datetime import datetime as _dt
+    try:
+        os.listdir(_ddir())
+        disco = True
+    except Exception:
+        disco = False
+    try:
+        import copia_seguridad as _cs
+        _rc = _cs.resumen()
+        copias = {'configurado': _rc['configurado'], 'al_dia': _rc['al_dia'], 'ultima_ok': (_rc.get('ultima_ok') or {}).get('fecha')}
+    except Exception:
+        copias = {'configurado': False}
+    try:
+        import alertas as _al
+        _ra = _al.resumen()
+        errores = {'configurado': _ra['configurado'], 'total_desde_arranque': _ra['total'], 'ultimo': (_ra['ultimos'][0]['fecha'] if _ra['ultimos'] else None)}
+    except Exception:
+        errores = {}
+    cuerpo = {'status': 'ok' if disco else 'error', 'app': 'Yve.01', 'timestamp': _dt.now().isoformat(timespec='seconds'),
+              'disco': disco, 'copias': copias, 'errores': errores}
+    return jsonify(cuerpo), (200 if disco else 503)
+
+
 @app.route('/api/oracle/status')
 def api_oracle_status():
     """Si Oracle esta en simulacion o de verdad.
@@ -17289,6 +17325,15 @@ def api_reset_datos():
     # reset log
     _save_proc_log({})
     return jsonify({"ok": True, "borrados": borrados})
+
+# b82: "Yve.01 ha arrancado" (deploy o reinicio tras caida). Solo con YVE_ALERTAS_EMAIL.
+try:
+    import alertas as _ALERTAS_ARR
+    if not app.config.get('TESTING'):
+        _ALERTAS_ARR.avisar_arranque()
+except Exception as _e_arr:
+    print(f"[alertas] aviso de arranque no enviado: {_e_arr}")
+
 
 if __name__ == '__main__':
     import socket

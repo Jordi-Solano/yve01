@@ -196,6 +196,29 @@ def api_copias_descargar():
     return send_file(ruta, as_attachment=True, download_name=nombre, mimetype="application/zip")
 
 
+@bp.route("/api/alertas")
+@_admin_required
+def api_alertas():
+    import alertas as AL
+    return jsonify({"ok": True, **AL.resumen()})
+
+
+@bp.route("/api/alertas/probar", methods=["POST"])
+@_admin_required
+def api_alertas_probar():
+    """Manda un email de prueba al YVE_ALERTAS_EMAIL para comprobar que llega."""
+    import alertas as AL
+    if not AL.destinatario():
+        return jsonify({"ok": False, "error": "Sin YVE_ALERTAS_EMAIL en Render: no hay a quien avisar."}), 400
+    try:
+        from notificaciones import enviar_email
+        ok = bool(enviar_email(AL.destinatario(), "✅ Yve.01: prueba de alertas",
+                               "<p>Si lees esto, los avisos de error de Yve.01 llegan a este buzon.</p>", tipo="alerta"))
+    except Exception as e:
+        return jsonify({"ok": False, "error": str(e)[:200]}), 500
+    return jsonify({"ok": ok, "email": AL.destinatario()}), (200 if ok else 500)
+
+
 @bp.route("/api/hoteles/eliminar", methods=["POST"])
 @_admin_required
 def api_eliminar_hotel():
@@ -336,6 +359,18 @@ input:focus,select:focus,textarea:focus{border-color:var(--acc);box-shadow:0 0 0
         <span id="copias-msg" style="font-size:11px;color:#64748b;align-self:center"></span>
       </div>
       <div id="copias-lista" style="max-height:220px;overflow-y:auto;font-size:11px;font-family:monospace;color:#cbd5e1"></div>
+    </div>
+    <div class="card" style="border-color:rgba(239,68,68,.2)" id="alertas-card">
+      <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:12px">
+        <div class="ct" style="margin:0">🚨 Avisos de error por email</div>
+        <button class="btn bsm" onclick="loadAlertas()" style="font-size:11px">↺ Actualizar</button>
+      </div>
+      <div id="alertas-resumen" style="font-size:12px;color:#94a3b8;margin-bottom:10px">Cargando…</div>
+      <div style="display:flex;gap:8px;align-items:center;margin-bottom:8px">
+        <button class="btn bsm" onclick="probarAlertas()" style="font-size:11px">📧 Enviar prueba</button>
+        <span id="alertas-msg" style="font-size:11px;color:#64748b"></span>
+      </div>
+      <div id="alertas-lista" style="max-height:160px;overflow-y:auto;font-size:11px;font-family:monospace;color:#cbd5e1"></div>
     </div>
     <div class="card" style="border-color:rgba(239,68,68,.2)">
       <div class="ct" style="color:#ef4444">Herramientas</div>
@@ -503,6 +538,20 @@ async function restaurarCopia(nombre,destino){
   }catch(e){m.style.color='#ef4444';m.textContent='Error de red';}
   loadCopias();
 }
+async function loadAlertas(){
+  const res=document.getElementById('alertas-resumen'), lst=document.getElementById('alertas-lista');
+  try{const r=await fetch('/admin/api/alertas',{cache:'no-store'}); const d=await r.json();
+    res.innerHTML=(d.configurado?('Avisa a <b>'+d.email+'</b> (margen '+d.margen_min+' min entre emails)'):'<span style="color:#f59e0b">Sin <code>YVE_ALERTAS_EMAIL</code> en Render: los errores se apuntan aquí pero no se avisa a nadie.</span>')+
+      '<br>Errores desde el último arranque: <b>'+d.total+'</b> · emails enviados: '+d.enviados+(d.pendientes?(' · '+d.pendientes+' esperando el resumen'):'')+(d.ultimo_envio?(' · último email '+d.ultimo_envio.replace('T',' ').slice(0,16)+' UTC'):'');
+    lst.innerHTML=(d.ultimos||[]).length?d.ultimos.map(e=>'<div style="padding:2px 0;border-bottom:1px solid #1e293b"><span style="color:#64748b">'+e.fecha.replace('T',' ').slice(5,16)+'</span> <b>'+e.status+'</b> '+e.metodo+' '+e.ruta+' <span style="color:#94a3b8">'+(e.usuario||'')+'</span><br><span style="color:#f87171">'+(e.error||'').slice(0,160)+'</span></div>').join(''):'<div style="color:#64748b">Sin errores desde el arranque.</div>';
+  }catch(e){res.textContent='No se pudo leer el estado de las alertas.';}
+}
+async function probarAlertas(){
+  const m=document.getElementById('alertas-msg'); m.style.color='#64748b'; m.textContent='Enviando…';
+  try{const r=await fetch('/admin/api/alertas/probar',{method:'POST'}); const d=await r.json();
+    m.style.color=d.ok?'#22c55e':'#ef4444'; m.textContent=d.ok?('Enviado a '+d.email+': mira el buzón'):(d.error||'No se pudo enviar');
+  }catch(e){m.style.color='#ef4444';m.textContent='Error de red';}
+}
 async function checkSystemHealth(){
   const el=document.getElementById('health-summary'); el.textContent='Comprobando…';
   try{const r=await fetch('/api/health/detalle',{cache:'no-store'}); const d=await r.json(); const c=d.components||{};
@@ -510,7 +559,7 @@ async function checkSystemHealth(){
   }catch(e){el.textContent='No responde';}
 }
 async function cleanCache(){const d=document.getElementById('md');d.textContent='Cache limpiado';d.style.color='#22c55e';}
-ls();lu();lh();loadCopias();
+ls();lu();lh();loadCopias();loadAlertas();
 </script>
 </body>
 </html>"""
