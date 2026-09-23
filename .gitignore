@@ -253,3 +253,4 @@ tenants/
 
 # aprendido en runtime, no es codigo
 datos-referencia/proveedores_aprendidos.json
+copias_estado.json

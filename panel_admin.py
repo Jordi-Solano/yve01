@@ -133,6 +133,69 @@ def api_hoteles():
         return jsonify({"ok": False, "error": str(e)}), 500
 
 
+# ── Copias de seguridad (b81): fuera de Render, diarias, con restauracion ──
+@bp.route("/api/copias")
+@_admin_required
+def api_copias():
+    import copia_seguridad as CS
+    return jsonify({"ok": True, **CS.resumen(), "copias": CS.listar()})
+
+
+@bp.route("/api/copias/ahora", methods=["POST"])
+@_admin_required
+def api_copias_ahora():
+    import copia_seguridad as CS
+    if not CS.configurado():
+        return jsonify({"ok": False, "error": "Sin destino configurado: pon YVE_BACKUP_S3_BUCKET (+ endpoint, key, secret) o YVE_BACKUP_DIR en Render."}), 400
+    r = CS.hacer_copia(motivo="manual")
+    return jsonify(r), (200 if r.get("ok") else 500)
+
+
+@bp.route("/api/copias/restaurar", methods=["POST"])
+@_admin_required
+def api_copias_restaurar():
+    """Deja los datos como en la copia elegida. Pide escribir RESTAURAR: no es un boton mas."""
+    import copia_seguridad as CS
+    d = request.get_json(silent=True) or {}
+    nombre = str(d.get("nombre") or "").strip()
+    if not nombre or "/" in nombre or ".." in nombre or not nombre.endswith(".zip"):
+        return jsonify({"ok": False, "error": "nombre de copia no valido"}), 400
+    if str(d.get("confirmar") or "").strip().upper() != "RESTAURAR":
+        return jsonify({"ok": False, "error": "Escribe RESTAURAR para confirmar: se sustituyen TODOS los datos por los de la copia (antes se guarda una copia de lo actual)."}), 400
+    r = CS.restaurar(nombre, tipo=(d.get("destino") or None))
+    try:
+        from dashboard import _audit
+        _audit("RESTAURAR_COPIA", f"{nombre} ok={r.get('ok')} ficheros={r.get('ficheros')}")
+    except Exception:
+        pass
+    return jsonify(r), (200 if r.get("ok") else 500)
+
+
+@bp.route("/api/copias/descargar")
+@_admin_required
+def api_copias_descargar():
+    """Baja una copia al ordenador del admin (para guardarla aparte o mirarla)."""
+    import copia_seguridad as CS
+    import tempfile
+    from flask import send_file, after_this_request
+    nombre = str(request.args.get("nombre") or "").strip()
+    if not nombre or "/" in nombre or ".." in nombre or not nombre.endswith(".zip"):
+        return jsonify({"ok": False, "error": "nombre de copia no valido"}), 400
+    tmpdir = tempfile.mkdtemp(prefix="yve_desc_")
+    ruta = os.path.join(tmpdir, nombre)
+    try:
+        CS.descargar_copia(nombre, ruta, tipo=(request.args.get("destino") or None))
+    except Exception as e:
+        return jsonify({"ok": False, "error": str(e)[:200]}), 404
+
+    @after_this_request
+    def _limpiar(resp):
+        import shutil
+        shutil.rmtree(tmpdir, ignore_errors=True)
+        return resp
+    return send_file(ruta, as_attachment=True, download_name=nombre, mimetype="application/zip")
+
+
 @bp.route("/api/hoteles/eliminar", methods=["POST"])
 @_admin_required
 def api_eliminar_hotel():
@@ -261,6 +324,18 @@ input:focus,select:focus,textarea:focus{border-color:var(--acc);box-shadow:0 0 0
       </div>
       <table class="ut"><thead><tr><th>Hotel</th><th>Ciudad</th><th>Hab</th><th>Grupo</th><th></th></tr></thead>
       <tbody id="htb"></tbody></table>
+    </div>
+    <div class="card" style="border-color:rgba(34,197,94,.2)" id="copias-card">
+      <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:12px">
+        <div class="ct" style="margin:0">💾 Copias de seguridad (fuera de Render)</div>
+        <button class="btn bsm" onclick="loadCopias()" style="font-size:11px">↺ Actualizar</button>
+      </div>
+      <div id="copias-resumen" style="font-size:12px;color:#94a3b8;margin-bottom:10px">Cargando…</div>
+      <div style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:10px">
+        <button class="btn bsm" id="btn-copia-ahora" onclick="copiaAhora()" style="font-size:11px">💾 Copiar ahora</button>
+        <span id="copias-msg" style="font-size:11px;color:#64748b;align-self:center"></span>
+      </div>
+      <div id="copias-lista" style="max-height:220px;overflow-y:auto;font-size:11px;font-family:monospace;color:#cbd5e1"></div>
     </div>
     <div class="card" style="border-color:rgba(239,68,68,.2)">
       <div class="ct" style="color:#ef4444">Herramientas</div>
@@ -398,8 +473,44 @@ async function testConn(type) {
     el.textContent = (d.ok ? '✓ ' : '✗ ') + (d.message || d.error || 'Error');
   } catch(e) { el.style.color = '#ef4444'; el.textContent = '✗ Error de red'; }
 }
+async function loadCopias(){
+  const res=document.getElementById('copias-resumen'), lst=document.getElementById('copias-lista');
+  try{
+    const r=await fetch('/admin/api/copias',{cache:'no-store'}); const d=await r.json();
+    if(!d.configurado){res.innerHTML='<span style="color:#f59e0b">Sin destino configurado.</span> En Render → Environment pon <code>YVE_BACKUP_S3_BUCKET</code>, <code>YVE_BACKUP_S3_ENDPOINT</code>, <code>YVE_BACKUP_S3_KEY</code> y <code>YVE_BACKUP_S3_SECRET</code> (Cloudflare R2, Backblaze B2 o AWS S3). Hasta entonces no hay copia diaria.';lst.innerHTML='';return;}
+    const u=d.ultima_ok||{}; const ult=d.ultima||{};
+    res.innerHTML='Destino: <b>'+(d.destinos||[]).join(', ')+'</b> · cada día a las <b>'+d.hora+' UTC</b> · se guardan <b>'+d.retencion_dias+' días</b><br>'+
+      (u.fecha?('Última copia buena: <b>'+u.fecha.replace('T',' ').slice(0,16)+' UTC</b> ('+u.ficheros+' ficheros, '+Math.round((u.bytes||0)/1024)+' KB)'+(d.al_dia?' <span class="ok">al día</span>':' <span style="color:#f59e0b">hace más de un día</span>')):'<span style="color:#f59e0b">Todavía no hay ninguna copia buena.</span>')+
+      (ult.fecha&&!ult.ok?('<br><span style="color:#ef4444">Último intento FALLÓ ('+ult.fecha.replace('T',' ').slice(0,16)+'): '+((ult.errores||[]).join(' · ')||'error')+'</span>'):'')+
+      (d.ultima_restauracion&&d.ultima_restauracion.fecha?('<br>Última restauración: '+d.ultima_restauracion.fecha.replace('T',' ').slice(0,16)+' UTC · '+d.ultima_restauracion.nombre+(d.ultima_restauracion.ok?' (ok)':' (FALLÓ: '+(d.ultima_restauracion.error||'')+')')):'');
+    const cs=(d.copias||[]).filter(c=>c.nombre);
+    lst.innerHTML=cs.length?cs.map(c=>'<div style="display:flex;gap:8px;align-items:center;padding:3px 0;border-bottom:1px solid #1e293b"><span style="flex:1">'+c.nombre+'</span><span style="color:#64748b">'+Math.round((c.bytes||0)/1024)+' KB · '+c.destino+'</span><a class="btn bsm" style="font-size:10px;padding:2px 8px;text-decoration:none" href="/admin/api/copias/descargar?nombre='+encodeURIComponent(c.nombre)+'&destino='+c.destino+'">⬇</a><button class="btn bd bsm" style="font-size:10px;padding:2px 8px" onclick="restaurarCopia(\''+c.nombre+'\',\''+c.destino+'\')">Restaurar</button></div>').join(''):'<div style="color:#64748b">Sin copias todavía.</div>';
+  }catch(e){res.textContent='No se pudo leer el estado de las copias.';}
+}
+async function copiaAhora(){
+  const b=document.getElementById('btn-copia-ahora'), m=document.getElementById('copias-msg');
+  b.disabled=true; m.style.color='#64748b'; m.textContent='Copiando…';
+  try{const r=await fetch('/admin/api/copias/ahora',{method:'POST'}); const d=await r.json();
+    m.style.color=d.ok?'#22c55e':'#ef4444'; m.textContent=d.ok?('Copia hecha: '+d.nombre+' ('+d.ficheros+' ficheros)'):('Falló: '+((d.errores||[]).join(' · ')||d.error||'error'));
+  }catch(e){m.style.color='#ef4444';m.textContent='Error de red';}
+  b.disabled=false; loadCopias();
+}
+async function restaurarCopia(nombre,destino){
+  const p=prompt('Vas a SUSTITUIR todos los datos actuales por los de la copia\n'+nombre+'\n\nAntes se guarda una copia de lo que hay ahora ("antes_de_restaurar_…").\n\nEscribe RESTAURAR para confirmar:');
+  if(p===null)return; const m=document.getElementById('copias-msg'); m.style.color='#64748b'; m.textContent='Restaurando…';
+  try{const r=await fetch('/admin/api/copias/restaurar',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({nombre,destino,confirmar:p})}); const d=await r.json();
+    m.style.color=d.ok?'#22c55e':'#ef4444'; m.textContent=d.ok?('Restaurada: '+d.ficheros+' ficheros de '+nombre):('No se restauró: '+(d.error||'error'));
+  }catch(e){m.style.color='#ef4444';m.textContent='Error de red';}
+  loadCopias();
+}
+async function checkSystemHealth(){
+  const el=document.getElementById('health-summary'); el.textContent='Comprobando…';
+  try{const r=await fetch('/api/health/detalle',{cache:'no-store'}); const d=await r.json(); const c=d.components||{};
+    el.innerHTML=Object.keys(c).map(k=>'<span style="color:'+(c[k].ok?'#22c55e':'#f59e0b')+'">'+(c[k].ok?'●':'○')+' '+k+'</span>: '+(c[k].msg||'')).join(' · ')+' · estado <b>'+d.status+'</b>';
+  }catch(e){el.textContent='No responde';}
+}
 async function cleanCache(){const d=document.getElementById('md');d.textContent='Cache limpiado';d.style.color='#22c55e';}
-ls();lu();lh();
+ls();lu();lh();loadCopias();
 </script>
 </body>
 </html>"""

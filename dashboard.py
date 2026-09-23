@@ -16,6 +16,14 @@ try:
         print(f"[almacen_persistente] datos en {_MONTADO['data_dir']} · sembradas {_MONTADO['sembradas']} · {_MONTADO['copiados']} ficheros copiados")
 except Exception as _e_disco:
     print(f"[almacen_persistente] NO montado: {_e_disco}")
+# Copia diaria de esos datos FUERA de Render (b81): solo si hay destino
+# configurado (YVE_BACKUP_S3_BUCKET o YVE_BACKUP_DIR). Sin variables, nada.
+# Los tests ponen YVE_BACKUP_HORA=off para no arrancar el hilo.
+try:
+    import copia_seguridad as _CS_COPIAS
+    _CS_COPIAS.arrancar_planificador()
+except Exception as _e_copias:
+    print(f"[copia_seguridad] planificador NO arrancado: {_e_copias}")
 import pandas as pd
 from flask import Flask, Response, jsonify, request, stream_with_context, redirect, send_file, session
 from flask_login import login_required, current_user
@@ -3554,9 +3562,27 @@ def api_test_stripe():
     except Exception as e:
         return jsonify({"ok": False, "error": str(e)[:200]})
 
-@app.route("/api/health")
+def _estado_copias():
+    """Para /api/health: si hay copia de seguridad configurada y si la ultima buena es de hoy (b81)."""
+    try:
+        import copia_seguridad as _cs
+        r = _cs.resumen()
+        if not r['configurado']:
+            return {'ok': False, 'msg': 'Copia de seguridad no configurada (YVE_BACKUP_*)', 'configurado': False}
+        u = r.get('ultima_ok') or {}
+        return {'ok': bool(r['al_dia']), 'configurado': True, 'al_dia': r['al_dia'],
+                'ultima_ok': u.get('fecha'), 'dias_desde_ultima_ok': r['dias_desde_ultima_ok'],
+                'msg': ('Copia al dia' if r['al_dia'] else ('Ultima copia buena: ' + str(u.get('fecha')) if u else 'Sin ninguna copia buena todavia'))}
+    except Exception as e:
+        return {'ok': False, 'msg': f'copias: {str(e)[:80]}'}
+
+
+@app.route("/api/health/detalle")
 def api_health():
-    """System health check — all components status."""
+    """Estado por componente. Antes colgaba tambien de /api/health, pero esa ruta
+    ya la tenia `health()` mas arriba y Flask se quedaba con la primera: esta
+    era codigo muerto (el boton "Estado sistema" del panel de administracion no
+    tenia funcion). Desde b81 vive en /api/health/detalle y el panel la usa."""
     import glob as _g
     health = {
         'status': 'ok',
@@ -3585,6 +3611,7 @@ def api_health():
         'config':   {'ok': has_cfg,   'msg': 'Hotel configurado' if has_cfg else 'Sin configuración'},
         'oracle':   {'ok': True,      'msg': f'Oracle {oracle_mode}', 'mode': oracle_mode},
         'smtp':     {'ok': smtp_ok,   'msg': 'SMTP configurado' if smtp_ok else 'SMTP no configurado'},
+        'copias':   _estado_copias(),
 
     }
     
