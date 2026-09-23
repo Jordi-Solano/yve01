@@ -30,6 +30,9 @@ body.light-mode{--g-line:rgba(15,23,42,.08);--g-shadow:0 1px 2px rgba(15,23,42,.
 
 /* ── Tipografia ─────────────────────────────────────── */
 .g-h1{font-family:var(--g-f-head);font-size:20px;font-weight:700;letter-spacing:-.2px;color:var(--tx)}
+/* b85: seccion "Comisiones OTA" dentro de AP (el antiguo apartado AR — OTAs) */
+.ap-seccion{margin-top:32px;padding-top:24px;border-top:1px solid var(--g-line)}
+.g-h1-sec{font-size:18px}
 .g-sub{font-size:12px;color:var(--dim);margin-top:2px}
 .g-label{font-size:11px;font-weight:700;color:var(--mut);text-transform:uppercase;letter-spacing:.6px}
 .g-small{font-size:12px;color:var(--mut)}

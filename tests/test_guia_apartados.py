@@ -28,7 +28,7 @@ PANELES = {
     'panel-ap': (['ap-total', 'ap-importe', 'ap-matches', 'ap-disc', 'ap-sinpo', 'ap-aprobadas', 'ap-tbody', 'ap-count', 'btnOracle', 'ap-estado-filter', 'prov-mes', 'prov-body', 'aging-tramos', 'aging-body', 'alb-list', 'ap-recl-list'],
                  ['aprobarMatchOK()', 'procesarOracle()', 'filtrarAPPorEstado(this.value)', 'loadProvisiones()', 'href="/aprobaciones-ap/"'], 1),
     'panel-ar': (['s-tot', 's-imp', 's-ok', 's-disc', 's-disc-sub', 's-di', 's-pend', 's-pend-sub', 'ota-chart', 'activity', 'tbl-count', 'ar-select-all', 'tbl-body', 'ar-recl-section', 'ar-recl-resumen', 'ar-recl-list', 'btn-export-selected'],
-                 ["toggleSelectAll(this,'ar-row-cb')", 'exportarSeleccionados()', 'href="/aprobaciones-ar/"'], 1),
+                 ["toggleSelectAll(this,'ar-row-cb')", 'exportarSeleccionados()', 'href="/aprobaciones-ar/"'], 0),   # b85: seccion dentro de AP, el primario es el de AP
     'panel-banco': (['banco-modo-chip', 'banco-modo-cambiar', 'banco-progress-bar', 'bk-total', 'bk-conc', 'bk-pend', 'bk-imp-pend', 'bk-diff', 'bk-alertas', 'modal-banco-config', 'banco-modal-cancelar'],
                     ['runConciliacion()', 'abrirModoBanco()', "elegirModoBanco('grupo')", "elegirModoBanco('por_hotel')", 'cerrarModoBanco()', 'href="/conciliacion/"'], 1),
     'panel-drr': (['drr-status', 'drr-oob-badge', 'drr-body', 'drr-metrics', 'drr-drop-zone'], ['openUploadModal()', '_recibirEnProcesar(event.dataTransfer.files)'], 1),

@@ -6703,8 +6703,7 @@ svg.yvi{width:1em;height:1em;vertical-align:-0.125em;flex-shrink:0;display:inlin
 
   <!-- TABS -->
   <div class="tabs">
-    <button class="tab active" id="tab-ar" onclick="switchTab('ar',this)" data-i18n="tab.ar">📥 AR — OTAs</button>
-    <button class="tab" id="tab-ap" onclick="switchTab('ap',this)" data-i18n="tab.ap">📦 AP — Proveedores</button>
+    <button class="tab active" id="tab-ap" onclick="switchTab('ap',this)" data-i18n="tab.ap">📦 AP — Proveedores</button>
     <button class="tab" id="tab-drr" onclick="switchTab('drr',this)" data-i18n="tab.drr">📊 DRR</button>
     <button class="tab" id="tab-banco" onclick="switchTab('banco',this)" data-i18n="tab.banco">🏦 Banco</button>
     <button class="tab" id="tab-notif" onclick="switchTab('notif',this)" data-i18n="tab.notif">🔔 Notificaciones</button>
@@ -6714,75 +6713,10 @@ svg.yvi{width:1em;height:1em;vertical-align:-0.125em;flex-shrink:0;display:inlin
     <button class="tab" onclick="switchTab('cierre',this)" id="tab-cierre" data-i18n="tab.cierre">🧾 Cierre</button>
   </div>
 
-  <div id="panel-ar" class="panel active g-panel">
-    <!-- Guia de estilo (b55). Ids de siempre: el JS no cambia, solo lo que pinta. -->
-    <div class="g-head">
-      <div><div class="g-h1" data-i18n="tab.ar" title="Liquidaciones de comisiones de las OTAs: cruce con el contrato, certificado DI y aprobación." data-i18n-title="ar.subtitulo">📥 AR — OTAs</div></div>
-      <div class="g-actions">
-        <button id="btn-export-selected" class="g-btn g-ghost g-sm" style="display:none" onclick="exportarSeleccionados()">📤 Exportar selección</button>
-        <a href="/aprobaciones-ar/" class="g-btn g-primary g-sm" title="Abrir panel de aprobaciones AR" data-i18n="btn.aprobarARp">📲 Aprobar facturas AR</a>
-      </div>
-    </div>
-    <div class="g-tiles" id="ar-stats-section">
-      <div class="g-kpi k-acc"><div class="g-kpi-lbl" data-i18n="sc.procesadas">Facturas procesadas</div><div class="g-kpi-val" id="s-tot">—</div><div class="g-kpi-sub" data-i18n="sc.ciclo">último ciclo AR</div></div>
-      <div class="g-kpi"><div class="g-kpi-lbl" data-i18n="sc.importe">Importe total</div><div class="g-kpi-val g-num" id="s-imp">—</div><div class="g-kpi-sub" data-i18n="sc.eurProcesados">EUR procesados</div></div>
-      <div class="g-kpi k-grn"><div class="g-kpi-lbl" data-i18n="sc.correctas">Correctas</div><div class="g-kpi-val" id="s-ok">—</div><div class="g-kpi-sub" data-i18n="sc.sinIncidencias">sin incidencias</div></div>
-      <div class="g-kpi k-red"><div class="g-kpi-lbl" data-i18n="sc.discrepancias">Discrepancias</div><div class="g-kpi-val" id="s-disc">—</div><div class="g-kpi-sub" id="s-disc-sub">reclamable: —</div></div>
-      <div class="g-kpi k-ora"><div class="g-kpi-lbl" data-i18n="sc.di">Certif. DI pendiente</div><div class="g-kpi-val" id="s-di">—</div><div class="g-kpi-sub" data-i18n="sc.extranjer">facturas extranjeras</div></div>
-      <div class="g-kpi k-pur"><div class="g-kpi-lbl" data-i18n="sc.pendiente">Pendientes firma</div><div class="g-kpi-val" id="s-pend">—</div><div class="g-kpi-sub" id="s-pend-sub">— apr · — rec</div></div>
-    </div>
 
-    <div class="g-grid2 g-mid">
-      <div class="g-card">
-        <div class="g-card-head"><div><div class="g-card-title" data-i18n="card.porOta" title="Cuántas liquidaciones ha mandado cada canal este ciclo." data-i18n-title="ar.porOtaSub">Facturas por OTA</div></div></div>
-        <div class="chart-wrap"><canvas id="ota-chart"></canvas></div>
-      </div>
-      <div class="g-card">
-        <div class="g-card-head"><div><div class="g-card-title" data-i18n="card.resumen" title="Lo que ha encontrado el cruce con el contrato." data-i18n-title="ar.resumenSub">Resumen de estados</div></div></div>
-        <div id="activity" class="hide-lite"><div class="g-empty g-cargando" data-i18n="lbl.cargando">Cargando…</div></div>
-      </div>
-    </div>
-
-    <div class="g-card">
-      <div class="g-card-head"><div><div class="g-card-title" data-i18n="ar.todas" title="Pulsa una fila para ver el detalle; marca filas para exportarlas." data-i18n-title="ar.tablaAyuda">Todas las facturas del ciclo</div></div><span id="tbl-count" class="g-small"></span></div>
-      <div class="g-tbl-wrap">
-        <table class="g-tbl">
-          <thead>
-            <tr>
-              <th class="g-chk"><input type="checkbox" id="ar-select-all" onclick="toggleSelectAll(this,'ar-row-cb')"></th>
-              <th data-i18n="th.archivo">Archivo</th>
-              <th data-i18n="th.factura">Nº Factura</th>
-              <th data-i18n="th.ota">OTA</th>
-              <th data-i18n="th.fecha">Fecha</th>
-              <th class="num" data-i18n="th.importe">Importe bruto</th>
-              <th class="num" data-i18n="th.comision">% Com.</th>
-              <th data-i18n="th.estado">Estado</th>
-              <th data-i18n="th.estadoDI">Estado DI</th>
-              <th class="num" data-i18n="th.discrepancia">Discrepancia</th>
-              <th data-i18n="th.aprobacion">Aprobación</th>
-            </tr>
-          </thead>
-          <tbody id="tbl-body">
-            <tr><td colspan="11"><div class="g-empty g-cargando" data-i18n="lbl.cargando">Cargando…</div></td></tr>
-          </tbody>
-        </table>
-      </div>
-    </div>
-
-    <!-- ── Reclamaciones OTA (loop de reclamación automática) ── -->
-    <div class="g-card" id="ar-recl-section">
-      <div class="g-card-head">
-        <div><div class="g-card-title" data-i18n="recl.titulo" title="Comisiones cobradas por encima del contrato: Yve redacta el email y tú lo apruebas. Nada se envía sin tu OK." data-i18n-title="recl.sub">Reclamaciones OTA pendientes de aprobar</div></div>
-        <div id="ar-recl-resumen" class="g-small"></div>
-      </div>
-      <div id="ar-recl-list" class="g-inline-list">
-        <div class="g-empty g-cargando" data-i18n="lbl.cargando">Cargando…</div>
-      </div>
-    </div>
-  </div><!-- /panel-ar -->
 
   <!-- PANEL AP -->
-  <div id="panel-ap" class="panel g-panel">
+  <div id="panel-ap" class="panel active g-panel">
     <!-- Guia de estilo (b53): cabecera con titulo + acciones (UN primario), tiles,
          tabla, y cuatro tarjetas iguales. Los ids son los de siempre: el JS no cambia. -->
     <div class="g-head">
@@ -6856,6 +6790,74 @@ svg.yvi{width:1em;height:1em;vertical-align:-0.125em;flex-shrink:0;display:inlin
       </div>
       <div id="ap-recl-list" class="g-inline-list"><div class="g-empty g-cargando" data-i18n="reclap.cargando">Buscando facturas que reclamar…</div></div>
     </div>
+  <!-- b85 (decision de Jordi, 23 sep): lo que se debe a una OTA es AP. El antiguo apartado
+       "AR — OTAs" vive aqui, entero (mismos ids: el JS no cambia), como seccion de AP. -->
+  <div id="panel-ar" class="ap-seccion">
+    <!-- Guia de estilo (b55). Ids de siempre: el JS no cambia, solo lo que pinta. -->
+    <div class="g-head">
+      <div><div class="g-h1 g-h1-sec" data-i18n="ap.comisionesOta" title="Liquidaciones de comisiones de las OTAs: cruce con el contrato, certificado DI y aprobación. Lo que se debe a una OTA es AP." data-i18n-title="ar.subtitulo">📥 Comisiones OTA</div></div>
+      <div class="g-actions">
+        <button id="btn-export-selected" class="g-btn g-ghost g-sm" style="display:none" onclick="exportarSeleccionados()">📤 Exportar selección</button>
+        <a href="/aprobaciones-ar/" class="g-btn g-secondary g-sm" title="Abrir panel de aprobaciones de comisiones OTA" data-i18n="btn.aprobarARp">📲 Aprobar comisiones OTA</a>
+      </div>
+    </div>
+    <div class="g-tiles" id="ar-stats-section">
+      <div class="g-kpi k-acc"><div class="g-kpi-lbl" data-i18n="sc.procesadas">Facturas procesadas</div><div class="g-kpi-val" id="s-tot">—</div><div class="g-kpi-sub" data-i18n="sc.ciclo">último ciclo AR</div></div>
+      <div class="g-kpi"><div class="g-kpi-lbl" data-i18n="sc.importe">Importe total</div><div class="g-kpi-val g-num" id="s-imp">—</div><div class="g-kpi-sub" data-i18n="sc.eurProcesados">EUR procesados</div></div>
+      <div class="g-kpi k-grn"><div class="g-kpi-lbl" data-i18n="sc.correctas">Correctas</div><div class="g-kpi-val" id="s-ok">—</div><div class="g-kpi-sub" data-i18n="sc.sinIncidencias">sin incidencias</div></div>
+      <div class="g-kpi k-red"><div class="g-kpi-lbl" data-i18n="sc.discrepancias">Discrepancias</div><div class="g-kpi-val" id="s-disc">—</div><div class="g-kpi-sub" id="s-disc-sub">reclamable: —</div></div>
+      <div class="g-kpi k-ora"><div class="g-kpi-lbl" data-i18n="sc.di">Certif. DI pendiente</div><div class="g-kpi-val" id="s-di">—</div><div class="g-kpi-sub" data-i18n="sc.extranjer">facturas extranjeras</div></div>
+      <div class="g-kpi k-pur"><div class="g-kpi-lbl" data-i18n="sc.pendiente">Pendientes firma</div><div class="g-kpi-val" id="s-pend">—</div><div class="g-kpi-sub" id="s-pend-sub">— apr · — rec</div></div>
+    </div>
+
+    <div class="g-grid2 g-mid">
+      <div class="g-card">
+        <div class="g-card-head"><div><div class="g-card-title" data-i18n="card.porOta" title="Cuántas liquidaciones ha mandado cada canal este ciclo." data-i18n-title="ar.porOtaSub">Facturas por OTA</div></div></div>
+        <div class="chart-wrap"><canvas id="ota-chart"></canvas></div>
+      </div>
+      <div class="g-card">
+        <div class="g-card-head"><div><div class="g-card-title" data-i18n="card.resumen" title="Lo que ha encontrado el cruce con el contrato." data-i18n-title="ar.resumenSub">Resumen de estados</div></div></div>
+        <div id="activity" class="hide-lite"><div class="g-empty g-cargando" data-i18n="lbl.cargando">Cargando…</div></div>
+      </div>
+    </div>
+
+    <div class="g-card">
+      <div class="g-card-head"><div><div class="g-card-title" data-i18n="ar.todas" title="Pulsa una fila para ver el detalle; marca filas para exportarlas." data-i18n-title="ar.tablaAyuda">Todas las facturas del ciclo</div></div><span id="tbl-count" class="g-small"></span></div>
+      <div class="g-tbl-wrap">
+        <table class="g-tbl">
+          <thead>
+            <tr>
+              <th class="g-chk"><input type="checkbox" id="ar-select-all" onclick="toggleSelectAll(this,'ar-row-cb')"></th>
+              <th data-i18n="th.archivo">Archivo</th>
+              <th data-i18n="th.factura">Nº Factura</th>
+              <th data-i18n="th.ota">OTA</th>
+              <th data-i18n="th.fecha">Fecha</th>
+              <th class="num" data-i18n="th.importe">Importe bruto</th>
+              <th class="num" data-i18n="th.comision">% Com.</th>
+              <th data-i18n="th.estado">Estado</th>
+              <th data-i18n="th.estadoDI">Estado DI</th>
+              <th class="num" data-i18n="th.discrepancia">Discrepancia</th>
+              <th data-i18n="th.aprobacion">Aprobación</th>
+            </tr>
+          </thead>
+          <tbody id="tbl-body">
+            <tr><td colspan="11"><div class="g-empty g-cargando" data-i18n="lbl.cargando">Cargando…</div></td></tr>
+          </tbody>
+        </table>
+      </div>
+    </div>
+
+    <!-- ── Reclamaciones OTA (loop de reclamación automática) ── -->
+    <div class="g-card" id="ar-recl-section">
+      <div class="g-card-head">
+        <div><div class="g-card-title" data-i18n="recl.titulo" title="Comisiones cobradas por encima del contrato: Yve redacta el email y tú lo apruebas. Nada se envía sin tu OK." data-i18n-title="recl.sub">Reclamaciones OTA pendientes de aprobar</div></div>
+        <div id="ar-recl-resumen" class="g-small"></div>
+      </div>
+      <div id="ar-recl-list" class="g-inline-list">
+        <div class="g-empty g-cargando" data-i18n="lbl.cargando">Cargando…</div>
+      </div>
+    </div>
+  </div><!-- /panel-ar -->
   </div><!-- /panel-ap -->
 
   <!-- PANEL DRR -->
@@ -7590,8 +7592,8 @@ async function loadAll() {
     else badge.style.display = 'none';
   }
   if (stats.discrepancias || stats.di_pendientes) {
-    _setTabBadge('ar_otas', (stats.discrepancias||0) + (stats.di_pendientes||0), 'var(--red)');
-  } else _setTabBadge('ar_otas', 0);
+    _setTabBadge('ap', (stats.discrepancias||0) + (stats.di_pendientes||0), 'var(--red)');
+  } else _setTabBadge('ap', 0);
 
   // Daily alerts panel
   const alertsPanel = document.getElementById('daily-alerts-panel');
@@ -8199,7 +8201,7 @@ var _i18nStrMap = {
     "El primer paso: procesa las facturas OTA del mes en": "First step: process this month's OTA invoices in",
     "👋 Bienvenido a Yve.01": "👋 Welcome to Yve.01",
     "El sistema de finanzas hoteleras que automatiza AR, AP, DRR y reporting. Este tour te lleva por cada módulo de izquierda a derecha — 3 minutos y ya lo dominas todo. Arrástrame si te estorbo: me acoplo solo donde me sueltes.": "The hotel finance system that automates AR, AP, DRR and reporting. This tour walks you through every module from left to right — 3 minutes and you'll master it all. Drag me out of the way: I'll dock wherever you drop me.",
-    "📥 AR — Comisiones OTA": "📥 AR — OTA Commissions",
+    "📥 Comisiones OTA (en AP)": "📥 OTA commissions (in AP)",
     "Verifica automáticamente las comisiones de Booking.com y Expedia. Facturas procesadas, importe total, discrepancias reclamables y certificados DI pendientes. El número rojo son euros que puedes recuperar.": "Automatically verifies Booking.com and Expedia commissions. Processed invoices, total amount, claimable discrepancies and pending DI certificates. The red number is euros you can recover.",
     "Para cada factura de proveedor, Yve cruza 3 documentos: factura, pedido (PO) y albarán. Si cuadra todo → Match OK automático. Si hay diferencia → alerta y email al proveedor generado con IA.": "For every supplier invoice, Yve cross-checks 3 documents: invoice, purchase order (PO) and delivery note. Everything matches → automatic Match OK. Any difference → alert plus an AI-generated email to the supplier.",
     "Arrastra tu archivo .xlsm aquí. Yve extrae RevPAR, ADR, GOP%, ocupación y las 7.000+ líneas del Trial Balance en segundos. Detecta Out of Balance automáticamente y te avisa al instante.": "Drag your .xlsm file here. Yve extracts RevPAR, ADR, GOP%, occupancy and the 7,000+ Trial Balance lines in seconds. It detects Out of Balance automatically and alerts you instantly.",
@@ -8449,7 +8451,7 @@ var _i18nStrMap = {
     "El primer paso: procesa las facturas OTA del mes en": "El primer pas: processa les factures OTA del mes a",
     "👋 Bienvenido a Yve.01": "👋 Benvingut a Yve.01",
     "El sistema de finanzas hoteleras que automatiza AR, AP, DRR y reporting. Este tour te lleva por cada módulo de izquierda a derecha — 3 minutos y ya lo dominas todo. Arrástrame si te estorbo: me acoplo solo donde me sueltes.": "El sistema de finances hoteleres que automatitza AR, AP, DRR i reporting. Aquest tour et porta per cada mòdul d'esquerra a dreta — 3 minuts i ja ho domines tot. Arrossega'm si et faig nosa: m'acoblo sol on em deixis anar.",
-    "📥 AR — Comisiones OTA": "📥 AR — Comissions OTA",
+    "📥 Comisiones OTA (en AP)": "📥 Comissions OTA (a AP)",
     "Verifica automáticamente las comisiones de Booking.com y Expedia. Facturas procesadas, importe total, discrepancias reclamables y certificados DI pendientes. El número rojo son euros que puedes recuperar.": "Verifica automàticament les comissions de Booking.com i Expedia. Factures processades, import total, discrepàncies reclamables i certificats DI pendents. El número vermell són euros que pots recuperar.",
     "Para cada factura de proveedor, Yve cruza 3 documentos: factura, pedido (PO) y albarán. Si cuadra todo → Match OK automático. Si hay diferencia → alerta y email al proveedor generado con IA.": "Per a cada factura de proveïdor, Yve creua 3 documents: factura, comanda (PO) i albarà. Si tot quadra → Match OK automàtic. Si hi ha diferència → alerta i email al proveïdor generat amb IA.",
     "Arrastra tu archivo .xlsm aquí. Yve extrae RevPAR, ADR, GOP%, ocupación y las 7.000+ líneas del Trial Balance en segundos. Detecta Out of Balance automáticamente y te avisa al instante.": "Arrossega el teu fitxer .xlsm aquí. Yve extreu RevPAR, ADR, GOP%, ocupació i les més de 7.000 línies del Trial Balance en segons. Detecta Out of Balance automàticament i t'avisa a l'instant.",
@@ -8692,7 +8694,7 @@ var _i18nStrMap = {
     "El primer paso: procesa las facturas OTA del mes en": "Première étape : traitez les factures OTA du mois dans",
     "👋 Bienvenido a Yve.01": "👋 Bienvenue sur Yve.01",
     "El sistema de finanzas hoteleras que automatiza AR, AP, DRR y reporting. Este tour te lleva por cada módulo de izquierda a derecha — 3 minutos y ya lo dominas todo. Arrástrame si te estorbo: me acoplo solo donde me sueltes.": "Le système de finances hôtelières qui automatise AR, AP, DRR et reporting. Ce tour vous guide module par module — 3 minutes et vous maîtrisez tout. Déplacez-moi si je gêne : je m'ancre là où vous me lâchez.",
-    "📥 AR — Comisiones OTA": "📥 AR — Commissions OTA",
+    "📥 Comisiones OTA (en AP)": "📥 Commissions OTA (dans AP)",
     "Verifica automáticamente las comisiones de Booking.com y Expedia. Facturas procesadas, importe total, discrepancias reclamables y certificados DI pendientes. El número rojo son euros que puedes recuperar.": "Vérifie automatiquement les commissions de Booking.com et Expedia. Factures traitées, montant total, écarts réclamables et certificats DI en attente. Le chiffre rouge, ce sont des euros à récupérer.",
     "Para cada factura de proveedor, Yve cruza 3 documentos: factura, pedido (PO) y albarán. Si cuadra todo → Match OK automático. Si hay diferencia → alerta y email al proveedor generado con IA.": "Pour chaque facture fournisseur, Yve croise 3 documents : facture, bon de commande (PO) et bon de livraison. Tout correspond → Match OK automatique. Un écart → alerte et email au fournisseur généré par IA.",
     "Arrastra tu archivo .xlsm aquí. Yve extrae RevPAR, ADR, GOP%, ocupación y las 7.000+ líneas del Trial Balance en segundos. Detecta Out of Balance automáticamente y te avisa al instante.": "Glissez votre fichier .xlsm ici. Yve extrait RevPAR, ADR, GOP%, occupation et les 7 000+ lignes du Trial Balance en quelques secondes. Il détecte l'Out of Balance automatiquement et vous alerte aussitôt.",
@@ -8946,7 +8948,7 @@ var _i18nStrMap = {
     "El primer paso: procesa las facturas OTA del mes en": "Erster Schritt: Verarbeite die OTA-Rechnungen des Monats in",
     "👋 Bienvenido a Yve.01": "👋 Willkommen bei Yve.01",
     "El sistema de finanzas hoteleras que automatiza AR, AP, DRR y reporting. Este tour te lleva por cada módulo de izquierda a derecha — 3 minutos y ya lo dominas todo. Arrástrame si te estorbo: me acoplo solo donde me sueltes.": "Das Hotelfinanz-System, das AR, AP, DRR und Reporting automatisiert. Diese Tour führt dich Modul für Modul von links nach rechts — 3 Minuten und du beherrschst alles. Zieh mich beiseite: Ich docke dort an, wo du mich loslässt.",
-    "📥 AR — Comisiones OTA": "📥 AR — OTA-Provisionen",
+    "📥 Comisiones OTA (en AP)": "📥 OTA-Provisionen (in AP)",
     "Verifica automáticamente las comisiones de Booking.com y Expedia. Facturas procesadas, importe total, discrepancias reclamables y certificados DI pendientes. El número rojo son euros que puedes recuperar.": "Prüft automatisch die Provisionen von Booking.com und Expedia. Verarbeitete Rechnungen, Gesamtbetrag, reklamierbare Abweichungen und offene DI-Zertifikate. Die rote Zahl sind Euros, die du zurückholen kannst.",
     "Para cada factura de proveedor, Yve cruza 3 documentos: factura, pedido (PO) y albarán. Si cuadra todo → Match OK automático. Si hay diferencia → alerta y email al proveedor generado con IA.": "Für jede Lieferantenrechnung gleicht Yve 3 Dokumente ab: Rechnung, Bestellung (PO) und Lieferschein. Stimmt alles → automatisches Match OK. Bei Differenz → Warnung und KI-generierte E-Mail an den Lieferanten.",
     "Arrastra tu archivo .xlsm aquí. Yve extrae RevPAR, ADR, GOP%, ocupación y las 7.000+ líneas del Trial Balance en segundos. Detecta Out of Balance automáticamente y te avisa al instante.": "Zieh deine .xlsm-Datei hierher. Yve extrahiert RevPAR, ADR, GOP%, Auslastung und die 7.000+ Zeilen der Trial Balance in Sekunden. Out of Balance wird automatisch erkannt und sofort gemeldet.",
@@ -9204,7 +9206,7 @@ var _i18nStrMap = {
     "El primer paso: procesa las facturas OTA del mes en": "Primo passo: elabora le fatture OTA del mese in",
     "👋 Bienvenido a Yve.01": "👋 Benvenuto in Yve.01",
     "El sistema de finanzas hoteleras que automatiza AR, AP, DRR y reporting. Este tour te lleva por cada módulo de izquierda a derecha — 3 minutos y ya lo dominas todo. Arrástrame si te estorbo: me acoplo solo donde me sueltes.": "Il sistema di finanza alberghiera che automatizza AR, AP, DRR e reporting. Questo tour ti guida modulo per modulo — 3 minuti e padroneggi tutto. Trascinami se ti intralcio: mi aggancio dove mi lasci.",
-    "📥 AR — Comisiones OTA": "📥 AR — Commissioni OTA",
+    "📥 Comisiones OTA (en AP)": "📥 Commissioni OTA (in AP)",
     "Verifica automáticamente las comisiones de Booking.com y Expedia. Facturas procesadas, importe total, discrepancias reclamables y certificados DI pendientes. El número rojo son euros que puedes recuperar.": "Verifica automaticamente le commissioni di Booking.com ed Expedia. Fatture elaborate, importo totale, discrepanze reclamabili e certificati DI in sospeso. Il numero rosso sono euro che puoi recuperare.",
     "Para cada factura de proveedor, Yve cruza 3 documentos: factura, pedido (PO) y albarán. Si cuadra todo → Match OK automático. Si hay diferencia → alerta y email al proveedor generado con IA.": "Per ogni fattura fornitore, Yve incrocia 3 documenti: fattura, ordine (PO) e bolla di consegna. Se tutto quadra → Match OK automatico. Se c'è differenza → avviso ed email al fornitore generata con IA.",
     "Arrastra tu archivo .xlsm aquí. Yve extrae RevPAR, ADR, GOP%, ocupación y las 7.000+ líneas del Trial Balance en segundos. Detecta Out of Balance automáticamente y te avisa al instante.": "Trascina qui il tuo file .xlsm. Yve estrae RevPAR, ADR, GOP%, occupazione e le oltre 7.000 righe del Trial Balance in pochi secondi. Rileva l'Out of Balance automaticamente e ti avvisa subito.",
@@ -9452,7 +9454,7 @@ var _i18nStrMap = {
     "El primer paso: procesa las facturas OTA del mes en": "Primeiro passo: processe as faturas OTA do mês em",
     "👋 Bienvenido a Yve.01": "👋 Bem-vindo ao Yve.01",
     "El sistema de finanzas hoteleras que automatiza AR, AP, DRR y reporting. Este tour te lleva por cada módulo de izquierda a derecha — 3 minutos y ya lo dominas todo. Arrástrame si te estorbo: me acoplo solo donde me sueltes.": "O sistema de finanças hoteleiras que automatiza AR, AP, DRR e reporting. Este tour percorre cada módulo da esquerda para a direita — 3 minutos e você domina tudo. Arraste-me se atrapalhar: eu me encaixo onde você me soltar.",
-    "📥 AR — Comisiones OTA": "📥 AR — Comissões OTA",
+    "📥 Comisiones OTA (en AP)": "📥 Comissões OTA (em AP)",
     "Verifica automáticamente las comisiones de Booking.com y Expedia. Facturas procesadas, importe total, discrepancias reclamables y certificados DI pendientes. El número rojo son euros que puedes recuperar.": "Verifica automaticamente as comissões de Booking.com e Expedia. Faturas processadas, valor total, discrepâncias reclamáveis e certificados DI pendentes. O número vermelho são euros que você pode recuperar.",
     "Para cada factura de proveedor, Yve cruza 3 documentos: factura, pedido (PO) y albarán. Si cuadra todo → Match OK automático. Si hay diferencia → alerta y email al proveedor generado con IA.": "Para cada fatura de fornecedor, o Yve cruza 3 documentos: fatura, pedido (PO) e guia de remessa. Tudo confere → Match OK automático. Diferença → alerta e email ao fornecedor gerado com IA.",
     "Arrastra tu archivo .xlsm aquí. Yve extrae RevPAR, ADR, GOP%, ocupación y las 7.000+ líneas del Trial Balance en segundos. Detecta Out of Balance automáticamente y te avisa al instante.": "Arraste seu arquivo .xlsm aqui. O Yve extrai RevPAR, ADR, GOP%, ocupação e as mais de 7.000 linhas do Trial Balance em segundos. Detecta Out of Balance automaticamente e avisa na hora.",
@@ -11519,8 +11521,8 @@ var _tourSteps = [
     text: 'El sistema de finanzas hoteleras que automatiza AR, AP, DRR y reporting. Este tour te lleva por cada módulo de izquierda a derecha — 3 minutos y ya lo dominas todo. Arrástrame si te estorbo: me acoplo solo donde me sueltes.'
   },
   {
-    el: '#ar-stats-section', tab: 'ar', pos: 'auto',
-    title: '📥 AR — Comisiones OTA',
+    el: '#ar-stats-section', tab: 'ar', pos: 'auto',    /* 'ar' = AP, seccion Comisiones OTA (b85) */
+    title: '📥 Comisiones OTA (en AP)',
     text: 'Verifica automáticamente las comisiones de Booking.com y Expedia. Facturas procesadas, importe total, discrepancias reclamables y certificados DI pendientes. El número rojo son euros que puedes recuperar.'
   },
   {
@@ -13370,7 +13372,7 @@ function _showTabBadges(logText) {
 // Solo si el CONTORNO (acentuar-todo) está activo: pone en VERDE únicamente
 // las stats de los apartados que se acaban de actualizar. El resto se queda
 // con el color de contorno personalizado.
-var _PANEL_DE_TAB = { ap:'panel-ap', ar:'panel-ar', banco:'panel-banco', fb:'panel-fb', drr:'panel-drr', ar_real:'panel-ar_real' };
+var _PANEL_DE_TAB = { ap:'panel-ap', ar:'panel-ar' /* seccion dentro de AP (b85) */, banco:'panel-banco', fb:'panel-fb', drr:'panel-drr', ar_real:'panel-ar_real' };
 function _statCardsDe(panelId) {
   // (b74) Con la guia, los tiles son todos iguales y no se marcan: el verde de
   // "recien actualizado" hacia que ALGUNOS tiles (los .fb-kpi-card) salieran mas
@@ -14084,10 +14086,9 @@ var _DESCARGAS = [
     {t: '📈 Mensual', u: '/api/reportes/mensual'},
     {t: '🎯 Ejecutivo PDF', u: '/api/reportes/ejecutivo.pdf'},
     {t: '📊 Consolidado Excel', u: '/api/reportes/consolidado.xlsx'}]},
-  {tab: 'ar', nombre: 'tab.ar', def: '📥 AR — OTAs', items: [
-    {t: '⬇️ Excel AR', u: '/api/exportar/ar'},
-    {t: '📄 PDF AR', u: '/api/exportar/ar/pdf'}]},
   {tab: 'ap', nombre: 'tab.ap', def: '📦 AP — Proveedores', items: [
+    {t: '⬇️ Excel de comisiones OTA', u: '/api/exportar/ar', k: 'ap.dlOtas'},
+    {t: '📄 PDF de comisiones OTA', u: '/api/exportar/ar/pdf', k: 'ap.dlOtasPdf'},
     {t: '⬇️ Excel AP', u: '/api/exportar/ap'},
     {t: '⬇️ Excel del aging', u: '/api/exportar/aging_ap', k: 'aging.descargar'},
     {t: '⬇️ Asientos de las facturas AP', u: '/api/exportar/ap_asientos', k: 'ap.dlAsientos'},
@@ -14227,8 +14228,14 @@ function eliminarArchivoServidor(nombre, rowEl) {
   .catch(function(e){ showNotification('Error de conexión', 'error'); });
 }
 
-var _currentTab = 'ar';       // apartado abierto: el selector de descargas arranca en el
+var _currentTab = 'ap';       // apartado abierto: el selector de descargas arranca en el
 function switchTab(tab, el) {
+  // b85: "ar" (las comisiones OTA) ya no es pestaña: vive dentro de AP. Todo lo que
+  // pedia abrirla (tour, avisos, atajos, tests) abre AP y baja a la seccion.
+  var _irA = null;
+  if (tab === 'ar') { tab = 'ap'; _irA = 'panel-ar'; }
+  if (!el) el = document.getElementById('tab-' + tab) || document.getElementById('tab-' + String(tab).replace(/_/g, '-'));
+  if (!el) return;
   _currentTab = tab;
   if (typeof t !== 'function' && typeof _T_FN === 'function') { try { t = _T_FN; } catch(e){} }
   if (typeof _onTabSwitch === 'function') _onTabSwitch(tab);
@@ -14254,7 +14261,9 @@ function switchTab(tab, el) {
   // "¿cómo funciona tu banco?". Va aqui, no en el cargador, para que salga al
   // ABRIR la pestaña (no en la precarga de fondo) aunque el panel este cacheado.
   if (tab === 'banco' && typeof _checkBancoConfig === 'function') _checkBancoConfig();
-  _cargarPanel(tab, panel, false);
+  var _pc = _cargarPanel(tab, panel, false);
+  if (_irA) { var _sec = document.getElementById(_irA); if (_sec) setTimeout(function(){ _sec.scrollIntoView({behavior:'smooth', block:'start'}); }, 80); }
+  return _pc;
 }
 
 // Cargadores por apartado, en un solo sitio. Antes estaban sueltos dentro de
@@ -16007,6 +16016,9 @@ function _rolVeApartado(tab) { return _rolVeTodo() || (_TABS_ROL[_USER_ROL] || [
   var rol = _USER_ROL;
   // financial_controller y admin ven todo
   if (_rolVeTodo()) return;
+  // b85: las comisiones OTA viven dentro de AP; los roles que no veian AR — OTAs
+  // (F&B, jefe de servicios) siguen sin verlas aunque vean AP
+  var _secOta = document.getElementById('panel-ar'); if (_secOta && !_rolVeApartado('ar')) _secOta.style.display = 'none';
   var tabs = document.querySelectorAll('.tab');
   var allowed = _TABS_ROL[rol] || [];
   tabs.forEach(function(t) {
