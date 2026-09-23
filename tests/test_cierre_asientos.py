@@ -79,7 +79,7 @@ def main():
         return [a for a in A if (origen is None or a['origen'] == origen) and (cuenta is None or a['cuenta'] == cuenta)]
 
     ok(res['cuadra'] and res['debe'] == res['haber'], f"el Diario cuadra: {res['debe']} / {res['haber']}")
-    ok(res['fuentes'] == {'ap': 3, 'ar_ota': 1, 'ventas_fb': 2, 'ar_facturas': 2, 'ar_cobros': 0, 'banco': 2, 'provisiones': 1}, f"fuentes: {res['fuentes']}")
+    ok(res['fuentes'] == {'ap': 3, 'ar_ota': 1, 'ventas_fb': 2, 'ar_facturas': 2, 'ar_cobros': 0, 'banco': 2, 'caja': 0, 'provisiones': 1}, f"fuentes: {res['fuentes']}")
     ok(res['saltados']['ap_sin_cuadrar'] == 1 and res['saltados']['ap_sin_total'] == 1, f"AP saltadas con motivo: {res['saltados']}")
     f2 = [a for a in A if a['documento'] == 'F-2']
     ok(any(a['cuenta'] == '629' and a['debe'] == 200.0 for a in f2) and any(a['cuenta'] == '472' and a['debe'] == 42.0 for a in f2), 'F-2 sin base: se deriva del total al 21 % y la cuenta 629.0 se lee como 629')

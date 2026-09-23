@@ -178,7 +178,7 @@ def generar_asientos(mes, fuentes, plan=None, cfg=None):
     crit_ap = criterio_fecha_ap(cfg)
     D = _Diario(plan)
     cont = {"ap": 0, "ar_ota": 0, "ventas_fb": 0, "ar_facturas": 0, "ar_cobros": 0,
-            "banco": 0, "provisiones": 0}
+            "banco": 0, "caja": 0, "provisiones": 0}
     saltados = {"ap_sin_total": 0, "ap_sin_cuadrar": 0, "ar_ota_sin_importe": 0}
     avisos = []
 
@@ -323,6 +323,21 @@ def generar_asientos(mes, fuentes, plan=None, cfg=None):
             if D.nuevo(_fecha(r.get("fecha")), txt, ref, "BANCO", lineas, r.get("hotel_id")):
                 cont["banco"] += 1
 
+    # ── caja (b86): ingresos de efectivo en el banco = 572 (D) / 570 (H) ─────
+    # Son los movimientos del extracto que el cuadre pone en la pestaña CAJA
+    # (fuentes["caja_ingresos"], los saca caja.ingresos_banco). No tienen factura,
+    # asi que nunca estan CONCILIADO; si alguno lo estuviera ya lo asento el banco.
+    # El descuadre del arqueo NO se asienta solo (decision apuntada en caja.py).
+    for m in fuentes.get("caja_ingresos") or []:
+        if m.get("estado") == "CONCILIADO" or not _en_mes(m.get("fecha"), ini, fin):
+            continue
+        imp = _num(m.get("importe"))
+        if imp <= 0:
+            continue
+        if D.nuevo(_fecha(m.get("fecha")), f"Ingreso efectivo {_txt(m.get('concepto'))[:60]}", m.get("clave", ""), "CAJA",
+                   [("572", imp, 0), ("570", 0, imp)], m.get("hotel_id")):
+            cont["caja"] += 1
+
     # ── provisiones (ya vienen como asientos de provisiones.py) ──────────
     for bloque in fuentes.get("provisiones") or []:
         filas = bloque.get("asientos") or []
@@ -401,11 +416,32 @@ def reconciliar(mes, res, fuentes, drr=None, cfg=None):
                 fact_ap = _r(fact_ap + _num(r.get("total_factura")))
     checks.append(_check("400", "Proveedores: facturas AP del mes (haber)", s("400", "H"), fact_ap,
                          "Facturas AP con fecha en el mes; las sin total o sin cuadrar no entran (ver avisos)."))
-    checks.append(_check("572", "Banco: pagos y cobros conciliados (movimiento neto)", s("572"),
-                         _saldo_banco_conciliado(fuentes.get("banco"), ini, fin),
-                         "Solo movimientos CONCILIADO del extracto entran en el Diario."))
+    caja_ing = [m for m in (fuentes.get("caja_ingresos") or []) if m.get("estado") != "CONCILIADO" and _en_mes(m.get("fecha"), ini, fin)]
+    ing_caja = _r(sum(_num(m.get("importe")) for m in caja_ing))
+    checks.append(_check("572", "Banco: pagos y cobros conciliados + ingresos de efectivo (movimiento neto)", s("572"),
+                         _r(_saldo_banco_conciliado(fuentes.get("banco"), ini, fin) + ing_caja),
+                         "Movimientos CONCILIADO del extracto y los ingresos de efectivo (pestaña CAJA del cuadre) entran en el Diario."))
+    # b86 · 570 Caja: lo ingresado en el banco (haber) contra el efectivo contado en los arqueos
+    try:
+        import caja as CJ
+        contado, n_arq = CJ.contado_mes(fuentes.get("caja"), ini.isoformat(), fin.isoformat(), fuentes.get("hotel"))
+    except Exception:
+        contado, n_arq = None, 0
+    if caja_ing or contado is not None:     # sin efectivo por ningun lado no hay nada que cuadrar
+        if contado is None:
+            checks.append({"cuenta": "570", "concepto": "Caja: ingresos de efectivo en banco sin arqueo que los justifique",
+                           "libro": s("570", "H"), "justificado": None, "diferencia": None,
+                           "estado": "SIN_DATO" if caja_ing else "CUADRA",
+                           "nota": f"{len(caja_ing)} ingreso(s) de efectivo por {ing_caja:,.2f} EUR; apunta los arqueos en la pestaña Caja."})
+        else:
+            dif = _r(ing_caja - contado)
+            checks.append({"cuenta": "570", "concepto": "Caja: efectivo ingresado en banco contra lo contado en los arqueos",
+                           "libro": s("570", "H"), "justificado": contado, "diferencia": dif,
+                           "estado": "CUADRA" if dif <= 0.01 else "DIFERENCIA",
+                           "nota": (f"{n_arq} arqueo(s) del mes en la pestaña Caja. " +
+                                    ("Se ingreso mas efectivo del contado: revisar." if dif > 0.01 else f"{-dif:,.2f} EUR contados siguen en caja o se ingresan despues."))})
     # movimientos del extracto SIN conciliar en el mes: dinero que se movio y no tiene asiento
-    n_pend, imp_pend = _banco_pendiente(fuentes.get("banco"), ini, fin)
+    n_pend, imp_pend = _banco_pendiente(fuentes.get("banco"), ini, fin, {m.get("clave") for m in caja_ing})
     checks.append({"cuenta": "572", "concepto": "Movimientos del extracto sin conciliar (sin asiento)",
                    "libro": 0.0, "justificado": _r(imp_pend), "diferencia": _r(-imp_pend),
                    "estado": "CUADRA" if n_pend == 0 else "PENDIENTE",
@@ -475,11 +511,16 @@ def _saldo_banco_conciliado(bk, ini, fin):
     return tot
 
 
-def _banco_pendiente(bk, ini, fin):
+def _banco_pendiente(bk, ini, fin, excluir=None):
+    """excluir: claves de movimientos que ya tienen asiento por otra via (ingresos de caja, b86)."""
     if bk is None or bk.empty:
         return 0, 0.0
+    from almacen_datos import clave_movimiento
+    excluir = excluir or set()
     n, tot = 0, 0.0
     for _, r in bk.iterrows():
+        if excluir and clave_movimiento(r.to_dict()) in excluir:
+            continue
         if _txt(r.get("estado")).upper() != "CONCILIADO" and _en_mes(r.get("fecha"), ini, fin) and _num(r.get("importe")):
             n += 1; tot = _r(tot + _num(r.get("importe")))
     return n, tot
@@ -526,6 +567,15 @@ def recoger_fuentes(mes, hotel=None, procesadas_dir=None, reportes_dir=None, dat
         f["banco"] = ALM.banco_del_hotel(bk, hotel)   # modo grupo: el banco es de todos (b80)
     except Exception:
         f["banco"] = pd.DataFrame()
+    # b86: arqueos de caja e ingresos de efectivo del extracto (pestaña CAJA del cuadre)
+    f["hotel"] = hotel or ""
+    try:
+        import caja as CJ
+        f["caja"] = CJ.leer(dd)
+        ini, fin, _m = _mes_a_rango(mes)
+        f["caja_ingresos"] = CJ.ingresos_banco_dir(f["banco"], ini.isoformat(), fin.isoformat(), dd)
+    except Exception:
+        f["caja"] = pd.DataFrame(); f["caja_ingresos"] = []
     try:
         import provisiones as PV
         f["provisiones"] = [PV.provision_albaranes(mes, hotel, procesadas_dir, reportes_dir, dd),

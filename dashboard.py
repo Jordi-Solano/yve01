@@ -224,6 +224,7 @@ from oracle_export_dryrun import oracle_export_bp   # exporta SOLO lo producido 
 from tab_cierre import cierre_bp
 from tab_albaranes import albaranes_bp
 from tab_ficha_ap import ficha_ap_bp          # b84: ficha de la factura, ajustes, pagada, descargas
+from tab_caja import caja_bp                  # b86: arqueo de caja y cuadre con los ingresos del banco
 from oracle_export_dryrun import oracle_export_bp
 from pricing import pricing_bp
 from tab_multi_hotel import multi_hotel_bp
@@ -245,7 +246,7 @@ from about import about_bp
 from exportador_pdf import pdf_bp
 # pricing_bp estaba importado pero NO registrado: /precios daba 404 mientras la
 # landing, el blog y "Quienes somos" enlazaban a el (Ola A).
-for _bp in (auth_bp, config_bp, admin_bp, aprob_ar_bp, aprob_ap_bp, concil_bp, fb_bp, ar_real_bp, recl_ota_bp, recl_ap_bp, oracle_export_bp, cierre_bp, albaranes_bp, ficha_ap_bp, multi_hotel_bp, self_service_bp, exportador_bp, demo_bp, demo_sim_bp, reportes_pdf_bp, blog_bp, billing_bp, asientos_bp, signup_bp, about_bp, pdf_bp, legal_bp, pricing_bp):
+for _bp in (auth_bp, config_bp, admin_bp, aprob_ar_bp, aprob_ap_bp, concil_bp, fb_bp, ar_real_bp, recl_ota_bp, recl_ap_bp, oracle_export_bp, cierre_bp, albaranes_bp, ficha_ap_bp, caja_bp, multi_hotel_bp, self_service_bp, exportador_bp, demo_bp, demo_sim_bp, reportes_pdf_bp, blog_bp, billing_bp, asientos_bp, signup_bp, about_bp, pdf_bp, legal_bp, pricing_bp):
     app.register_blueprint(_bp)
 
 
@@ -6706,6 +6707,7 @@ svg.yvi{width:1em;height:1em;vertical-align:-0.125em;flex-shrink:0;display:inlin
     <button class="tab active" id="tab-ap" onclick="switchTab('ap',this)" data-i18n="tab.ap">📦 AP — Proveedores</button>
     <button class="tab" id="tab-drr" onclick="switchTab('drr',this)" data-i18n="tab.drr">📊 DRR</button>
     <button class="tab" id="tab-banco" onclick="switchTab('banco',this)" data-i18n="tab.banco">🏦 Banco</button>
+    <button class="tab" id="tab-caja" onclick="switchTab('caja',this)" data-i18n="tab.caja">💵 Caja</button>
     <button class="tab" id="tab-notif" onclick="switchTab('notif',this)" data-i18n="tab.notif">🔔 Notificaciones</button>
     <button class="tab" onclick="switchTab('fb',this)" id="tab-fb" data-i18n="tab.fb">🍽️ F&amp;B Cost</button>
     <button class="tab" onclick="switchTab('ar_real',this)" id="tab-ar-real" data-i18n="tab.arreal">🏢 AR Real</button>
@@ -6929,6 +6931,43 @@ svg.yvi{width:1em;height:1em;vertical-align:-0.125em;flex-shrink:0;display:inlin
       </div>
     </div>
   </div><!-- /panel-banco -->
+
+  <!-- PANEL CAJA (b86, Jordi 23 sep: el arqueo se apunta a mano; los ingresos en el banco los pone Yve) -->
+  <div id="panel-caja" class="panel g-panel">
+    <div class="g-head">
+      <div><div class="g-h1" data-i18n="tab.caja" title="Lo que se cuenta en caja cada día, contra lo que dice el sistema y contra lo que llega al banco." data-i18n-title="caja.subtitulo">💵 Caja</div></div>
+      <div class="g-actions">
+        <label class="g-field g-inline"><span data-i18n="caja.mes">Mes</span><input type="month" id="caja-mes" class="g-input" onchange="loadCaja()"></label>
+        <button class="g-btn g-secondary g-sm" onclick="_cajaNuevo()" data-i18n="caja.apuntar">＋ Apuntar arqueo</button>
+      </div>
+    </div>
+    <div class="g-tiles" id="caja-tiles">
+      <div class="g-kpi k-acc"><div class="g-kpi-lbl" data-i18n="caja.contado">Contado</div><div class="g-kpi-val g-num" id="caja-k-contado">—</div><div class="g-kpi-sub" id="caja-k-contado-sub">—</div></div>
+      <div class="g-kpi"><div class="g-kpi-lbl" data-i18n="caja.sistema">Según sistema</div><div class="g-kpi-val g-num" id="caja-k-sistema">—</div><div class="g-kpi-sub" data-i18n="caja.sistemaSub">PMS / TPV</div></div>
+      <div class="g-kpi k-red"><div class="g-kpi-lbl" data-i18n="caja.descuadre">Descuadre</div><div class="g-kpi-val g-num" id="caja-k-dif">—</div><div class="g-kpi-sub" id="caja-k-dif-sub">—</div></div>
+      <div class="g-kpi k-grn"><div class="g-kpi-lbl" data-i18n="caja.ingresado">Ingresado en banco</div><div class="g-kpi-val g-num" id="caja-k-ing">—</div><div class="g-kpi-sub" id="caja-k-ing-sub">—</div></div>
+      <div class="g-kpi k-ora"><div class="g-kpi-lbl" data-i18n="caja.enCaja">En caja</div><div class="g-kpi-val g-num" id="caja-k-encaja">—</div><div class="g-kpi-sub" data-i18n="caja.enCajaSub">contado − ingresado (acumulado)</div></div>
+    </div>
+    <div class="g-card" id="caja-form" style="display:none">
+      <div class="g-card-head"><div><div class="g-card-title" id="caja-form-title" data-i18n="caja.formTitulo">Arqueo del día</div></div></div>
+      <div class="g-grid2">
+        <label class="g-field"><span data-i18n="caja.fecha">Fecha</span><input type="date" id="caja-f-fecha" class="g-input"></label>
+        <label class="g-field"><span data-i18n="caja.contadoLbl">Efectivo contado (€)</span><input type="number" step="0.01" min="0" id="caja-f-contado" class="g-input" placeholder="0,00"></label>
+        <label class="g-field"><span data-i18n="caja.sistemaLbl">Efectivo según sistema (€, opcional)</span><input type="number" step="0.01" min="0" id="caja-f-sistema" class="g-input" placeholder="0,00"></label>
+        <label class="g-field"><span data-i18n="caja.nota">Nota</span><input type="text" id="caja-f-nota" class="g-input" maxlength="200" placeholder="p. ej. faltan 20 € del turno de tarde"></label>
+      </div>
+      <div id="caja-form-msg" class="g-small" style="min-height:18px"></div>
+      <div class="g-actions"><button class="g-btn g-secondary g-sm" onclick="_cajaCerrar()" data-i18n="btn.cancelar">Cancelar</button><button class="g-btn g-primary g-sm" onclick="guardarArqueo()" data-i18n="caja.guardar">💾 Guardar arqueo</button></div>
+    </div>
+    <div class="g-card">
+      <div class="g-card-head"><div><div class="g-card-title" data-i18n="caja.arqueos" title="Un arqueo por día: lo contado, lo que dice el sistema y la diferencia." data-i18n-title="caja.arqueosSub">Arqueos del mes</div></div></div>
+      <div id="caja-body"><div class="g-empty g-cargando" data-i18n="lbl.cargando">Cargando…</div></div>
+    </div>
+    <div class="g-card">
+      <div class="g-card-head"><div><div class="g-card-title" data-i18n="caja.ingresos" title="Movimientos del extracto que el cuadre de banco pone en la pestaña CAJA. En el cierre van a 572 contra 570." data-i18n-title="caja.ingresosSub">Ingresos de efectivo en el banco</div></div></div>
+      <div id="caja-ingresos"><div class="g-empty g-cargando" data-i18n="lbl.cargando">Cargando…</div></div>
+    </div>
+  </div><!-- /panel-caja -->
 
   <!-- PANEL NOTIFICACIONES -->
   <div id="panel-notif" class="panel g-panel">
@@ -13372,7 +13411,7 @@ function _showTabBadges(logText) {
 // Solo si el CONTORNO (acentuar-todo) está activo: pone en VERDE únicamente
 // las stats de los apartados que se acaban de actualizar. El resto se queda
 // con el color de contorno personalizado.
-var _PANEL_DE_TAB = { ap:'panel-ap', ar:'panel-ar' /* seccion dentro de AP (b85) */, banco:'panel-banco', fb:'panel-fb', drr:'panel-drr', ar_real:'panel-ar_real' };
+var _PANEL_DE_TAB = { ap:'panel-ap', ar:'panel-ar' /* seccion dentro de AP (b85) */, banco:'panel-banco', caja:'panel-caja', fb:'panel-fb', drr:'panel-drr', ar_real:'panel-ar_real' };
 function _statCardsDe(panelId) {
   // (b74) Con la guia, los tiles son todos iguales y no se marcan: el verde de
   // "recien actualizado" hacia que ALGUNOS tiles (los .fb-kpi-card) salieran mas
@@ -14101,6 +14140,8 @@ var _DESCARGAS = [
   {tab: 'banco', nombre: 'tab.banco', def: '🏦 Banco', items: [
     {t: '⬇️ Excel del extracto', u: '/api/exportar/banco'},
     {t: '📒 Libro Diario (A3, Sage, Holded…)', u: '/api/exportar/asientos'}]},
+  {tab: 'caja', nombre: 'tab.caja', def: '💵 Caja', items: [
+    {t: '⬇️ Excel de caja (arqueos e ingresos)', u: '/api/exportar/caja', mes: 'caja-mes', k: 'caja.descargar'}]},
   {tab: 'fb', nombre: 'tab.fb', def: '🍽️ F&B Cost', items: [
     {t: '⬇️ Excel F&B', u: '/api/exportar/fb'},
     {t: '📄 PDF F&B', u: '/api/exportar/fb/pdf'}]},
@@ -14278,10 +14319,82 @@ var _CARGADORES = {
   ar_real:     function(){ return cargarARRealData(); },
   drr:         function(){ return loadDRR(); },
   banco:       function(){ return loadBanco(); },
+  caja:        function(){ return loadCaja(); },
   notif:       function(){ return loadNotifConfig(); },
   multi_hotel: function(){ return loadMultiHotel(); },
   cierre:      function(){ return loadCierre(); }
 };
+
+// ── Caja (b86): arqueo diario a mano + ingresos de efectivo del extracto ──
+var _cajaEditando = null;
+function _cajaMes(){ var i = document.getElementById('caja-mes'); if (i && !i.value) { var d = new Date(); i.value = d.getFullYear() + '-' + String(d.getMonth() + 1).padStart(2, '0'); } return i ? i.value : ''; }
+function _cajaNuevo(f){
+  var c = document.getElementById('caja-form'); if (!c) return;
+  _cajaEditando = f || null;
+  var hoy = new Date().toISOString().slice(0, 10);
+  document.getElementById('caja-f-fecha').value = f ? f.fecha : hoy;
+  document.getElementById('caja-f-contado').value = f ? f.efectivo_contado : '';
+  document.getElementById('caja-f-sistema').value = (f && f.efectivo_sistema != null) ? f.efectivo_sistema : '';
+  document.getElementById('caja-f-nota').value = f ? (f.nota || '') : '';
+  document.getElementById('caja-form-msg').textContent = '';
+  document.getElementById('caja-form-title').textContent = f ? t('caja.formCorregir', 'Corregir el arqueo del {f}').replace('{f}', _fechaCorta(f.fecha)) : t('caja.formTitulo', 'Arqueo del día');
+  c.style.display = ''; c.scrollIntoView({behavior: 'smooth', block: 'start'});
+  document.getElementById('caja-f-contado').focus();
+}
+function _cajaCerrar(){ var c = document.getElementById('caja-form'); if (c) c.style.display = 'none'; _cajaEditando = null; }
+async function guardarArqueo(){
+  var msg = document.getElementById('caja-form-msg');
+  var body = {fecha: document.getElementById('caja-f-fecha').value, contado: document.getElementById('caja-f-contado').value,
+              sistema: document.getElementById('caja-f-sistema').value, nota: document.getElementById('caja-f-nota').value};
+  if (!body.fecha || body.contado === '') { msg.textContent = t('caja.faltan', 'Falta la fecha o el efectivo contado.'); return; }
+  try {
+    var r = await _postJson('/api/caja/arqueo', body); var d = await r.json();
+    if (!d || !d.ok) { msg.textContent = '✗ ' + ((d && d.error) || r.status); return; }
+    showToast(t('caja.guardado', '✓ Arqueo guardado'), 'var(--grn)');
+    _cajaCerrar(); loadCaja();
+    try { _panelCargado['cierre'] = false; } catch(e){}   // el cuadre de banco del Cierre cambia con el arqueo
+  } catch(e) { msg.textContent = '✗ ' + e.message; }
+}
+async function borrarArqueo(fecha){
+  if (!confirm(t('caja.borrarConfirma', '¿Borrar el arqueo del {f}?').replace('{f}', _fechaCorta(fecha)))) return;
+  try {
+    var r = await _postJson('/api/caja/arqueo/borrar', {fecha: fecha}); var d = await r.json();
+    if (!d || !d.ok) { showNotification('✗ ' + ((d && d.error) || r.status), 'error'); return; }
+    loadCaja();
+  } catch(e) { showNotification('✗ ' + e.message, 'error'); }
+}
+async function loadCaja(){
+  var body = document.getElementById('caja-body'), ing = document.getElementById('caja-ingresos'); if (!body) return;
+  var mes = _cajaMes();
+  try {
+    var r = await fetch('/api/caja?mes=' + encodeURIComponent(mes), {cache: 'no-store'}); var d = await r.json();
+    if (!d || !d.ok) { body.innerHTML = _gError(_cEsc((d && d.error) || r.status)); return; }
+    _pintarCaja(d);
+  } catch(e) { body.innerHTML = _gError(_cEsc(e.message)); if (ing) ing.innerHTML = ''; }
+}
+function _pintarCaja(d){
+  var T = d.totales || {}, dias = d.dias || [], ings = d.ingresos || [];
+  var set = function(id, v){ var e = document.getElementById(id); if (e) e.textContent = v; };
+  var sinNada = !dias.length && !ings.length;
+  set('caja-k-contado', dias.length ? _cEur(T.contado) : '—'); set('caja-k-contado-sub', dias.length ? t('caja.nDias', '{n} día(s) con arqueo').replace('{n}', T.n_dias) : '—');
+  set('caja-k-sistema', T.sistema != null ? _cEur(T.sistema) : '—');
+  set('caja-k-dif', T.diferencia != null ? _cEur(T.diferencia) : '—');
+  set('caja-k-dif-sub', T.diferencia != null ? t('caja.nDescuadres', '{n} día(s) con descuadre').replace('{n}', T.dias_con_descuadre) : (dias.length ? t('caja.sinSistema', 'sin dato del sistema') : '—'));
+  set('caja-k-ing', ings.length ? _cEur(T.ingresado) : '—'); set('caja-k-ing-sub', ings.length ? t('caja.nIngresos', '{n} ingreso(s) del extracto').replace('{n}', T.n_ingresos) : t('caja.sinIngresos', 'nada en el extracto'));
+  set('caja-k-encaja', sinNada ? '—' : _cEur(d.en_caja));
+  var e = document.getElementById('caja-k-dif'); if (e) e.style.color = (T.diferencia != null && Math.abs(T.diferencia) >= 0.01) ? 'var(--red)' : '';
+  _tilesVacios(document.getElementById('caja-tiles'), sinNada);
+  var body = document.getElementById('caja-body');
+  body.innerHTML = dias.length ? '<div class="g-tbl-wrap"><table class="g-tbl"><thead><tr><th>' + t('caja.fecha', 'Fecha') + '</th><th class="num">' + t('caja.contado', 'Contado') + '</th><th class="num">' + t('caja.sistema', 'Según sistema') + '</th><th class="num">' + t('caja.descuadre', 'Descuadre') + '</th><th>' + t('caja.nota', 'Nota') + '</th><th>' + t('caja.quien', 'Quién') + '</th><th></th></tr></thead><tbody>' +
+    dias.map(function(x){ var dif = x.diferencia; var cls = (dif != null && Math.abs(dif) >= 0.01) ? ' style="color:var(--red)"' : '';
+      return '<tr><td style="white-space:nowrap">' + _cEsc(_fechaCorta(x.fecha)) + '</td><td class="num">' + _cEur(x.efectivo_contado) + '</td><td class="num">' + (x.efectivo_sistema != null ? _cEur(x.efectivo_sistema) : '—') + '</td><td class="num"' + cls + '>' + (dif != null ? _cEur(dif) : '—') + '</td><td class="g-small">' + _cEsc(x.nota || '') + '</td><td class="g-small">' + _cEsc(x.usuario || '') + '</td>' +
+        '<td style="white-space:nowrap"><button class="g-btn g-ghost g-sm" title="' + t('caja.corregir', 'Corregir') + '" onclick=\'_cajaNuevo(' + JSON.stringify(x).replace(/'/g, '&#39;') + ')\'>✎</button> <button class="g-btn g-ghost g-sm" title="' + t('caja.borrar', 'Borrar') + '" onclick="borrarArqueo(\'' + _cEsc(x.fecha) + '\')">🗑</button></td></tr>'; }).join('') +
+    '</tbody></table></div>' : _vacio(t('caja.vacio', 'Ningún arqueo este mes. Apunta cada día lo que se cuenta en caja: Yve lo cuadra con los ingresos del extracto y lo lleva al cierre.'), {cta: false});
+  var ing = document.getElementById('caja-ingresos'); if (!ing) return;
+  ing.innerHTML = ings.length ? '<div class="g-tbl-wrap"><table class="g-tbl"><thead><tr><th>' + t('caja.fecha', 'Fecha') + '</th><th>' + t('cierre.hConceptoD', 'Concepto') + '</th><th class="num">' + t('cbanco.importe', 'Importe') + '</th></tr></thead><tbody>' +
+    ings.map(function(m){ return '<tr><td style="white-space:nowrap">' + _cEsc(_fechaCorta(m.fecha)) + '</td><td>' + _cEsc(m.concepto) + '</td><td class="num" style="color:var(--grn)">' + _cEur(m.importe) + '</td></tr>'; }).join('') + '</tbody></table></div>'
+    : _vacio(t('caja.ingresosVacio', 'Ningún ingreso de efectivo en el extracto este mes. Si hay alguno y no sale, ponlo en la pestaña CAJA desde el cuadre de banco (Cierre).'), {cta: false});
+}
 
 // ── Cuadre de banco por pestañas (Ola B·2) ───────────────────────────────
 var _cbFiltro = '';
@@ -14567,7 +14680,7 @@ window._invalidarPaneles = _invalidarPaneles;
 // se hacen al entrar en cada uno; solo se adelantan. Escalonadas para no
 // competir con el arranque en un Render frio.
 function _precargarPaneles() {
-  var tabs = ['banco', 'drr', 'multi_hotel', 'notif', 'ar_real', 'fb'];
+  var tabs = ['banco', 'drr', 'multi_hotel', 'notif', 'ar_real', 'fb', 'caja'];
   tabs.forEach(function(t, i) {
     setTimeout(function(){
       try { _cargarPanel(t, document.getElementById('panel-' + t), false); } catch(e){}

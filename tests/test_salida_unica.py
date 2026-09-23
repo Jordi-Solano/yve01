@@ -77,7 +77,7 @@ console.log(JSON.stringify({roles: out, urls: urls}));
     d = json.loads(rc.stdout or '{}') if rc.returncode == 0 else {'roles': {}, 'urls': []}
     faltan = [u for u in d['urls'] if not _existe(u)]
     ok(d['urls'] and not faltan, f"las {len(d['urls'])} rutas del catalogo existen en Flask (faltan: {faltan})")
-    esperado = {'ap', 'drr', 'banco', 'fb', 'ar_real', 'multi_hotel', 'cierre'}   # b85: las descargas de OTAs van dentro de AP
+    esperado = {'ap', 'drr', 'banco', 'caja', 'fb', 'ar_real', 'multi_hotel', 'cierre'}   # b85: las descargas de OTAs van dentro de AP; b86: Caja
     ok(set(d['urls']) >= {'/api/exportar/ap', '/api/exportar/aging_ap', '/api/exportar/cierre', '/api/exportar/banco', '/api/oracle/export_excel', '/api/exportar/cierre_paquete', '/api/exportar/asientos'},
        "estan las que pidio Jordi: Excel AP, aging, cierre, banco, GL, paquete, libro diario")
     r = d['roles']

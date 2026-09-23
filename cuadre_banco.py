@@ -137,8 +137,9 @@ def clasificar(mov, palabras_cfg, manual, proveedores):
     return "SIN_CLASIFICAR", ""
 
 
-def cuadrar(mes, df_banco, ventas_fb=None, palabras_cfg=None, manual=None, proveedores=None):
-    """Devuelve {mes, pestañas: {...}, movimientos: [...], saldo_final, resumen}."""
+def cuadrar(mes, df_banco, ventas_fb=None, palabras_cfg=None, manual=None, proveedores=None, caja=None):
+    """Devuelve {mes, pestañas: {...}, movimientos: [...], saldo_final, resumen}.
+    caja: (efectivo_contado_del_mes, n_arqueos) de la pestaña Caja (b86), o None si no hay arqueos."""
     ini, fin, mes = _mes_a_rango(mes)
     palabras_cfg = palabras_cfg or {k: list(v) for k, v in PALABRAS_DEFECTO.items()}
     manual = manual or {}
@@ -190,8 +191,19 @@ def cuadrar(mes, df_banco, ventas_fb=None, palabras_cfg=None, manual=None, prove
                          "estado": "INFO", "nota": ("Contra las ventas F&B del TPV del mes. Las tarjetas de habitaciones "
                                                    "las liquida el PMS: la diferencia es normal hasta tener conector.")})
         elif p == "CAJA":
-            info.update({"justificado": None, "diferencia": None, "estado": "SIN_DATO",
-                         "nota": "Los ingresos de efectivo se cuadran contra el arqueo de caja (Glory/CREPT), que Yve no tiene."})
+            # b86: se cuadra contra los arqueos de la pestaña Caja. Lo ingresado en el
+            # banco no puede superar lo contado; lo que falta sigue en la caja fuerte.
+            contado, n_arq = (caja or (None, 0))
+            if contado is None:
+                info.update({"justificado": None, "diferencia": None, "estado": "SIN_DATO",
+                             "nota": "Sin arqueos este mes: apunta el efectivo contado cada dia en la pestaña Caja y Yve lo cuadra con los ingresos del extracto."})
+            else:
+                dif = round(total - contado, 2)
+                info.update({"justificado": contado, "diferencia": dif, "n_arqueos": n_arq,
+                             "estado": "CUADRA" if dif <= 0.01 else "DIFERENCIA",
+                             "nota": (f"Justificado = efectivo contado en los {n_arq} arqueo(s) del mes (pestaña Caja). "
+                                      + ("Se ha ingresado en el banco mas efectivo del que se conto: revisar arqueos." if dif > 0.01
+                                         else f"Quedan {-dif:,.2f} EUR contados sin ingresar (siguen en caja o entran el mes que viene)."))})
         elif p == "VARIOS":
             info.update({"justificado": None, "diferencia": None, "estado": "INFO",
                          "nota": "Nominas, impuestos, comisiones bancarias, alquileres... Revisar que cada uno tenga su documento."})

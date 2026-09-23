@@ -66,7 +66,14 @@ def _cuadre(mes, hotel):
             vf = ALM._filtrar_hotel(vf, hotel)
     except Exception:
         vf = pd.DataFrame()
-    return CB.cuadrar(mes, bk, vf, CB.palabras(dd), CB.manuales(dd), CB.proveedores_conocidos(dd))
+    # b86: los arqueos de la pestaña Caja justifican los ingresos de efectivo
+    try:
+        import caja as CJ
+        ini, fin, _m = CB._mes_a_rango(mes)
+        cj = CJ.contado_mes(CJ.leer(dd), ini.isoformat(), fin.isoformat(), hotel)
+    except Exception:
+        cj = None
+    return CB.cuadrar(mes, bk, vf, CB.palabras(dd), CB.manuales(dd), CB.proveedores_conocidos(dd), caja=cj)
 
 
 @cierre_bp.route('/api/cuadre_banco')
