@@ -124,6 +124,26 @@ def _txt(v):
     return "" if s.lower() in _VACIOS else s.lower()
 
 
+def banco_del_hotel(bk, hotel):
+    """El extracto, acotado al hotel SOLO si el banco va por hotel (b80).
+
+    La pestaña Banco ya lo hacia asi (config_banco): en modo 'grupo' —o sin
+    elegir— el extracto es de todos y no lleva hotel_id, asi que filtrarlo por
+    el hotel activo lo dejaba VACIO. El Cierre (cuadre de banco, asientos 572,
+    reconciliacion, paquete) filtraba siempre y con un hotel elegido no veia
+    ni un movimiento. Visto al repasar el plan de pruebas de Els Pins.
+    """
+    if not hotel or bk is None or getattr(bk, "empty", True):
+        return bk
+    try:
+        import config_banco
+        if not config_banco.por_hotel():
+            return bk
+    except Exception:
+        pass
+    return _filtrar_hotel(bk, hotel)
+
+
 def _filtrar_hotel(df, hotel):
     """Deja solo las filas de un hotel.
 

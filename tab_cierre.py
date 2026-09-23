@@ -57,8 +57,7 @@ def _cuadre(mes, hotel):
     dd = str(_t_ddir())
     try:
         bk, _ = ALM.movimientos_banco(datos_dir=dd, reportes_dir=str(_t_rdir()))
-        if hotel:
-            bk = ALM._filtrar_hotel(bk, hotel)
+        bk = ALM.banco_del_hotel(bk, hotel)   # modo grupo: el banco es de todos (b80)
     except Exception:
         bk = pd.DataFrame()
     try:

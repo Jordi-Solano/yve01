@@ -499,7 +499,7 @@ def recoger_fuentes(mes, hotel=None, procesadas_dir=None, reportes_dir=None, dat
             f[clave] = pd.DataFrame()
     try:
         bk, _ = ALM.movimientos_banco(datos_dir=dd, reportes_dir=reportes_dir)
-        f["banco"] = ALM._filtrar_hotel(bk, hotel) if hotel else bk
+        f["banco"] = ALM.banco_del_hotel(bk, hotel)   # modo grupo: el banco es de todos (b80)
     except Exception:
         f["banco"] = pd.DataFrame()
     try:
