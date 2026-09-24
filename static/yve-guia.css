@@ -65,6 +65,8 @@ body.light-mode{--g-line:rgba(15,23,42,.08);--g-shadow:0 1px 2px rgba(15,23,42,.
 .g-card-head{display:flex;align-items:center;justify-content:space-between;gap:12px;flex-wrap:wrap;margin-bottom:16px}
 .g-card-title{font-size:11px;font-weight:700;color:var(--mut);text-transform:uppercase;letter-spacing:.6px}
 .g-grid2{display:grid;grid-template-columns:repeat(auto-fit,minmax(300px,1fr));gap:16px}
+/* b86b: una tarjeta con tabla ancha no puede ensanchar su columna (en el movil la columna media 923 px y el body la cortaba) */
+.g-grid2>*,.g-grid3>*,.g-modal-grid>*{min-width:0}
 @media(max-width:768px){.g-card{padding:16px}.g-grid2{grid-template-columns:1fr}}
 
 /* ── Tiles (KPI) ────────────────────────────────────── */
