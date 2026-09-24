@@ -402,3 +402,5 @@ body.acentuar-todo .g-kpi:hover{background:rgba(var(--acc-r,59),var(--acc-g,130)
 .ctr-pct{display:flex;gap:6px;flex-wrap:wrap;align-items:flex-end}
 .ctr-pctl{display:flex;flex-direction:column;gap:2px}
 .ctr-pct .g-input{width:84px;min-width:0}
+.ctr-com{margin-top:8px;padding:8px 10px;border:1px dashed var(--g-line);border-radius:var(--g-r-sm);display:flex;flex-direction:column;gap:6px}
+.ctr-com select.g-input{max-width:100%;min-width:0;flex:1 1 180px}

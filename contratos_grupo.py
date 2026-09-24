@@ -238,6 +238,7 @@ def registrar(datos, transformado=None, hotel_id=None, archivo="", datos_dir=Non
     res = (transformado or {}).get("resumen") or {}
     nuevo = {
         "id": cid, "contrato": numero, "evento": evento,
+        "evento_id": _txt(ev.get("id")), "evento_nombre": _txt(ev.get("nombre")),
         "cliente": _txt(cli.get("nombre")) or "Cliente grupo", "cliente_nif": _txt(cli.get("cif")),
         "cliente_pais": _txt(cli.get("pais")), "cliente_email": _txt(cli.get("email")),
         "agencia": _txt(ag.get("nombre")), "agencia_nif": _txt(ag.get("cif")), "agencia_email": _txt(ag.get("email")),
@@ -389,3 +390,248 @@ def sincronizar_factura(c, datos_dir=None):
     df.to_excel(tmp, index=False)
     os.replace(tmp, pr)
     return True
+
+
+# ── b88 · la factura de comision de la agencia ──────────────────────────────
+# La manda la agencia y entra por Procesar archivos como cualquier factura AP.
+# Aqui se une a SU contrato: por la referencia que cite (numero de contrato,
+# factura del grupo o el evento) o, si la agencia solo tiene una factura libre
+# y un solo contrato con comision abierto, por eliminacion. Lo que sea dudoso
+# NO se une solo: se enseña para que una persona elija. Unida a un contrato:
+#   - se compara lo facturado (base sin IVA) con la comision ESPERADA;
+#   - se imputa por su FECHA DE FACTURA (regla de finanzas, aunque el resto de
+#     AP vaya por fecha de registro desde b84);
+#   - su asiento es 628 (D) / 472 (D) / 410 (H), como las comisiones OTA.
+TOL_ABS = 1.0
+TOL_PCT = 1.0
+
+
+def _nif(v):
+    s = re.sub(r"[^A-Z0-9]", "", _txt(v).upper())
+    return s[2:] if s.startswith("ES") and len(s) > 9 else s
+
+
+def _prov(v):
+    try:
+        from cuentas_proveedor import clave_proveedor
+        return clave_proveedor(v)
+    except Exception:
+        return _norm(v)
+
+
+def _clave_ap(fila):
+    try:
+        from almacen_datos import clave_ap
+        return clave_ap(fila)
+    except Exception:
+        return _txt(fila.get("numero_factura")) or _txt(fila.get("archivo"))
+
+
+def es_de_la_agencia(c, fila):
+    """La factura AP es de la agencia del contrato (por NIF o por nombre)."""
+    ag = _prov(c.get("agencia"))
+    if not ag:
+        return False
+    n1, n2 = _nif(c.get("agencia_nif")), _nif(fila.get("NIF_proveedor") or fila.get("nif_proveedor"))
+    if n1 and n2 and n1 == n2:
+        return True
+    pv = _prov(fila.get("nombre_proveedor"))
+    return bool(pv) and (pv == ag or (len(ag) >= 5 and len(pv) >= 5 and (ag in pv or pv in ag)))
+
+
+def _mismo_hotel(c, fila):
+    return _txt(c.get("hotel_id")) == _txt(fila.get("hotel_id"))
+
+
+def referencia_fuerte(c, fila):
+    """La factura cita el contrato: su numero, la factura del grupo o el evento."""
+    t = " " + _norm(" ".join(_txt(fila.get(k)) for k in ("numero_factura", "descripcion_concepto", "concepto",
+                                                             "descripcion", "archivo", "referencia"))) + " "
+    claves = [_norm(c.get("contrato")), _norm(c.get("factura_grupo")), _norm(c.get("evento_id"))]
+    if any(k and len(k) >= 4 and (" " + k + " ") in t for k in claves):
+        return True
+    nombre = _norm(c.get("evento_nombre")) or _norm(c.get("evento"))
+    fichas = [w for w in nombre.split() if len(w) >= 4]
+    if nombre and len(nombre) >= 8 and (" " + nombre + " ") in t:
+        return True
+    return len(fichas) >= 2 and all((" " + w + " ") in t for w in fichas)
+
+
+def base_factura(fila):
+    """Lo facturado sin IVA (con eso se compara la comision esperada)."""
+    b = _f(fila.get("base_imponible"))
+    if b:
+        return _r(b)
+    t = _f(fila.get("total_factura"))
+    iva = _f(fila.get("cuota_iva"))
+    if t and iva:
+        return _r(t - iva)
+    pct = _f(fila.get("porcentaje_iva"), 21)
+    return _r(t / (1 + pct / 100)) if t else 0.0
+
+
+def enlazar(contratos, facturas):
+    """Une cada contrato con la factura de comision de su agencia.
+
+    facturas: filas AP (dicts). Devuelve {id_contrato: {clave, origen, candidatas}}.
+    origen: 'manual' (una persona la unio), 'referencia' (la factura cita el
+    contrato) o 'unica' (la agencia tiene UNA factura libre y UN contrato con
+    comision abierto, y el importe cuadra). Una factura nunca va a dos contratos."""
+    por_clave = {}
+    for f in facturas:
+        k = _clave_ap(f)
+        if k and k not in por_clave:
+            por_clave[k] = f
+    res = {c["id"]: {"clave": "", "origen": "", "candidatas": []} for c in contratos}
+    tomadas = set()
+    for c in contratos:                                     # 1. lo que unio una persona
+        fc = c.get("factura_comision") or {}
+        k = _txt(fc.get("clave"))
+        if fc.get("origen") == "manual" and k in por_clave and k not in tomadas:
+            res[c["id"]].update(clave=k, origen="manual")
+            tomadas.add(k)
+    cand = {}
+    for c in contratos:
+        if res[c["id"]]["clave"] or not _txt(c.get("agencia")):
+            continue
+        fuera = set((c.get("factura_comision") or {}).get("excluidas") or [])
+        cand[c["id"]] = [k for k, f in por_clave.items()
+                         if k not in tomadas and k not in fuera and _mismo_hotel(c, f) and es_de_la_agencia(c, f)]
+    for c in contratos:                                     # 2. la factura cita el contrato
+        ks = [k for k in cand.get(c["id"], []) if k not in tomadas and referencia_fuerte(c, por_clave[k])]
+        if len(ks) == 1:
+            res[c["id"]].update(clave=ks[0], origen="referencia")
+            tomadas.add(ks[0])
+    abiertos = [c for c in contratos if not res[c["id"]]["clave"]
+                and (c.get("comision") or {}).get("modo") == "porcentaje"]
+    for c in abiertos:                                      # 3. por eliminacion
+        ks = [k for k in cand.get(c["id"], []) if k not in tomadas]
+        compite = [x for x in abiertos if x["id"] != c["id"] and not res[x["id"]]["clave"]
+                   and set(ks) & set(cand.get(x["id"], []))]
+        # sin referencia solo se une sola si ademas el importe cuadra con lo
+        # esperado; si no cuadra, que la elija una persona (y vea la diferencia)
+        if len(ks) == 1 and not compite and estado_comision(c, por_clave[ks[0]])["estado"] == "CUADRA":
+            res[c["id"]].update(clave=ks[0], origen="unica")
+            tomadas.add(ks[0])
+    for c in contratos:
+        if not res[c["id"]]["clave"]:
+            res[c["id"]]["candidatas"] = [k for k in cand.get(c["id"], []) if k not in tomadas]
+    return res
+
+
+def estado_comision(c, fila):
+    """Esperado contra facturado. CUADRA / DIFERENCIA / SIN_ESPERADA (aun no se
+    sabe el %) / NO_DEBERIA (tarifa neta o sin agencia: no hay comision)."""
+    fact = base_factura(fila)
+    modo = (c.get("comision") or {}).get("modo")
+    if modo in ("neta", "sin_agencia"):
+        return {"estado": "NO_DEBERIA", "esperada": 0.0, "facturada": fact, "diferencia": fact}
+    esp = comision_esperada(c)
+    if esp is None:
+        return {"estado": "SIN_ESPERADA", "esperada": None, "facturada": fact, "diferencia": None}
+    dif = _r(fact - esp)
+    tol = max(TOL_ABS, abs(esp) * TOL_PCT / 100)
+    return {"estado": "CUADRA" if abs(dif) <= tol else "DIFERENCIA", "esperada": esp, "facturada": fact, "diferencia": dif}
+
+
+def _iso(v):
+    try:
+        from almacen_datos import _iso as iso
+        return iso(v)
+    except Exception:
+        return _txt(v)[:10]
+
+
+def marcar_comisiones(df, contratos=None, datos_dir=None):
+    """Marca en las facturas AP las que son la factura de comision de un
+    contrato de grupo (columnas es_comision_agencia, comision_*, factura_grupo)
+    y les aplica la regla de finanzas: fecha contable = fecha de la factura y
+    gasto 628 (salvo que una persona haya corregido la cuenta)."""
+    if df is None or getattr(df, "empty", True):
+        return df
+    contratos = leer(datos_dir) if contratos is None else contratos
+    filas = df.to_dict("records")
+    enl = enlazar(contratos, filas) if contratos else {}
+    cid_de = {v["clave"]: cid for cid, v in enl.items() if v["clave"]}
+    cmap = {c["id"]: c for c in contratos}
+    cols = {k: [] for k in ("es_comision_agencia", "comision_contrato", "comision_evento", "comision_esperada",
+                            "comision_facturada", "comision_estado", "comision_diferencia", "comision_pagador",
+                            "factura_grupo", "comision_vinculo")}
+    f_con, ctas, ctas_g = [], [], []
+    tiene_fc = "fecha_contable" in df.columns
+    tiene_cdg = "cuenta_debe_gasto" in df.columns
+    for f in filas:
+        cid = cid_de.get(_clave_ap(f))
+        legado = _txt(f.get("tipo")).upper() == "COMISION_AGENCIA"
+        ajustada = bool(f.get("cuenta_ajustada")) and not (isinstance(f.get("cuenta_ajustada"), float) and f.get("cuenta_ajustada") != f.get("cuenta_ajustada"))
+        if cid or legado:
+            c = cmap.get(cid) or {}
+            e = estado_comision(c, f) if c else {"estado": "SIN_ESPERADA", "esperada": None, "facturada": base_factura(f), "diferencia": None}
+            cols["es_comision_agencia"].append(True)
+            cols["comision_contrato"].append(cid or "")
+            cols["comision_evento"].append(_txt(c.get("evento")))
+            cols["comision_esperada"].append(e["esperada"])
+            cols["comision_facturada"].append(e["facturada"])
+            cols["comision_estado"].append(e["estado"])
+            cols["comision_diferencia"].append(e["diferencia"])
+            cols["comision_pagador"].append((c.get("pagador") or {}).get("quien", ""))
+            cols["factura_grupo"].append(_txt(c.get("factura_grupo")))
+            cols["comision_vinculo"].append((enl.get(cid) or {}).get("origen", "") if cid else "legado")
+            f_con.append(_iso(f.get("fecha_factura") if _txt(f.get("fecha_factura")) else f.get("fecha")) or (f.get("fecha_contable") if tiene_fc else ""))
+            ctas.append(f.get("cuenta_contable") if ajustada else "628")
+            ctas_g.append(f.get("cuenta_debe_gasto") if ajustada else "628")
+        else:
+            cols["es_comision_agencia"].append(False)
+            for k in ("comision_contrato", "comision_evento", "comision_estado", "comision_pagador", "factura_grupo", "comision_vinculo"):
+                cols[k].append("")
+            for k in ("comision_esperada", "comision_facturada", "comision_diferencia"):
+                cols[k].append(None)
+            f_con.append(f.get("fecha_contable") if tiene_fc else "")
+            ctas.append(f.get("cuenta_contable"))
+            ctas_g.append(f.get("cuenta_debe_gasto") if tiene_cdg else None)
+    df = df.copy()
+    for k, v in cols.items():
+        df[k] = v
+    if any(cols["es_comision_agencia"]):
+        df["fecha_contable"] = f_con
+        df["cuenta_contable"] = [str(x) if x is not None else x for x in ctas]
+        if tiene_cdg:
+            df["cuenta_debe_gasto"] = [str(x) if x is not None else x for x in ctas_g]
+    return df
+
+
+def vincular(cid, clave, usuario="", datos_dir=None):
+    """Una persona une (o elige) la factura de comision de un contrato."""
+    lista = leer(datos_dir)
+    c = next((x for x in lista if x.get("id") == cid), None)
+    if c is None:
+        raise KeyError("contrato no encontrado")
+    clave = _txt(clave)
+    if not clave:
+        raise ValueError("falta la factura")
+    for x in lista:                     # una factura no va a dos contratos
+        fx = x.get("factura_comision") or {}
+        if x.get("id") != cid and fx.get("origen") == "manual" and _txt(fx.get("clave")) == clave:
+            x["factura_comision"] = {"origen": "", "excluidas": fx.get("excluidas") or []}
+    prev = c.get("factura_comision") or {}
+    c["factura_comision"] = {"clave": clave, "origen": "manual", "por": usuario, "cuando": _ahora(),
+                             "excluidas": [k for k in (prev.get("excluidas") or []) if k != clave]}
+    c.setdefault("historial", []).append({"fecha": _ahora(), "usuario": usuario, "campo": "factura_comision", "valor": clave})
+    _escribir(lista, datos_dir)
+    return c
+
+
+def desvincular(cid, clave, usuario="", datos_dir=None):
+    """"Esta factura no es de este contrato": se separa y no se vuelve a unir sola."""
+    lista = leer(datos_dir)
+    c = next((x for x in lista if x.get("id") == cid), None)
+    if c is None:
+        raise KeyError("contrato no encontrado")
+    prev = c.get("factura_comision") or {}
+    excl = list(prev.get("excluidas") or [])
+    if _txt(clave) and _txt(clave) not in excl:
+        excl.append(_txt(clave))
+    c["factura_comision"] = {"origen": "separada", "por": usuario, "cuando": _ahora(), "excluidas": excl}
+    c.setdefault("historial", []).append({"fecha": _ahora(), "usuario": usuario, "campo": "factura_comision", "valor": "separada " + _txt(clave)})
+    _escribir(lista, datos_dir)
+    return c

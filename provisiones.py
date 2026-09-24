@@ -283,6 +283,71 @@ def provision_comisiones(mes=None, hotel=None, reportes_dir=None, datos_dir=None
     }
 
 
+# ── 2b · comisiones de agencia de grupos devengadas sin factura (b88) ────────
+
+def provision_comisiones_agencia(mes=None, hotel=None, procesadas_dir=None, reportes_dir=None, datos_dir=None):
+    """Contratos de grupo CON comision (%) cuyo evento ya ha terminado a fin de
+    mes y cuya factura de comision de la agencia aun no esta (o es de despues).
+    Lo devengado sin factura va a la provision (decision de finanzas 24 sep
+    2026): DEBE 628 · HABER 4109 por la comision ESPERADA. Con tarifa neta no
+    hay comision; con el modo sin decidir tampoco se provisiona (se avisa)."""
+    import almacen_datos
+    import contratos_grupo as CG
+    ini, fin, mes = _mes_a_rango(mes)
+    ctas = _cuentas(datos_dir)
+    contratos = CG.del_hotel(CG.leer(datos_dir), hotel)
+    try:
+        df = almacen_datos.facturas_ap(procesadas_dir, reportes_dir, hotel=hotel)
+        filas_ap = df.to_dict("records") if df is not None and not df.empty else []
+    except Exception:
+        filas_ap = []
+    enl = CG.enlazar(contratos, filas_ap) if contratos else {}
+    por_clave = {CG._clave_ap(f): f for f in filas_ap}
+    filas, sin_decidir = [], 0
+    for c in contratos:
+        dev = _fecha(c.get("fecha_salida")) or _fecha(c.get("fecha_entrada"))
+        if not dev or dev > fin:
+            continue                                   # el evento aun no ha terminado
+        modo = (c.get("comision") or {}).get("modo")
+        if modo not in ("porcentaje", "neta", "sin_agencia"):
+            sin_decidir += 1
+            continue
+        esp = CG.comision_esperada(c)
+        if modo != "porcentaje" or not esp or esp <= 0:
+            continue
+        k = (enl.get(c["id"]) or {}).get("clave") or ""
+        f_fac = None
+        if k and k in por_clave:
+            fr = por_clave[k]
+            f_fac = _fecha(fr.get("fecha_factura") if _txt(fr.get("fecha_factura")) else fr.get("fecha"))
+        if f_fac and f_fac <= fin:
+            continue                                   # la factura ya se asienta en su mes
+        filas.append({"agencia": _txt(c.get("agencia")) or "Agencia", "contrato": _txt(c.get("contrato")),
+                      "evento": _txt(c.get("evento")), "devengo": dev.isoformat(), "importe_provision": round(esp, 2),
+                      "factura": k, "fecha_factura": f_fac.isoformat() if f_fac else "", "hotel_id": _txt(c.get("hotel_id"))})
+    por_ag = {}
+    for f in filas:
+        k = (f["agencia"], f["hotel_id"])
+        p = por_ag.setdefault(k, {"agencia": k[0], "hotel_id": k[1], "n_contratos": 0, "importe_provision": 0.0})
+        p["n_contratos"] += 1
+        p["importe_provision"] = round(p["importe_provision"] + f["importe_provision"], 2)
+    asientos = []
+    cta_g, cta_p = ctas["comision_ota"], ctas["provision_comisiones"]
+    for p in por_ag.values():
+        concepto = f"Provision {mes} comisiones agencia {p['agencia']}"
+        asientos.append({"fecha": fin.isoformat(), "cuenta": cta_g[0], "concepto": concepto, "debe": p["importe_provision"], "haber": 0.0})
+        asientos.append({"fecha": fin.isoformat(), "cuenta": cta_p[0], "concepto": concepto, "debe": 0.0, "haber": p["importe_provision"]})
+    return {
+        "mes": mes, "corte": fin.isoformat(), "filas": filas, "por_agencia": list(por_ag.values()),
+        "total": round(sum(f["importe_provision"] for f in filas), 2), "n": len(filas),
+        "sin_decidir": sin_decidir,
+        "cuenta_provision": {"codigo": cta_p[0], "descripcion": cta_p[1]},
+        "asientos": asientos,
+        "aviso": ("Comisión esperada de los contratos de grupo con evento terminado y sin factura "
+                  "de la agencia a fin de mes (por la fecha de su factura)."),
+    }
+
+
 # ── 3 · el fichero del cierre ────────────────────────────────────────────────
 
 def exportar_excel(mes=None, hotel=None, **dirs):
@@ -290,6 +355,7 @@ def exportar_excel(mes=None, hotel=None, **dirs):
     a = provision_albaranes(mes, hotel, dirs.get("procesadas_dir"), dirs.get("reportes_dir"),
                             dirs.get("datos_dir"))
     c = provision_comisiones(mes, hotel, dirs.get("reportes_dir"), dirs.get("datos_dir"))
+    g = provision_comisiones_agencia(mes, hotel, dirs.get("procesadas_dir"), dirs.get("reportes_dir"), dirs.get("datos_dir"))
     buf = BytesIO()
     with pd.ExcelWriter(buf, engine="openpyxl") as w:
         pd.DataFrame([
@@ -297,9 +363,12 @@ def exportar_excel(mes=None, hotel=None, **dirs):
              "cuenta": a["cuenta_provision"]["codigo"], "nota": a["aviso"]},
             {"provision": "Comisiones OTA", "n": c["n"], "importe": c["total"],
              "cuenta": c["cuenta_provision"]["codigo"], "nota": c["aviso"]},
+            {"provision": "Comisiones de agencia (grupos)", "n": g["n"], "importe": g["total"],
+             "cuenta": g["cuenta_provision"]["codigo"], "nota": g["aviso"]},
         ]).to_excel(w, index=False, sheet_name="Resumen")
         pd.DataFrame(a["filas"] or [{}]).to_excel(w, index=False, sheet_name="Albaranes")
         pd.DataFrame(c["filas"] or [{}]).to_excel(w, index=False, sheet_name="Comisiones")
-        pd.DataFrame((a["asientos"] + c["asientos"]) or [{}]).to_excel(w, index=False, sheet_name="Asientos")
+        pd.DataFrame(g["filas"] or [{}]).to_excel(w, index=False, sheet_name="Comisiones agencia")
+        pd.DataFrame((a["asientos"] + c["asientos"] + g["asientos"]) or [{}]).to_excel(w, index=False, sheet_name="Asientos")
     buf.seek(0)
     return buf, f"provisiones_{a['mes']}.xlsx"

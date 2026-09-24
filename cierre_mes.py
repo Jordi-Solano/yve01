@@ -90,8 +90,39 @@ def criterio_fecha_ap(cfg=None):
     return v if v in ("contable", "factura") else AP_FECHA_DEFECTO
 
 
+def es_comision_agencia(r):
+    """La factura AP es la factura de comision de una agencia de grupos (b88):
+    unida a su contrato por contratos_grupo.marcar_comisiones, o una fila vieja
+    COMISION_AGENCIA de antes de b87."""
+    v = r.get("es_comision_agencia")
+    if isinstance(v, str):
+        v = v.strip().lower() in ("true", "1", "si", "sí")
+    try:
+        if v and not (isinstance(v, float) and v != v):
+            return True
+    except Exception:
+        pass
+    return _txt(r.get("tipo")).upper() == "COMISION_AGENCIA"
+
+
+def cuentas_ap(r):
+    """(cuenta de gasto, cuenta del acreedor) de una factura AP. La comision de
+    agencia va a 628 / 410 como las comisiones OTA (b88: con 410 se puede
+    compensar contra la 430 de la factura del grupo); el resto, su gasto / 400."""
+    cta = _cuenta_str(r.get("cuenta_debe_gasto")) or _cuenta_str(r.get("cuenta_contable"))
+    if es_comision_agencia(r):
+        return (cta if cta and cta.upper() != "REVISAR_MANUAL" else "628"), "410"
+    if not cta or cta.upper() == "REVISAR_MANUAL":
+        cta = "600" if _txt(r.get("tipo_proveedor")).upper() == "FB" else "629"
+    return cta, "400"
+
+
 def fecha_ap(r, criterio=None):
-    """La fecha con la que la factura AP `r` entra en el mes (ver AP_FECHA_DEFECTO)."""
+    """La fecha con la que la factura AP `r` entra en el mes (ver AP_FECHA_DEFECTO).
+    b88: la factura de comision de agencia SIEMPRE por su fecha de factura
+    (regla de finanzas, aunque el resto de AP vaya por fecha de registro)."""
+    if es_comision_agencia(r):
+        return r.get("fecha_factura") if _txt(r.get("fecha_factura")) else r.get("fecha")
     crit = criterio if criterio in ("contable", "factura") else criterio_fecha_ap(criterio if isinstance(criterio, dict) else None)
     if crit == "contable" and _txt(r.get("fecha_contable")):
         return r.get("fecha_contable")
@@ -202,13 +233,12 @@ def generar_asientos(mes, fuentes, plan=None, cfg=None):
                 iva = _r(total - base)
             elif not base:
                 base = _r(total - iva)
-            cta = _cuenta_str(r.get("cuenta_debe_gasto")) or _cuenta_str(r.get("cuenta_contable"))
-            if not cta or cta.upper() == "REVISAR_MANUAL":
-                cta = "600" if _txt(r.get("tipo_proveedor")).upper() == "FB" else "629"
+            cta, acreedor = cuentas_ap(r)
             num = _txt(r.get("numero_factura")) or _txt(r.get("archivo"))
             prov = _txt(r.get("nombre_proveedor")) or "proveedor"
-            ok = D.nuevo(_fecha(fecha), f"Fra. {num} — {prov}", num, "AP",
-                         [(cta, base, 0), ("472", iva, 0), ("400", 0, total)], r.get("hotel_id"))
+            concepto = f"Fra. {num} — {prov}" + (f" (comisión {_txt(r.get('comision_evento'))})" if acreedor == "410" and _txt(r.get("comision_evento")) else "")
+            ok = D.nuevo(_fecha(fecha), concepto, num, "AP",
+                         [(cta, base, 0), ("472", iva, 0), (acreedor, 0, total)], r.get("hotel_id"))
             if ok:
                 cont["ap"] += 1
             else:
@@ -409,13 +439,22 @@ def reconciliar(mes, res, fuentes, drr=None, cfg=None):
     # 400 · proveedores: facturado en el mes - pagado (conciliado) en el mes
     ap = fuentes.get("ap")
     fact_ap = 0.0
+    fact_com = 0.0
+    n_com = 0
     if ap is not None and not ap.empty:
         for _, r in ap.iterrows():
             fecha = fecha_ap(r, crit_ap)
             if _en_mes(fecha, ini, fin):
-                fact_ap = _r(fact_ap + _num(r.get("total_factura")))
+                if es_comision_agencia(r):          # b88: van a 410, no a 400
+                    fact_com = _r(fact_com + _num(r.get("total_factura"))); n_com += 1
+                else:
+                    fact_ap = _r(fact_ap + _num(r.get("total_factura")))
     checks.append(_check("400", "Proveedores: facturas AP del mes (haber)", s("400", "H"), fact_ap,
                          "Facturas AP con fecha en el mes; las sin total o sin cuadrar no entran (ver avisos)."))
+    if n_com:
+        lib_com = _r(sum(a["haber"] for a in res["asientos"] if a["cuenta"] == "410" and a["origen"] == "AP"))
+        checks.append(_check("410", "Comisiones de agencia de grupos: facturas del mes (haber)", lib_com, fact_com,
+                             f"{n_com} factura(s) de comisión de agencia, imputadas por su fecha de factura."))
     caja_ing = [m for m in (fuentes.get("caja_ingresos") or []) if m.get("estado") != "CONCILIADO" and _en_mes(m.get("fecha"), ini, fin)]
     ing_caja = _r(sum(_num(m.get("importe")) for m in caja_ing))
     checks.append(_check("572", "Banco: pagos y cobros conciliados + ingresos de efectivo (movimiento neto)", s("572"),
@@ -579,7 +618,8 @@ def recoger_fuentes(mes, hotel=None, procesadas_dir=None, reportes_dir=None, dat
     try:
         import provisiones as PV
         f["provisiones"] = [PV.provision_albaranes(mes, hotel, procesadas_dir, reportes_dir, dd),
-                            PV.provision_comisiones(mes, hotel, reportes_dir, dd)]
+                            PV.provision_comisiones(mes, hotel, reportes_dir, dd),
+                            PV.provision_comisiones_agencia(mes, hotel, procesadas_dir, reportes_dir, dd)]
     except Exception:
         f["provisiones"] = []
     return f

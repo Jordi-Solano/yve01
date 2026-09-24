@@ -843,7 +843,8 @@ def api_provisiones():
     try:
         alb = _pv.provision_albaranes(mes, hotel, _pdir(), _rdir(), _ddir())
         com = _pv.provision_comisiones(mes, hotel, _rdir(), _ddir())
-        return jsonify({"ok": True, "mes": alb["mes"], "albaranes": alb, "comisiones": com})
+        cag = _pv.provision_comisiones_agencia(mes, hotel, _pdir(), _rdir(), _ddir())   # b88
+        return jsonify({"ok": True, "mes": alb["mes"], "albaranes": alb, "comisiones": com, "comisiones_agencia": cag})
     except Exception as e:
         return jsonify({"ok": False, "error": str(e)[:200]}), 500
 
@@ -4345,6 +4346,9 @@ def df_ap_a_lista(df):
             "pagada":            bool(r.get("pagada")) if r.get("pagada") is not None and str(r.get("pagada")) != "nan" else False,
             "pagada_fecha":      safe_str(r.get("pagada_fecha")),
             "pagada_cuenta":     safe_str(r.get("pagada_cuenta")),
+            # b88: la factura de comision de una agencia unida a su contrato de grupo
+            "comision_evento":   safe_str(r.get("comision_evento")) if str(r.get("es_comision_agencia")) == "True" else "",
+            "comision_estado":   safe_str(r.get("comision_estado")) if str(r.get("es_comision_agencia")) == "True" else "",
         })
     return rows
 
@@ -12363,15 +12367,31 @@ function _pintarFichaAP(f){
     campo(t('ap.importes','Importes'), eur(f.base) + ' + ' + t('ap.iva','IVA') + ' ' + (f.porcentaje_iva||0) + ' % ' + eur(f.cuota_iva) + ' = <b>' + eur(f.total) + '</b>') +
     campo(t('th.matching','Matching') + ' · ' + t('th.aprobacion','Aprobación'), estadoBadgeAP(f.estado) + ' ' + apro + ' ' + gBadge(f.tipo === 'FB' ? 'g-pur' : 'g-info', f.tipo)) +
     campo(t('lbl.fecha','Fecha factura'), _fechaCorta(f.fecha_factura) + (f.fecha_registro ? '<div class="g-small">' + t('ap.registrada','registrada el') + ' ' + _fechaCorta(f.fecha_registro) + '</div>' : '')) +
-    campo(t('ap.fechaContable','Fecha contable') + ' <span class="g-small">(' + (f.criterio_fecha === 'contable' ? t('ap.mesRegistro','mes en que se registra') : t('ap.mesFactura','mes de la factura')) + ')</span>', '<input type="date" id="fap-fecha-contable" class="g-input" value="' + esc(f.fecha_contable) + '" onchange="ajustarAP({fecha_contable:this.value})">') +
+    (f.criterio_fecha === 'comision'
+      ? campo(t('ap.fechaContable','Fecha contable') + ' <span class="g-small">(' + t('ap.mesComision','comisión de agencia: fecha de la factura') + ')</span>', '<b>' + _fechaCorta(f.fecha_contable) + '</b>')
+      : campo(t('ap.fechaContable','Fecha contable') + ' <span class="g-small">(' + (f.criterio_fecha === 'contable' ? t('ap.mesRegistro','mes en que se registra') : t('ap.mesFactura','mes de la factura')) + ')</span>', '<input type="date" id="fap-fecha-contable" class="g-input" value="' + esc(f.fecha_contable) + '" onchange="ajustarAP({fecha_contable:this.value})">')) +
     campo(t('th.cuenta','Cuenta') + (f.cuenta_ajustada ? ' <span class="g-small">(' + t('ap.corregida','corregida') + ')</span>' : ''), '<div style="display:flex;gap:6px;flex-wrap:wrap"><input list="fap-plan" id="fap-cuenta" class="g-input mono" value="' + esc(f.cuenta_contable) + '" style="width:110px"><datalist id="fap-plan">' + cuentas + '</datalist><button class="g-btn g-secondary g-sm" onclick="ajustarAP({cuenta_contable:document.getElementById(\'fap-cuenta\').value})">' + t('btn.guardar','Guardar') + '</button><button class="g-btn g-ghost g-sm" onclick="ajustarAP({cuenta_contable:document.getElementById(\'fap-cuenta\').value, aplicar_proveedor:true})" title="' + t('ap.aplicarProvT','La próxima factura de este proveedor saldrá con esta cuenta') + '">' + t('ap.aplicarProv','y al proveedor') + '</button></div><div class="g-small">' + esc(f.cuenta_nombre) + '</div>') +
     campo(t('ap.vencimiento','Vencimiento'), '<div style="display:flex;gap:6px;flex-wrap:wrap;align-items:center"><input type="date" id="fap-venc" class="g-input" value="' + esc(f.vencimiento) + '" onchange="ajustarAP({vencimiento:this.value})"><span class="g-small">' + t('ap.diasPago','días de pago') + '</span><input type="number" id="fap-dias" class="g-input" value="' + f.dias_pago + '" style="width:70px" onchange="ajustarAP({dias_pago:this.value, vencimiento:\'\'})"></div>') +
-    '</div>' + pago +
+    '</div>' + _fichaComision(f) + pago +
     '<div class="g-card" style="margin-top:10px;padding:10px 12px"><div class="g-label">' + t('ap.asiento','Asiento') + '</div>' + asiento + '</div>' +
     (lineas ? '<div class="g-card" style="margin-top:10px;padding:10px 12px"><div class="g-label">' + t('ap.lineas','Líneas') + '</div>' + lineas + '</div>' : '') +
     (hist ? '<div style="margin-top:10px"><div class="g-label">' + t('ap.historial','Cambios') + '</div>' + hist + '</div>' : '') +
     '<div class="g-modal-foot"><a class="g-btn g-secondary" href="/api/ap/ficha.pdf?clave=' + encodeURIComponent(f.clave) + '">📄 PDF</a><a class="g-btn g-secondary" href="/api/exportar/ap_asientos?claves=' + encodeURIComponent(f.clave) + '">⬇️ ' + t('ap.asientoExcel','Asiento (Excel)') + '</a><button onclick="closeInvoiceModal()" class="g-btn g-primary">' + t('btn.cerrar','Cerrar') + '</button></div>';
   if (typeof _pintarYa === 'function') _pintarYa(body);
+}
+// b88: si la factura es la comision de un contrato de grupo, esperado vs facturado
+function _fichaComision(f){
+  var c = f.comision; if (!c) return '';
+  var eur = function(v){ return (v==null) ? '—' : _fmtEurES(v, 2); };
+  var est = c.estado === 'CUADRA' ? gBadge('g-ok', t('com.cuadra', 'Cuadra con el contrato'))
+          : c.estado === 'DIFERENCIA' ? gBadge('g-err', t('com.noCoincide', 'No coincide con el contrato'))
+          : c.estado === 'NO_DEBERIA' ? gBadge('g-err', t('com.noDeberia', 'Contrato de tarifa neta: no debería haber comisión'))
+          : gBadge('g-warn', t('com.sinEsperada', 'Falta decidir la comisión del contrato'));
+  return '<div class="g-card" style="margin:10px 0;padding:10px 12px"><div class="g-label">' + t('com.titulo', 'Comisión de agencia · contrato de grupo') + '</div>' +
+    '<div class="g-small">' + _provEsc(c.evento || c.contrato_id || '') + (c.factura_grupo ? ' · ' + _provEsc(c.factura_grupo) : '') + '</div>' +
+    '<div class="ctr-badges">' + est + '</div>' +
+    '<div class="g-small">' + t('com.esperada', 'Esperada') + ' <b class="g-num">' + eur(c.esperada) + '</b> · ' + t('com.facturada', 'facturada') + ' <b class="g-num">' + eur(c.facturada) + '</b>' +
+    (c.diferencia ? ' · ' + t('com.dif', 'diferencia') + ' <b class="g-num">' + eur(c.diferencia) + '</b>' : '') + ' ' + t('ctr.sinIva', 'sin IVA') + '</div></div>';
 }
 async function _fichaPost(url, datos){
   if (!_fichaAP) return;
@@ -15264,7 +15284,7 @@ async function loadProvisiones() {
   try {
     const d = await (await fetch('/api/provisiones?mes=' + encodeURIComponent(mes), {cache:'no-store'})).json();
     if (!d.ok) { body.innerHTML = _gError(_provEsc(d.error || 'Error')); return; }
-    const a = d.albaranes, c = d.comisiones;
+    const a = d.albaranes, c = d.comisiones, g = d.comisiones_agencia || {n: 0, total: 0, por_agencia: [], cuenta_provision: {codigo: '4109'}, sin_decidir: 0};
     const bloque = (titulo, n, total, cuenta, filas, vacio, extra) =>
       '<div style="margin-bottom:14px">' +
         '<div style="display:flex;justify-content:space-between;align-items:baseline;gap:10px;flex-wrap:wrap">' +
@@ -15286,6 +15306,10 @@ async function loadProvisiones() {
              t('prov.albVacio','Nada que provisionar: todo lo entregado hasta el corte tiene factura.'), extraA) +
       bloque(t('prov.comisiones','Comisiones OTA del mes'), c.n + ' ' + t('prov.liquidaciones','liquidaciones'), c.total, c.cuenta_provision.codigo, fc,
              t('prov.comVacio','Sin liquidaciones OTA con periodo en este mes.'), extraC) +
+      bloque(t('prov.comAgencia','Comisiones de agencia sin factura (grupos)'), g.n + ' ' + t('prov.contratos','contratos'), g.total, g.cuenta_provision.codigo,
+             (g.por_agencia || []).map(p => '<tr><td>' + _provEsc(p.agencia) + '</td><td>' + p.n_contratos + ' ' + t('prov.contratos','contratos') + '</td><td class="num">' + _provFmt(p.importe_provision) + '</td></tr>'),
+             t('prov.comAgVacio','Nada que provisionar: cada evento acabado tiene su factura.'),
+             g.sin_decidir ? t('prov.comAgSinDecidir','{n} contrato(s) sin decidir si hay comisión: decídelo en AR › Contratos.').replace('{n}', g.sin_decidir) : '') +
       '';
     if (typeof _pintarYa === 'function') _pintarYa(body);
   } catch(e) { body.innerHTML = _gError('Error'); }
@@ -15311,7 +15335,7 @@ async function loadAgingAP() {
       return;
     }
     body.innerHTML = '<div class="g-tbl-wrap"><table class="g-tbl" style="font-size:12px"><thead><tr><th>' + t('aging.acreedor','Acreedor') + '</th><th>' + t('aging.masAntigua','Más antigua') + '</th><th class="num">0-30</th><th class="num">31-60</th><th class="num">61-90</th><th class="num">&gt;90</th><th class="num">' + t('aging.total','pendiente') + '</th></tr></thead><tbody>' +
-      d.por_acreedor.map(p => '<tr><td>' + _provEsc(p.acreedor) + ' <span style="color:var(--dim)">· ' + _provEsc(p.origen) + (p.sin_aprobar ? ' · ' + p.sin_aprobar + ' ' + t('aging.sinAprobar','sin aprobar') : '') + '</span></td>' +
+      d.por_acreedor.map(p => '<tr><td>' + _provEsc(p.acreedor) + ' <span style="color:var(--dim)">· ' + _provEsc(p.origen === 'Comisión grupo' ? t('ap.comGrupo', 'Comisión grupo') : p.origen) + (p.sin_aprobar ? ' · ' + p.sin_aprobar + ' ' + t('aging.sinAprobar','sin aprobar') : '') + ((p.imputacion || []).length ? ' · ' + t('com.imputa', 'se imputa en') + ' ' + _provEsc(p.imputacion.join(', ')) : '') + '</span></td>' +
         '<td>' + (p.mas_antigua ? _provEsc(p.mas_antigua) + ' ' + gBadge(p.dias_max > 60 ? 'g-err' : 'g-mute', p.dias_max + ' ' + t('aging.dias','días')) : '—') + '</td>' +
         ['0-30','31-60','61-90','>90'].map(k => '<td class="num">' + (p[k] ? _provFmt(p[k]) : '—') + '</td>').join('') +
         '<td class="num"><strong>' + _provFmt(p.importe) + '</strong></td></tr>').join('') +
@@ -15383,10 +15407,15 @@ async function loadAP() {
       const pagoHtml = f.pagada
         ? gBadge('g-ok', t('ap.pagada', 'Pagada') + (f.pagada_fecha ? ' ' + _fechaCorta(f.pagada_fecha) : ''), f.pagada_cuenta || '')
         : (f.vencimiento ? gBadge(_venceCls(f.vencimiento), t('ap.vence', 'Vence') + ' ' + _fechaCorta(f.vencimiento)) : gBadge('g-mute', t('ap.sinVenc', 'Sin vencimiento')));
+      // b88: la comision de una agencia unida a su contrato de grupo (esperado vs facturado)
+      const comHtml = f.comision_evento
+        ? '<div>' + gBadge(f.comision_estado === 'CUADRA' ? 'g-ok' : (f.comision_estado === 'DIFERENCIA' || f.comision_estado === 'NO_DEBERIA') ? 'g-err' : 'g-info',
+            t('ap.comGrupo', 'Comisión grupo') + ' · ' + _provEsc(f.comision_evento).slice(0, 28)) + '</div>'
+        : '';
       tr.innerHTML = `
         <td class="g-chk"><input type="checkbox" class="ap-row-cb" data-clave="${_provEsc(f.clave)}"></td>
         <td><strong>${f.numero_factura}</strong>${dupHtml}${impHtml}${concHtml}</td>
-        <td>${f.proveedor}</td>
+        <td>${f.proveedor}${comHtml}</td>
         <td>${tipoHtml}</td>
         <td class="num">${fmtEurAP(f.total)}</td>
         <td class="mono">${f.cuenta_contable}</td>
@@ -17121,13 +17150,50 @@ function _pintarContratosAR() {
       '<div class="ctr-top"><div class="g-who"><b>' + _ctrEsc(c.evento) + '</b><span>' + quien + '</span></div>' +
       '<div class="ctr-total"><b class="g-num">' + eur((c.importes || {}).total) + '</b>' +
       (c.agencia ? '<button class="g-btn g-ghost g-sm g-icon" onclick="_arCtrAbierto[_arContratos[' + i + '].id]=!_arCtrAbierto[_arContratos[' + i + '].id];_pintarContratosAR()" title="' + t('ctr.corregir', 'Corregir') + '">✎</button>' : '') + '</div></div>' +
-      '<div class="ctr-badges">' + _ctrBadges(c) + '</div>' + esp +
+      '<div class="ctr-badges">' + _ctrBadges(c) + '</div>' + esp + _ctrFacturaComision(c, i) +
       '<div class="g-small">' + [_ctrOrigen(c.comision), _ctrOrigen(c.pagador)].filter(Boolean).filter(function(x, k, a){ return a.indexOf(x) === k; }).join(' · ') + '</div>' +
       (abierto && c.agencia ? _ctrForm(i) : '') +
       '</div>';
   }).join('');
   if (typeof _pintarYa === 'function') _pintarYa(wrap);
 }
+// b88: la factura de comision de la agencia, unida a su contrato
+function _ctrFacturaComision(c, i) {
+  var fc = c.factura_comision_vista || {}, modo = (c.comision || {}).modo, eur = function(v){ return _fmtEurES(Number(v) || 0, 2); };
+  if (fc.clave) {
+    var est = fc.estado === 'CUADRA' ? gBadge('g-ok', t('com.cuadra', 'Cuadra con el contrato'))
+            : fc.estado === 'DIFERENCIA' ? gBadge('g-err', t('com.noCoincide', 'No coincide con el contrato'))
+            : fc.estado === 'NO_DEBERIA' ? gBadge('g-err', t('com.noDeberia', 'Contrato de tarifa neta: no debería haber comisión'))
+            : gBadge('g-warn', t('com.sinEsperada', 'Falta decidir la comisión del contrato'));
+    return '<div class="ctr-com"><div class="g-small">🧾 ' + t('com.factura', 'Factura de comisión') + ' <b>' + _ctrEsc(fc.numero || fc.clave) + '</b> · ' + _fechaCorta(fc.fecha) +
+      ' · ' + t('com.facturada', 'facturada') + ' <b class="g-num">' + eur(fc.facturada) + '</b>' +
+      (fc.diferencia ? ' · ' + t('com.dif', 'diferencia') + ' <b class="g-num">' + eur(fc.diferencia) + '</b>' : '') + ' · ' + t('com.imputa', 'se imputa en') + ' ' + _ctrEsc((fc.fecha || '').slice(0, 7)) + '</div>' +
+      '<div class="ctr-acciones">' + est + ' <button class="g-btn g-ghost g-sm" onclick="separarComisionAR(' + i + ')" title="' + t('com.separarT', 'Esta factura no es de este contrato') + '">' + t('com.separar', 'Separar') + '</button></div></div>';
+  }
+  if (modo !== 'porcentaje') return '';
+  var cands = c.candidatas || [];
+  var h = '<div class="ctr-com"><div class="g-small">🧾 ' + t('com.esperando', 'Esperando la factura de comisión de la agencia') + '</div>';
+  if (cands.length) {
+    h += '<div class="ctr-acciones"><select class="g-input" id="ctr-cand-' + i + '">' + cands.map(function(x){
+      return '<option value="' + _ctrEsc(x.clave) + '">' + _ctrEsc(x.numero || x.clave) + ' · ' + _fechaCorta(x.fecha) + ' · ' + eur(x.total) + '</option>'; }).join('') +
+      '</select><button class="g-btn g-secondary g-sm" onclick="unirComisionAR(' + i + ')">' + t('com.unir', 'Unir al contrato') + '</button></div>';
+  }
+  return h + '</div>';
+}
+async function _ctrPost(i, url, datos) {
+  var c = _arContratos[i]; if (!c) return;
+  try {
+    var r = await _postJson(url, Object.assign({id: c.id}, datos));
+    var d = await r.json();
+    if (!d.ok) { showNotification('✗ ' + (d.error || 'Error'), 'error'); return; }
+    _arContratos[i] = d.contrato; _pintarContratosAR();
+    showNotification('✓ ' + t('ctr.guardado', 'Guardado'), 'success');
+    if (typeof _invalidarPaneles === 'function') _invalidarPaneles();
+  } catch(e) { showNotification('✗ Error', 'error'); }
+}
+function unirComisionAR(i) { var s = document.getElementById('ctr-cand-' + i); if (s && s.value) return _ctrPost(i, '/api/ar/contratos/vincular', {clave: s.value}); }
+function separarComisionAR(i) { var c = _arContratos[i]; if (c) return _ctrPost(i, '/api/ar/contratos/desvincular', {clave: (c.factura_comision_vista || {}).clave || ''}); }
+
 async function cargarContratosAR() {
   var wrap = document.getElementById('ar-contratos-list');
   if (!wrap) return;

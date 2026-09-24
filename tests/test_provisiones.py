@@ -134,8 +134,9 @@ def main():
     # ── 3 · el Excel ──────────────────────────────────────────────────
     buf, nombre = PV.exportar_excel('2026-08', None, procesadas_dir=pdir, reportes_dir=rdir, datos_dir=ddir)
     hojas = pd.read_excel(buf, sheet_name=None)
-    ok(set(hojas) == {'Resumen', 'Albaranes', 'Comisiones', 'Asientos'} and nombre == 'provisiones_2026-08.xlsx',
-       f'Excel con 4 hojas: {sorted(hojas)}')
+    # b88: + hoja 'Comisiones agencia' (lo devengado de contratos de grupo sin factura, 628/4109)
+    ok(set(hojas) == {'Resumen', 'Albaranes', 'Comisiones', 'Comisiones agencia', 'Asientos'} and nombre == 'provisiones_2026-08.xlsx',
+       f'Excel con 5 hojas: {sorted(hojas)}')
     ok(len(hojas['Asientos']) == 2 + 6, f"8 lineas de asiento ({len(hojas['Asientos'])})")
 
     # ── 4 · endpoints contra la app real ──────────────────────────────
@@ -159,7 +160,7 @@ def main():
     tree = ast.parse(open(os.path.join(BASE, 'provisiones.py'), encoding='utf-8').read())
     escribe = [n.attr for n in ast.walk(tree) if isinstance(n, ast.Attribute)
                and n.attr in ('to_excel', 'to_csv', 'to_json', 'remove', 'unlink', 'rmtree')]
-    ok(escribe == ['to_excel'] * 4, f'provisiones.py solo escribe en el BytesIO del export: {escribe}')
+    ok(escribe == ['to_excel'] * 5, f'provisiones.py solo escribe en el BytesIO del export: {escribe}')   # b88: 5 hojas
     imps = [n.names[0].name for n in ast.walk(tree) if isinstance(n, ast.Import)]
     ok(not [i for i in imps if i.startswith('oracle')], 'no importa oracle_*')
     diff = subprocess.run(['git', 'diff', '--name-only', 'HEAD'], capture_output=True, text=True, cwd=BASE).stdout.split()

@@ -9,7 +9,9 @@ se pregunta aqui; no se supone.
 
 Rutas (con sesion; el POST pasa por el CSRF de /api/*):
   GET  /api/ar/contratos
-  POST /api/ar/contratos/decidir   {id, modo?: 'neta'|'porcentaje', pct?: {alojamiento, fb, salas}, pagador?: 'agencia'|'cliente'}
+  POST /api/ar/contratos/decidir      {id, modo?: 'neta'|'porcentaje', pct?: {alojamiento, fb, salas}, pagador?: 'agencia'|'cliente'}
+  POST /api/ar/contratos/vincular     {id, clave}   b88: una persona une la factura de comision de la agencia
+  POST /api/ar/contratos/desvincular  {id, clave}   b88: "esta factura no es de este contrato"
 """
 import os
 
@@ -67,13 +69,40 @@ def facturas_grupo(datos_dir=None):
     return out
 
 
+def _facturas_ap(hotel):
+    try:
+        import almacen_datos
+        df = almacen_datos.facturas_ap(hotel=hotel or None)
+        return df.to_dict("records") if df is not None and not df.empty else []
+    except Exception:
+        return []
+
+
+def _mini(f):
+    return {"clave": CG._clave_ap(f), "numero": CG._txt(f.get("numero_factura")),
+            "fecha": CG._iso(f.get("fecha_factura") if CG._txt(f.get("fecha_factura")) else f.get("fecha")),
+            "total": CG._r(CG._f(f.get("total_factura"))), "base": CG.base_factura(f),
+            "proveedor": CG._txt(f.get("nombre_proveedor"))}
+
+
 def vista_contratos(hotel=None, datos_dir=None):
     fac = facturas_grupo(datos_dir)
+    contratos = CG.del_hotel(CG.leer(datos_dir), hotel)
+    filas_ap = _facturas_ap(hotel)
+    enl = CG.enlazar(contratos, filas_ap) if contratos else {}
+    por_clave = {CG._clave_ap(f): f for f in filas_ap}
     out = []
-    for c in CG.del_hotel(CG.leer(datos_dir), hotel):
+    for c in contratos:
         v = CG.vista(c)
         num = CG._txt(c.get("factura_grupo"))
         v["factura"] = fac.get(num + "|" + CG._txt(c.get("hotel_id"))) or fac.get(num + "|") or ({"numero": num} if num else {})
+        e = enl.get(c["id"]) or {}
+        if e.get("clave") and e["clave"] in por_clave:
+            fr = por_clave[e["clave"]]
+            v["factura_comision_vista"] = dict(_mini(fr), origen=e.get("origen"), **CG.estado_comision(c, fr))
+        else:
+            v["factura_comision_vista"] = {}
+        v["candidatas"] = [_mini(por_clave[k]) for k in (e.get("candidatas") or []) if k in por_clave]
         out.append(v)
     # primero lo que falta decidir; dentro de cada grupo, lo mas reciente arriba
     pend = [c for c in out if c["pendientes"]]
@@ -109,4 +138,43 @@ def api_decidir():
     CG.sincronizar_factura(c)
     _audit("CONTRATO_DECIDIDO", f"{c.get('contrato') or cid}: modo={d.get('modo')} pct={d.get('pct')} pagador={d.get('pagador')}")
     v = next((x for x in vista_contratos(_hotel()) if x.get("id") == cid), CG.vista(c))
+    return jsonify({"ok": True, "contrato": v})
+
+
+def _visible(cid):
+    return cid and cid in {c.get("id") for c in CG.del_hotel(CG.leer(), _hotel())}
+
+
+@contratos_bp.route("/api/ar/contratos/vincular", methods=["POST"])
+@login_required
+def api_vincular():
+    d = request.get_json(silent=True) or {}
+    cid = str(d.get("id") or "").strip()
+    clave = str(d.get("clave") or "").strip()
+    if not _visible(cid):
+        return jsonify({"ok": False, "error": "contrato no encontrado en este hotel"}), 404
+    if clave not in {CG._clave_ap(f) for f in _facturas_ap(_hotel())}:
+        return jsonify({"ok": False, "error": "esa factura no esta en AP de este hotel"}), 404
+    try:
+        CG.vincular(cid, clave, usuario=_usuario())
+    except (KeyError, ValueError) as e:
+        return jsonify({"ok": False, "error": str(e)}), 400
+    _audit("COMISION_VINCULADA", f"{cid}: {clave}")
+    v = next((x for x in vista_contratos(_hotel()) if x.get("id") == cid), None)
+    return jsonify({"ok": True, "contrato": v})
+
+
+@contratos_bp.route("/api/ar/contratos/desvincular", methods=["POST"])
+@login_required
+def api_desvincular():
+    d = request.get_json(silent=True) or {}
+    cid = str(d.get("id") or "").strip()
+    if not _visible(cid):
+        return jsonify({"ok": False, "error": "contrato no encontrado en este hotel"}), 404
+    try:
+        CG.desvincular(cid, str(d.get("clave") or ""), usuario=_usuario())
+    except KeyError as e:
+        return jsonify({"ok": False, "error": str(e)}), 404
+    _audit("COMISION_SEPARADA", f"{cid}: {d.get('clave')}")
+    v = next((x for x in vista_contratos(_hotel()) if x.get("id") == cid), None)
     return jsonify({"ok": True, "contrato": v})

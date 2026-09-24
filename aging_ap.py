@@ -61,7 +61,7 @@ def calcular_aging(df_ap, df_ar=None, df_banco=None, hoy=None):
     pagadas_mano = [0]
     filas = []
 
-    def _add(origen, num, acreedor, fecha, importe, aprobacion, hotel, vencimiento=None, pagada_mano=False):
+    def _add(origen, num, acreedor, fecha, importe, aprobacion, hotel, vencimiento=None, pagada_mano=False, extra=None):
         num = _txt(num)
         if num and num.upper() in pagadas:
             return
@@ -82,15 +82,21 @@ def calcular_aging(df_ap, df_ar=None, df_banco=None, hoy=None):
             "importe":     round(importe, 2),
             "aprobacion":  _txt(aprobacion).upper() or "PENDIENTE",
             "hotel_id":    _txt(hotel),
+            **(extra or {}),
         })
 
     if df_ap is not None and not df_ap.empty:
+        from cierre_mes import es_comision_agencia
         for _, r in df_ap.iterrows():
             imp = _num(r.get("total_factura")) or _num(r.get("importe_total")) or _num(r.get("total"))
-            _add("Proveedor", r.get("numero_factura"), r.get("nombre_proveedor"),
-                 r.get("fecha_factura") if _txt(r.get("fecha_factura")) else r.get("fecha"),
-                 imp, r.get("accion"), r.get("hotel_id"),
-                 vencimiento=r.get("vencimiento"), pagada_mano=bool(r.get("pagada")) if "pagada" in df_ap.columns else False)
+            f_fac = r.get("fecha_factura") if _txt(r.get("fecha_factura")) else r.get("fecha")
+            # b88: la comision de una agencia de grupos va aparte y dice en que mes se imputa
+            com = es_comision_agencia(r)
+            extra = {"comision_de": _txt(r.get("comision_evento")), "imputacion": (_fecha(f_fac).isoformat()[:7] if _fecha(f_fac) else "")} if com else None
+            _add("Comisión grupo" if com else "Proveedor", r.get("numero_factura"), r.get("nombre_proveedor"),
+                 f_fac, imp, r.get("accion"), r.get("hotel_id"),
+                 vencimiento=r.get("vencimiento"), pagada_mano=bool(r.get("pagada")) if "pagada" in df_ap.columns else False,
+                 extra=extra)
     if df_ar is not None and not df_ar.empty:
         for _, r in df_ar.iterrows():
             imp = _num(r.get("importe_comision")) or _num(r.get("importe_comision_factura"))
@@ -111,6 +117,10 @@ def calcular_aging(df_ap, df_ar=None, df_banco=None, hoy=None):
                                "sin_aprobar": 0})
         p["n"] += 1
         p["importe"] = round(p["importe"] + f["importe"], 2)
+        if f.get("imputacion"):
+            p.setdefault("imputacion", [])
+            if f["imputacion"] not in p["imputacion"]:
+                p["imputacion"] = sorted(p["imputacion"] + [f["imputacion"]])
         p[f["tramo"]] = round(p[f["tramo"]] + f["importe"], 2)
         if f["aprobacion"] not in ("APROBADA",):
             p["sin_aprobar"] += 1

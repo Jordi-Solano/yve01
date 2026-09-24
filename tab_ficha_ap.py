@@ -109,13 +109,12 @@ def asiento_de(fila, plan=None):
     elif total and base is None:
         base = round(total - (iva or 0), 2)
     base = base or 0.0; iva = iva or 0.0
-    cta = _cta(fila.get("cuenta_debe_gasto")) or _cta(fila.get("cuenta_contable"))
-    if not cta or cta.upper() == "REVISAR_MANUAL":
-        cta = "600" if _s(fila.get("tipo_proveedor")).upper() == "FB" else "629"
+    from cierre_mes import cuentas_ap
+    cta, acreedor = cuentas_ap(fila)        # b88: comision de agencia → 628 / 410
     lineas = [{"cuenta": cta, "nombre": plan.get(cta, ""), "debe": base, "haber": 0.0}]
     if iva:
         lineas.append({"cuenta": "472", "nombre": plan.get("472", "H.P. IVA soportado"), "debe": iva, "haber": 0.0})
-    lineas.append({"cuenta": "400", "nombre": plan.get("400", "Proveedores"), "debe": 0.0, "haber": total})
+    lineas.append({"cuenta": acreedor, "nombre": plan.get(acreedor, "Proveedores" if acreedor == "400" else "Acreedores por prestaciones de servicios"), "debe": 0.0, "haber": total})
     return {"fecha": _iso(fila.get("fecha_contable")) or _iso(fila.get("fecha_factura") or fila.get("fecha")),
             "concepto": f"Fra. {_s(fila.get('numero_factura')) or _s(fila.get('archivo'))} — {_s(fila.get('nombre_proveedor'))}",
             "lineas": lineas, "cuadra": round(sum(l["debe"] for l in lineas) - sum(l["haber"] for l in lineas), 2) == 0.0,
@@ -139,6 +138,22 @@ def _lineas_de(fila):
     return sorted(out, key=lambda x: x["n"])
 
 
+def _es_com(fila):
+    from cierre_mes import es_comision_agencia
+    return es_comision_agencia(fila)
+
+
+def _comision_de(fila):
+    """b88: si es la factura de comision de un contrato de grupo, lo que hay que ver."""
+    if not _es_com(fila):
+        return None
+    return {"contrato_id": _s(fila.get("comision_contrato")), "evento": _s(fila.get("comision_evento")),
+            "esperada": _num(fila.get("comision_esperada")), "facturada": _num(fila.get("comision_facturada")),
+            "diferencia": _num(fila.get("comision_diferencia")), "estado": _s(fila.get("comision_estado")),
+            "pagador": _s(fila.get("comision_pagador")), "factura_grupo": _s(fila.get("factura_grupo")),
+            "vinculo": _s(fila.get("comision_vinculo"))}
+
+
 def ficha(clave):
     from almacen_datos import ajustes_ap, clave_ap
     from cierre_mes import plan_cuentas, criterio_fecha_ap, config_cierre
@@ -157,7 +172,8 @@ def ficha(clave):
         "fecha_factura": _iso(fila.get("fecha_factura") or fila.get("fecha")),
         "fecha_registro": _iso(fila.get("fecha_registro")),
         "fecha_contable": _iso(fila.get("fecha_contable")),
-        "criterio_fecha": criterio_fecha_ap(config_cierre(_ddir())),
+        "criterio_fecha": "comision" if _es_com(fila) else criterio_fecha_ap(config_cierre(_ddir())),
+        "comision": _comision_de(fila),
         "dias_pago": int(_num(fila.get("dias_pago")) or 30), "vencimiento": _iso(fila.get("vencimiento")),
         "base": _num(fila.get("base_imponible")), "porcentaje_iva": _num(fila.get("porcentaje_iva")),
         "cuota_iva": _num(fila.get("cuota_iva")), "total": _num(fila.get("total_factura")),
@@ -276,6 +292,7 @@ def _fila_excel(fila):
         "concepto": _s(fila.get("descripcion_concepto")), "base": _num(fila.get("base_imponible")), "iva_pct": _num(fila.get("porcentaje_iva")),
         "cuota_iva": _num(fila.get("cuota_iva")), "total": _num(fila.get("total_factura")), "cuenta": _cta(fila.get("cuenta_contable")),
         "tipo": _s(fila.get("tipo_proveedor")).upper(), "estado": (_s(fila.get("estado_matching")) or _s(fila.get("estado"))).upper(),
+        "comision_de_grupo": _s(fila.get("comision_evento")) if _es_com(fila) else "", "comision_estado": _s(fila.get("comision_estado")),
         "aprobacion": _s(fila.get("accion")).upper(), "vencimiento": _iso(fila.get("vencimiento")), "dias_pago": _num(fila.get("dias_pago")),
         "pagada": "SI" if fila.get("pagada") else "NO", "fecha_pago": _s(fila.get("pagada_fecha")), "cuenta_bancaria": _s(fila.get("pagada_cuenta")),
         "pagada_por": _s(fila.get("pagada_por")), "hotel_id": _s(fila.get("hotel_id")), "archivo": _s(fila.get("archivo")),
@@ -362,6 +379,8 @@ def api_ajustar():
     for k in ("cuenta_contable", "vencimiento", "fecha_contable", "dias_pago"):
         if k in d:
             cambios[k] = d.get(k)
+    if cambios.get("fecha_contable") and _es_com(fila):
+        return jsonify({"ok": False, "error": "la factura de comisión de una agencia se imputa por su fecha de factura (regla de finanzas)"}), 400
     if "cuenta_contable" in cambios:
         cta = _cta(cambios["cuenta_contable"])
         if cta and not cta.isdigit():

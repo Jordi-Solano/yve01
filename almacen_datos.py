@@ -620,7 +620,15 @@ def facturas_ap(procesadas_dir=None, reportes_dir=None, hotel=None):
             (str(v) if v is not None and str(v) not in ("nan", "None", "") else "") or primera.get(_clave_doc(fila, _ID_AP) or ("#" + str(fila.get("archivo") or "")), "") or str(fila.get("_origen_fecha") or "")
             for v, fila in zip(df["fecha_registro"], df.to_dict("records"))]
     out = _filtrar_hotel(_consolidar(df, _ID_AP, duplicados_resueltos()), hotel)
-    return aplicar_ajustes_ap(out)
+    out = aplicar_ajustes_ap(out)
+    # b88: la factura de comision de una agencia se une a su contrato de grupo
+    # y se imputa por su fecha de factura (regla de finanzas, 24 sep 2026)
+    try:
+        import contratos_grupo as _cg
+        out = _cg.marcar_comisiones(out)
+    except Exception:
+        pass
+    return out
 
 
 def facturas_ar(procesadas_dir=None, reportes_dir=None, hotel=None):
