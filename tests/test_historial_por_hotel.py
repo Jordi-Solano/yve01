@@ -97,7 +97,9 @@ def main():
         if SABOTAJE:
             src = src.replace('_entrada_proc(', '_NO(')
         n_usos = len(re.findall(r'=\s*_entrada_proc\(', src))
-        ok_usos = n_usos == 4
+        # 5 desde b87: la foto de un contrato de grupo re-marca su entrada como
+        # AR_REAL_OK (igual que ya hacia la rama OTA/albaran con la suya)
+        ok_usos = n_usos == 5
         print(f"  {'OK ' if ok_usos else 'FALLA'}  las 4 puertas que escriben el log usan "
               f"_entrada_proc(): {n_usos}")
         if not ok_usos:

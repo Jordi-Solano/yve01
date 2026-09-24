@@ -225,6 +225,7 @@ from tab_cierre import cierre_bp
 from tab_albaranes import albaranes_bp
 from tab_ficha_ap import ficha_ap_bp          # b84: ficha de la factura, ajustes, pagada, descargas
 from tab_caja import caja_bp                  # b86: arqueo de caja y cuadre con los ingresos del banco
+from tab_contratos import contratos_bp        # b87: AR > Contratos (comision segun contrato, quien paga)
 from oracle_export_dryrun import oracle_export_bp
 from pricing import pricing_bp
 from tab_multi_hotel import multi_hotel_bp
@@ -246,7 +247,7 @@ from about import about_bp
 from exportador_pdf import pdf_bp
 # pricing_bp estaba importado pero NO registrado: /precios daba 404 mientras la
 # landing, el blog y "Quienes somos" enlazaban a el (Ola A).
-for _bp in (auth_bp, config_bp, admin_bp, aprob_ar_bp, aprob_ap_bp, concil_bp, fb_bp, ar_real_bp, recl_ota_bp, recl_ap_bp, oracle_export_bp, cierre_bp, albaranes_bp, ficha_ap_bp, caja_bp, multi_hotel_bp, self_service_bp, exportador_bp, demo_bp, demo_sim_bp, reportes_pdf_bp, blog_bp, billing_bp, asientos_bp, signup_bp, about_bp, pdf_bp, legal_bp, pricing_bp):
+for _bp in (auth_bp, config_bp, admin_bp, aprob_ar_bp, aprob_ap_bp, concil_bp, fb_bp, ar_real_bp, recl_ota_bp, recl_ap_bp, oracle_export_bp, cierre_bp, albaranes_bp, ficha_ap_bp, caja_bp, contratos_bp, multi_hotel_bp, self_service_bp, exportador_bp, demo_bp, demo_sim_bp, reportes_pdf_bp, blog_bp, billing_bp, asientos_bp, signup_bp, about_bp, pdf_bp, legal_bp, pricing_bp):
     app.register_blueprint(_bp)
 
 
@@ -1920,6 +1921,40 @@ def _procesar_drr(fpath, fname):
     return f'✓ DRR {fname}: {dias} día(s) procesado(s){extra}', 'DRR_OK'
 
 
+def _contrato_grupo_de_fichero(fpath):
+    """b87: un contrato (PDF o foto suelta) pasa por el MISMO lector que las fotos
+    unidas (decision de Jordi, 24 sep 2026): modo de comision, quien paga y BEO,
+    y acaba en AR > Contratos. Devuelve el resumen del lector, o {} si no es un
+    contrato de grupo aprovechable: entonces el documento sigue su camino de
+    siempre (eventos_referencia), no se pierde."""
+    try:
+        from lector_contratos_grupo import procesar_contrato_grupo
+        r = procesar_contrato_grupo([fpath])
+        return r if isinstance(r, dict) and r.get('ok') else {}
+    except Exception:
+        return {}
+
+
+def _msg_contrato_grupo(fname, r):
+    """El mensaje del lote para un contrato de grupo. Lo que falta decidir va en
+    su PROPIA linea con ⚠ (pegado al ✓ se pintaba verde y no se veia)."""
+    modo = r.get('modo_comision') or ''
+    if modo == 'porcentaje':
+        esp = r.get('comision_esperada')
+        com = 'comisión esperada ' + _eur_es(esp) if esp is not None else 'con comisión'
+    else:
+        com = {'neta': 'tarifa neta', 'sin_agencia': 'sin agencia'}.get(modo, '')
+    pag = {'agencia': 'paga la agencia', 'cliente': 'paga el cliente'}.get(r.get('pagador') or '', '')
+    extra = ' · '.join(x for x in (com, pag) if x)
+    linea = (f"✓ Contrato {r.get('contrato') or fname}: {r.get('cliente') or ''} — "
+             f"{_eur_es(r.get('total_receivable'))} → AR › Contratos" + (' · ' + extra if extra else ''))
+    falta = {'modo': 'tarifa neta o comisión', 'pct': 'el % de comisión', 'pagador': 'quién paga la factura'}
+    pend = [falta[x] for x in (r.get('pendientes') or []) if x in falta]
+    if pend:
+        linea += f"\n⚠ {r.get('contrato') or fname}: el contrato no lo dice, elígelo en AR › Contratos — " + ' · '.join(pend)
+    return linea
+
+
 def _enrutar_tipo_doc(reg, fname, fpath=None):
     """Enruta un documento YA clasificado (reg['tipo_documento']) al modulo que toca.
 
@@ -2260,6 +2295,11 @@ def _enrutar_tipo_doc(reg, fname, fpath=None):
         except Exception as _emer:
             _msg = f'ℹ {fname}: mermas detectadas — {str(_emer)[:60]}'
         _marca = 'INV_OK'
+    elif _tipo_doc == 'CONTRATO' and fpath and (_rcg := _contrato_grupo_de_fichero(fpath)):
+        # b87: el contrato en PDF acaba en AR > Contratos (antes solo las fotos unidas)
+        _msg = _msg_contrato_grupo(fname, _rcg)
+        _marca = 'AR_REAL_OK'
+        _flags['ar_real'] = True
     elif _tipo_doc in ('BEO', 'TM', 'CONTRATO'):
         # Guardar como documento de referencia para matching
         try:
@@ -2664,8 +2704,11 @@ def api_procesar_batch_stream():
                             # tipo mas y no se caiga al "sin clasificar".
                             _reg_hoja['tipo_documento'] = _tipo_hoja
                             _msg, _marca, _flags = _enrutar_tipo_doc(_reg_hoja, fname, fpath)
-                            yield f'data: {_msg}\n\n'
+                            for _lin in str(_msg).split('\n'):
+                                yield f'data: {_lin}\n\n'
                             _mark(fname, _marca)
+                            if _flags.get('ar_real'):
+                                has_ar_real = True
                             if _flags.get('has_ar'):
                                 has_ar = True
                             if _flags.get('has_ap'):
@@ -2746,8 +2789,11 @@ def api_procesar_batch_stream():
                                 # Claude clasificó el documento como otro tipo — enrutar
                                 # (árbol de enrutado extraído a _enrutar_tipo_doc)
                                 _msg, _marca, _flags = _enrutar_tipo_doc(reg, fname, fpath)
-                                yield f'data: {_msg}\n\n'
+                                for _lin in str(_msg).split('\n'):
+                                    yield f'data: {_lin}\n\n'
                                 _mark(fname, _marca)
+                                if _flags.get('ar_real'):
+                                    has_ar_real = True
                                 # TODAS las banderas que devuelve el enrutador,
                                 # no solo has_ar.
                                 #
@@ -3127,6 +3173,24 @@ def demo_view():
 
 
 
+def _contrato_grupo_de_bytes(img_data, fname):
+    """La foto (en memoria) de /api/scan_documento, al lector de contratos de grupo."""
+    import tempfile as _tf
+    ext = os.path.splitext(fname or '')[1].lower() or '.jpg'
+    if ext not in ('.jpg', '.jpeg', '.png', '.webp', '.heic', '.pdf'):
+        ext = '.jpg'
+    fd, tmp = _tf.mkstemp(prefix='contrato_', suffix=ext)
+    try:
+        with os.fdopen(fd, 'wb') as fh:
+            fh.write(img_data)
+        return _contrato_grupo_de_fichero(tmp)
+    finally:
+        try:
+            os.remove(tmp)
+        except Exception:
+            pass
+
+
 @app.route('/api/scan_documento', methods=['POST'])
 @login_required
 def api_scan_documento():
@@ -3192,6 +3256,7 @@ def api_scan_documento():
         # ✓ de siempre. Solo el albaran la pone hoy; los demas tipos podrian
         # adoptarla despues sin mover nada de lo que ya funciona.
         guardado = None
+        aviso = None          # b87: una linea ⚠ aparte (p. ej. lo que falta decidir de un contrato)
         
         if tipo == 'FACTURA' and datos.get('es_factura'):
             # Mismo normalizador y mismo guardado que el PDF y la hoja de
@@ -3213,6 +3278,15 @@ def api_scan_documento():
                 mensaje = 'factura detectada, pero no se pudo extraer ningún dato — revisar manualmente'
                 guardado = False
             
+        elif tipo == 'CONTRATO' and (_rcg := _contrato_grupo_de_bytes(img_data, fname)):
+            # b87: una foto suelta de un contrato tambien va al lector de grupos.
+            # Lo que falta decidir va aparte (`aviso`): pegado al ✓ no se veia.
+            _lin_c = _msg_contrato_grupo(fname, _rcg).split('\n')
+            mensaje = _lin_c[0].split(': ', 1)[-1]
+            aviso = _lin_c[1].lstrip('⚠ ').strip() if len(_lin_c) > 1 else None
+            log[fname] = _entrada_proc('AR_REAL_OK')
+            _save_proc_log(log)
+            guardado = True
         elif tipo in ('BEO','TM','CONTRATO'):
             ref_path = os.path.join(_ddir(), 'eventos_referencia.json')
             refs = json.load(open(ref_path)) if os.path.exists(ref_path) else []
@@ -3362,7 +3436,7 @@ def api_scan_documento():
                 _cierre.append('ar')
         return jsonify({'ok': True, 'tipo': tipo, 'mensaje': mensaje,
                         'items': str(items_count) if items_count else None,
-                        'guardado': guardado, 'cierre': _cierre, 'datos': datos})
+                        'guardado': guardado, 'cierre': _cierre, 'datos': datos, 'aviso': aviso})
     except Exception as e:
         return jsonify({'ok': False, 'error': str(e)[:200]}), 500
 
@@ -7130,7 +7204,35 @@ svg.yvi{width:1em;height:1em;vertical-align:-0.125em;flex-shrink:0;display:inlin
       <div class="g-kpi"><div class="g-kpi-lbl" data-i18n="arreal.clientesCredito">Clientes de crédito</div><div class="g-kpi-val" id="arp-nclientes">—</div></div>
     </div>
 
-    <div class="g-arreal-grid" id="ar-real-grid">
+    <!-- AR nuevo (b87): tres subpestañas. Ids de siempre dentro de cada una. -->
+    <div class="g-subtabs" id="ar-subtabs">
+      <button class="fb-sub active" id="ar-sub-btn-contratos" onclick="arSub('contratos',this)" data-i18n="arn.contratos">📑 Contratos</button>
+      <button class="fb-sub" id="ar-sub-btn-credito" onclick="arSub('credito',this)" data-i18n="arn.credito">💳 Petición de crédito</button>
+      <button class="fb-sub" id="ar-sub-btn-aging" onclick="arSub('aging',this)" data-i18n="arn.aging">⏳ Aging AR</button>
+    </div>
+
+    <div id="ar-sub-contratos">
+      <!-- Contratos de grupo: comision segun el contrato (neta o %) y quien paga -->
+      <div id="ar-contratos-section" class="g-card">
+        <div class="g-card-head">
+          <div><div class="g-card-title" title="Cada contrato de grupo con su comisión (tarifa neta o %) y quién paga la factura del grupo." data-i18n-title="ctr.sub"><span data-i18n="ctr.titulo">Contratos de grupo</span> <span id="ar-contratos-count" class="g-small"></span></div></div>
+          <span id="ar-contratos-resumen" class="g-small"></span>
+        </div>
+        <div id="ar-contratos-list" class="g-inline-list"><div class="g-empty g-cargando" data-i18n="lbl.cargando">Cargando…</div></div>
+      </div>
+      <!-- BEOs generados automáticamente desde contratos -->
+      <div id="ar-beos-section" class="g-card">
+        <div class="g-card-head">
+          <div><div class="g-card-title" title="Yve crea el BEO (partidas e importes) desde el contrato de grupo y coteja la factura contra él." data-i18n-title="beos.sub"><span data-i18n="beos.titulo">BEOs desde contratos</span> <span id="ar-beos-count" class="g-small"></span></div></div>
+        </div>
+        <div id="ar-beos-list" class="g-inline-list">
+          <div class="g-empty g-cargando" data-i18n="lbl.cargando">Cargando…</div>
+        </div>
+      </div>
+
+    </div>
+
+    <div id="ar-sub-credito" style="display:none">
       <!-- Client list -->
       <div class="g-card">
         <div class="g-card-head">
@@ -7139,6 +7241,9 @@ svg.yvi{width:1em;height:1em;vertical-align:-0.125em;flex-shrink:0;display:inlin
         </div>
         <div id="ar-clientes-list" class="g-inline-list"></div>
       </div>
+    </div>
+
+    <div id="ar-sub-aging" style="display:none">
       <!-- Invoices -->
       <div class="g-card">
         <div class="g-card-head">
@@ -7166,6 +7271,15 @@ svg.yvi{width:1em;height:1em;vertical-align:-0.125em;flex-shrink:0;display:inlin
           </table>
         </div>
       </div>
+      <!-- Direct bill: la factura a credito contra el bono de la agencia (Ola A). Solo lectura. -->
+      <div id="ar-bonos-section" class="g-card">
+        <div class="g-card-head">
+          <div><div class="g-card-title" data-i18n="bonos.titulo" title="Cada bono (voucher) con la factura a crédito que lo respalda, y las facturas sin bono." data-i18n-title="bonos.sub">Direct bill: factura vs bono de agencia</div></div>
+          <span id="ar-bonos-resumen" class="g-small"></span>
+        </div>
+        <div id="ar-bonos-list" class="g-inline-list"><div class="g-empty g-cargando" data-i18n="bonos.cargando">Cotejando bonos…</div></div>
+      </div>
+
     </div>
 
     <!-- Emit invoice modal -->
@@ -7197,25 +7311,6 @@ svg.yvi{width:1em;height:1em;vertical-align:-0.125em;flex-shrink:0;display:inlin
             <button onclick="emitirFactura()" class="g-btn g-primary" data-i18n="arreal.emitir">📄 Emitir</button>
           </div>
         </div>
-      </div>
-    </div>
-
-    <!-- Direct bill: la factura a credito contra el bono de la agencia (Ola A). Solo lectura. -->
-    <div id="ar-bonos-section" class="g-card">
-      <div class="g-card-head">
-        <div><div class="g-card-title" data-i18n="bonos.titulo" title="Cada bono (voucher) con la factura a crédito que lo respalda, y las facturas sin bono." data-i18n-title="bonos.sub">Direct bill: factura vs bono de agencia</div></div>
-        <span id="ar-bonos-resumen" class="g-small"></span>
-      </div>
-      <div id="ar-bonos-list" class="g-inline-list"><div class="g-empty g-cargando" data-i18n="bonos.cargando">Cotejando bonos…</div></div>
-    </div>
-
-    <!-- BEOs generados automáticamente desde contratos -->
-    <div id="ar-beos-section" class="g-card">
-      <div class="g-card-head">
-        <div><div class="g-card-title" title="Yve crea el BEO (partidas e importes) desde el contrato de grupo y coteja la factura contra él." data-i18n-title="beos.sub"><span data-i18n="beos.titulo">BEOs desde contratos</span> <span id="ar-beos-count" class="g-small"></span></div></div>
-      </div>
-      <div id="ar-beos-list" class="g-inline-list">
-        <div class="g-empty g-cargando" data-i18n="lbl.cargando">Cargando…</div>
       </div>
     </div>
 
@@ -13584,6 +13679,12 @@ async function _procesarGrupoFotos(grupo, pref, addLine, cierre) {
       if (cierre && _dc.cierre) { _dc.cierre.forEach(function(p){ if (p) cierre[p] = true; }); }
       var _money = function(v){ return _fmtEurES(Number(v)||0, 2); };
       addLine('✓ Contrato ' + (_dc.contrato || '') + ' · ' + (_dc.cliente || '') + ' · ' + _money(_dc.total_receivable) + ' → AR Real' + (_dc.beo_lineas ? ' · BEO con ' + _dc.beo_lineas + ' partidas' : ''), 'l-ok');
+      // b87: la comision la factura la agencia; aqui solo la esperada y lo que falta decidir
+      if (_dc.modo_comision === 'porcentaje' && _dc.comision_esperada != null) addLine('✓ Comisión esperada ' + _money(_dc.comision_esperada) + ' (se cruzará con la factura de la agencia)', 'l-ok');
+      if (_dc.modo_comision === 'neta') addLine('✓ Tarifa neta: sin factura de comisión', 'l-ok');
+      var _faltaC = {modo: 'tarifa neta o comisión', pct: 'el % de comisión', pagador: 'quién paga la factura'};
+      var _pendC = (_dc.pendientes || []).map(function(x){ return _faltaC[x]; }).filter(Boolean);
+      if (_pendC.length) addLine('⚠ El contrato no lo dice, elígelo en AR › Contratos: ' + _pendC.join(' · '), 'l-warn');
       var _di2 = _dc.distribucion || {};
       if (_di2.ap)    addLine('✓ AP comisión agencia: ' + _money(_di2.ap) + ' (pago pendiente)', 'l-ok');
       if (_di2.banco) addLine('✓ Banco depósito previsto: ' + _money(_di2.banco), 'l-ok');
@@ -13692,6 +13793,7 @@ async function _unaFoto(original, fi, total, addLine, acc) {
         // agujero: scan_documento guardaba el documento y ahi se acababa.
         if (acc && data.cierre) { data.cierre.forEach(function(p){ if (p) acc[p] = true; }); }
         addLine((_ok ? '✓ ' : '⚠ ') + (file.name || 'foto') + ': ' + (data.tipo || '—') + (data.mensaje ? ' — ' + data.mensaje : ''), _ok ? 'l-ok' : 'l-warn');
+        if (data.aviso) addLine('⚠ ' + data.aviso, 'l-warn');   // b87: en su propia linea
       } else {
         addLine('✗ ' + (file.name || 'foto') + ': ' + (data.error || 'error'), 'l-err');
         errors++;
@@ -14708,7 +14810,7 @@ function fbCambiarMes() {
 }
 function fbSub(sub, el) {
   _fbActive = sub;
-  document.querySelectorAll('.fb-sub').forEach(b => b.classList.remove('active'));
+  document.querySelectorAll('#fb-subtabs .fb-sub').forEach(b => b.classList.remove('active'));   // solo las de F&B (b87: AR tiene las suyas)
   if (el) el.classList.add('active');
   const panels = {resumen:'fb-resumen', inventario:'fb-inventario', mermas:'fb-mermas-panel', recetas:'fb-recetas'};
   Object.values(panels).forEach(id => { const d = document.getElementById(id); if (d) d.style.display = 'none'; });
@@ -16951,6 +17053,109 @@ async function cargarBonosAR(){
     wrap.innerHTML = h.join('');
   } catch(e) {}
 }
+// ── AR nuevo (b87): Contratos · Petición de crédito · Aging AR ─────────────
+var _arSubActiva = 'contratos';
+function arSub(sub, el) {
+  _arSubActiva = sub;
+  document.querySelectorAll('#ar-subtabs .fb-sub').forEach(function(b){ b.classList.remove('active'); });
+  var btn = el || document.getElementById('ar-sub-btn-' + sub);
+  if (btn) btn.classList.add('active');
+  ['contratos', 'credito', 'aging'].forEach(function(s){
+    var d = document.getElementById('ar-sub-' + s);
+    if (d) d.style.display = (s === sub) ? 'block' : 'none';
+  });
+}
+// Los contratos de grupo: la comision la dice el contrato (tarifa neta o %) y,
+// si no lo dice, se pregunta aqui. Tambien quien paga la factura del grupo.
+var _arContratos = [];
+var _arCtrAbierto = {};
+function _ctrEsc(s){ return String(s==null?'':s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;'); }
+function _ctrPct(p){ var o = []; ['alojamiento','fb','salas'].forEach(function(k){ var v = Number((p||{})[k]||0); if (v) o.push((k === 'alojamiento' ? t('ctr.aloj','aloj.') : k === 'fb' ? 'F&B' : t('ctr.salas','salas')) + ' ' + String(v).replace('.', ',') + ' %'); }); return o.join(' · '); }
+function _ctrBadges(c) {
+  var com = c.comision || {}, pend = c.pendientes || [], b = [];
+  if (pend.indexOf('modo') !== -1) b.push(gBadge('g-warn', t('ctr.faltaModo', '¿Neta o comisión?')));
+  else if (pend.indexOf('pct') !== -1) b.push(gBadge('g-warn', t('ctr.faltaPct', 'Falta el %')));
+  else if (com.modo === 'neta') b.push(gBadge('g-info', t('ctr.neta', 'Tarifa neta')));
+  else if (com.modo === 'sin_agencia') b.push(gBadge('g-mute', t('ctr.sinAgencia', 'Sin agencia')));
+  else if (com.modo === 'porcentaje') b.push(gBadge('g-info', t('ctr.comision', 'Comisión') + ' ' + _ctrPct(c.pct)));
+  var q = (c.pagador || {}).quien;
+  b.push(q === 'agencia' ? gBadge('g-mute', t('ctr.pagaAgencia', 'Paga la agencia')) : q === 'cliente' ? gBadge('g-mute', t('ctr.pagaCliente', 'Paga el cliente')) : gBadge('g-warn', t('ctr.faltaPagador', '¿Quién paga?')));
+  var fg = c.factura || {};
+  if (fg.estado === 'COBRADO' || fg.estado === 'COBRADA') b.push(gBadge('g-pur', t('ctr.facturaCobrada', 'Factura cobrada')));
+  else if (fg.estado === 'FACTURADO') b.push(gBadge('g-warn', t('ctr.facturaEmitida', 'Factura emitida')));
+  else if (fg.numero) b.push(gBadge('g-mute', t('ctr.facturaPorEmitir', 'Factura por emitir')));
+  return b.join(' ');
+}
+function _ctrOrigen(x) { return x && x.origen === 'usuario' ? t('ctr.porUsuario', 'decidido por') + ' ' + _ctrEsc(x.por || '') : (x && x.origen === 'contrato' ? t('ctr.leido', 'leído del contrato') : ''); }
+function _ctrForm(i) {
+  var c = _arContratos[i] || {}, hay_ag = !!c.agencia, pct = c.pct || {};
+  var v = function(k){ var n = Number(pct[k] || 0); return n ? String(n) : ''; };
+  var h = '<div class="ctr-decidir">';
+  if (hay_ag) {
+    h += '<div class="g-label">' + t('ctr.decidirComision', 'Comisión de la agencia') + (c.comision && c.comision.texto ? ' <span class="g-small">«' + _ctrEsc(c.comision.texto).slice(0, 90) + '»</span>' : '') + '</div>' +
+      '<div class="ctr-acciones"><button class="g-btn g-secondary g-sm" onclick="decidirContratoAR(' + i + ',{modo:\'neta\'})">' + t('ctr.neta', 'Tarifa neta') + '</button>' +
+      '<span class="ctr-pct">' + [['pa', 'alojamiento', t('ctr.pctAloj', '% aloj.')], ['pf', 'fb', t('ctr.pctFb', '% F&B')], ['ps', 'salas', t('ctr.pctSalas', '% salas')]].map(function(x){
+        return '<label class="ctr-pctl"><span class="g-small">' + x[2] + '</span><input type="number" min="0" max="100" step="0.5" class="g-input" id="ctr-' + x[0] + '-' + i + '" value="' + v(x[1]) + '"></label>';
+      }).join('') +
+      '<button class="g-btn g-secondary g-sm" onclick="decidirPctAR(' + i + ')">' + t('ctr.btnPct', 'Comisión %') + '</button></span></div>' +
+      '<div class="g-label">' + t('ctr.decidirPagador', 'Quién paga la factura del grupo') + (c.pagador && c.pagador.texto ? ' <span class="g-small">«' + _ctrEsc(c.pagador.texto).slice(0, 90) + '»</span>' : '') + '</div>' +
+      '<div class="ctr-acciones"><button class="g-btn g-secondary g-sm" onclick="decidirContratoAR(' + i + ',{pagador:\'agencia\'})">' + t('ctr.pagaAgencia', 'Paga la agencia') + '</button>' +
+      '<button class="g-btn g-secondary g-sm" onclick="decidirContratoAR(' + i + ',{pagador:\'cliente\'})">' + t('ctr.pagaCliente', 'Paga el cliente') + '</button></div>';
+  }
+  return h + '<div id="ctr-msg-' + i + '" class="g-small"></div></div>';
+}
+function _pintarContratosAR() {
+  var wrap = document.getElementById('ar-contratos-list');
+  if (!wrap) return;
+  var cnt = document.getElementById('ar-contratos-count'), res = document.getElementById('ar-contratos-resumen');
+  if (cnt) cnt.textContent = _arContratos.length ? '(' + _arContratos.length + ')' : '';
+  var n_pend = _arContratos.filter(function(c){ return (c.pendientes || []).length; }).length;
+  if (res) res.textContent = n_pend ? t('ctr.pendientes', '{n} con algo por decidir').replace('{n}', n_pend) : '';
+  if (!_arContratos.length) { wrap.innerHTML = _vacio(t('ctr.vacio', 'Sube un contrato de grupo (PDF o fotos) en Procesar Archivos y aquí verás su comisión y quién paga.')); return; }
+  var eur = function(v){ return _fmtEurES(Number(v) || 0, 2); };
+  wrap.innerHTML = _arContratos.map(function(c, i){
+    var abierto = (c.pendientes || []).length || _arCtrAbierto[c.id];
+    var quien = [c.contrato, c.agencia ? _ctrEsc(c.agencia) + ' → ' + _ctrEsc(c.cliente) : _ctrEsc(c.cliente), (c.fecha_entrada ? _fechaCorta(c.fecha_entrada) : '') + (c.fecha_salida ? ' → ' + _fechaCorta(c.fecha_salida) : '')].filter(Boolean).join(' · ');
+    var esp = (c.comision || {}).modo === 'porcentaje' && c.esperada != null ? '<div class="g-small">' + t('ctr.esperada', 'Comisión esperada') + ' <b class="g-num">' + eur(c.esperada) + '</b> ' + t('ctr.sinIva', 'sin IVA') + '</div>' : '';
+    return '<div class="g-row ctr-row">' +
+      '<div class="ctr-top"><div class="g-who"><b>' + _ctrEsc(c.evento) + '</b><span>' + quien + '</span></div>' +
+      '<div class="ctr-total"><b class="g-num">' + eur((c.importes || {}).total) + '</b>' +
+      (c.agencia ? '<button class="g-btn g-ghost g-sm g-icon" onclick="_arCtrAbierto[_arContratos[' + i + '].id]=!_arCtrAbierto[_arContratos[' + i + '].id];_pintarContratosAR()" title="' + t('ctr.corregir', 'Corregir') + '">✎</button>' : '') + '</div></div>' +
+      '<div class="ctr-badges">' + _ctrBadges(c) + '</div>' + esp +
+      '<div class="g-small">' + [_ctrOrigen(c.comision), _ctrOrigen(c.pagador)].filter(Boolean).filter(function(x, k, a){ return a.indexOf(x) === k; }).join(' · ') + '</div>' +
+      (abierto && c.agencia ? _ctrForm(i) : '') +
+      '</div>';
+  }).join('');
+  if (typeof _pintarYa === 'function') _pintarYa(wrap);
+}
+async function cargarContratosAR() {
+  var wrap = document.getElementById('ar-contratos-list');
+  if (!wrap) return;
+  try {
+    var d = await (await fetch('/api/ar/contratos', {cache: 'no-store'})).json();
+    if (!d || !d.ok) { wrap.innerHTML = _gError(t('ctr.error', 'No se han podido leer los contratos.')); return; }
+    _arContratos = d.contratos || [];
+    _pintarContratosAR();
+  } catch(e) { wrap.innerHTML = _gError(t('ctr.error', 'No se han podido leer los contratos.')); }
+}
+async function decidirContratoAR(i, datos) {
+  var c = _arContratos[i]; if (!c) return;
+  var msg = document.getElementById('ctr-msg-' + i);
+  try {
+    var r = await _postJson('/api/ar/contratos/decidir', Object.assign({id: c.id}, datos));
+    var d = await r.json();
+    if (!d.ok) { if (msg) msg.textContent = '✗ ' + (d.error || 'Error'); return; }
+    _arContratos[i] = d.contrato; _arCtrAbierto[c.id] = false;
+    _pintarContratosAR();
+    showNotification('✓ ' + t('ctr.guardado', 'Guardado'), 'success');
+    if (typeof cargarARRealData === 'function') cargarARRealData();
+  } catch(e) { if (msg) msg.textContent = '✗ Error'; }
+}
+function decidirPctAR(i) {
+  var v = function(id){ var e = document.getElementById(id); return e ? e.value : ''; };
+  return decidirContratoAR(i, {modo: 'porcentaje', pct: {alojamiento: v('ctr-pa-' + i), fb: v('ctr-pf-' + i), salas: v('ctr-ps-' + i)}});
+}
+
 async function cargarBeosAR() {
   var wrap = document.getElementById('ar-beos-list');
   var cnt = document.getElementById('ar-beos-count');
@@ -16991,6 +17196,7 @@ async function cargarBeosAR() {
 async function cargarARRealData() {
   // Show skeleton on KPIs while loading
   _skelOn(['arp-pendiente','arp-vencido','arp-cobrado','arp-nclientes']);
+  try { cargarContratosAR(); } catch(e){}
   try { cargarBeosAR(); } catch(e){}
   try { cargarBonosAR(); } catch(e){}
   try {
@@ -17016,7 +17222,8 @@ async function cargarARRealData() {
 
       // Aging bar
       const agingEl = document.getElementById('ar-aging-bar');
-      if (agingEl && (!s.aging || !(df.facturas || []).length)) { agingEl.style.display = 'none'; agingEl.innerHTML = ''; }
+      // sin nada emitido (todo "pendiente de emitir") la barra salia vacia con su titulo: se esconde (b87)
+      if (agingEl && (!s.aging || !(df.facturas || []).length || !(Object.values(s.aging).reduce(function(a, b){ return a + (Number(b) || 0); }, 0) > 0))) { agingEl.style.display = 'none'; agingEl.innerHTML = ''; }
       else if (agingEl && s.aging) {
         const total = Object.values(s.aging).reduce((a,b) => a+b, 0) || 1;
         const colors = {'0-30 días':'var(--grn)','31-60 días':'var(--ora)','61-90 días':'var(--red)','>90 días (VENCIDA)':'var(--red)'};
@@ -17124,7 +17331,8 @@ function _renderFacturasAR(facturas, stats) {
 }
 
 function filtrarClienteAR(nombre) {
-  // Filter invoices by client
+  // Filter invoices by client (b87: las facturas viven en la subpestaña Aging AR)
+  if (typeof arSub === 'function' && _arSubActiva !== 'aging') arSub('aging');
   const sel = document.getElementById('ar-filter-estado');
   if (sel) sel.value = '';
   const filtered = _arAllFacturas.filter(f => f.cliente === nombre);

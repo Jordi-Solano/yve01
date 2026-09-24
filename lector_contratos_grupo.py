@@ -17,7 +17,7 @@ from datetime import datetime
 MODEL = "claude-sonnet-4-6"
 
 # Esquema que pedimos a la visión (una sola pasada con todas las páginas)
-_PROMPT = """Eres un experto en contratación hotelera. Te paso las fotos de TODAS las páginas
+_PROMPT = """Eres un experto en contratación hotelera. Te paso TODAS las páginas (fotos o PDF)
 de un contrato de grupo/eventos de hotel (contrato + BEO + anexos). Devuelve SOLO un JSON válido
 (sin texto alrededor) con esta estructura exacta (usa null si un dato no aparece):
 {
@@ -34,14 +34,18 @@ de un contrato de grupo/eventos de hotel (contrato + BEO + anexos). Devuelve SOL
  "tasa_turistica": {"por_persona_noche":0,"max_noches":0},
  "fb": {"total":0,"por_persona_dia":0,"pax":0,"dias":0,"iva_pct":10,"detalle":""},
  "salas": {"total":0},
- "comisiones": {"alojamiento_pct":0,"salas_pct":0,"fb_pct":0,"ddr_pct":0,"misc_pct":0},
+ "comisiones": {"modo":null,"texto":"","alojamiento_pct":0,"salas_pct":0,"fb_pct":0,"ddr_pct":0,"misc_pct":0},
+ "facturacion": {"pagador":null,"texto":""},
  "deposito": {"pct":0,"cuando":"","iban":"","beneficiario":"","referencia":""},
  "doble_imposicion": false,
  "beos": []
 }
 Importante: los importes son numéricos (sin símbolo €, punto decimal). Las fechas en formato ISO.
 "doble_imposicion" = true si el cliente es extranjero o el contrato menciona doble imposición / withholding / certificado de residencia fiscal.
-"es_contrato_grupo" = true SOLO si es un contrato de grupo/eventos de hotel o un BEO (orden de servicio); false si son facturas sueltas, extractos u otro documento."""
+"es_contrato_grupo" = true SOLO si es un contrato de grupo/eventos de hotel o un BEO (orden de servicio); false si son facturas sueltas, extractos u otro documento.
+"agencia" = la intermediaria (agencia de viajes, DMC, OPC) que contrata para el cliente; déjala vacía si el cliente contrata directamente con el hotel.
+"comisiones.modo": lee SOLO el campo/cláusula de comisiones del contrato. "neta" si dice tarifa neta / tarifas netas / net rate / no comisionable (el hotel factura el neto y no hay factura de comisión); "porcentaje" si da un % de comisión para la agencia (el hotel factura el bruto y la agencia factura su comisión aparte); null si el contrato no dice nada de comisiones. "comisiones.texto" = lo que pone ese campo, literal y breve. No lo deduzcas de otra parte del contrato.
+"facturacion.pagador": "agencia" si la factura del grupo se emite a la agencia o la paga la agencia; "cliente" si la paga directamente el cliente final; null si el contrato no lo dice. "facturacion.texto" = la frase del contrato que lo dice."""
 
 
 def _api_key():
@@ -67,6 +71,16 @@ def _img_block(path):
     return {"type": "image", "source": {"type": "base64", "media_type": mt, "data": data}}
 
 
+def _bloque(path):
+    """Una pagina para la IA: foto (image) o PDF entero (document). b87: los
+    contratos en PDF pasan por este mismo lector (decision de Jordi, 24 sep)."""
+    if str(path).lower().endswith(".pdf"):
+        with open(path, "rb") as f:
+            data = base64.standard_b64encode(f.read()).decode()
+        return {"type": "document", "source": {"type": "base64", "media_type": "application/pdf", "data": data}}
+    return _img_block(path)
+
+
 def extraer_contrato_grupo(image_paths):
     """Extrae los datos del contrato con la visión de Claude. Nunca lanza; si falla
     devuelve {'_needs_review': True, '_error': ...}."""
@@ -78,8 +92,8 @@ def extraer_contrato_grupo(image_paths):
         client = anthropic.Anthropic(api_key=key)
         content = [{"type": "text", "text": _PROMPT}]
         for p in image_paths[:30]:
-            content.append(_img_block(p))
-        resp = client.messages.create(model=MODEL, max_tokens=1500,
+            content.append(_bloque(p))
+        resp = client.messages.create(model=MODEL, max_tokens=3000,
                                       messages=[{"role": "user", "content": content}])
         txt = resp.content[0].text.strip()
         # aislar el JSON
@@ -122,9 +136,22 @@ def calcular_comisiones(datos):
     }
 
 
-def transformar(datos):
+def transformar(datos, hotel_id=None):
     """Convierte los datos extraídos en filas para AR Real + comisión + flag DI.
-    Testeable sin API."""
+    Testeable sin API.
+
+    b87 (respuestas de finanzas, 24 sep 2026):
+      - la comision solo existe si el contrato la da en %; con tarifa neta (o sin
+        agencia) es 0, y si el contrato no lo dice queda PENDIENTE (0 aqui; la
+        persona lo decide en AR > Contratos). Yve no crea factura de comision:
+        la manda la agencia (b88 la une al contrato).
+      - la factura del grupo va a nombre de QUIEN PAGA (agencia o cliente). Si el
+        contrato no lo dice, a nombre del cliente hasta que alguien lo decida, y
+        sin ficha de cliente AR (no se sabe de quien es la deuda).
+      - el cliente AR nace SIN credito: el limite sale de una peticion firmada.
+      - la factura lleva el hotel (antes se guardaba sin hotel_id y con un hotel
+        elegido no se veia)."""
+    import contratos_grupo as CG
     ev = datos.get("evento", {}) or {}
     cli = datos.get("cliente", {}) or {}
     aloj = datos.get("alojamiento", {}) or {}
@@ -136,21 +163,42 @@ def transformar(datos):
     imp_fb = _f(fb.get("total"))
     imp_salas = _f(salas.get("total"))
     total = round(imp_hab + imp_fb + imp_salas, 2)
+    modo = CG.modo_comision(datos)["modo"]
     comis = calcular_comisiones(datos)
+    if modo != "porcentaje":
+        comis = dict(comis, alojamiento=0.0, fb=0.0, salas=0.0, total=0.0)
+    pagador = CG.pagador_de(datos)["quien"]
+    ag = datos.get("agencia", {}) or {}
+    if hotel_id is None:
+        try:
+            import censo_hoteles as _censo
+            hotel_id = _censo.para_guardar()
+        except Exception:
+            hotel_id = os.environ.get("YVE_HOTEL", "")
     # DI solo si el cliente es de un pais fuera de la UE con convenio (config_di, regla de finanzas 7 sep 2026)
     from config_di import requiere_di
     di = bool(datos.get("doble_imposicion")) or requiere_di(cli.get("pais", ""))
 
     nombre_cli = (cli.get("nombre") or "Cliente grupo").strip()
-    cliente_row = {
-        "nombre_cliente": nombre_cli, "NIF": cli.get("cif") or "", "nif": cli.get("cif") or "",
-        "email": cli.get("email") or "", "telefono": (datos.get("agencia", {}) or {}).get("telefono", "") or "",
-        "dias_pago": 30, "limite_credito": 100000, "credito_limite": 100000, "credito_usado": 0,
-    }
     numero = f"GRP-{contrato}" if contrato else f"GRP-{datetime.now().strftime('%Y%m%d%H%M')}"
+    # la ficha AR es la de quien paga; sin saberlo no se crea ninguna
+    if pagador == "agencia":
+        deudor, nif_d, mail_d, tel_d = (ag.get("nombre") or "").strip(), ag.get("cif") or "", ag.get("email") or "", ag.get("telefono") or ""
+    elif pagador == "cliente":
+        deudor, nif_d, mail_d, tel_d = nombre_cli, cli.get("cif") or "", cli.get("email") or "", ""
+    else:
+        deudor, nif_d, mail_d, tel_d = "", "", "", ""
+    cliente_row = None
+    if deudor:
+        cliente_row = {
+            "nombre_cliente": deudor, "nif": nif_d, "email": mail_d, "telefono": tel_d,
+            "dias_pago": 30, "credito_limite": 0.0, "credito_usado": 0,
+            "estado_ficha": "PENDIENTE", "origen": f"contrato {contrato or numero}".strip(),
+            "hotel_id": hotel_id or "",
+        }
     noches = int(_f(aloj.get("noches"))) or 0
     reserva_row = {
-        "numero_reserva": numero, "numero": numero, "cliente": nombre_cli,
+        "numero_reserva": numero, "numero": numero, "cliente": deudor or nombre_cli,
         "fecha_entrada": aloj.get("fecha_entrada") or "", "fecha_salida": aloj.get("fecha_salida") or "",
         "fecha_emision": "", "habitaciones": int(_f(aloj.get("habitaciones"))), "noches": noches,
         "importe_habitaciones": imp_hab, "importe_fb": imp_fb, "importe_extras": imp_salas,
@@ -158,6 +206,8 @@ def transformar(datos):
         "evento": (str(ev.get("id") or "") + " " + str(ev.get("nombre") or "")).strip(),
         "contrato": contrato, "comision_total": comis["total"],
         "requiere_certificado_di": di, "tipo": "CONTRATO_GRUPO",
+        "modo_comision": modo, "pagador": pagador, "agencia": (ag.get("nombre") or "").strip(),
+        "cliente_final": nombre_cli, "hotel_id": hotel_id or "",
     }
     return {
         "cliente": cliente_row, "reserva": reserva_row, "comisiones": comis,
@@ -166,7 +216,7 @@ def transformar(datos):
             "evento": reserva_row["evento"], "contrato": contrato, "cliente": nombre_cli,
             "total_receivable": total, "habitaciones": imp_hab, "fb": imp_fb, "salas": imp_salas,
             "comision_total": comis["total"], "requiere_certificado_di": di,
-            "numero": numero,
+            "numero": numero, "modo_comision": modo, "pagador": pagador, "deudor": deudor,
         },
     }
 
@@ -288,19 +338,26 @@ def guardar(transformado, datos_dir=None):
     import pandas as pd
     dd = datos_dir or _datos_dir()
     os.makedirs(dd, exist_ok=True)
-    # Clientes
+    # Clientes: la ficha AR de quien paga la da de alta contratos_grupo.
+    # sincronizar_factura (SIN credito, b87), porque ahi ya se sabe si una
+    # persona ha cambiado quien paga. Antes se creaba aqui con 100.000 € de
+    # limite regalado.
     pc = os.path.join(dd, "clientes_credito.xlsx")
-    dfc = pd.read_excel(pc) if os.path.exists(pc) else pd.DataFrame()
-    nom = transformado["cliente"]["nombre_cliente"]
-    if not (len(dfc) and (dfc.get("nombre_cliente", pd.Series(dtype=str)).astype(str) == nom).any()):
-        dfc = pd.concat([dfc, pd.DataFrame([transformado["cliente"]])], ignore_index=True)
-        dfc.to_excel(pc, index=False)
     # Reservas / facturas
     pr = os.path.join(dd, "reservas_credito.xlsx")
     dfr = pd.read_excel(pr) if os.path.exists(pr) else pd.DataFrame()
     num = transformado["reserva"]["numero_reserva"]
     col = "numero_reserva" if "numero_reserva" in dfr.columns else "numero"
     if len(dfr) and col in dfr.columns:
+        # reprocesar el contrato no "des-emite" la factura: su estado y sus
+        # fechas (emision, cobro, recordatorio) se conservan (b87)
+        prev = dfr[dfr[col].astype(str) == num]
+        if len(prev):
+            p0 = prev.iloc[0].to_dict()
+            for k in ("estado", "fecha_emision", "fecha_cobro", "ultimo_recordatorio"):
+                v = p0.get(k)
+                if v is not None and str(v).strip() not in ("", "nan", "NaT", "None"):
+                    transformado["reserva"][k] = v
         dfr = dfr[dfr[col].astype(str) != num]  # reemplaza si ya existía
     dfr = pd.concat([dfr, pd.DataFrame([transformado["reserva"]])], ignore_index=True)
     dfr.to_excel(pr, index=False)
@@ -320,10 +377,13 @@ def _append_xlsx(path, row, dedup_col=None):
 
 def distribuir_contrato(datos, transformado, datos_dir=None):
     """Reparte los importes REALES del contrato a los módulos donde tienen sentido:
-      · AP    -> comisión que el hotel paga a la agencia (pago pendiente)
       · Banco -> depósito/anticipo que el cliente adelanta (cobro previsto)
       · F&B   -> catering/banquete del evento (ingreso del evento)
-    Devuelve {'ap':importe|None,'banco':importe|None,'fb':importe|None} para el log/badges."""
+    La comision YA NO va a AP (b87, decision de Jordi 24 sep): la factura de
+    comision la manda la agencia y Yve la une al contrato cuando llega; hasta
+    entonces lo devengado va a la provision del cierre (4109). `ap` sigue en el
+    resultado, siempre None, para no romper a quien lo lea.
+    Devuelve {'ap':None,'banco':importe|None,'fb':importe|None} para el log/badges."""
     dd = datos_dir or _datos_dir()
     os.makedirs(dd, exist_ok=True)
     res = {"ap": None, "banco": None, "fb": None}
@@ -332,42 +392,8 @@ def distribuir_contrato(datos, transformado, datos_dir=None):
     contrato = str(datos.get("contrato_numero") or "").strip()
     hoy = datetime.now().strftime("%Y-%m-%d")
 
-    # ── AP: comisión a la agencia ──
-    comis = (transformado or {}).get("comisiones", {}) or {}
-    com_total = _f(comis.get("total"))
-    if com_total > 0:
-        try:
-            from tenant_dirs import procesadas_dir
-            pdir = procesadas_dir()
-        except Exception:
-            pdir = dd
-        os.makedirs(pdir, exist_ok=True)
-        ap_file = os.path.join(pdir, "facturas_ap_" + datetime.now().strftime("%Y%m%d") + ".xlsx")
-        ag = datos.get("agencia", {}) or {}
-        agencia = ag.get("nombre") or (datos.get("cliente", {}) or {}).get("nombre") or "Agencia"
-        base = round(com_total / 1.21, 2)
-        num = ("COM-" + contrato) if contrato else ("COM-" + datetime.now().strftime("%Y%m%d%H%M"))
-        # BUG 8: esta fila se escribe SIN pasar por `_guardar_factura_ap`, que
-        # es quien estampa el hotel. Sin `hotel_id` la comision cae en "sin
-        # asignar": no sale en ningun hotel y no se puede aprobar. El bloque de
-        # F&B de mas abajo ya lo hacia bien (fase 4b) — aqui faltaba.
-        try:
-            import censo_hoteles as _censo
-            _hid_ap = _censo.para_guardar()
-        except Exception:
-            _hid_ap = os.environ.get("YVE_HOTEL", "")
-        _append_xlsx(ap_file, {
-            "archivo": "comision_" + (contrato or evento_nombre),
-            "numero_factura": num, "fecha": hoy, "nombre_proveedor": agencia,
-            "NIF_proveedor": ag.get("cif", "") or "",
-            "descripcion_concepto": "Comisión agencia · " + evento_nombre,
-            "base_imponible": base, "porcentaje_iva": 21,
-            "cuota_iva": round(com_total - base, 2), "total_factura": round(com_total, 2),
-            "moneda": "EUR", "tipo": "COMISION_AGENCIA", "estado_matching": "SIN_PO",
-            "hotel_id": _hid_ap,
-        }, dedup_col="numero_factura")
-        res["ap"] = round(com_total, 2)
-
+    # ── AP: la comision NO se escribe (b87). Antes se creaba aqui una factura
+    # COM-<contrato> en facturas_ap: al llegar la de la agencia habria dos.
     # ── Banco: depósito previsto ──
     dep = datos.get("deposito", {}) or {}
     total_recv = _f((transformado or {}).get("resumen", {}).get("total_receivable"))
@@ -425,7 +451,7 @@ def procesar_contrato_grupo(image_paths, datos_dir=None, guardar_datos=True):
             image_paths = sorted(glob.glob(os.path.join(image_paths, "*")))
         else:
             image_paths = [image_paths]
-    image_paths = [p for p in image_paths if str(p).lower().endswith((".jpg", ".jpeg", ".png", ".webp", ".heic"))]
+    image_paths = [p for p in image_paths if str(p).lower().endswith((".jpg", ".jpeg", ".png", ".webp", ".heic", ".pdf"))]
     datos = extraer_contrato_grupo(image_paths)
     if datos.get("_needs_review"):
         return {"ok": False, "needs_review": True, "error": datos.get("_error", ""),
@@ -457,6 +483,7 @@ def procesar_contrato_grupo(image_paths, datos_dir=None, guardar_datos=True):
                            "aprovechable — revisar manualmente."}
     beo = generar_beo(datos, t)
     r_dist = {}
+    reg = None
     if guardar_datos:
         t["_paths"] = guardar(t, datos_dir)
         try:
@@ -467,7 +494,20 @@ def procesar_contrato_grupo(image_paths, datos_dir=None, guardar_datos=True):
             r_dist = distribuir_contrato(datos, t, datos_dir)
         except Exception:
             r_dist = {}
+        try:
+            import contratos_grupo as CG
+            reg = CG.registrar(datos, t, hotel_id=t["reserva"].get("hotel_id"),
+                               archivo=", ".join(os.path.basename(str(p)) for p in image_paths)[:200],
+                               datos_dir=datos_dir)
+            CG.sincronizar_factura(reg, datos_dir)
+        except Exception:
+            reg = None
     r = t["resumen"]; r["ok"] = True
+    if reg:
+        import contratos_grupo as CG
+        r["contrato_id"] = reg["id"]
+        r["pendientes"] = CG.pendientes(reg)
+        r["comision_esperada"] = CG.comision_esperada(reg)
     r["beo"] = beo
     r["beo_lineas"] = len(beo.get("lineas", []))
     r["beo_total"] = beo.get("total", 0)
@@ -476,6 +516,7 @@ def procesar_contrato_grupo(image_paths, datos_dir=None, guardar_datos=True):
     # guardaba y ahi se quedaba — sin cuenta contable y sin asiento. Se
     # devuelve la misma lista `cierre` que `/api/scan_documento`, y el
     # frontend la junta con la de las fotos para llamar UNA vez al cierre.
+    # b87: el contrato ya no escribe en AP (la comision la factura la agencia).
     r["cierre"] = (["ap"] if r_dist.get("ap") else []) + ["ar"]
     return r
 

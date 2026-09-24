@@ -56,7 +56,7 @@ SABOTAJE = "--sabotaje" in sys.argv
 # Las banderas que el enrutador PUEDE poner y que el lote USA. `orden_compra`
 # se queda fuera a proposito: hoy no la lee nadie en ningun camino, asi que
 # exigirla seria pedir codigo muerto.
-BANDERAS = ("has_ar", "has_ap", "ap_n", "albaran")
+BANDERAS = ("has_ar", "has_ap", "ap_n", "albaran", "ar_real")   # b87: ar_real (contrato en PDF → AR)
 
 
 # ── 2 · el invariante (AST) ───────────────────────────────────────────────

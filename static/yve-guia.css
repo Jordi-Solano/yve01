@@ -389,3 +389,16 @@ body.acentuar-todo .g-kpi:hover{background:rgba(var(--acc-r,59),var(--acc-g,130)
   .g-tbl-wrap:has(td>.g-empty){border:none;border-radius:0}
   .g-tbl:has(td>.g-empty) tbody,.g-tbl:has(td>.g-empty) tr,.g-tbl:has(td>.g-empty) td{display:block;width:auto;padding:0;border:none}
 }
+/* AR nuevo (b87): subpestañas Contratos · Peticion de credito · Aging AR, y la
+   fila de un contrato de grupo (comision segun contrato, quien paga, decidir). */
+@media(max-width:768px){body #ar-subtabs .fb-sub{white-space:normal;line-height:1.25}}
+.ctr-row{display:block}
+.ctr-top{display:flex;align-items:flex-start;justify-content:space-between;gap:8px;flex-wrap:wrap}
+.ctr-top>.g-who{min-width:0;flex:1 1 200px}
+.ctr-total{display:flex;align-items:center;gap:6px;flex:0 0 auto}
+.ctr-badges{display:flex;gap:6px;flex-wrap:wrap;margin:8px 0 4px}
+.ctr-decidir{margin-top:10px;padding-top:10px;border-top:1px solid var(--g-line);display:flex;flex-direction:column;gap:6px}
+.ctr-acciones{display:flex;gap:6px;flex-wrap:wrap;align-items:flex-end}
+.ctr-pct{display:flex;gap:6px;flex-wrap:wrap;align-items:flex-end}
+.ctr-pctl{display:flex;flex-direction:column;gap:2px}
+.ctr-pct .g-input{width:84px;min-width:0}

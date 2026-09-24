@@ -183,6 +183,16 @@ def alta_cliente_desde_bono(agencia, nif="", numero_bono="", datos_dir=None, hot
     existe, no se toca nada (ni el NIF: el de la ficha manda) salvo rellenar
     el NIF si la ficha no tenia. Devuelve 'CREADO', 'NIF_RELLENADO' o 'YA_EXISTE'.
     """
+    return alta_cliente_pendiente(agencia, nif, f'bono {numero_bono}'.strip(), datos_dir=datos_dir, hotel_id=hotel_id)
+
+
+def alta_cliente_pendiente(nombre, nif="", origen="", datos_dir=None, hotel_id=None, email="", telefono=""):
+    """Ficha AR "pendiente" SIN credito (limite 0) para quien nos va a deber algo:
+    la agencia de un bono (b34) o quien paga la factura de un contrato de grupo
+    (b87). Mismas reglas que el bono: si ya existe no se toca (solo se rellena
+    el NIF si no tenia). Devuelve 'CREADO', 'NIF_RELLENADO', 'YA_EXISTE' o
+    'SIN_NOMBRE'."""
+    agencia = nombre
     nombre = str(agencia or "").strip()
     if not nombre or nombre.upper() == "NO_ENCONTRADO":
         return "SIN_NOMBRE"
@@ -216,8 +226,8 @@ def alta_cliente_desde_bono(agencia, nif="", numero_bono="", datos_dir=None, hot
         except Exception:
             hotel_id = ''
     fila = {'nombre_cliente': nombre, 'nif': nif, 'credito_limite': 0.0, 'credito_usado': 0, 'dias_pago': 30,
-            'email': '', 'telefono': '', 'hotel_id': hotel_id, 'estado_ficha': 'PENDIENTE',
-            'origen': f'bono {numero_bono}'.strip()}
+            'email': str(email or '').strip(), 'telefono': str(telefono or '').strip(), 'hotel_id': hotel_id,
+            'estado_ficha': 'PENDIENTE', 'origen': str(origen or '').strip()}
     df = pd.concat([df, pd.DataFrame([fila])], ignore_index=True) if len(df) else pd.DataFrame([fila])
     df.to_excel(ruta, index=False)
     return "CREADO"

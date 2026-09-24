@@ -7,6 +7,13 @@ BUG 8 — dos mitades:
   2. ese camino no pedia el paso de cierre, asi que la comision se quedaba
      sin cuenta contable y sin asiento.
 
+ADAPTADO en b87 (regla cambiada A PROPOSITO por finanzas, 24 sep 2026): Yve ya
+NO escribe la factura de comision en AP — la manda la agencia y se une al
+contrato cuando llega. Lo que protegia el bug 8 (que lo del contrato lleve el
+hotel y no quede "sin asignar") se comprueba ahora en lo que SI se escribe: la
+factura del grupo y el registro del contrato llevan el hotel, y en AP no entra
+nada (el cierre solo pide 'ar').
+
 M3 — la fecha de las mermas se perdia por dos sitios: `_MER_COL_MAP` no tenia
 entrada `fecha` (un fichero con 'Fecha' o 'dia' la tiraba) y ninguna puerta
 ponia una por defecto.
@@ -88,25 +95,19 @@ def main():
             return L.distribuir_contrato(fila, t, dd)
 
         r = con_censo(HOTELES, _dist)
-        df = pd.read_excel(ap_file) if os.path.exists(ap_file) else pd.DataFrame()
-        hid = str(df.iloc[0].get('hotel_id', '')) if len(df) else ''
-        if SABOTAJE:
-            hid = ''            # como estaba antes del arreglo
-        ok_hotel = (len(df) == 1 and hid == 'HTEST01')
-        print(f"  {'OK ' if ok_hotel else 'FALLA'}  la comision lleva el hotel: {hid!r} "
-              f"(esperaba 'HTEST01')")
-        if not ok_hotel:
+        ok_sin_ap = (not os.path.exists(ap_file)) and r.get('ap') is None
+        print(f"  {'OK ' if ok_sin_ap else 'FALLA'}  b87: la comision NO se escribe en AP (la factura la manda la agencia)")
+        if not ok_sin_ap:
             fallos += 1
 
-        # ── BUG 8 · 1b · nada mas se ha movido ──────────────────────
-        f = df.iloc[0].to_dict() if len(df) else {}
-        ok_datos = (str(f.get('numero_factura')) == 'COM-CG-BUG8'
-                    and round(float(f.get('total_factura', 0)), 2) == round(r['ap'], 2)
-                    and str(f.get('tipo')) == 'COMISION_AGENCIA'
-                    and str(f.get('nombre_proveedor')) == 'Agencia Prueba S.L.')
-        print(f"  {'OK ' if ok_datos else 'FALLA'}  el resto de la fila no se mueve "
-              f"({f.get('numero_factura')} · {f.get('total_factura')} € · {f.get('tipo')})")
-        if not ok_datos:
+        # ── BUG 8 · 1b · lo que SI se escribe lleva el hotel ─────────
+        t_h = con_censo(HOTELES, lambda: L.transformar(DATOS))
+        hid = str(t_h['reserva'].get('hotel_id', ''))
+        if SABOTAJE:
+            hid = ''            # como estaba antes del arreglo
+        ok_hotel = hid == 'HTEST01'
+        print(f"  {'OK ' if ok_hotel else 'FALLA'}  la factura del grupo lleva el hotel: {hid!r} (esperaba 'HTEST01')")
+        if not ok_hotel:
             fallos += 1
 
         # ── BUG 8 · 2 · el contrato PIDE el cierre ──────────────────
@@ -122,8 +123,10 @@ def main():
         cierre = list(res.get('cierre') or [])
         if SABOTAJE:
             cierre = []
-        ok_cierre = ('ap' in cierre and 'ar' in cierre)
-        print(f"  {'OK ' if ok_cierre else 'FALLA'}  el contrato pide el cierre: {cierre}")
+        import contratos_grupo as CG
+        reg = CG.leer(dd)
+        ok_cierre = (cierre == ['ar'] and len(reg) == 1 and reg[0].get('hotel_id') == 'HTEST01')
+        print(f"  {'OK ' if ok_cierre else 'FALLA'}  el contrato pide el cierre de AR y su registro lleva el hotel: {cierre}")
         if not ok_cierre:
             fallos += 1
 
@@ -205,7 +208,7 @@ def main():
     if fallos:
         print(f'{fallos} en rojo')
         return 1
-    print('Todo OK. La comision lleva hotel y pide cierre; las mermas llevan fecha.')
+    print('Todo OK. El contrato lleva hotel y pide cierre (sin factura en AP); las mermas llevan fecha.')
     return 0
 
 
