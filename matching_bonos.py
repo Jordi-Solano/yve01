@@ -96,6 +96,8 @@ def _facturas(df_reservas):
         estado = _txt(r.get("estado")).upper()
         if estado not in ("FACTURADO", "COBRADO"):
             continue        # PENDIENTE_FACTURA no es una factura todavia
+        if _txt(r.get("tipo")).upper() == "CONTRATO_GRUPO":
+            continue        # b89: la factura de un contrato de grupo la respalda el contrato firmado, no un bono
         num = _txt(r.get("numero_reserva")) or _txt(r.get("numero"))
         total = _num(r.get("total"))
         if total is None:

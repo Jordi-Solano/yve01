@@ -556,7 +556,21 @@ def marcar_comisiones(df, contratos=None, datos_dir=None):
     cmap = {c["id"]: c for c in contratos}
     cols = {k: [] for k in ("es_comision_agencia", "comision_contrato", "comision_evento", "comision_esperada",
                             "comision_facturada", "comision_estado", "comision_diferencia", "comision_pagador",
-                            "factura_grupo", "comision_vinculo")}
+                            "factura_grupo", "comision_vinculo", "grupo_estado")}
+    grupos = [None]         # b89: las facturas de grupo se leen solo si hay alguna comision
+
+    def _estado_grupo(c):
+        num = _txt(c.get("factura_grupo"))
+        if not num:
+            return ""
+        if grupos[0] is None:
+            try:
+                import compensaciones as _cmp
+                grupos[0] = _cmp.leer_facturas_grupo(datos_dir)
+            except Exception:
+                grupos[0] = {}
+        fg = grupos[0].get(num + "|" + _txt(c.get("hotel_id"))) or grupos[0].get(num + "|") or {}
+        return _txt(fg.get("estado"))
     f_con, ctas, ctas_g = [], [], []
     tiene_fc = "fecha_contable" in df.columns
     tiene_cdg = "cuenta_debe_gasto" in df.columns
@@ -577,12 +591,13 @@ def marcar_comisiones(df, contratos=None, datos_dir=None):
             cols["comision_pagador"].append((c.get("pagador") or {}).get("quien", ""))
             cols["factura_grupo"].append(_txt(c.get("factura_grupo")))
             cols["comision_vinculo"].append((enl.get(cid) or {}).get("origen", "") if cid else "legado")
+            cols["grupo_estado"].append(_estado_grupo(c) if c else "")
             f_con.append(_iso(f.get("fecha_factura") if _txt(f.get("fecha_factura")) else f.get("fecha")) or (f.get("fecha_contable") if tiene_fc else ""))
             ctas.append(f.get("cuenta_contable") if ajustada else "628")
             ctas_g.append(f.get("cuenta_debe_gasto") if ajustada else "628")
         else:
             cols["es_comision_agencia"].append(False)
-            for k in ("comision_contrato", "comision_evento", "comision_estado", "comision_pagador", "factura_grupo", "comision_vinculo"):
+            for k in ("comision_contrato", "comision_evento", "comision_estado", "comision_pagador", "factura_grupo", "comision_vinculo", "grupo_estado"):
                 cols[k].append("")
             for k in ("comision_esperada", "comision_facturada", "comision_diferencia"):
                 cols[k].append(None)

@@ -313,6 +313,8 @@ def api_clientes():
             pend = df_r[(df_r['cliente'] == nombre) & 
                         (df_r['estado'].isin(['FACTURADO','PENDIENTE_FACTURA']))] if len(df_r) else pd.DataFrame()
             total_pend = float(pend['total'].sum()) if len(pend) else 0
+            if len(pend) and 'compensado' in pend.columns:     # b89: lo compensado ya no se debe
+                total_pend -= float(pd.to_numeric(pend['compensado'], errors='coerce').fillna(0).sum())
             has_overdue = False
             if len(pend) and 'fecha_emision' in pend.columns:
                 for _, row in pend.iterrows():
@@ -360,6 +362,10 @@ def facturas_y_stats(df_r):
     if not df_r.empty:
         for _, row in df_r.iterrows():
             total = float(row.get('total', 0) or 0)
+            # b89: lo compensado con la factura de comision de la agencia (410/430) ya no se
+            # cobra: lo pendiente es el saldo. Sin columna `compensado`, saldo = total.
+            comp = _num_cliente(row, 'compensado')
+            saldo = round(max(0.0, total - comp), 2)
             estado = str(row.get('estado', ''))
             fecha_em = row.get('fecha_emision')
             bucket = _aging_bucket(fecha_em) if estado == 'FACTURADO' else 'N/A'
@@ -367,11 +373,11 @@ def facturas_y_stats(df_r):
             days_pending = None
             if pd.notna(fecha_em) and estado == 'FACTURADO':
                 days_pending = (date.today() - pd.Timestamp(fecha_em).date()).days
-                if bucket in aging: aging[bucket] += total
-                if days_pending > 60: total_venc += total
-                else: total_pend += total
+                if bucket in aging: aging[bucket] += saldo
+                if days_pending > 60: total_venc += saldo
+                else: total_pend += saldo
             elif estado == 'COBRADO':
-                total_cobr += total
+                total_cobr += saldo
             
             facturas.append({
                 'numero':        str(row.get('numero_reserva','')),
@@ -383,6 +389,11 @@ def facturas_y_stats(df_r):
                 'importe_fb':    float(row.get('importe_fb', 0) or 0),
                 'importe_extras':float(row.get('importe_extras', 0) or 0),
                 'total':         round(total, 2),
+                'compensado':    round(comp, 2),
+                'saldo':         saldo,
+                'tipo':          _txt_cliente(row, 'tipo'),
+                'contrato':      _txt_cliente(row, 'contrato'),
+                'pagador':       _txt_cliente(row, 'pagador'),
                 'estado':        estado,
                 'fecha_emision': str(fecha_em)[:10] if pd.notna(fecha_em) else '',
                 'aging_bucket':  bucket,
@@ -426,12 +437,55 @@ def api_cobrar():
         mask = df['numero_reserva'].astype(str) == numero
         if not mask.any():
             return jsonify({'ok': False, 'error': f'Factura {numero} no encontrada'}), 404
+        if str(df.loc[mask, 'estado'].values[0]) != 'FACTURADO':
+            return jsonify({'ok': False, 'error': f'La factura {numero} no está emitida (o ya está cobrada)'}), 409
         df.loc[mask, 'estado'] = 'COBRADO'
+        df['fecha_cobro'] = df['fecha_cobro'].astype(object) if 'fecha_cobro' in df.columns else ''
         df.loc[mask, 'fecha_cobro'] = date.today().isoformat()
         _save_reservas(df)
         total = float(df.loc[mask, 'total'].values[0])
-        return jsonify({'ok': True, 'numero': numero, 'total': total,
-                        'message': f'Factura {numero} marcada como cobrada'})
+        comp = _num_cliente(df[mask].iloc[0], 'compensado')     # b89
+        cobrado = round(max(0.0, total - comp), 2)
+        return jsonify({'ok': True, 'numero': numero, 'total': total, 'compensado': round(comp, 2), 'cobrado': cobrado,
+                        'message': f'Factura {numero} marcada como cobrada' + (f' ({cobrado:,.2f} €; {comp:,.2f} € compensados)' if comp else '')})
+    except Exception as e:
+        return jsonify({'ok': False, 'error': str(e)}), 500
+
+
+@ar_real_bp.route('/api/ar_real/emitir_pendiente', methods=['POST'])
+def api_emitir_pendiente():
+    """b89: emite la factura de un contrato de grupo que estaba "pendiente de emitir"
+    (estado FACTURADO, fecha de emision hoy). Sin saber quien paga no se emite: la
+    factura seria del que no es (regla de finanzas: no se supone)."""
+    data = request.get_json(force=True, silent=True) or {}
+    numero = str(data.get('numero', '') or '').strip()
+    if not numero:
+        return jsonify({'ok': False, 'error': 'Número de factura requerido'}), 400
+    try:
+        df = _get_reservas()
+        if df.empty or 'numero_reserva' not in df.columns:
+            return jsonify({'ok': False, 'error': f'Factura {numero} no encontrada'}), 404
+        mask = df['numero_reserva'].astype(str) == numero
+        if not mask.any():
+            return jsonify({'ok': False, 'error': f'Factura {numero} no encontrada'}), 404
+        fila = df[mask].iloc[0]
+        if str(fila.get('estado', '')) != 'PENDIENTE_FACTURA':
+            return jsonify({'ok': False, 'error': f'La factura {numero} ya está emitida'}), 409
+        if _txt_cliente(fila, 'tipo') == 'CONTRATO_GRUPO' and _txt_cliente(fila, 'pagador') not in ('agencia', 'cliente'):
+            return jsonify({'ok': False, 'error': 'Falta decidir quién paga la factura del grupo (AR › Contratos): no se emite a nadie sin saberlo.'}), 409
+        hoy = date.today().isoformat()
+        df['estado'] = df['estado'].astype(object)
+        df['fecha_emision'] = df['fecha_emision'].astype(object) if 'fecha_emision' in df.columns else ''
+        df.loc[mask, 'estado'] = 'FACTURADO'
+        df.loc[mask, 'fecha_emision'] = hoy
+        _save_reservas(df)
+        try:
+            from dashboard import _audit as _a
+            _a('AR_EMITIDA', f'{numero} → {_txt_cliente(fila, "cliente")}')
+        except Exception:
+            pass
+        return jsonify({'ok': True, 'numero': numero, 'fecha_emision': hoy, 'cliente': _txt_cliente(fila, 'cliente'),
+                        'message': f'Factura {numero} emitida'})
     except Exception as e:
         return jsonify({'ok': False, 'error': str(e)}), 500
 

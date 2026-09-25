@@ -404,3 +404,9 @@ body.acentuar-todo .g-kpi:hover{background:rgba(var(--acc-r,59),var(--acc-g,130)
 .ctr-pct .g-input{width:84px;min-width:0}
 .ctr-com{margin-top:8px;padding:8px 10px;border:1px dashed var(--g-line);border-radius:var(--g-r-sm);display:flex;flex-direction:column;gap:6px}
 .ctr-com select.g-input{max-width:100%;min-width:0;flex:1 1 180px}
+/* b89: compensacion comision de agencia / factura del grupo (410/430) y la cita del contrato */
+.ctr-cita{font-style:italic;overflow-wrap:anywhere}
+.ctr-cmp{display:flex;flex-direction:column;gap:6px;padding-top:6px;border-top:1px dashed var(--g-line)}
+.ctr-cmp-l{line-height:1.9}
+.ctr-cmp-l .g-btn{vertical-align:middle}
+.ctr-cmp-form .g-input{width:132px;min-width:0}

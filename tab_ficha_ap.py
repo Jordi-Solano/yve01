@@ -147,11 +147,21 @@ def _comision_de(fila):
     """b88: si es la factura de comision de un contrato de grupo, lo que hay que ver."""
     if not _es_com(fila):
         return None
+    tot = _num(fila.get("total_factura")) or 0.0
+    comp = _num(fila.get("compensado")) or 0.0
+    try:
+        from compensaciones import puede_pagar_comision
+        se_puede, motivo = puede_pagar_comision(fila)
+    except Exception:
+        se_puede, motivo = True, ""
     return {"contrato_id": _s(fila.get("comision_contrato")), "evento": _s(fila.get("comision_evento")),
             "esperada": _num(fila.get("comision_esperada")), "facturada": _num(fila.get("comision_facturada")),
             "diferencia": _num(fila.get("comision_diferencia")), "estado": _s(fila.get("comision_estado")),
             "pagador": _s(fila.get("comision_pagador")), "factura_grupo": _s(fila.get("factura_grupo")),
-            "vinculo": _s(fila.get("comision_vinculo"))}
+            "vinculo": _s(fila.get("comision_vinculo")),
+            # b89: compensada contra la factura del grupo (paga la agencia) o se paga despues de cobrarla (paga el cliente)
+            "grupo_estado": _s(fila.get("grupo_estado")).upper(), "compensado": round(comp, 2),
+            "saldo": round(max(0.0, tot - comp), 2), "se_puede_pagar": bool(se_puede), "motivo_no_pagar": motivo}
 
 
 def ficha(clave):
@@ -185,6 +195,7 @@ def ficha(clave):
         "aviso_importes": _s(fila.get("aviso_importes")), "hotel_id": _s(fila.get("hotel_id")),
         "pagada": bool(pag), "pagada_fecha": pag.get("fecha", ""), "pagada_cuenta": pag.get("cuenta", ""),
         "pagada_por": pag.get("por", ""), "pagada_nota": pag.get("nota", ""),
+        "compensado": _num(aj.get("compensado")) or 0.0, "compensada": bool(fila.get("compensada")) and str(fila.get("compensada")) != "nan",
         "asiento": asiento_de(fila, plan), "lineas": _lineas_de(fila),
         "historial": (aj.get("historial") or [])[-20:],
         "plan_cuentas": [{"codigo": k, "nombre": v} for k, v in sorted(plan.items()) if str(k)[:1] in ("2", "6")],
@@ -294,6 +305,7 @@ def _fila_excel(fila):
         "tipo": _s(fila.get("tipo_proveedor")).upper(), "estado": (_s(fila.get("estado_matching")) or _s(fila.get("estado"))).upper(),
         "comision_de_grupo": _s(fila.get("comision_evento")) if _es_com(fila) else "", "comision_estado": _s(fila.get("comision_estado")),
         "aprobacion": _s(fila.get("accion")).upper(), "vencimiento": _iso(fila.get("vencimiento")), "dias_pago": _num(fila.get("dias_pago")),
+        "compensado": _num(fila.get("compensado")) or 0.0,
         "pagada": "SI" if fila.get("pagada") else "NO", "fecha_pago": _s(fila.get("pagada_fecha")), "cuenta_bancaria": _s(fila.get("pagada_cuenta")),
         "pagada_por": _s(fila.get("pagada_por")), "hotel_id": _s(fila.get("hotel_id")), "archivo": _s(fila.get("archivo")),
     }
@@ -413,6 +425,13 @@ def api_pagar():
     fila, _ = _fila(clave)
     if fila is None:
         return jsonify({"ok": False, "error": "factura no encontrada"}), 404
+    # b89, regla de finanzas: si la factura del grupo la paga el cliente final, primero se
+    # cobra la factura del grupo y despues se paga la de comision de la agencia
+    if _es_com(fila):
+        from compensaciones import puede_pagar_comision
+        se_puede, motivo = puede_pagar_comision(fila)
+        if not se_puede:
+            return jsonify({"ok": False, "error": motivo, "regla": True}), 409
     fecha = _iso(d.get("fecha")) or date.today().isoformat()
     cuenta = str(d.get("cuenta") or "").strip()
     if not cuenta:

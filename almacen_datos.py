@@ -493,6 +493,18 @@ def guardar_ajuste_ap(clave, cambios, usuario="", datos_dir=None):
             else:
                 reg[k] = v
             hist.append({"fecha": ahora, "usuario": usuario, "campo": k, "valor": v})
+        elif k == "compensado":
+            # b89: lo compensado contra la factura del grupo (lo lleva compensaciones.py;
+            # la fuente es compensaciones_ar.json, esto es su reflejo en la factura)
+            try:
+                x = round(float(v or 0), 2)
+            except (TypeError, ValueError):
+                raise ValueError("compensado tiene que ser un importe")
+            if x > 0:
+                reg["compensado"] = x
+            else:
+                reg.pop("compensado", None)
+            hist.append({"fecha": ahora, "usuario": usuario, "campo": "compensado", "valor": x})
         elif k == "pagada":
             if v:
                 reg["pagada"] = {"fecha": str(v.get("fecha") or _dt.date.today().isoformat())[:10],
@@ -557,13 +569,15 @@ def aplicar_ajustes_ap(df, ajustes=None, dias_prov=None, dias_defecto=DIAS_PAGO_
       dias_pago       (ajuste, o los del proveedor, o los de defecto)
       vencimiento     (ajuste, o fecha de factura + dias_pago)
       pagada / pagada_fecha / pagada_cuenta / pagada_por
+      compensado / compensada  (b89: contra la factura del grupo de la agencia)
     y pisa cuenta_contable con la corregida. Funcion pura: no lee disco si se le pasan los dicts."""
     if df is None or df.empty:
         return df
     ajustes = ajustes_ap() if ajustes is None else ajustes
     dias_prov = dias_pago_proveedores() if dias_prov is None else dias_prov
     df = df.copy()
-    cols = {c: [] for c in ("fecha_contable", "dias_pago", "vencimiento", "pagada", "pagada_fecha", "pagada_cuenta", "pagada_por", "cuenta_ajustada")}
+    cols = {c: [] for c in ("fecha_contable", "dias_pago", "vencimiento", "pagada", "pagada_fecha", "pagada_cuenta", "pagada_por", "cuenta_ajustada",
+                            "compensado", "compensada")}
     cuentas = []
     for fila in df.to_dict("records"):
         a = ajustes.get(clave_ap(fila)) or {}
@@ -587,6 +601,11 @@ def aplicar_ajustes_ap(df, ajustes=None, dias_prov=None, dias_defecto=DIAS_PAGO_
         cols["pagada_cuenta"].append(pag.get("cuenta", "") if pag else "")
         cols["pagada_por"].append(pag.get("por", "") if pag else "")
         cols["cuenta_ajustada"].append(bool(a.get("cuenta_contable")))
+        # b89: lo compensado contra la factura de grupo de la agencia (410/430)
+        comp = round(_num(a.get("compensado")) or 0.0, 2)
+        tot = _num(fila.get("total_factura")) or 0.0
+        cols["compensado"].append(comp)
+        cols["compensada"].append(bool(comp > 0 and tot > 0 and comp >= round(tot, 2) - 0.005))
         cuentas.append(a.get("cuenta_contable") or fila.get("cuenta_contable"))
     for c, v in cols.items():
         df[c] = v

@@ -201,7 +201,8 @@ class _Diario:
 
 def generar_asientos(mes, fuentes, plan=None, cfg=None):
     """fuentes: dict con DataFrames opcionales:
-         ap, ar_ota, ventas_fb, reservas, banco  y listas: provisiones (asientos ya hechos)
+         ap, ar_ota, ventas_fb, reservas, banco  y listas: provisiones (asientos ya hechos),
+         compensaciones (b89: registros de compensaciones.py → 410/430)
     Devuelve {mes, asientos, resumen, fuentes, cuentas_fuera_plan, avisos}."""
     ini, fin, mes = _mes_a_rango(mes)
     plan = plan or dict(CUENTAS_BASE)
@@ -209,7 +210,7 @@ def generar_asientos(mes, fuentes, plan=None, cfg=None):
     crit_ap = criterio_fecha_ap(cfg)
     D = _Diario(plan)
     cont = {"ap": 0, "ar_ota": 0, "ventas_fb": 0, "ar_facturas": 0, "ar_cobros": 0,
-            "banco": 0, "caja": 0, "provisiones": 0}
+            "banco": 0, "caja": 0, "provisiones": 0, "compensaciones": 0}
     saltados = {"ap_sin_total": 0, "ap_sin_cuadrar": 0, "ar_ota_sin_importe": 0}
     avisos = []
 
@@ -327,11 +328,28 @@ def generar_asientos(mes, fuentes, plan=None, cfg=None):
                 if D.nuevo(_fecha(f_em), f"Fra. {num} — {cli}", num, "AR",
                            [("430", total, 0), ("705", 0, b_h), ("700", 0, b_f), ("477", 0, iva)], r.get("hotel_id")):
                     cont["ar_facturas"] += 1
-            if estado in ("COBRADO", "COBRADA") and total > 0 and _en_mes(r.get("fecha_cobro"), ini, fin) \
+            # b89: lo compensado con la comision de la agencia no entra por el banco:
+            # el cobro es por lo que quedaba (total - compensado)
+            cobro = _r(total - _num(r.get("compensado")))
+            if estado in ("COBRADO", "COBRADA") and cobro > 0 and _en_mes(r.get("fecha_cobro"), ini, fin) \
                     and num.upper() not in cobrados_en_banco:
                 if D.nuevo(_fecha(r.get("fecha_cobro")), f"Cobro fra. {num} — {cli}", num, "AR",
-                           [("572", total, 0), ("430", 0, total)], r.get("hotel_id")):
+                           [("572", cobro, 0), ("430", 0, cobro)], r.get("hotel_id")):
                     cont["ar_cobros"] += 1
+
+    # ── b89: compensacion comision de agencia / factura del grupo: 410 (D) / 430 (H) ──
+    # Regla de finanzas (24 sep 2026): solo si la factura del grupo la paga la AGENCIA.
+    # compensaciones.py no deja registrar otra cosa; aqui se asienta lo registrado.
+    for cp in fuentes.get("compensaciones") or []:
+        if not _en_mes(cp.get("fecha"), ini, fin):
+            continue
+        imp = _r(_num(cp.get("importe")))
+        if imp <= 0:
+            continue
+        if D.nuevo(_fecha(cp.get("fecha")),
+                   f"Compensación comisión {_txt(cp.get('factura_comision'))} con fra. {_txt(cp.get('factura_grupo'))} — {_txt(cp.get('agencia'))}",
+                   _txt(cp.get("factura_grupo")), "COMPENSACION", [("410", imp, 0), ("430", 0, imp)], cp.get("hotel_id")):
+            cont["compensaciones"] += 1
 
     # ── banco: solo lo conciliado (lo demas no se sabe que es) ───────────
     bk = fuentes.get("banco")
@@ -508,6 +526,13 @@ def reconciliar(mes, res, fuentes, drr=None, cfg=None):
     checks.append(_check("430", "Clientes: facturas AR emitidas en el mes (debe)", s("430", "D"),
                          _facturado_ar(fuentes.get("reservas"), ini, fin),
                          "reservas_credito.xlsx con fecha_emision en el mes (FACTURADO/COBRADO/PENDIENTE de cobro)."))
+    # b89 · 410/430 compensaciones: lo asentado contra lo registrado en AR › Contratos
+    comps = [c for c in (fuentes.get("compensaciones") or []) if _en_mes(c.get("fecha"), ini, fin) and _num(c.get("importe")) > 0]
+    if comps:
+        lib_cmp = _r(sum(a["debe"] for a in res["asientos"] if a["cuenta"] == "410" and a["origen"] == "COMPENSACION"))
+        checks.append(_check("410/430", "Compensaciones comisión de agencia / factura del grupo", lib_cmp,
+                             _r(sum(_num(c.get("importe")) for c in comps)),
+                             f"{len(comps)} compensación(es) registradas en AR › Contratos; solo cuando la factura del grupo la paga la agencia."))
 
     # 705 · alojamiento vs DRR (dato del PMS)
     if drr and drr.get("rooms_revenue_mtd") is not None:
@@ -606,6 +631,12 @@ def recoger_fuentes(mes, hotel=None, procesadas_dir=None, reportes_dir=None, dat
         f["banco"] = ALM.banco_del_hotel(bk, hotel)   # modo grupo: el banco es de todos (b80)
     except Exception:
         f["banco"] = pd.DataFrame()
+    # b89: compensaciones comision de agencia / factura del grupo (410/430)
+    try:
+        import compensaciones as CMP
+        f["compensaciones"] = [c for c in CMP.leer(dd) if not hotel or _txt(c.get("hotel_id")) == _txt(hotel)]
+    except Exception:
+        f["compensaciones"] = []
     # b86: arqueos de caja e ingresos de efectivo del extracto (pestaña CAJA del cuadre)
     f["hotel"] = hotel or ""
     try:
