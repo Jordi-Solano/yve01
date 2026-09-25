@@ -322,6 +322,7 @@ input:focus,select:focus,textarea:focus{border-color:var(--acc);box-shadow:0 0 0
         <option value="income_auditor">Income Auditor</option>
         <option value="fb_manager">F&amp;B Manager</option>
         <option value="jefe_otras">Jefe Servicios</option>
+        <option value="direccion">Direcci&oacute;n (firma el cr&eacute;dito)</option>
         <option value="admin">Admin</option>
       </select>
       <button class="btn bp" style="margin-top:16px;width:100%" onclick="crearU()">+ Crear</button>

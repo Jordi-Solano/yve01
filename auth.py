@@ -12,7 +12,8 @@ from flask_login import LoginManager, UserMixin
 BASE_DIR       = Path(__file__).parent
 USUARIOS_PATH  = BASE_DIR / "datos-referencia" / "usuarios.json"
 
-ROLES_VALIDOS = {"admin", "financial_controller", "income_auditor", "fb_manager", "jefe_otras"}
+# b90: "direccion" firma como directora las peticiones de credito (la segunda firma)
+ROLES_VALIDOS = {"admin", "financial_controller", "income_auditor", "fb_manager", "jefe_otras", "direccion"}
 
 # ── Modelo de usuario ─────────────────────────────────────────────────────
 

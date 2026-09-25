@@ -65,11 +65,12 @@ def main():
         d = cl.get('/api/ar_real/clientes').get_json() or {}
         c = next((x for x in d.get('clientes', []) if x['nombre'] == 'Viatges Mediterrani'), None)
         ok(c is not None and c.get('pendiente_completar') is True and c.get('NIF') == 'B-62233445' and 'bono' in (c.get('origen') or ''), f"/api/ar_real/clientes: pendiente_completar={c and c.get('pendiente_completar')}")
-        r = cl.post('/api/ar_real/cliente', json={"nombre": "Viatges Mediterrani", "nif": "B-62233445", "limite": 15000, "dias_pago": 45, "email": "admin@viatges.cat"}, headers=H)
+        r = cl.post('/api/ar_real/cliente', json={"nombre": "Viatges Mediterrani", "nif": "B-62233445", "dias_pago": 45, "email": "admin@viatges.cat"}, headers=H)
         ok(r.status_code == 200 and (r.get_json() or {}).get('ok'), f"completar la ficha desde AR Real → {r.status_code}")
         g = pd.read_excel(CLI); f2 = g[g["nombre_cliente"] == "Viatges Mediterrani"].iloc[0]
-        ok(float(f2["credito_limite"]) == 15000 and str(f2["estado_ficha"]) == "COMPLETA" and str(f2.get("origen")) == "bono VM-7781" and len(g) == 1,
-           f"ficha completada: limite {f2['credito_limite']}, estado {f2['estado_ficha']}, origen conservado, sin duplicar")
+        # b90: el cliente del bono sigue SIN credito: el limite solo sale de una peticion firmada
+        ok(float(f2["credito_limite"]) == 0 and str(f2["estado_ficha"]) == "COMPLETA" and str(f2.get("origen")) == "bono VM-7781" and len(g) == 1,
+           f"ficha completada: limite {f2['credito_limite']} (sin credito hasta la peticion), estado {f2['estado_ficha']}, origen conservado, sin duplicar")
         d = cl.get('/api/ar_real/clientes').get_json() or {}
         c = next((x for x in d.get('clientes', []) if x['nombre'] == 'Viatges Mediterrani'), None)
         ok(c is not None and c.get('pendiente_completar') is False, "ya no esta pendiente")

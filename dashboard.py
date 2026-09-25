@@ -226,6 +226,7 @@ from tab_albaranes import albaranes_bp
 from tab_ficha_ap import ficha_ap_bp          # b84: ficha de la factura, ajustes, pagada, descargas
 from tab_caja import caja_bp                  # b86: arqueo de caja y cuadre con los ingresos del banco
 from tab_contratos import contratos_bp        # b87: AR > Contratos (comision segun contrato, quien paga)
+from tab_credito import credito_bp            # b90: AR > Peticion de credito (dos firmas: quien pide y Direccion)
 from oracle_export_dryrun import oracle_export_bp
 from pricing import pricing_bp
 from tab_multi_hotel import multi_hotel_bp
@@ -247,7 +248,7 @@ from about import about_bp
 from exportador_pdf import pdf_bp
 # pricing_bp estaba importado pero NO registrado: /precios daba 404 mientras la
 # landing, el blog y "Quienes somos" enlazaban a el (Ola A).
-for _bp in (auth_bp, config_bp, admin_bp, aprob_ar_bp, aprob_ap_bp, concil_bp, fb_bp, ar_real_bp, recl_ota_bp, recl_ap_bp, oracle_export_bp, cierre_bp, albaranes_bp, ficha_ap_bp, caja_bp, contratos_bp, multi_hotel_bp, self_service_bp, exportador_bp, demo_bp, demo_sim_bp, reportes_pdf_bp, blog_bp, billing_bp, asientos_bp, signup_bp, about_bp, pdf_bp, legal_bp, pricing_bp):
+for _bp in (auth_bp, config_bp, admin_bp, aprob_ar_bp, aprob_ap_bp, concil_bp, fb_bp, ar_real_bp, recl_ota_bp, recl_ap_bp, oracle_export_bp, cierre_bp, albaranes_bp, ficha_ap_bp, caja_bp, contratos_bp, credito_bp, multi_hotel_bp, self_service_bp, exportador_bp, demo_bp, demo_sim_bp, reportes_pdf_bp, blog_bp, billing_bp, asientos_bp, signup_bp, about_bp, pdf_bp, legal_bp, pricing_bp):
     app.register_blueprint(_bp)
 
 
@@ -6721,6 +6722,7 @@ svg.yvi{width:1em;height:1em;vertical-align:-0.125em;flex-shrink:0;display:inlin
           <button class="menu-item" onclick="cambiarRol('income_auditor')">📊 Income Auditor</button>
           <button class="menu-item" onclick="cambiarRol('fb_manager')">🍽️ Jefe F&B</button>
           <button class="menu-item" onclick="cambiarRol('jefe_otras')">🛠️ Jefe Servicios</button>
+          <button class="menu-item" onclick="cambiarRol('direccion')" data-i18n="rol.direccion">🏛️ Dirección</button>
         </div>
         <div class="menu-sep"></div>
         <button class="menu-item" onclick="loadAll();document.getElementById('main-menu').classList.remove('open')">↻ Actualizar datos</button>
@@ -7249,6 +7251,16 @@ svg.yvi{width:1em;height:1em;vertical-align:-0.125em;flex-shrink:0;display:inlin
     </div>
 
     <div id="ar-sub-credito" style="display:none">
+      <!-- b90: peticiones de credito. El limite de un cliente SOLO sale de una peticion firmada
+           por quien la pide y por Direccion (historial AR, referencias, datos fiscales + Informa,
+           potencial comercial y limite revisable). -->
+      <div id="ar-credito-section" class="g-card">
+        <div class="g-card-head">
+          <div><div class="g-card-title" title="Historial, referencias, datos fiscales e Informa, potencial comercial; firman quien pide y Dirección." data-i18n-title="cred.tituloSub"><span data-i18n="cred.titulo">Peticiones de crédito</span> <span id="ar-credito-count" class="g-small"></span></div></div>
+          <span id="ar-credito-resumen" class="g-small"></span>
+        </div>
+        <div id="ar-credito-list" class="g-inline-list"><div class="g-empty g-cargando" data-i18n="lbl.cargando">Cargando…</div></div>
+      </div>
       <!-- Client list -->
       <div class="g-card">
         <div class="g-card-head">
@@ -14244,7 +14256,8 @@ const rolLabels = {
   'financial_controller': '💰 Controller',
   'income_auditor': '📊 Auditor',
   'fb_manager': '🍽️ F&B',
-  'jefe_otras': '🛠️ Servicios'
+  'jefe_otras': '🛠️ Servicios',
+  'direccion': '🏛️ Dirección'
 };
 
 function toggleMenu(id) {
@@ -16283,7 +16296,7 @@ var _TABS_ROL = {
   'fb_manager': ['ap', 'fb'],
   'jefe_otras': ['ap'],
 };
-function _rolVeTodo() { return _USER_ROL === 'financial_controller' || _USER_ROL === 'admin'; }
+function _rolVeTodo() { return _USER_ROL === 'financial_controller' || _USER_ROL === 'admin' || _USER_ROL === 'direccion'; }     // b90: Direccion lo ve todo
 function _rolVeApartado(tab) { return _rolVeTodo() || (_TABS_ROL[_USER_ROL] || []).indexOf(tab) !== -1; }
 (function() {
   var rol = _USER_ROL;
@@ -16911,10 +16924,11 @@ function abrirNuevoCliente(cli) {
     '</div>' +
     campo('ncl-nombre', t('ar.clNombre', 'Nombre del cliente') + ' *', 'text', 'Viajes Meridiano S.A.') +
     campo('ncl-nif', t('ar.clNif', 'NIF / CIF'), 'text', 'A28004556') +
-    campo('ncl-limite', t('ar.clLimite', 'Límite de crédito (€)') + ' *', 'number', '25000') +
     campo('ncl-dias', t('ar.clDias', 'Días de pago'), 'number', '30') +
     campo('ncl-email', t('ar.clEmail', 'Email'), 'email', 'cuentas@cliente.com') +
     campo('ncl-tel', t('ar.clTel', 'Teléfono'), 'text', '') +
+    // b90: el limite de credito NO se escribe aqui: sale de una peticion firmada (quien pide + Direccion)
+    _credFichaLimite(cli) +
     '<div id="ncl-err" class="g-alert err" style="display:none;margin:4px 0 10px"></div>' +
     '<div class="g-modal-foot">' +
       '<button onclick="cerrarNuevoCliente()" class="g-btn g-secondary">' + t('js.cancelar', 'Cancelar') + '</button>' +
@@ -16926,12 +16940,24 @@ function abrirNuevoCliente(cli) {
   var n = document.getElementById('ncl-nombre');
   if (cli) {
     var pon = function(id, val) { var e = document.getElementById(id); if (e && val !== undefined && val !== null && val !== '') e.value = val; };
-    pon('ncl-nombre', cli.nombre); pon('ncl-nif', cli.NIF); pon('ncl-limite', cli.limite_credito > 0 ? cli.limite_credito : '');
+    pon('ncl-nombre', cli.nombre); pon('ncl-nif', cli.NIF);
     pon('ncl-dias', cli.dias_pago); pon('ncl-email', cli.email); pon('ncl-tel', cli.telefono);
     if (n) n.readOnly = true;     // el nombre es la identidad de la ficha
-    if (cli.origen) { var err = document.getElementById('ncl-err'); if (err) { err.style.display = 'block'; err.style.color = 'var(--mut)'; err.textContent = t('ar.fichaOrigen', 'Ficha creada automáticamente desde el') + ' ' + cli.origen + '. ' + t('ar.fichaFalta', 'Falta el límite de crédito.'); } }
-    var lim = document.getElementById('ncl-limite'); if (lim) lim.focus();
+    if (cli.origen) { var err = document.getElementById('ncl-err'); if (err) { err.style.display = 'block'; err.style.color = 'var(--mut)'; err.textContent = t('ar.fichaOrigen', 'Ficha creada automáticamente desde el') + ' ' + cli.origen + '.'; } }
+    var nif = document.getElementById('ncl-nif'); if (nif) nif.focus();
   } else if (n) n.focus();
+}
+
+// b90: en la ficha el limite se ENSEÑA (no se edita) y se pide con "Pedir crédito"
+function _credFichaLimite(cli) {
+  var cr = (cli && cli.credito) || {}, txt;
+  if (!cli || !cli.nombre) return '<div class="g-field cred-ficha"><label>' + t('ar.clLimite', 'Límite de crédito (€)') + '</label><div class="g-small">' + t('cred.fichaNueva', 'Nace sin crédito: después, “Pedir crédito”.') + '</div></div>';
+  if (cr.origen === 'peticion') txt = '<b class="g-num">' + _fmtEurES(cli.limite_credito || 0, 2) + '</b> · ' + _credEsc(cr.peticion) + (cr.aprobado_por ? ' · ' + _credEsc(cr.aprobado_por) : '') + (cr.revision ? ' · ' + t('cred.revisa', 'revisión') + ' ' + _fechaCorta(cr.revision) : '') + (cr.revision_vencida ? ' ' + gBadge('g-err', t('cred.revVencida', 'Revisión vencida')) : '');
+  else if (cr.origen === 'sin_peticion') txt = '<b class="g-num">' + _fmtEurES(cli.limite_credito || 0, 2) + '</b> ' + gBadge('g-warn', t('cred.sinPeticion', 'Límite sin petición'));
+  else txt = gBadge('g-mute', t('cred.sinCredito', 'Sin crédito'));
+  var n = String(cli.nombre).replace(/'/g, "\\'");
+  return '<div class="g-field cred-ficha"><label>' + t('ar.clLimite', 'Límite de crédito (€)') + '</label><div class="cred-cli">' + txt +
+    '<button type="button" class="g-btn g-secondary g-sm" onclick="cerrarNuevoCliente();' + (cr.abierta ? 'abrirPeticionCredito(\'' + _credEsc(cr.abierta) + '\')' : 'pedirCreditoAR(\'' + _credEsc(n) + '\')') + '">💳 ' + (cr.abierta ? t('cred.verPeticion', 'Ver petición') : t('cred.pedir', 'Pedir crédito')) + '</button></div></div>';
 }
 
 function cerrarNuevoCliente() {
@@ -16945,20 +16971,19 @@ async function guardarNuevoCliente() {
   var err = document.getElementById('ncl-err');
   var pinta = function(txt) { if (err) { err.textContent = txt; err.style.display = txt ? 'block' : 'none'; } };
   pinta('');
-  var nombre = val('ncl-nombre'), limite = val('ncl-limite');
+  var nombre = val('ncl-nombre');
   if (!nombre) { pinta(t('ar.faltaNombre', 'Pon el nombre del cliente.')); return; }
-  if (!limite || Number(limite) <= 0) { pinta(t('ar.faltaLimite', 'El límite de crédito tiene que ser mayor que 0.')); return; }
   var btn = document.getElementById('ncl-ok');
   if (btn) { btn.disabled = true; btn.style.opacity = '.5'; }
   try {
     var r = await _postJson('/api/ar_real/cliente', {
-      nombre: nombre, nif: val('ncl-nif'), limite: limite,
+      nombre: nombre, nif: val('ncl-nif'),
       dias_pago: val('ncl-dias') || 30, email: val('ncl-email'), telefono: val('ncl-tel')
     });
     var d = await r.json();
     if (!d.ok) throw new Error(d.error || 'error');
     cerrarNuevoCliente();
-    showNotification('✓ ' + d.cliente, 'success');
+    showNotification('✓ ' + d.cliente + (d.aviso ? ' · ' + d.aviso : ''), d.aviso ? 'info' : 'success');
     if (typeof cargarARRealData === 'function') cargarARRealData();
   } catch(e) {
     pinta('✗ ' + (e.message || 'error'));
@@ -17024,6 +17049,7 @@ async function emitirFactura() {
     const d = await resp.json();
     if (d.ok) {
       msg.style.color='var(--grn)';msg.textContent='✓ Factura '+d.numero+' emitida — '+_fmtEurES(total, 2);
+      if (d.aviso_credito) showNotification('⚠ ' + d.aviso_credito, 'warning');     // b90: no bloquea, avisa
       setTimeout(()=>{ cerrarEmitirFactura(); cargarARRealData(); },1500);
     } else {
       msg.style.color='var(--red)';msg.textContent=d.error||'Error emitiendo factura';
@@ -17297,6 +17323,211 @@ function decidirPctAR(i) {
   return decidirContratoAR(i, {modo: 'porcentaje', pct: {alojamiento: v('ctr-pa-' + i), fb: v('ctr-pf-' + i), salas: v('ctr-ps-' + i)}});
 }
 
+// ── b90: Petición de crédito ────────────────────────────────────────────────
+// El proceso real (finanzas, 24 sep 2026): (a) historial de pago en AR de todo el
+// grupo, (b) referencias si ha trabajado con otro hotel del grupo, (c) datos
+// fiscales completos para pedir el informe de solvencia a Informa, (d) potencial
+// comercial -> limite revisable, (e) SIEMPRE dos firmas: quien pide y Dirección
+// (solo el rol Dirección, y nunca quien pidió el crédito). El limite de la ficha
+// del cliente solo sale de aqui.
+var _credPet = null;
+function _credEsc(s){ return String(s==null?'':s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;'); }
+function _credEur(v){ return (v == null || v === '') ? '—' : _fmtEurES(Number(v) || 0, 2); }
+function _credEstado(e){
+  return e === 'APROBADA' ? gBadge('g-ok', t('cred.aprobada', 'Aprobada'))
+       : e === 'RECHAZADA' ? gBadge('g-err', t('cred.rechazada', 'Rechazada'))
+       : e === 'PENDIENTE_DIRECCION' ? gBadge('g-warn', t('cred.pendDir', 'Pendiente de Dirección'))
+       : gBadge('g-mute', t('cred.borrador', 'Borrador'));
+}
+async function cargarPeticionesCredito() {
+  var wrap = document.getElementById('ar-credito-list');
+  if (!wrap) return;
+  try {
+    var d = await (await fetch('/api/credito/peticiones', {cache: 'no-store'})).json();
+    if (!d || !d.ok) { wrap.innerHTML = _gError(t('cred.error', 'No se han podido leer las peticiones de crédito.')); return; }
+    var ps = d.peticiones || [];
+    var cnt = document.getElementById('ar-credito-count'), res = document.getElementById('ar-credito-resumen');
+    if (cnt) cnt.textContent = ps.length ? '(' + ps.length + ')' : '';
+    if (res) res.textContent = d.n_pendientes_direccion ? t('cred.nPend', '{n} pendiente(s) de Dirección').replace('{n}', d.n_pendientes_direccion) : '';
+    if (!ps.length) { wrap.innerHTML = _vacio(t('cred.vacio', 'Pide crédito para un cliente con “Pedir crédito” en su ficha.'), {cta: false}); return; }
+    wrap.innerHTML = (d.n_para_mi ? '<div class="g-alert warn">✍ <span>' + t('cred.paraMi', 'Tienes {n} petición(es) de crédito para firmar como Dirección.').replace('{n}', d.n_para_mi) + '</span></div>' : '') +
+      ps.map(function(p){
+        var quien = [p.solicitante ? t('cred.pidio', 'pide') + ' ' + _credEsc(p.solicitante) : '', p.direccion ? (p.decision === 'rechazar' ? t('cred.rechazo', 'rechaza') : t('cred.firma', 'firma')) + ' ' + _credEsc(p.direccion) : '', p.hotel ? _credEsc(p.hotel) : ''].filter(Boolean).join(' · ');
+        return '<div class="g-row cred-row" onclick="abrirPeticionCredito(\'' + _credEsc(p.id) + '\')">' +
+          '<div class="g-who"><b>' + _credEsc(p.cliente) + '</b><span>' + _credEsc(p.id) + (quien ? ' · ' + quien : '') + '</span></div>' +
+          '<div class="cred-der">' + (p.limite ? '<b class="g-num">' + _credEur(p.limite) + '</b>' : '') + _credEstado(p.estado) +
+          (p.puede_firmar_direccion ? ' ' + gBadge('g-info', t('cred.firmaTu', 'Te toca firmar')) : '') + '</div></div>';
+      }).join('');
+    if (typeof _pintarYa === 'function') _pintarYa(wrap);
+  } catch(e) { wrap.innerHTML = _gError(t('cred.error', 'No se han podido leer las peticiones de crédito.')); }
+}
+async function pedirCreditoAR(nombre) {
+  try {
+    var r = await _postJson('/api/credito/peticion', {cliente: nombre});
+    var d = await r.json();
+    if (!d.ok) { showNotification('✗ ' + (d.error || 'Error'), 'error'); return; }
+    _abrirModalCredito(d.peticion);
+    cargarPeticionesCredito();
+  } catch(e) { showNotification('✗ Error', 'error'); }
+}
+async function abrirPeticionCredito(pid) {
+  try {
+    var d = await (await fetch('/api/credito/peticion/' + encodeURIComponent(pid), {cache: 'no-store'})).json();
+    if (!d.ok) { showNotification('✗ ' + (d.error || 'Error'), 'error'); return; }
+    _abrirModalCredito(d.peticion);
+  } catch(e) { showNotification('✗ Error', 'error'); }
+}
+function cerrarPeticionCredito() {
+  var m = document.getElementById('cred-modal'); if (m) m.remove();
+  _credPet = null;
+  if (typeof _bloquearFondo === 'function') _bloquearFondo(false);
+}
+function _abrirModalCredito(p) {
+  var m = document.getElementById('cred-modal');
+  if (!m) {
+    m = document.createElement('div'); m.id = 'cred-modal'; m.className = 'g-overlay'; m.style.zIndex = '9500';
+    m.addEventListener('click', function(e){ if (e.target === m) cerrarPeticionCredito(); });
+    document.body.appendChild(m);
+    if (typeof _bloquearFondo === 'function') _bloquearFondo(true);
+  }
+  _credPet = p; _pintarPeticionCredito();
+}
+function _credCampo(id, etiq, val, o) {
+  o = o || {};
+  var dis = (_credPet && _credPet.estado !== 'BORRADOR') ? ' disabled' : '';
+  var inp = o.area ? '<textarea class="g-input" id="' + id + '" rows="' + (o.rows || 2) + '"' + dis + '>' + _credEsc(val) + '</textarea>'
+                   : '<input class="g-input" id="' + id + '" type="' + (o.tipo || 'text') + '"' + (o.step ? ' step="' + o.step + '"' : '') + ' value="' + _credEsc(val == null ? '' : val) + '"' + dis + '>';
+  return '<label class="g-field cred-campo' + (o.ancho ? ' cred-ancho' : '') + '"><span>' + etiq + (o.obl ? ' *' : '') + '</span>' + inp + (o.extra || '') + '</label>';
+}
+function _pintarPeticionCredito() {
+  var m = document.getElementById('cred-modal'), p = _credPet;
+  if (!m || !p) return;
+  var h = p.historial_ar || {}, fi = p.fiscal || {}, inf = p.informa || {}, co = p.comercial || {}, ref = p.referencias || {}, fir = p.firmas || {};
+  var borr = p.estado === 'BORRADOR';
+  // (a) historial
+  var hist;
+  if (!h.hay) hist = '<div class="g-small">' + t('cred.sinHist', 'Sin facturas en ningún hotel del grupo: es un cliente nuevo para nosotros.') + '</div>';
+  else {
+    hist = '<div class="cred-kpis">' +
+      '<div><span>' + t('cred.hFacturas', 'Facturas') + '</span><b>' + h.facturas + '</b></div>' +
+      '<div><span>' + t('cred.hFacturado', 'Facturado') + '</span><b>' + _credEur(h.facturado) + '</b></div>' +
+      '<div><span>' + t('cred.hCobroMedio', 'Cobro medio') + '</span><b>' + (h.dias_medio_cobro == null ? '—' : String(h.dias_medio_cobro).replace('.', ',') + ' ' + t('aging.dias', 'días')) + '</b></div>' +
+      '<div><span>' + t('cred.hRetraso', 'Cobradas con retraso') + '</span><b>' + (h.cobradas_con_retraso || 0) + ' / ' + (h.cobradas || 0) + '</b></div>' +
+      '<div><span>' + t('cred.hPendiente', 'Pendiente') + '</span><b>' + _credEur(h.pendiente) + '</b></div>' +
+      '<div><span>' + t('cred.hVencido', 'Vencido') + '</span><b' + (h.vencido > 0 ? ' style="color:var(--red)"' : '') + '>' + _credEur(h.vencido) + '</b></div></div>' +
+      '<div class="g-small">' + t('cred.hPlazo', 'Plazo de pago {d} días.').replace('{d}', h.dias_pago) + ' ' + (h.hoteles || []).map(function(x){ return _credEsc(x.hotel || t('cred.sinHotel', 'sin hotel')) + ': ' + x.facturas + ' · ' + _credEur(x.facturado); }).join(' · ') + '</div>' +
+      '<div class="g-tbl-wrap"><table class="g-tbl" style="font-size:12px"><thead><tr><th>' + t('cred.hNum', 'Factura') + '</th><th>' + t('cred.hHotel', 'Hotel') + '</th><th>' + t('cred.hEmitida', 'Emitida') + '</th><th>' + t('cred.hCobrada', 'Cobrada') + '</th><th class="num">' + t('cred.hTotal', 'Total') + '</th><th class="num">' + t('arreal.thDias', 'Días') + '</th></tr></thead><tbody>' +
+      (h.detalle || []).map(function(x){ return '<tr><td>' + _credEsc(x.numero) + '</td><td>' + _credEsc(x.hotel) + '</td><td>' + _fechaCorta(x.fecha_emision) + '</td><td>' + (x.fecha_cobro ? _fechaCorta(x.fecha_cobro) : gBadge('g-mute', t('cred.hNoCobrada', 'pendiente'))) + '</td><td class="num">' + _credEur(x.total) + '</td><td class="num">' + (x.dias == null ? '—' : (x.retraso ? gBadge('g-err', x.dias + 'd') : x.dias + 'd')) + '</td></tr>'; }).join('') +
+      '</tbody></table></div>';
+  }
+  var otros = h.otros_hoteles || [];
+  var html = '<div class="g-modal cred-modal">' +
+    '<div class="g-modal-head"><div class="g-modal-title">💳 ' + t('cred.modalTitulo', 'Petición de crédito') + ' · ' + _credEsc(p.cliente) + '</div>' +
+    '<button onclick="cerrarPeticionCredito()" class="g-btn g-ghost g-icon" aria-label="Cerrar">✕</button></div>' +
+    '<div class="cred-estado">' + _credEstado(p.estado) + ' <span class="g-small">' + _credEsc(p.id) + (p.hotel ? ' · ' + _credEsc(p.hotel) : '') + '</span></div>' +
+    '<div class="cred-sec"><div class="g-label">1 · ' + t('cred.secHist', 'Historial de pago en el grupo (AR)') + '</div>' + hist + '</div>' +
+    '<div class="cred-sec"><div class="g-label">2 · ' + t('cred.secRef', 'Referencias de otros hoteles del grupo') + '</div>' +
+      (otros.length ? '<div class="g-small">' + t('cred.otrosVistos', 'Yve ve facturas en:') + ' ' + otros.map(function(x){ return _credEsc(x.hotel || x.hotel_id); }).join(', ') + '</div>' : '') +
+      '<label class="cred-check"><input type="checkbox" id="cred-ref-otro"' + (ref.otro_hotel || otros.length ? ' checked' : '') + (borr ? '' : ' disabled') + '> ' + t('cred.otroHotel', 'Ha trabajado con otro hotel del grupo') + '</label>' +
+      _credCampo('cred-ref-texto', t('cred.refTexto', 'Referencias (hotel, persona de contacto, cómo pagó)'), ref.texto, {area: true, rows: 2, ancho: true}) + '</div>' +
+    '<div class="cred-sec"><div class="g-label">3 · ' + t('cred.secFiscal', 'Datos fiscales e informe de solvencia (Informa)') + '</div><div class="cred-grid">' +
+      _credCampo('cred-f-razon', t('cred.razon', 'Razón social'), fi.razon_social, {obl: true, ancho: true}) +
+      _credCampo('cred-f-nif', t('ar.clNif', 'NIF / CIF'), fi.nif, {obl: true, extra: fi.nif ? '<span class="g-small">' + (p.nif_ok ? gBadge('g-ok', '✓ ' + _credEsc(p.nif_tipo)) : gBadge('g-err', _credEsc(p.nif_tipo || t('cred.nifMal', 'NIF no válido')))) + '</span>' : ''}) +
+      _credCampo('cred-f-pais', t('cred.pais', 'País'), fi.pais, {obl: true}) +
+      _credCampo('cred-f-dir', t('cred.dir', 'Dirección'), fi.direccion, {obl: true, ancho: true}) +
+      _credCampo('cred-f-cp', t('cred.cp', 'Código postal'), fi.cp, {obl: true}) +
+      _credCampo('cred-f-pob', t('cred.poblacion', 'Población'), fi.poblacion, {obl: true}) +
+      _credCampo('cred-f-email', t('cred.emailFact', 'Email de facturación'), fi.email, {tipo: 'email'}) +
+      _credCampo('cred-f-tel', t('ar.clTel', 'Teléfono'), fi.telefono) + '</div>' +
+      '<div class="cred-informa"><div class="g-small"><b>' + t('cred.informa', 'Informe de Informa') + '</b> ' +
+        (p.hay_informa_fichero ? '<a class="g-btn g-ghost g-sm" href="/api/credito/peticion/' + encodeURIComponent(p.id) + '/informa" target="_blank">📎 ' + _credEsc(inf.nombre_fichero || 'informe') + '</a>' : '') + '</div>' +
+        (borr ? '<label class="g-btn g-secondary g-sm cred-subir">📎 ' + t('cred.adjuntar', 'Adjuntar informe') + '<input type="file" accept=".pdf,.png,.jpg,.jpeg,.webp" style="display:none" onchange="subirInformaCredito(this)"></label>' : '') +
+        '<div class="cred-grid">' + _credCampo('cred-i-res', t('cred.informaRes', 'Resultado (rating, riesgo, límite recomendado)'), inf.resultado, {area: true, rows: 2, ancho: true}) +
+        _credCampo('cred-i-fecha', t('cred.informaFecha', 'Fecha del informe'), inf.fecha, {tipo: 'date'}) + '</div></div></div>' +
+    '<div class="cred-sec"><div class="g-label">4 · ' + t('cred.secCom', 'Potencial comercial y límite revisable') + '</div><div class="cred-grid">' +
+      _credCampo('cred-c-pot', t('cred.potencial', 'Potencial de venta anual (€)'), co.potencial, {tipo: 'number', step: '100', obl: true}) +
+      _credCampo('cred-c-lim', t('cred.limite', 'Límite propuesto (€)'), co.limite, {tipo: 'number', step: '100', obl: true}) +
+      _credCampo('cred-c-rev', t('cred.revision', 'Revisar el límite el'), co.revision, {tipo: 'date', obl: true}) +
+      _credCampo('cred-c-com', t('cred.comentario', 'Comentario de comercial'), co.comentario, {area: true, rows: 2, ancho: true}) + '</div></div>';
+  // (e) firmas
+  var fs = fir.solicitante, fd = fir.direccion;
+  var f1 = fs ? '<div class="cred-firma ok">✓ ' + t('cred.firmadoPor', 'Firmado por') + ' <b>' + _credEsc(fs.nombre || fs.usuario) + '</b> · ' + _credEsc(fs.cuando) + '</div>'
+              : (borr ? ((p.faltan || []).length ? '<ul class="cred-faltan">' + p.faltan.map(function(x){ return '<li>' + _credEsc(x) + '</li>'; }).join('') + '</ul>' : '') +
+                        '<button class="g-btn g-primary g-sm" onclick="firmarPeticionCredito()"' + ((p.faltan || []).length ? ' disabled' : '') + '>✍ ' + t('cred.firmar', 'Firmar y enviar a Dirección') + '</button>'
+                      : '<div class="g-small">—</div>');
+  var f2;
+  if (fd) f2 = '<div class="cred-firma ' + (fd.decision === 'aprobar' ? 'ok' : 'err') + '">' + (fd.decision === 'aprobar' ? '✓ ' + t('cred.aprobadaPor', 'Aprobada por') : '✗ ' + t('cred.rechazadaPor', 'Rechazada por')) + ' <b>' + _credEsc(fd.nombre || fd.usuario) + '</b> · ' + _credEsc(fd.cuando) + (fd.nota ? '<div class="g-small">«' + _credEsc(fd.nota) + '»</div>' : '') + '</div>';
+  else if (p.puede_firmar_direccion) f2 = _credCampo('cred-d-nota', t('cred.notaDir', 'Nota de Dirección (obligatoria para rechazar)'), '', {area: true, rows: 2, ancho: true}).replace(' disabled', '') +
+      '<div class="ctr-acciones"><button class="g-btn g-primary g-sm" onclick="direccionPeticionCredito(\'aprobar\')">✓ ' + t('cred.aprobar', 'Aprobar el límite') + '</button>' +
+      '<button class="g-btn g-secondary g-sm" onclick="direccionPeticionCredito(\'rechazar\')">✗ ' + t('cred.rechazar', 'Rechazar') + '</button></div>';
+  else f2 = '<div class="g-small">' + (p.estado === 'PENDIENTE_DIRECCION' ? '⏳ ' + _credEsc(p.motivo_direccion || t('cred.esperaDir', 'Pendiente de la firma de Dirección.')) : t('cred.dirDespues', 'Firma después de quien pide.')) + '</div>';
+  html += '<div class="cred-sec"><div class="g-label">5 · ' + t('cred.secFirmas', 'Firmas (siempre dos)') + '</div><div class="cred-firmas">' +
+      '<div><div class="g-small"><b>' + t('cred.firma1', 'Quien pide') + '</b></div>' + f1 + '</div>' +
+      '<div><div class="g-small"><b>' + t('cred.firma2', 'Dirección') + '</b></div>' + f2 + '</div></div></div>' +
+    '<div id="cred-msg" class="g-small"></div>' +
+    '<div class="g-modal-foot">' +
+      (p.estado === 'RECHAZADA' ? '<button class="g-btn g-secondary" onclick="reabrirPeticionCredito()">↺ ' + t('cred.reabrir', 'Reabrir para corregir') + '</button>' : '') +
+      (borr ? '<button class="g-btn g-secondary" onclick="guardarPeticionCredito()">' + t('cred.guardar', 'Guardar borrador') + '</button>' : '') +
+      '<button class="g-btn g-ghost" onclick="cerrarPeticionCredito()">' + t('js.cerrar', 'Cerrar') + '</button></div></div>';
+  m.innerHTML = html;
+}
+function _credDatos() {
+  var v = function(id){ var e = document.getElementById(id); return e ? e.value.trim() : ''; };
+  var ck = document.getElementById('cred-ref-otro');
+  return {referencias: {otro_hotel: !!(ck && ck.checked), texto: v('cred-ref-texto')},
+          fiscal: {razon_social: v('cred-f-razon'), nif: v('cred-f-nif'), pais: v('cred-f-pais'), direccion: v('cred-f-dir'), cp: v('cred-f-cp'), poblacion: v('cred-f-pob'), email: v('cred-f-email'), telefono: v('cred-f-tel')},
+          informa: {resultado: v('cred-i-res'), fecha: v('cred-i-fecha')},
+          comercial: {potencial: v('cred-c-pot'), limite: v('cred-c-lim'), revision: v('cred-c-rev'), comentario: v('cred-c-com')}};
+}
+async function _credPost(url, datos, ok) {
+  var msg = document.getElementById('cred-msg');
+  try {
+    var r = await _postJson(url, datos || {});
+    var d = await r.json();
+    if (!d.ok) { if (msg) msg.innerHTML = _gError(_credEsc(d.error || 'Error')); return null; }
+    _credPet = d.peticion; _pintarPeticionCredito();
+    if (ok) showNotification('✓ ' + ok, 'success');
+    cargarPeticionesCredito();
+    return d.peticion;
+  } catch(e) { if (msg) msg.innerHTML = _gError('Error'); return null; }
+}
+function guardarPeticionCredito() { if (_credPet) return _credPost('/api/credito/peticion/' + encodeURIComponent(_credPet.id) + '/guardar', _credDatos(), t('ctr.guardado', 'Guardado')); }
+async function firmarPeticionCredito() {
+  if (!_credPet) return;
+  var g = await _credPost('/api/credito/peticion/' + encodeURIComponent(_credPet.id) + '/guardar', _credDatos());
+  if (!g) return;
+  if ((g.faltan || []).length) return;
+  showConfirmAction(t('cred.firmarQ', '¿Firmar y enviar a Dirección?'), _credEsc(g.cliente) + ' · ' + _credEur((g.comercial || {}).limite), '✍ ' + t('cred.firmarBtn', 'Firmar'),
+    function(){ return _credPost('/api/credito/peticion/' + encodeURIComponent(g.id) + '/firmar', {}, t('cred.firmadaOk', 'Firmada: pendiente de Dirección')); });
+}
+function direccionPeticionCredito(decision) {
+  if (!_credPet) return;
+  var nota = (document.getElementById('cred-d-nota') || {}).value || '';
+  var p = _credPet;
+  showConfirmAction(decision === 'aprobar' ? t('cred.aprobarQ', '¿Aprobar el límite de {x}?').replace('{x}', _credEur((p.comercial || {}).limite)) : t('cred.rechazarQ', '¿Rechazar la petición?'),
+    _credEsc(p.cliente), decision === 'aprobar' ? '✓ ' + t('cred.aprobar', 'Aprobar el límite') : '✗ ' + t('cred.rechazar', 'Rechazar'),
+    async function(){
+      var d = await _credPost('/api/credito/peticion/' + encodeURIComponent(p.id) + '/direccion', {decision: decision, nota: nota}, decision === 'aprobar' ? t('cred.aprobadaOk', 'Límite aprobado') : t('cred.rechazadaOk', 'Petición rechazada'));
+      if (d && typeof cargarARRealData === 'function') cargarARRealData();
+    });
+}
+function reabrirPeticionCredito() { if (_credPet) return _credPost('/api/credito/peticion/' + encodeURIComponent(_credPet.id) + '/reabrir', {}, t('cred.reabiertaOk', 'Reabierta')); }
+async function subirInformaCredito(inp) {
+  if (!_credPet || !inp || !inp.files || !inp.files[0]) return;
+  var msg = document.getElementById('cred-msg');
+  // lo escrito en el formulario no se pierde: primero se guarda
+  var g = await _credPost('/api/credito/peticion/' + encodeURIComponent(_credPet.id) + '/guardar', _credDatos());
+  if (!g) return;
+  var fd = new FormData(); fd.append('fichero', inp.files[0]);
+  try {
+    var r = await fetch('/api/credito/peticion/' + encodeURIComponent(g.id) + '/informa', {method: 'POST', body: fd, headers: {'X-CSRF-Token': _csrfToken}});
+    var d = await r.json();
+    if (!d.ok) { if (msg) msg.innerHTML = _gError(_credEsc(d.error || 'Error')); return; }
+    _credPet = d.peticion; _pintarPeticionCredito();
+    showNotification('✓ ' + t('cred.informaOk', 'Informe adjunto'), 'success');
+  } catch(e) { if (msg) msg.innerHTML = _gError('Error'); }
+}
+
 async function cargarBeosAR() {
   var wrap = document.getElementById('ar-beos-list');
   var cnt = document.getElementById('ar-beos-count');
@@ -17338,6 +17569,7 @@ async function cargarARRealData() {
   // Show skeleton on KPIs while loading
   _skelOn(['arp-pendiente','arp-vencido','arp-cobrado','arp-nclientes']);
   try { cargarContratosAR(); } catch(e){}
+  try { cargarPeticionesCredito(); } catch(e){}     // b90
   try { cargarBeosAR(); } catch(e){}
   try { cargarBonosAR(); } catch(e){}
   try {
@@ -17396,6 +17628,13 @@ async function cargarARRealData() {
             ? '<div style="margin-top:4px">' + gBadge('g-warn', t('ar.pendienteCompletar', 'Ficha pendiente de completar')) + (c.origen ? ' <span class="g-note" style="margin:0">' + _cEsc(c.origen) + '</span>' : '') + '</div>'
             : '';
           const editBtn = '<button onclick="event.stopPropagation();editarClienteAR(\'' + c.nombre.replace(/'/g,"\\'") + '\')" title="' + t('ar.editarFicha', 'Editar ficha') + '" class="g-btn g-ghost g-sm g-icon">✎</button>';
+          // b90: el limite solo sale de una peticion firmada (quien pide + Direccion)
+          const cr = c.credito || {};
+          const credBadge = cr.origen === 'peticion' ? (cr.revision_vencida ? gBadge('g-err', t('cred.revVencida', 'Revisión vencida')) : '')
+                          : cr.origen === 'sin_peticion' ? gBadge('g-warn', t('cred.sinPeticion', 'Límite sin petición'), t('cred.sinPeticionT', 'Escrito a mano antes de las peticiones de crédito: revísalo con una petición.'))
+                          : gBadge('g-mute', t('cred.sinCredito', 'Sin crédito'));
+          const credAbierta = cr.abierta ? gBadge('g-info', cr.abierta_estado === 'PENDIENTE_DIRECCION' ? t('cred.pendDir', 'Pendiente de Dirección') : t('cred.enCurso', 'Petición en curso')) : '';
+          const credBtn = '<button onclick="event.stopPropagation();' + (cr.abierta ? 'abrirPeticionCredito(\'' + cr.abierta + '\')' : 'pedirCreditoAR(\'' + c.nombre.replace(/'/g,"\\'") + '\')') + '" class="g-btn g-secondary g-sm cred-pedir">💳 ' + (cr.abierta ? t('cred.verPeticion', 'Ver petición') : t('cred.pedir', 'Pedir crédito')) + '</button>';
           const usoPct = Math.min(100, uso);
           const usoCls = uso >= 90 ? 'err' : uso >= 70 ? 'warn' : 'ok';
           return '<div class="g-row g-cliente" onclick="filtrarClienteAR(\'' + c.nombre.replace(/'/g,"\\'") + '\')">' +
@@ -17406,7 +17645,9 @@ async function cargarARRealData() {
             (c.tiene_vencidas ? gBadge('g-err', t('est.vencida', 'Vencida')) : '') +
             '</div>' +
             '<div style="flex-basis:100%"><div class="g-progress-bar" style="height:4px"><div class="g-progress-fill ' + usoCls + '" style="width:' + usoPct + '%"></div></div>' +
-            '<div class="g-note" style="margin-top:3px">' + uso + '% ' + t('arreal.creditoUsado', 'crédito usado (límite') + ' ' + _fmtEurES(c.limite_credito||0, 0) + ')</div></div>' +
+            '<div class="g-note" style="margin-top:3px">' + uso + '% ' + t('arreal.creditoUsado', 'crédito usado (límite') + ' ' + _fmtEurES(c.limite_credito||0, 0) + ')' +
+            (cr.origen === 'peticion' && cr.revision ? ' · ' + t('cred.revisa', 'revisión') + ' ' + _fechaCorta(cr.revision) : '') + '</div>' +
+            '<div class="cred-cli">' + credBadge + credAbierta + credBtn + '</div></div>' +
             '</div>';
         }).join('');
       }
@@ -17515,7 +17756,7 @@ function emitirPendienteAR(numero) {
       try {
         const r = await _postJson('/api/ar_real/emitir_pendiente', {numero});
         const d = await r.json();
-        if (d.ok) { showNotification('✓ ' + t('arreal.emitidaOk', 'Factura {n} emitida').replace('{n}', numero), 'success'); cargarARRealData(); }
+        if (d.ok) { showNotification(d.aviso_credito ? '✓ ' + t('arreal.emitidaOk', 'Factura {n} emitida').replace('{n}', numero) + ' · ⚠ ' + d.aviso_credito : '✓ ' + t('arreal.emitidaOk', 'Factura {n} emitida').replace('{n}', numero), d.aviso_credito ? 'warning' : 'success'); cargarARRealData(); }
         else showNotification('✗ ' + (d.error || 'Error'), 'error');
       } catch(e) { showNotification('✗ Error de conexión', 'error'); }
     });
@@ -17755,7 +17996,7 @@ def demo_data():
 @app.route('/api/rol/cambiar/<new_role>', methods=['POST'])
 def cambiar_rol(new_role):
     """Cambiar rol del usuario actual"""
-    roles_validos = ['admin', 'financial_controller', 'income_auditor', 'fb_manager', 'jefe_otras']
+    roles_validos = ['admin', 'financial_controller', 'income_auditor', 'fb_manager', 'jefe_otras', 'direccion']
     if new_role not in roles_validos:
         return jsonify({"error": "Rol inválido"}), 400
     
@@ -17773,7 +18014,8 @@ def rol_actual():
             "financial_controller": "Controller Financiero",
             "income_auditor": "Income Auditor",
             "fb_manager": "Jefe de F&B",
-            "jefe_otras": "Jefe de Servicios"
+            "jefe_otras": "Jefe de Servicios",
+            "direccion": "Dirección"
         }
     })
 

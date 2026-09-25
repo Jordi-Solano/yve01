@@ -32,6 +32,13 @@ ROLE_PERMISSIONS = {
         "acciones": ["aprobar_ap_fb", "exportar"],
         "visible_en_kpis": ["ingresos_fb", "food_cost_pct", "alertas_fb", "facturas_ap_fb"]
     },
+    "direccion": {
+        "nombre": "Dirección",
+        "descripcion": "Dirección del hotel: lo ve todo y firma las peticiones de crédito (b90)",
+        "tabs": ["ar", "ap", "drr", "banco", "notificaciones", "fb", "ar_real", "multi_hotel"],
+        "acciones": ["firmar_credito", "exportar", "ver_reportes"],
+        "visible_en_kpis": ["revenue", "ocupacion", "gop", "alertas", "facturas_pendientes"]
+    },
     "jefe_otras": {
         "nombre": "Jefe de Servicios",
         "descripcion": "Gestión de AP no-F&B",

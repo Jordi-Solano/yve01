@@ -250,12 +250,10 @@ def api_crear_cliente():
     nombre = str(d.get('nombre') or d.get('nombre_cliente') or '').strip()
     if not nombre:
         return jsonify({'ok': False, 'error': 'Falta el nombre del cliente'}), 400
-    try:
-        limite = float(str(d.get('limite') or d.get('credito_limite') or 0).replace(',', '.'))
-    except Exception:
-        limite = 0.0
-    if limite <= 0:
-        return jsonify({'ok': False, 'error': 'El limite de credito tiene que ser mayor que 0'}), 400
+    # b90 (regla de finanzas): el LIMITE de credito solo sale de una peticion de credito
+    # firmada por quien la pide y por Direccion (AR > Peticion de credito). Aqui ya no se
+    # escribe: un cliente nuevo nace sin credito y el de uno que ya existe se conserva.
+    limite_ignorado = any(str(d.get(k) or '').strip() not in ('', '0') for k in ('limite', 'credito_limite'))
     try:
         dias = int(float(d.get('dias_pago') or 30))
     except Exception:
@@ -264,7 +262,7 @@ def api_crear_cliente():
     fila = {
         'nombre_cliente': nombre,
         'nif': str(d.get('nif') or '').strip(),
-        'credito_limite': round(limite, 2),
+        'credito_limite': 0.0,
         'credito_usado': 0,
         'dias_pago': dias,
         'email': str(d.get('email') or '').strip(),
@@ -287,8 +285,11 @@ def api_crear_cliente():
                 _m = df['nombre_cliente'].astype(str).str.strip().str.lower() == nombre.lower()
                 if _m.any():
                     _prev = df[_m].iloc[0].to_dict()
-                    for k in ('origen', 'credito_usado'):
-                        if k in _prev and str(_prev[k]) not in ('', 'nan', 'None'):
+                    # b90: el credito (limite, su peticion, su revision) y los datos
+                    # fiscales firmados se conservan: esta ficha no los cambia
+                    for k in ('origen', 'credito_usado', 'credito_limite', 'credito_revision', 'credito_peticion',
+                              'credito_aprobado', 'credito_aprobado_por', 'direccion', 'cp', 'poblacion', 'pais'):
+                        if k in _prev and str(_prev[k]) not in ('', 'nan', 'None', 'NaT'):
                             fila[k] = _prev[k]
                 df = df[~_m]
             df = pd.concat([df, pd.DataFrame([fila])], ignore_index=True)
@@ -297,7 +298,8 @@ def api_crear_cliente():
         df.to_excel(ruta, index=False)
     except Exception as e:
         return jsonify({'ok': False, 'error': str(e)[:180]}), 500
-    return jsonify({'ok': True, 'cliente': nombre, 'total': int(len(df))})
+    return jsonify({'ok': True, 'cliente': nombre, 'total': int(len(df)), 'limite_credito': float(fila.get('credito_limite') or 0),
+                    **({'aviso': 'El límite de crédito no se cambia aquí: sale de una petición de crédito firmada (AR › Petición de crédito).'} if limite_ignorado else {})})
 
 
 @ar_real_bp.route('/api/ar_real/clientes')
@@ -307,6 +309,11 @@ def api_clientes():
         df_c = _get_clientes()
         df_r = _get_reservas()
         clientes = []
+        try:
+            import peticiones_credito as _PC
+            _peticiones = _PC.leer()
+        except Exception:
+            _PC, _peticiones = None, []
         for _, c in df_c.iterrows():
             nombre = str(c.get('nombre_cliente',''))
             # Pending invoices for this client
@@ -324,9 +331,12 @@ def api_clientes():
             limit = _num_cliente(c, 'credito_limite', 'limite_credito')
             uso_pct = round(total_pend / limit * 100, 1) if limit > 0 else 0
             _estado_ficha = _txt_cliente(c, 'estado_ficha').upper()
+            # b90: de donde sale el limite (peticion firmada, escrito a mano antes = "sin peticion", o sin credito)
+            _cred = _PC.estado_limite(c.to_dict(), _peticiones) if _PC else {'origen': 'sin_peticion' if limit > 0 else 'sin_credito'}
             clientes.append({
                 'nombre':    nombre,
-                'pendiente_completar': _estado_ficha == 'PENDIENTE' or limit <= 0,
+                'pendiente_completar': _estado_ficha == 'PENDIENTE',
+                'credito': _cred,
                 'origen':    _txt_cliente(c, 'origen'),
                 'NIF':       _txt_cliente(c, 'nif', 'NIF', 'cif'),
                 'email':     _txt_cliente(c, 'email', 'correo'),
@@ -452,6 +462,48 @@ def api_cobrar():
         return jsonify({'ok': False, 'error': str(e)}), 500
 
 
+def aviso_credito(cliente, datos_dir=None):
+    """b90: aviso (NO bloquea) al emitir una factura a credito si el cliente no tiene
+    credito aprobado por una peticion firmada, si su limite viene de antes de las
+    peticiones, si su revision ha vencido o si con lo emitido pasa de su limite.
+    Lo pendiente es de TODO el grupo (el limite es del cliente, no de un hotel)."""
+    try:
+        import peticiones_credito as _PC
+        dd = str(datos_dir) if datos_dir else str(DATOS)
+        n = _PC.norm_nombre(cliente)
+        fila = None
+        ruta = _os.path.join(dd, 'clientes_credito.xlsx')
+        if _os.path.exists(ruta):
+            df_c = pd.read_excel(ruta)
+            if len(df_c) and 'nombre_cliente' in df_c.columns:
+                m = df_c['nombre_cliente'].map(_PC.norm_nombre) == n
+                if m.any():
+                    fila = df_c[m].iloc[0].to_dict()
+        if fila is None:
+            return f'{cliente} no tiene ficha de crédito: pide crédito antes de facturarle a crédito.'
+        est = _PC.estado_limite(fila, datos_dir=dd)
+        if est['origen'] == 'sin_credito':
+            return f'{cliente} no tiene crédito aprobado (AR › Petición de crédito).'
+        lim = _num_cliente(fila, 'credito_limite', 'limite_credito')
+        pend = 0.0
+        rr = _os.path.join(dd, 'reservas_credito.xlsx')
+        if _os.path.exists(rr):
+            rv = pd.read_excel(rr)
+            if len(rv) and 'cliente' in rv.columns:
+                for f in rv.to_dict('records'):
+                    if str(f.get('estado', '')) == 'FACTURADO' and _PC.norm_nombre(f.get('cliente')) == n:
+                        pend += max(0.0, float(_num_cliente(f, 'total') or 0) - float(_num_cliente(f, 'compensado') or 0))
+        if pend > lim + 0.005:
+            return f'{cliente} pasa de su límite de crédito: pendiente {pend:,.2f} € de {lim:,.2f} €.'
+        if est['origen'] == 'sin_peticion':
+            return f'El límite de {cliente} no sale de una petición firmada: revísalo.'
+        if est.get('revision_vencida'):
+            return f'La revisión del límite de crédito de {cliente} está vencida.'
+    except Exception:
+        return ''
+    return ''
+
+
 @ar_real_bp.route('/api/ar_real/emitir_pendiente', methods=['POST'])
 def api_emitir_pendiente():
     """b89: emite la factura de un contrato de grupo que estaba "pendiente de emitir"
@@ -485,7 +537,7 @@ def api_emitir_pendiente():
         except Exception:
             pass
         return jsonify({'ok': True, 'numero': numero, 'fecha_emision': hoy, 'cliente': _txt_cliente(fila, 'cliente'),
-                        'message': f'Factura {numero} emitida'})
+                        'message': f'Factura {numero} emitida', 'aviso_credito': aviso_credito(_txt_cliente(fila, 'cliente'))})
     except Exception as e:
         return jsonify({'ok': False, 'error': str(e)}), 500
 
@@ -617,7 +669,7 @@ def api_emitir_factura():
         }
         df = pd.concat([df, pd.DataFrame([new_row])], ignore_index=True)
         _save_reservas(df)
-        return jsonify({'ok': True, 'numero': numero, 'total': total})
+        return jsonify({'ok': True, 'numero': numero, 'total': total, 'aviso_credito': aviso_credito(cliente)})
     except Exception as e:
         return jsonify({'ok': False, 'error': str(e)}), 500
 

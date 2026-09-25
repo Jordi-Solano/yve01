@@ -154,30 +154,37 @@ def main():
                   'limite': 25000, 'dias_pago': 45, 'email': 'cuentas@meridiano.es'})
         j = r.get_json()
         df = pd.read_excel(ruta_cli) if os.path.exists(ruta_cli) else pd.DataFrame()
+        # b90: el limite de credito ya NO se escribe en el alta: solo sale de una
+        # peticion de credito firmada (quien pide + Direccion). El cliente nace sin credito.
         ok_alta = (j.get('ok') and len(df) == 1
                    and str(df.iloc[0]['nombre_cliente']) == 'Viajes Meridiano S.A.'
-                   and float(df.iloc[0]['credito_limite']) == 25000.0
+                   and float(df.iloc[0]['credito_limite']) == 0.0
                    and int(df.iloc[0]['dias_pago']) == 45)
-        print(f"  {'OK ' if ok_alta else 'FALLA'}  se da de alta el cliente y se guarda "
+        print(f"  {'OK ' if ok_alta else 'FALLA'}  se da de alta el cliente y se guarda, sin credito "
               f"({len(df)} fila/s en el fichero)")
         if not ok_alta:
             fallos += 1
+        ok_aviso = bool(j.get('aviso')) and 'petición' in str(j.get('aviso'))
+        print(f"  {'OK ' if ok_aviso else 'FALLA'}  el limite que llegue en el alta se ignora y se avisa")
+        if not ok_aviso:
+            fallos += 1
 
         # el nombre es la identidad: el mismo cliente se ACTUALIZA
-        alta({'nombre': 'Viajes Meridiano S.A.', 'limite': 40000})
+        alta({'nombre': 'Viajes Meridiano S.A.', 'dias_pago': 60, 'limite': 40000})
         df2 = pd.read_excel(ruta_cli) if os.path.exists(ruta_cli) else pd.DataFrame()
         if SABOTAJE:
             df2 = df
         ok_upd = (len(df2) == 1
-                  and float(df2.iloc[0]['credito_limite']) == (25000.0 if SABOTAJE else 40000.0))
+                  and int(df2.iloc[0]['dias_pago']) == (45 if SABOTAJE else 60)
+                  and float(df2.iloc[0]['credito_limite']) == 0.0)
         print(f"  {'OK ' if ok_upd else 'FALLA'}  dar de alta el MISMO nombre actualiza, "
-              f"no duplica ({len(df2)} fila/s, límite "
-              f"{df2.iloc[0]['credito_limite'] if len(df2) else '—'})")
+              f"no duplica ({len(df2)} fila/s, días {df2.iloc[0]['dias_pago'] if len(df2) else '—'}, "
+              f"límite {df2.iloc[0]['credito_limite'] if len(df2) else '—'})")
         if not ok_upd:
             fallos += 1
 
         # otro cliente distinto SI se añade
-        alta({'nombre': 'Corporate Travel S.L.', 'limite': 10000})
+        alta({'nombre': 'Corporate Travel S.L.'})
         df3 = pd.read_excel(ruta_cli) if os.path.exists(ruta_cli) else pd.DataFrame()
         ok_dos = len(df3) == (1 if SABOTAJE else 2)
         print(f"  {'OK ' if ok_dos else 'FALLA'}  un cliente distinto se añade "
@@ -197,14 +204,10 @@ def main():
         if not ok_ve:
             fallos += 1
 
-        # sin nombre o sin limite, no entra basura
-        if SABOTAJE:
-            malos = [400, 400]
-        else:
-            malos = [alta({'limite': 100}).status_code,
-                     alta({'nombre': 'X', 'limite': 0}).status_code]
-        ok_mal = malos == [400, 400]
-        print(f"  {'OK ' if ok_mal else 'FALLA'}  sin nombre o con límite 0 se rechaza: {malos}")
+        # sin nombre no entra basura
+        malos = [400] if SABOTAJE else [alta({'limite': 100}).status_code]
+        ok_mal = malos == [400]
+        print(f"  {'OK ' if ok_mal else 'FALLA'}  sin nombre se rechaza: {malos}")
         if not ok_mal:
             fallos += 1
 
