@@ -162,21 +162,21 @@ def es_ota(texto):
     return tiene_factura_ota
 
 
-# Documentos que NO son facturas — pre-filtro por nombre de archivo
-NO_FACTURA_KEYWORDS = {'menu ', 'checklist', 'minuta', 'diploma', 'schedule', 'quotation', 'meeting notes', 'certificado', 'signage', 'setup', 'powerpoint', 'programa', 'proposal', 'plano', 'itinerario', 'certificate', 'agenda', 'ppt', 'logo', 'floor plan', 'master onsite', 'acta ', 'timeline', 'carta de', 'presentation', 'floorplan', 'running order', 'quote', 'wine list', 'planning', 'banner', 'resume', 'itinerary', 'presupuesto'}
-
+# b100 (decision de Jordi, 25 sep 2026): el NOMBRE del fichero ya no descarta nada;
+# todo lo que se puede leer se clasifica por el CONTENIDO. Antes una lista de palabras
+# ('programa', 'presupuesto', 'agenda', 'quote', 'menu ', 'minuta', 'planning'...)
+# saltaba el documento SIN leerlo, y ahi caian contratos de grupo y BEO reales
+# ("Presupuesto grupo X.pdf", "..._programa.pdf": visto en produccion el 25 sep).
+# Solo quedan fuera los FORMATOS que no se pueden leer (no hay contenido que mirar).
 NO_FACTURA_EXTENSIONS = {'.doc', '.docx', '.ppt', '.pptx', '.gif', '.svg', '.mp4', '.zip', '.rar'}  # imágenes NO: se leen por OCR
 
 
 def es_no_factura_por_nombre(nombre_archivo):
-    """Pre-filtro rápido por nombre de archivo — evita gastar tokens de Claude."""
-    nombre_lower = nombre_archivo.lower()
-    ext = os.path.splitext(nombre_lower)[1]
+    """Solo el formato: lo que no se puede leer (Word, PowerPoint, vídeo, comprimidos...).
+    El nombre del fichero NO decide nada (b100)."""
+    ext = os.path.splitext(nombre_archivo.lower())[1]
     if ext in NO_FACTURA_EXTENSIONS:
         return True, f"extensión {ext} no es factura"
-    for kw in NO_FACTURA_KEYWORDS:
-        if kw in nombre_lower:
-            return True, f"contiene '{kw}'"
     return False, ""
 
 
