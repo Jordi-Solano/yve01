@@ -166,36 +166,14 @@ input:focus{background:rgba(6,10,18,.8);border-color:rgba(125,180,255,.85);box-s
 </style>
 </head>
 <body>
-<!-- ── Pantalla de inicio (splash) — no saltable, precarga recursos ── -->
-<style>
-#yve-splash{position:fixed;inset:0;z-index:99999;display:flex;flex-direction:column;align-items:center;justify-content:center;
-  background:linear-gradient(180deg,#101a2e 0%,#0c1424 55%,#090e1a 100%);padding:24px;
-  transition:opacity .55s ease,visibility .55s ease}
-#yve-splash.hide{opacity:0;visibility:hidden;pointer-events:none}
-#yve-splash .sp-logo{width:110px;height:110px;border-radius:27px;box-shadow:0 22px 60px rgba(0,0,0,.55);animation:spPop .6s cubic-bezier(.2,.8,.2,1)}
-#yve-splash .sp-brand{font-family:'Space Grotesk','Inter',sans-serif;margin-top:24px;font-size:31px;font-weight:700;letter-spacing:-.8px;color:#fff;animation:spFade .6s ease .12s both}
-#yve-splash .sp-brand span{color:#60a5fa}
-#yve-splash .sp-sub{margin-top:9px;font-size:13px;color:#94a3b8;animation:spFade .6s ease .22s both}
-#yve-splash .sp-loader{margin-top:30px;width:32px;height:32px;border-radius:50%;border:3px solid rgba(148,163,184,.22);border-top-color:#3b82f6;animation:spSpin .8s linear infinite}
-@keyframes spPop{from{opacity:0;transform:scale(.82)}to{opacity:1;transform:scale(1)}}
-@keyframes spFade{from{opacity:0;transform:translateY(8px)}to{opacity:1;transform:none}}
-@keyframes spSpin{to{transform:rotate(360deg)}}
-</style>
-<div id="yve-splash" role="status" aria-label="Cargando Yve.01">
-  <img class="sp-logo" src="/static/icons/yve-logo-192.png" alt="Yve.01">
-  <div class="sp-brand">Yve<span>.01</span></div>
-  <div class="sp-sub">Automatización financiera para hoteles</div>
-  <div class="sp-loader"></div>
-</div>
 <script>
+// b105: la intro (el logo que se enciende, una vez por sesion) es la del panel. Este login
+// tenia su propio splash viejo (1,9 s, con rueda de "cargando") y ademas marcaba la intro
+// como VISTA: despues de entrar, el panel se la saltaba e iba directo. Ahora el login no
+// tiene splash y borra la marca: al entrar, el panel enseña la intro.
 (function(){
-  var sp=document.getElementById('yve-splash'); if(!sp) return;
-  try{ sessionStorage.setItem('yve_splash_shown','1'); }catch(e){}
+  try{ sessionStorage.removeItem('yve_splash_shown'); }catch(e){}
   try{ var lang=localStorage.getItem('yve_lang'); if(lang && lang!=='es'){ fetch('/static/i18n/'+lang+'.json').catch(function(){}); } }catch(e){}
-  function quitar(){ if(sp&&sp.parentNode) sp.parentNode.removeChild(sp);
-    var u=document.getElementById('username'); if(u){ try{ u.focus(); }catch(e){} } }
-  function ocultar(){ sp.classList.add('hide'); setTimeout(quitar,600); }
-  setTimeout(ocultar, 1900);
 })();
 </script>
 <div class="wrap">

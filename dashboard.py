@@ -11550,7 +11550,13 @@ if ('serviceWorker' in navigator) {
       });
     }).catch(function(){});
     var _refreshing = false;
+    // b105: recargar SOLO cuando un service worker SUSTITUYE a otro (la actualizacion del
+    // banner). La primera vez que se instala (navegador nuevo, datos borrados) no habia
+    // ninguno: el `clients.claim()` de sw.js disparaba este evento al segundo de cargar, la
+    // pagina se recargaba y cortaba la intro, que ya no volvia a salir (marca de sesion puesta).
+    var _habiaSW = !!navigator.serviceWorker.controller;
     navigator.serviceWorker.addEventListener('controllerchange', function() {
+      if (!_habiaSW) { _habiaSW = true; return; }
       if (_refreshing) return; _refreshing = true; window.location.reload();
     });
   });

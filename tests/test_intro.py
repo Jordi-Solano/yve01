@@ -1,5 +1,9 @@
 # -*- coding: utf-8 -*-
 """Pieza 11 (Jordi, sep 2026), rehecha el mismo dia: la intro.
+b105 (25 sep): "La intro se salta: al entrar no se ve la animacion del logo, va directo al
+panel". El login tenia su splash viejo y marcaba la intro como vista: ahora no tiene splash y
+borra la marca, y aqui se mide en Chromium que login → panel enseña la intro, que al recargar
+ya no sale (una vez por sesion) y que otra pestaña es otra sesion.
 Sin rueda de "cargando". Primero se ENCIENDE el logo de verdad (anillos + punto),
 luego "Yve" letra a letra a su derecha (cada letra desplaza el logo un poco a la
 izquierda), luego ".01" y la frase. Lento. Acento Y fondo de Personalizacion
@@ -8,6 +12,7 @@ Con Playwright si esta instalado: se mide en Chromium.
 
   python3.12 tests/test_intro.py
   python3.12 tests/test_intro.py --sabotaje
+  python3.12 tests/test_intro.py --sabotaje-sw   (solo quita la guarda del service worker)
 """
 import os
 import re
@@ -20,6 +25,7 @@ sys.path.insert(0, BASE)
 os.chdir(BASE)
 
 SABOTAJE = '--sabotaje' in sys.argv
+SAB_SW = '--sabotaje-sw' in sys.argv
 
 
 def main():
@@ -36,7 +42,11 @@ def main():
     cl = app.test_client()
     assert cl.post('/api/login', json={'username': 'admin', 'password': 'admin123'}).status_code == 200
     html = cl.get('/').get_data(as_text=True)
+    lg = app.test_client().get('/login').get_data(as_text=True)     # sin sesion: la pagina de login
+    if SAB_SW:
+        html = html.replace("if (!_habiaSW) { _habiaSW = true; return; }", "")
     if SABOTAJE:
+        lg = lg.replace("sessionStorage.removeItem('yve_splash_shown')", "sessionStorage.setItem('yve_splash_shown','1')")
         html = html.replace("var acc=(localStorage.getItem('yve_accent')||'').trim();", "var acc='';")
         html = html.replace("var bg=(localStorage.getItem('yve_bg')||'').trim();", "var bg='';")
         html = html.replace('<div class="sp-sub">', '<div class="sp-loader"></div><div class="sp-sub">')
@@ -53,6 +63,13 @@ def main():
     ok("localStorage.getItem('yve_accent')" in sp and "sp.style.setProperty('--sp-acc',acc)" in sp, "el logo lee el acento de Personalizacion antes del primer frame")
     ok("localStorage.getItem('yve_bg')" in sp and "sp.style.setProperty('--sp-bg1'" in sp and "var(--sp-bg1)" in css, "y el FONDO de la intro tambien sale de Personalizacion")
     ok(re.search(r"MIN=(\d+)", sp) and int(re.search(r"MIN=(\d+)", sp).group(1)) >= 6000, "dura lo que dura la secuencia (MIN >= 6 s)")
+    # b105: el login no tiene splash propio ni marca la intro como vista
+    ok('id="btn-login"' in lg and 'id="yve-splash"' not in lg and 'sp-loader' not in lg, "el login no tiene splash (el viejo, con rueda)")
+    ok("sessionStorage.setItem('yve_splash_shown'" not in lg and "sessionStorage.removeItem('yve_splash_shown')" in lg,
+       "el login no marca la intro como vista: la borra, para que el panel la enseñe al entrar")
+    # b105: la primera instalacion del service worker (clients.claim) ya no recarga la pagina
+    ok("var _habiaSW = !!navigator.serviceWorker.controller;" in html and "if (!_habiaSW) { _habiaSW = true; return; }" in html,
+       "el service worker nuevo no recarga la pagina (solo cuando sustituye a otro: el banner de actualizar)")
 
     try:
         from playwright.sync_api import sync_playwright
@@ -65,9 +82,16 @@ def main():
         from werkzeug.serving import make_server
         # la pagina que se mide es la que se acaba de leer (con o sin sabotaje):
         # un envoltorio WSGI la sirve en /__intro_test sin tocar la app
-        _cuerpo = html.encode('utf-8')
+        _cuerpo = html.encode('utf-8'); _login = lg.encode('utf-8')
         def _wsgi(environ, start_response):
             if environ.get('PATH_INFO') == '/__intro_test':
+                start_response('200 OK', [('Content-Type', 'text/html; charset=utf-8')])
+                return [_cuerpo]
+            if environ.get('PATH_INFO') == '/login' and environ.get('REQUEST_METHOD') == 'GET':
+                start_response('200 OK', [('Content-Type', 'text/html; charset=utf-8')])
+                return [_login]
+            if environ.get('PATH_INFO') == '/' and environ.get('REQUEST_METHOD') == 'GET':
+                # el panel tambien es el HTML leido (con o sin sabotaje)
                 start_response('200 OK', [('Content-Type', 'text/html; charset=utf-8')])
                 return [_cuerpo]
             return app(environ, start_response)
@@ -83,7 +107,26 @@ def main():
                 ctx = br.new_context(viewport={'width': 400, 'height': 740}); pg = ctx.new_page()
                 pg.goto('http://127.0.0.1:5097/login'); pg.fill('#username', 'admin'); pg.fill('#password', 'admin123')
                 # el login navega solo: si se hace goto mientras esa navegacion esta en vuelo, Chromium la aborta (ERR_ABORTED)
-                pg.click('#btn-login'); pg.wait_for_url(lambda u: '/login' not in u, timeout=20000); pg.wait_for_load_state('networkidle'); pg.wait_for_timeout(500)
+                pg.click('#btn-login'); pg.wait_for_url(lambda u: '/login' not in u, timeout=20000)
+                # b105: login → panel. En cuanto el HTML esta leido, la intro tiene que estar ahi (dura 7,2 s)
+                pg.wait_for_function("document.readyState!=='loading'", timeout=20000)
+                _vis = """(function(){var s=document.getElementById('yve-splash'); if(!s) return null; var cs=getComputedStyle(s);
+                          return {hide:s.classList.contains('hide'), vis:cs.visibility, op:parseFloat(cs.opacity)};})()"""
+                v0 = pg.evaluate(_vis)
+                ok(v0 is not None and not v0['hide'] and v0['vis'] == 'visible', f"al entrar (login → panel) sale la intro ({v0})")
+                # (en un navegador nuevo se instala el service worker: antes eso recargaba la pagina
+                #  al segundo y se llevaba la intro)
+                pg.wait_for_timeout(1200)
+                v1 = pg.evaluate(_vis)
+                pg.wait_for_timeout(1500)
+                v1b = pg.evaluate(_vis)
+                ok(v1 is not None and v1b is not None and not v1b['hide'] and v1b['op'] > 0.9, f"y sigue a la vista 1,2 y 2,7 s despues ({v1}, {v1b})")
+                pg.reload(wait_until='domcontentloaded')
+                ok(pg.evaluate(_vis) is None, "una vez por sesion: al recargar ya no sale")
+                p2 = ctx.new_page(); p2.goto('http://127.0.0.1:5097/', wait_until='domcontentloaded')
+                v2 = p2.evaluate(_vis); p2.close()
+                ok(v2 is not None and not v2['hide'], f"otra pestaña es otra sesion: vuelve a salir ({v2})")
+                pg.wait_for_load_state('networkidle'); pg.wait_for_timeout(500)
                 pg.evaluate("localStorage.setItem('yve_accent','#e11d48'); localStorage.setItem('yve_bg','#1a1020'); sessionStorage.removeItem('yve_splash_shown')")
                 pg.goto('http://127.0.0.1:5097/__intro_test', wait_until='commit')
                 # se mide en cuanto el script del splash ha corrido (deja la marca en sessionStorage)
@@ -120,7 +163,7 @@ def main():
     ok(not [f for f in diff if f.startswith('oracle_') or f == 'lector_facturas_ap.py'], 'ni oracle_* ni clasificador')
 
     print()
-    if SABOTAJE:
+    if SABOTAJE or SAB_SW:
         print('SABOTAJE: se esperaban fallos' if fallos else '*** SABOTAJE SIN EFECTO ***')
         sys.exit(0 if fallos else 1)
     print('TODO OK' if not fallos else f'{fallos} FALLOS')
