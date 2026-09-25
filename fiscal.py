@@ -47,7 +47,7 @@ from provisiones import _fecha, _num, _txt, _mes_a_rango
 def _es(v):
     """1234.5 -> '1.234,50' (formato español, como el resto del panel)."""
     return f"{float(v or 0):,.2f}".replace(",", "X").replace(".", ",").replace("X", ".")
-from cierre_mes import IVA_GENERAL, IVA_REDUCIDO, regimen_ota, config_cierre, _r
+from cierre_mes import IVA_GENERAL, IVA_REDUCIDO, regimen_ota, config_cierre, _r, desglose_factura_ar
 
 BASE_DIR = os.path.dirname(os.path.abspath(__file__))
 CONFIG_FILE = "config_fiscal.json"
@@ -216,27 +216,24 @@ def calcular(mes, fuentes, cfg=None, cfg_fiscal=None):
             f = _fecha(f_em)
             if total <= 0 or f is None or not (ini <= f <= fin):
                 continue
-            hab = _num(r.get("importe_habitaciones")); fb = _num(r.get("importe_fb")); ext = _num(r.get("importe_extras"))
-            if not (hab or fb or ext):
-                hab = total
-            s = _r(hab + fb + ext)
-            if s and abs(s - total) > 0.011:
-                k = total / s; hab, fb, ext = _r(hab * k), _r(fb * k), _r(ext * k)
-            b_h = _r((hab + ext) / (1 + pct_h / 100)); i_h = _r(hab + ext - b_h)
-            b_f = _r(fb / (1 + pct_f / 100)); i_f = _r(fb - b_f)
-            dif = _r(total - (b_h + b_f + i_h + i_f)); i_h = _r(i_h + dif)
+            # b96: cada concepto a SU tipo (las salas de un contrato de grupo, al 21 %)
+            dg = desglose_factura_ar(r, cfg)
             num = _txt(r.get("numero_factura")) or _txt(r.get("numero_reserva")) or _txt(r.get("numero")) or "s/n"   # b93
             cli = _txt(r.get("cliente")) or "cliente"
             nif = _limpia_nif(_col(r, "nif", "cif", "nif_cliente")) or _nif_cliente(cli, fuentes, cf)
             if not nif:
                 nif_pend.add(cli)
-            if b_h:
-                suma(_pct_key(pct_h), b_h, i_h)
-            if b_f:
-                suma(_pct_key(pct_f), b_f, i_f)
+            for t in dg["tramos"]:
+                if t["base"] or t["cuota"]:
+                    suma(_pct_key(t["pct"]), t["base"], t["cuota"])
+            tipos = sorted(dg["por_tipo"])
             exp.append({"tipo_factura": "F1", "fecha": f.isoformat(), "numero": num, "nif": nif, "nombre": cli,
-                        "clave_regimen": "01", "base": _r(b_h + b_f), "tipo": pct_h if not b_f else f"{pct_h}/{pct_f}",
-                        "cuota": _r(i_h + i_f), "total": total, "origen": "AR"})
+                        "clave_regimen": "01", "base": dg["base"],
+                        "tipo": (tipos[0] if len(tipos) == 1 else "/".join(str(t) for t in tipos)) if tipos else pct_h,
+                        "cuota": dg["cuota"], "total": total, "origen": "AR",
+                        # b96: el desglose EXACTO por tipo (el SII ya no reparte la base a partes iguales)
+                        "desglose": [{"tipo": t, "base": dg["por_tipo"][t]["base"], "cuota": dg["por_tipo"][t]["cuota"]}
+                                     for t in tipos]})
 
     # ── facturas recibidas AP ─────────────────────────────────────────────
     ap = fuentes.get("ap")

@@ -80,9 +80,15 @@ def _periodo(mes):
     return f"<sii:PeriodoLiquidacion><sii:Ejercicio>{a}</sii:Ejercicio><sii:Periodo>{m}</sii:Periodo></sii:PeriodoLiquidacion>"
 
 
-def _detalle_iva(tipo, base, cuota, etiqueta_cuota):
-    """Un DetalleIVA por tipo. `tipo` puede venir como '10/21' (factura AR con dos tipos): se reparte
-    proporcionalmente por cuota."""
+def _detalle_iva(tipo, base, cuota, etiqueta_cuota, desglose=None):
+    """Un DetalleIVA por tipo. `desglose` (b96) = [{tipo, base, cuota}] exacto: un DetalleIVA por
+    tramo con SUS importes. Sin desglose, `tipo` puede venir como '10/21' y la base se reparte a
+    partes iguales (aproximacion de antes, solo para lo que no trae desglose)."""
+    if desglose:
+        return "".join(
+            f"<sii:DetalleIVA><sii:TipoImpositivo>{_imp(d.get('tipo'))}</sii:TipoImpositivo><sii:BaseImponible>{_imp(d.get('base'))}</sii:BaseImponible>"
+            f"<sii:{etiqueta_cuota}>{_imp(d.get('cuota'))}</sii:{etiqueta_cuota}></sii:DetalleIVA>"
+            for d in desglose)
     tipos = str(tipo).split("/")
     if len(tipos) == 1:
         return (f"<sii:DetalleIVA><sii:TipoImpositivo>{_imp(tipos[0])}</sii:TipoImpositivo><sii:BaseImponible>{_imp(base)}</sii:BaseImponible>"
@@ -115,7 +121,7 @@ def xml_emitidas(res, cfg):
             f"<sii:ImporteTotal>{_imp(f.get('total'))}</sii:ImporteTotal><sii:DescripcionOperacion>{desc}</sii:DescripcionOperacion>"
             f"{contra}"
             f"<sii:TipoDesglose><sii:DesgloseFactura><sii:Sujeta><sii:NoExenta><sii:TipoNoExenta>S1</sii:TipoNoExenta><sii:DesgloseIVA>"
-            f"{_detalle_iva(f.get('tipo'), f.get('base'), f.get('cuota'), 'CuotaRepercutida')}"
+            f"{_detalle_iva(f.get('tipo'), f.get('base'), f.get('cuota'), 'CuotaRepercutida', f.get('desglose'))}"
             f"</sii:DesgloseIVA></sii:NoExenta></sii:Sujeta></sii:DesgloseFactura></sii:TipoDesglose>"
             f"</siiLR:FacturaExpedida></siiLR:RegistroLRFacturasEmitidas>")
     return _envuelve("SuministroLRFacturasEmitidas", _cabecera(cfg) + "".join(regs))

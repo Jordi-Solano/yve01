@@ -213,6 +213,11 @@ def transformar(datos, hotel_id=None):
         "requiere_certificado_di": di, "tipo": "CONTRATO_GRUPO",
         "modo_comision": modo, "pagador": pagador, "agencia": (ag.get("nombre") or "").strip(),
         "cliente_final": nombre_cli, "hotel_id": hotel_id or "",
+        # b96: el IVA de cada concepto viaja con la factura (asiento, 303, SII y PDF lo usan):
+        # alojamiento y F&B al que diga el contrato (10 %), las salas al 21 %
+        "iva_habitaciones_pct": _f(aloj.get("iva_pct"), 10) or 10.0,
+        "iva_fb_pct": _f(fb.get("iva_pct"), 10) or 10.0,
+        "iva_extras_pct": 21.0,
     }
     return {
         "cliente": cliente_row, "reserva": reserva_row, "comisiones": comis,

@@ -171,6 +171,75 @@ def _r(x):
     return round(float(x or 0), 2)
 
 
+# ── b96 · IVA de una factura AR por concepto, cada uno a SU tipo ─────────────
+# Antes todo iba al tipo del alojamiento (10 %). En la factura de un contrato de
+# grupo los extras son las SALAS, al 21 % (lo dice el contrato; la comision ya
+# lo usaba en contratos_grupo.bases_contrato): la factura, el asiento, el 303 y
+# el SII salian con 100 EUR de IVA de menos por cada 1.210 de salas (visto en
+# produccion el 25 sep con el contrato CG-2026-0917: 477 de 1.310 en vez de 1.410).
+IVA_SALAS = IVA_GENERAL
+
+
+def _pct_de(r, col, defecto):
+    """El tipo de IVA que la fila trae del contrato (columna `col`), o `defecto`."""
+    try:
+        v = float(r.get(col))
+        if v == v and v > 0:            # vacio (NaN) o 0 -> el de siempre
+            return v
+    except (TypeError, ValueError, AttributeError):
+        pass
+    return float(defecto)
+
+
+def desglose_factura_ar(r, cfg=None):
+    """Base e IVA de una factura AR (fila de reservas_credito), cada concepto a SU tipo.
+
+    Mandan los tipos que la fila traiga del contrato (iva_habitaciones_pct,
+    iva_fb_pct, iva_extras_pct). Si no los trae: habitaciones y F&B a la config
+    (10 %) y los extras al tipo del alojamiento, SALVO en la factura de un
+    CONTRATO_GRUPO, donde los extras son las salas (21 %).
+
+    Devuelve {"total", "base", "cuota", "b705" (habitaciones + extras), "b700" (F&B),
+    "tramos": [{"pct", "base", "cuota", "cuenta", "concepto"}], "por_tipo": {pct: {"base", "cuota"}}}.
+    Cuando todo va al mismo tipo el reparto y el redondeo son los de siempre
+    (habitaciones y extras juntos; el centimo que falte, a la cuota del primer tramo)."""
+    cfg = cfg or {}
+    total = _num(r.get("total")) or _num(r.get("importe"))
+    hab = _num(r.get("importe_habitaciones")); fb = _num(r.get("importe_fb")); ext = _num(r.get("importe_extras"))
+    if not (hab or fb or ext):
+        hab = total
+    suma = _r(hab + fb + ext)
+    if suma and abs(suma - total) > 0.011:            # reparto proporcional si el detalle no suma el total
+        k = total / suma; hab, fb, ext = _r(hab * k), _r(fb * k), _r(ext * k)
+    pct_h = _pct_de(r, "iva_habitaciones_pct", cfg.get("iva_alojamiento", IVA_REDUCIDO))
+    pct_f = _pct_de(r, "iva_fb_pct", cfg.get("iva_fb", IVA_REDUCIDO))
+    grupo = _txt(r.get("tipo")).upper() == "CONTRATO_GRUPO"
+    pct_e = _pct_de(r, "iva_extras_pct", IVA_SALAS if grupo else pct_h)
+    tramos = []
+
+    def tramo(imp, pct, cuenta, concepto):
+        if imp:
+            b = _r(imp / (1 + pct / 100))
+            tramos.append({"pct": pct, "base": b, "cuota": _r(imp - b), "cuenta": cuenta, "concepto": concepto})
+    if pct_e == pct_h:
+        tramo(hab + ext, pct_h, "705", "alojamiento")
+    else:
+        tramo(hab, pct_h, "705", "alojamiento")
+        tramo(ext, pct_e, "705", "salas" if grupo else "extras")
+    tramo(fb, pct_f, "700", "fb")
+    dif = _r(total - sum(t["base"] + t["cuota"] for t in tramos))
+    if dif and tramos:
+        tramos[0]["cuota"] = _r(tramos[0]["cuota"] + dif)
+    por_tipo = {}
+    for t in tramos:
+        p = por_tipo.setdefault(t["pct"], {"base": 0.0, "cuota": 0.0})
+        p["base"] = _r(p["base"] + t["base"]); p["cuota"] = _r(p["cuota"] + t["cuota"])
+    return {"total": total, "base": _r(sum(t["base"] for t in tramos)), "cuota": _r(sum(t["cuota"] for t in tramos)),
+            "b705": _r(sum(t["base"] for t in tramos if t["cuenta"] == "705")),
+            "b700": _r(sum(t["base"] for t in tramos if t["cuenta"] == "700")),
+            "tramos": tramos, "por_tipo": por_tipo}
+
+
 # ── generador de asientos (puro) ─────────────────────────────────────────────
 class _Diario:
     def __init__(self, plan):
@@ -303,7 +372,6 @@ def generar_asientos(mes, fuentes, plan=None, cfg=None):
                     cobrados_en_banco.add(ref.upper())
     rv = fuentes.get("reservas")
     if rv is not None and not rv.empty:
-        pct_h = float(cfg.get("iva_alojamiento", IVA_REDUCIDO)); pct_f = float(cfg.get("iva_fb", IVA_REDUCIDO))
         for _, r in rv.iterrows():
             estado = _txt(r.get("estado")).upper()
             if estado in ("PENDIENTE_FACTURA", ""):
@@ -315,20 +383,11 @@ def generar_asientos(mes, fuentes, plan=None, cfg=None):
             total = _num(r.get("total")) or _num(r.get("importe"))
             f_em = r.get("fecha_emision") if _txt(r.get("fecha_emision")) else r.get("fecha_entrada")
             if total > 0 and _en_mes(f_em, ini, fin):
-                hab = _num(r.get("importe_habitaciones")); fb = _num(r.get("importe_fb")); ext = _num(r.get("importe_extras"))
-                if not (hab or fb or ext):
-                    hab = total
-                # reparto proporcional si el detalle no suma el total
-                suma = _r(hab + fb + ext)
-                if suma and abs(suma - total) > 0.011:
-                    k = total / suma; hab, fb, ext = _r(hab * k), _r(fb * k), _r(ext * k)
-                b_h = _r((hab + ext) / (1 + pct_h / 100)); i_h = _r(hab + ext - b_h)
-                b_f = _r(fb / (1 + pct_f / 100)); i_f = _r(fb - b_f)
-                iva = _r(i_h + i_f)
-                # ajuste de redondeo al ultimo centimo sobre el IVA
-                dif = _r(total - (b_h + b_f + iva)); iva = _r(iva + dif)
+                # b96: cada concepto a SU tipo (las salas de un contrato de grupo, al 21 %)
+                dg = desglose_factura_ar(r, cfg)
                 if D.nuevo(_fecha(f_em), f"Fra. {num} — {cli}", num, "AR",
-                           [("430", total, 0), ("705", 0, b_h), ("700", 0, b_f), ("477", 0, iva)], r.get("hotel_id")):
+                           [("430", total, 0), ("705", 0, dg["b705"]), ("700", 0, dg["b700"]), ("477", 0, dg["cuota"])],
+                           r.get("hotel_id")):
                     cont["ar_facturas"] += 1
             # b89: lo compensado con la comision de la agencia no entra por el banco:
             # el cobro es por lo que quedaba (total - compensado)

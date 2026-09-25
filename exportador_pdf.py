@@ -399,8 +399,23 @@ def export_invoice_pdf(numero_factura):
         total = 0.0 if total != total else total
     except (TypeError, ValueError):
         total = 0.0
-    base = round(total / 1.10, 2)
-    iva = round(total - base, 2)
+    # b96: base e IVA por concepto, cada uno a SU tipo (antes todo total/1,10: las
+    # salas de un contrato de grupo, que van al 21 %, salian al 10 %). El mismo
+    # desglose que el asiento, el 303 y el SII (cierre_mes.desglose_factura_ar).
+    try:
+        from cierre_mes import desglose_factura_ar, config_cierre
+        _dg = desglose_factura_ar(row, config_cierre(_dd))
+    except Exception:
+        _b = round(total / 1.10, 2)
+        _dg = {"base": _b, "cuota": round(total - _b, 2), "por_tipo": {10.0: {"base": _b, "cuota": round(total - _b, 2)}}, "tramos": []}
+    base = _dg["base"]
+    iva = _dg["cuota"]
+    _tipos = sorted(_dg["por_tipo"])
+    _grupo = str(row.get('tipo') or '').strip().upper() == 'CONTRATO_GRUPO'
+    _pct_de_concepto = {t.get("concepto"): t.get("pct") for t in _dg.get("tramos") or []}
+
+    def _pct_txt(p):
+        return f"{float(p):g}".replace(".", ",") + "%"
     
     buf = BytesIO()
     try:
@@ -473,15 +488,22 @@ def export_invoice_pdf(numero_factura):
         hab = _f(row.get('importe_habitaciones', 0))
         fb  = _f(row.get('importe_fb', 0))
         ext = _f(row.get('importe_extras', 0))
-        if hab > 0: items.append([f"Habitaciones ({row.get('habitaciones',1)} hab.)", _eur(hab)])
-        if fb > 0:  items.append(["F&B y restauración", _eur(fb)])
-        if ext > 0: items.append(["Extras y servicios", _eur(ext)])
+        # b96: con mas de un tipo, cada linea dice el suyo (importes con IVA incluido)
+        def _con_tipo(txt, concepto):
+            p = _pct_de_concepto.get(concepto)
+            return f"{txt} · IVA {_pct_txt(p)}" if len(_tipos) > 1 and p is not None else txt
+        if hab > 0: items.append([_con_tipo(f"Habitaciones ({row.get('habitaciones',1)} hab.)", "alojamiento"), _eur(hab)])
+        if fb > 0:  items.append([_con_tipo("F&B y restauración", "fb"), _eur(fb)])
+        if ext > 0: items.append([_con_tipo("Salas" if _grupo else "Extras y servicios",
+                                            "salas" if _grupo and "salas" in _pct_de_concepto else
+                                            ("extras" if "extras" in _pct_de_concepto else "alojamiento")), _eur(ext)])
         if not items: items.append(["Estancia", _eur(base)])
 
+        _lineas_iva = [[f'IVA ({_pct_txt(t)}):', _eur(_dg["por_tipo"][t]["cuota"])] for t in _tipos] or [['IVA:', _eur(iva)]]
         items_data = items_header + items + [
             ['', ''],
             ['Base imponible:', _eur(base)],
-            ['IVA (10%):', _eur(iva)],
+        ] + _lineas_iva + [
             ['', ''],
             [Paragraph('<b>TOTAL</b>', s['Normal']), Paragraph(f'<b>{_eur(total)}</b>', s['Normal'])],
         ]
@@ -497,7 +519,7 @@ def export_invoice_pdf(numero_factura):
             ('BACKGROUND',(0,-1),(-1,-1),colors.HexColor("#eff6ff")),
             ('FONTNAME',(0,-1),(-1,-1),'Helvetica-Bold'),
             ('FONTSIZE',(0,-1),(-1,-1),12),
-            ('ROWBACKGROUNDS',(0,1),(-1,-5),[colors.white, colors.HexColor("#f8fafc")]),
+            ('ROWBACKGROUNDS',(0,1),(-1,-(4 + len(_lineas_iva))),[colors.white, colors.HexColor("#f8fafc")]),
             ('TOPPADDING',(0,0),(-1,-1),6), ('BOTTOMPADDING',(0,0),(-1,-1),6),
         ]))
         story.append(lw)
