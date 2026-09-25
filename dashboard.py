@@ -14803,15 +14803,29 @@ async function loadCierre(forzar){
   if (!inp.value) { var d=new Date(); inp.value = d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0'); }
   var mes = inp.value;
   var rb = document.getElementById('cierre-recon-body'), mb = document.getElementById('cierre-mayor-body'), db = document.getElementById('cierre-diario-body'), av = document.getElementById('cierre-avisos');
-  try { loadCuadreBanco(); } catch(e){}
-  try { loadInventarios(); } catch(e){}
-  try { loadInmovilizado(); } catch(e){}
-  try { loadFiscal(); } catch(e){}
-  try { loadPaquete(); } catch(e){}
+  // b106 (Jordi, 25 sep): las secciones se piden UNA A UNA, en el orden de la pantalla, y cada
+  // una se pinta en cuanto llega. Desde que Render corre con 8 hilos (25 sep) las seis iban en
+  // paralelo, se repartian la CPU del servidor y llegaban TODAS juntas al final (~2,3 s). En
+  // fila suman lo mismo (medido en produccion: 2,4 s) pero lo de arriba sale en ~0,4 s.
+  // Si entretanto se pide otro mes, esta cadena se para en el siguiente paso.
+  var gen = ++_cierreGen;
+  var sigue = function(){ return gen === _cierreGen; };
   try {
     var r = await fetch('/api/cierre/asientos?mes=' + encodeURIComponent(mes));
     var d = await r.json();
-    if (!d || !d.ok) { rb.innerHTML = _gError(_cEsc((d&&d.error)||'Error')); return; }
+    if (!d || !d.ok) rb.innerHTML = _gError(_cEsc((d&&d.error)||'Error'));
+    else _pintarAsientosCierre(d, rb, mb, db, av);
+  } catch(e) { if (rb) rb.innerHTML = _gError(_cEsc(e.message)); }
+  if (sigue()) { try { await loadPaquete(); } catch(e){} }
+  if (sigue()) { try { await loadCuadreBanco(); } catch(e){} }
+  if (sigue()) { try { await loadInventarios(); } catch(e){} }
+  if (sigue()) { try { await loadFiscal(); } catch(e){} }
+  if (sigue()) { try { await loadInmovilizado(); } catch(e){} }
+}
+var _cierreGen = 0;
+// Cuadro de arriba, reconciliacion, mayor y diario: salen de /api/cierre/asientos (b106: sacado
+// de loadCierre tal cual, para que un error aqui no corte la cadena de las demas secciones).
+function _pintarAsientosCierre(d, rb, mb, db, av) {
     var hs = document.getElementById('cierre-hotel'); if (hs) hs.textContent = d.hotel ? '' : t('cierre.grupo','vista de grupo (todos los hoteles)');
     document.getElementById('cierre-k-asientos').textContent = d.n_asientos;
     document.getElementById('cierre-k-debe').textContent = _cEur(d.debe);
@@ -14835,7 +14849,6 @@ async function loadCierre(forzar){
     var as = d.asientos || [];
     db.innerHTML = as.length ? '<div class="g-tbl-wrap"><table class="g-tbl"><thead><tr><th>#</th><th>' + t('cierre.hFecha','Fecha') + '</th><th>' + t('cierre.hCuenta','Cuenta') + '</th><th>' + t('cierre.hConceptoD','Concepto') + '</th><th class="num">' + t('cierre.kDebe','Debe') + '</th><th class="num">' + t('cierre.kHaber','Haber') + '</th><th>' + t('cierre.hOrigen','Origen') + '</th></tr></thead><tbody>' +
       as.map(function(a){ return '<tr><td>' + a.num + '</td><td style="white-space:nowrap">' + _cEsc(a.fecha) + '</td><td style="white-space:nowrap"><b>' + _cEsc(a.cuenta) + '</b> ' + _cEsc(a.desc_cuenta) + '</td><td>' + _cEsc(a.concepto) + '</td><td class="num">' + (a.debe?_cEur(a.debe):'') + '</td><td class="num">' + (a.haber?_cEur(a.haber):'') + '</td><td class="g-small">' + _cEsc(a.origen) + '</td></tr>'; }).join('') + '</tbody></table></div>' + (d.truncado ? '<div class="g-note">' + t('cierre.truncado','Se muestran las primeras líneas; el Excel lleva todas.') + '</div>' : '') : _vacio(t('cierre.vacio','Con facturas, ventas y banco del mes, Yve monta aquí los asientos.'));
-  } catch(e) { if (rb) rb.innerHTML = _gError(_cEsc(e.message)); }
 }
 
 function _cargarPanel(tab, panel, forzar) {
