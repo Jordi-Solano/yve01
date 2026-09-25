@@ -123,7 +123,8 @@ def main():
         html = cl.get('/').get_data(as_text=True)
         ok(all(x not in html for x in ('drr-file-input', 'inv-file"', 'fb-upload-input', 'fb-rec-input', 'uploadDRR(', 'fbUploadPOS(', 'fbUploadRecetas(', '_invSubir(')),
            "fuera los botones de subida de DRR, recuento, POS y recetario")
-        ok('_recibirEnProcesar(event.dataTransfer.files)' in html and 'onclick="openUploadModal()"' in html, "la zona del DRR y los botones de F&B/Cierre abren Procesar archivos")
+        # b103: ni siquiera botones que abran Procesar archivos desde un apartado (lo vigila test_sin_subir_en_apartados)
+        ok('drr-drop-zone' not in html and '_recibirEnProcesar' not in html and 'id="btn-run" onclick="openUploadModal()"' in html, "sin zona del DRR; la entrada es ⚡ Procesar archivos")
         ok("upload.mesRecuento" in html and "_pideMes(f) === 'Recuento' && !f._mes" in html and "'&meses=' + encodeURIComponent(JSON.stringify(_mesesSubida" in html,
            "la lista pide el mes del recuento y lo manda al lote")
         ok("'Recuento'" in html.split('function _detectType')[1][:1500] and "'Recetas'" in html.split('function _detectType')[1][:1500], "_detectType conoce Recuento y Recetas")
@@ -136,7 +137,7 @@ def main():
                 ok(False, f"JS roto: {rc.stderr[:100]}"); break
         for lang in ('en', 'ca', 'fr', 'de', 'it', 'pt'):
             d = json.load(open(os.path.join(BASE, 'static', 'i18n', f'{lang}.json'), encoding='utf-8'))
-            if not all(k in d for k in ('upload.mesRecuento', 'upload.faltaMes', 'btn.importarFB', 'drr.arrastra')):
+            if not all(k in d for k in ('upload.mesRecuento', 'upload.faltaMes')):
                 ok(False, f"i18n {lang} sin las claves nuevas"); break
         else:
             ok(True, "i18n: 6 idiomas con las claves nuevas")

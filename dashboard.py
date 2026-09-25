@@ -7010,22 +7010,15 @@ svg.yvi{width:1em;height:1em;vertical-align:-0.125em;flex-shrink:0;display:inlin
     <!-- Guia de estilo (b57). El estado va oculto (lo leen la subida y el onboarding). -->
     <div class="g-head">
       <div><div class="g-h1" data-i18n="tab.drr" title="El Daily Revenue Report del hotel: ocupación, tarifa, ingresos, beneficio y el cuadre diario." data-i18n-title="drr.subtitulo">📊 DRR</div></div>
-      <div class="g-actions"><button class="g-btn g-primary g-sm" onclick="openUploadModal()" data-i18n="drr.subirBoton">📊 Subir DRR</button></div>
     </div>
     <span class="drr-status" id="drr-status" style="display:none" data-i18n="drr.sinArchivo">Sin archivo cargado</span>
     <span id="drr-oob-badge" style="display:none"></span>
     <!-- Cuerpo: lo pinta renderDRR. #drr-metrics vive aqui (ancla del tour) y lo
-         reconstruye renderDRR con los tres grupos. Al arrancar, la zona de subida. -->
+         reconstruye renderDRR con los tres grupos. b103: sin zona de subida propia
+         (todo entra por ⚡ Procesar archivos); sin DRR, renderDRR pinta el vacio de siempre. -->
     <div id="drr-body">
       <div class="drr-metrics" id="drr-metrics">
-        <div class="g-empty g-drop" id="drr-drop-zone"
-          ondragover="event.preventDefault();this.classList.add('is-over')"
-          ondragleave="this.classList.remove('is-over')"
-          ondrop="event.preventDefault();this.classList.remove('is-over');_recibirEnProcesar(event.dataTransfer.files)"
-          onclick="openUploadModal()">
-          <b data-i18n="drr.arrastra">Arrastra tu DRR aquí o</b>
-          <span data-i18n="drr.hazClic">súbelo con ⚡ Procesar archivos (.xlsm/.xlsx)</span>
-        </div>
+        <div class="g-empty g-cargando" data-i18n="lbl.cargando">Cargando…</div>
       </div>
     </div>
   </div><!-- /panel-drr -->
@@ -7188,7 +7181,6 @@ svg.yvi{width:1em;height:1em;vertical-align:-0.125em;flex-shrink:0;display:inlin
     <div class="g-card" id="card-cierre-inv">
       <div class="g-card-head">
         <div><div class="g-card-title" data-i18n="inv.titulo" title="Existencias iniciales y finales, compras del mes y la desviación frente al escandallo." data-i18n-title="inv.sub">Inventarios de cierre</div></div>
-        <button class="g-btn g-secondary g-sm" onclick="openUploadModal()" data-i18n="inv.subir">📤 Subir recuento (Procesar archivos)</button>
       </div>
       <div id="inv-resumen" class="g-tiles g-tiles-sm"></div>
       <div id="inv-body" class="g-small"><div class="g-empty g-cargando" data-i18n="cierre.cargando">Montando el mes…</div></div>
@@ -7239,7 +7231,6 @@ svg.yvi{width:1em;height:1em;vertical-align:-0.125em;flex-shrink:0;display:inlin
       <div><div class="g-h1" data-i18n="tab.fb" title="Ventas, escandallo, inventario y mermas: el food cost teórico y el real, por mes." data-i18n-title="fb.subtitulo">🍽️ F&B Cost</div></div>
       <div class="g-actions fb-acciones">
         <label class="g-field g-inline"><span data-i18n="fb.mesLbl">Mes</span><input type="month" id="fb-mes" class="g-input" onchange="fbCambiarMes()" title="Vacío = todo el periodo"></label>
-        <button class="g-btn g-primary g-sm" onclick="openUploadModal()" data-i18n="btn.importarFB">📤 Subir ventas, inventario, mermas o recetas</button>
       </div>
     </div>
     <div class="g-subtabs" id="fb-subtabs">
@@ -8407,7 +8398,7 @@ var _i18nStrMap = {
     "📥 Comisiones OTA (en AP)": "📥 OTA commissions (in AP)",
     "Verifica automáticamente las comisiones de Booking.com y Expedia. Facturas procesadas, importe total, discrepancias reclamables y certificados DI pendientes. El número rojo son euros que puedes recuperar.": "Automatically verifies Booking.com and Expedia commissions. Processed invoices, total amount, claimable discrepancies and pending DI certificates. The red number is euros you can recover.",
     "Para cada factura de proveedor, Yve cruza 3 documentos: factura, pedido (PO) y albarán. Si cuadra todo → Match OK automático. Si hay diferencia → alerta y email al proveedor generado con IA.": "For every supplier invoice, Yve cross-checks 3 documents: invoice, purchase order (PO) and delivery note. Everything matches → automatic Match OK. Any difference → alert plus an AI-generated email to the supplier.",
-    "Arrastra tu archivo .xlsm aquí. Yve extrae RevPAR, ADR, GOP%, ocupación y las 7.000+ líneas del Trial Balance en segundos. Detecta Out of Balance automáticamente y te avisa al instante.": "Drag your .xlsm file here. Yve extracts RevPAR, ADR, GOP%, occupancy and the 7,000+ Trial Balance lines in seconds. It detects Out of Balance automatically and alerts you instantly.",
+    "Sube el DRR (.xlsm) con ⚡ Procesar Archivos. Yve extrae RevPAR, ADR, GOP%, ocupación y las 7.000+ líneas del Trial Balance en segundos. Detecta Out of Balance automáticamente y te avisa al instante.": "Upload the DRR (.xlsm) with ⚡ Process Invoices. Yve extracts RevPAR, ADR, GOP%, occupancy and the 7,000+ Trial Balance lines in seconds. It detects Out of Balance automatically and alerts you instantly.",
     "🏦 Banco — Conciliación": "🏦 Bank — Reconciliation",
     "Cruza automáticamente el extracto bancario con las facturas de proveedores. Identifica movimientos no conciliados, diferencias de importe y pagos duplicados. Desde 8 horas a 2 minutos.": "Automatically matches the bank statement against supplier invoices. It flags unmatched transactions, amount differences and duplicate payments. From 8 hours down to 2 minutes.",
     "🔔 Notificaciones": "🔔 Notifications",
@@ -8494,7 +8485,6 @@ var _i18nStrMap = {
     'Aprobadas': 'Approved',
     'Archivo': 'File',
     'Arrastra archivos aquí o haz clic': 'Drag files here or click',
-    'Arrastra tu DRR aquí o': 'Drag your DRR here or',
     'Asunto': 'Subject',
     'Bajo': 'Low',
     'Búsqueda global': 'Global search',
@@ -8657,7 +8647,7 @@ var _i18nStrMap = {
     "📥 Comisiones OTA (en AP)": "📥 Comissions OTA (a AP)",
     "Verifica automáticamente las comisiones de Booking.com y Expedia. Facturas procesadas, importe total, discrepancias reclamables y certificados DI pendientes. El número rojo son euros que puedes recuperar.": "Verifica automàticament les comissions de Booking.com i Expedia. Factures processades, import total, discrepàncies reclamables i certificats DI pendents. El número vermell són euros que pots recuperar.",
     "Para cada factura de proveedor, Yve cruza 3 documentos: factura, pedido (PO) y albarán. Si cuadra todo → Match OK automático. Si hay diferencia → alerta y email al proveedor generado con IA.": "Per a cada factura de proveïdor, Yve creua 3 documents: factura, comanda (PO) i albarà. Si tot quadra → Match OK automàtic. Si hi ha diferència → alerta i email al proveïdor generat amb IA.",
-    "Arrastra tu archivo .xlsm aquí. Yve extrae RevPAR, ADR, GOP%, ocupación y las 7.000+ líneas del Trial Balance en segundos. Detecta Out of Balance automáticamente y te avisa al instante.": "Arrossega el teu fitxer .xlsm aquí. Yve extreu RevPAR, ADR, GOP%, ocupació i les més de 7.000 línies del Trial Balance en segons. Detecta Out of Balance automàticament i t'avisa a l'instant.",
+    "Sube el DRR (.xlsm) con ⚡ Procesar Archivos. Yve extrae RevPAR, ADR, GOP%, ocupación y las 7.000+ líneas del Trial Balance en segundos. Detecta Out of Balance automáticamente y te avisa al instante.": "Puja el DRR (.xlsm) amb ⚡ Processar Factures. Yve extreu RevPAR, ADR, GOP%, ocupació i les més de 7.000 línies del Trial Balance en segons. Detecta Out of Balance automàticament i t'avisa a l'instant.",
     "🏦 Banco — Conciliación": "🏦 Banc — Conciliació",
     "Cruza automáticamente el extracto bancario con las facturas de proveedores. Identifica movimientos no conciliados, diferencias de importe y pagos duplicados. Desde 8 horas a 2 minutos.": "Creua automàticament l'extracte bancari amb les factures de proveïdors. Identifica moviments no conciliats, diferències d'import i pagaments duplicats. De 8 hores a 2 minuts.",
     "🔔 Notificaciones": "🔔 Notificacions",
@@ -8742,7 +8732,6 @@ var _i18nStrMap = {
     'Aprobadas': 'Aprovades',
     'Archivo': 'Arxiu',
     'Arrastra archivos aquí o haz clic': 'Arrossega arxius aquí o clica',
-    'Arrastra tu DRR aquí o': 'Arrossega el DRR aquí o',
     'Asunto': 'Assumpte',
     'Bajo': 'Baix',
     'Budget': 'Pressupost',
@@ -8900,7 +8889,7 @@ var _i18nStrMap = {
     "📥 Comisiones OTA (en AP)": "📥 Commissions OTA (dans AP)",
     "Verifica automáticamente las comisiones de Booking.com y Expedia. Facturas procesadas, importe total, discrepancias reclamables y certificados DI pendientes. El número rojo son euros que puedes recuperar.": "Vérifie automatiquement les commissions de Booking.com et Expedia. Factures traitées, montant total, écarts réclamables et certificats DI en attente. Le chiffre rouge, ce sont des euros à récupérer.",
     "Para cada factura de proveedor, Yve cruza 3 documentos: factura, pedido (PO) y albarán. Si cuadra todo → Match OK automático. Si hay diferencia → alerta y email al proveedor generado con IA.": "Pour chaque facture fournisseur, Yve croise 3 documents : facture, bon de commande (PO) et bon de livraison. Tout correspond → Match OK automatique. Un écart → alerte et email au fournisseur généré par IA.",
-    "Arrastra tu archivo .xlsm aquí. Yve extrae RevPAR, ADR, GOP%, ocupación y las 7.000+ líneas del Trial Balance en segundos. Detecta Out of Balance automáticamente y te avisa al instante.": "Glissez votre fichier .xlsm ici. Yve extrait RevPAR, ADR, GOP%, occupation et les 7 000+ lignes du Trial Balance en quelques secondes. Il détecte l'Out of Balance automatiquement et vous alerte aussitôt.",
+    "Sube el DRR (.xlsm) con ⚡ Procesar Archivos. Yve extrae RevPAR, ADR, GOP%, ocupación y las 7.000+ líneas del Trial Balance en segundos. Detecta Out of Balance automáticamente y te avisa al instante.": "Chargez le DRR (.xlsm) avec ⚡ Traiter Factures. Yve extrait RevPAR, ADR, GOP%, occupation et les 7 000+ lignes du Trial Balance en quelques secondes. Il détecte l'Out of Balance automatiquement et vous alerte aussitôt.",
     "🏦 Banco — Conciliación": "🏦 Banque — Rapprochement",
     "Cruza automáticamente el extracto bancario con las facturas de proveedores. Identifica movimientos no conciliados, diferencias de importe y pagos duplicados. Desde 8 horas a 2 minutos.": "Rapproche automatiquement le relevé bancaire des factures fournisseurs. Il identifie les mouvements non rapprochés, les écarts de montant et les paiements en double. De 8 heures à 2 minutes.",
     "🔔 Notificaciones": "🔔 Notifications",
@@ -8986,7 +8975,6 @@ var _i18nStrMap = {
     'Aprobadas': 'Approuvées',
     'Archivo': 'Fichier',
     'Arrastra archivos aquí o haz clic': 'Glissez les fichiers ici ou cliquez',
-    'Arrastra tu DRR aquí o': 'Glissez votre DRR ici ou',
     'Asunto': 'Sujet',
     'Bajo': 'Faible',
     'Búsqueda global': 'Recherche globale',
@@ -9154,7 +9142,7 @@ var _i18nStrMap = {
     "📥 Comisiones OTA (en AP)": "📥 OTA-Provisionen (in AP)",
     "Verifica automáticamente las comisiones de Booking.com y Expedia. Facturas procesadas, importe total, discrepancias reclamables y certificados DI pendientes. El número rojo son euros que puedes recuperar.": "Prüft automatisch die Provisionen von Booking.com und Expedia. Verarbeitete Rechnungen, Gesamtbetrag, reklamierbare Abweichungen und offene DI-Zertifikate. Die rote Zahl sind Euros, die du zurückholen kannst.",
     "Para cada factura de proveedor, Yve cruza 3 documentos: factura, pedido (PO) y albarán. Si cuadra todo → Match OK automático. Si hay diferencia → alerta y email al proveedor generado con IA.": "Für jede Lieferantenrechnung gleicht Yve 3 Dokumente ab: Rechnung, Bestellung (PO) und Lieferschein. Stimmt alles → automatisches Match OK. Bei Differenz → Warnung und KI-generierte E-Mail an den Lieferanten.",
-    "Arrastra tu archivo .xlsm aquí. Yve extrae RevPAR, ADR, GOP%, ocupación y las 7.000+ líneas del Trial Balance en segundos. Detecta Out of Balance automáticamente y te avisa al instante.": "Zieh deine .xlsm-Datei hierher. Yve extrahiert RevPAR, ADR, GOP%, Auslastung und die 7.000+ Zeilen der Trial Balance in Sekunden. Out of Balance wird automatisch erkannt und sofort gemeldet.",
+    "Sube el DRR (.xlsm) con ⚡ Procesar Archivos. Yve extrae RevPAR, ADR, GOP%, ocupación y las 7.000+ líneas del Trial Balance en segundos. Detecta Out of Balance automáticamente y te avisa al instante.": "Lade den DRR (.xlsm) über ⚡ Rechnungen Verarbeiten hoch. Yve extrahiert RevPAR, ADR, GOP%, Auslastung und die 7.000+ Zeilen der Trial Balance in Sekunden. Out of Balance wird automatisch erkannt und sofort gemeldet.",
     "🏦 Banco — Conciliación": "🏦 Bank — Abstimmung",
     "Cruza automáticamente el extracto bancario con las facturas de proveedores. Identifica movimientos no conciliados, diferencias de importe y pagos duplicados. Desde 8 horas a 2 minutos.": "Gleicht den Kontoauszug automatisch mit den Lieferantenrechnungen ab. Erkennt nicht abgestimmte Bewegungen, Betragsdifferenzen und Doppelzahlungen. Von 8 Stunden auf 2 Minuten.",
     "🔔 Notificaciones": "🔔 Benachrichtigungen",
@@ -9241,7 +9229,6 @@ var _i18nStrMap = {
     'Aprobadas': 'Genehmigt',
     'Archivo': 'Datei',
     'Arrastra archivos aquí o haz clic': 'Dateien hier ablegen oder klicken',
-    'Arrastra tu DRR aquí o': 'DRR hier ablegen oder',
     'Asunto': 'Betreff',
     'Bajo': 'Niedrig',
     'Búsqueda global': 'Globale Suche',
@@ -9412,7 +9399,7 @@ var _i18nStrMap = {
     "📥 Comisiones OTA (en AP)": "📥 Commissioni OTA (in AP)",
     "Verifica automáticamente las comisiones de Booking.com y Expedia. Facturas procesadas, importe total, discrepancias reclamables y certificados DI pendientes. El número rojo son euros que puedes recuperar.": "Verifica automaticamente le commissioni di Booking.com ed Expedia. Fatture elaborate, importo totale, discrepanze reclamabili e certificati DI in sospeso. Il numero rosso sono euro che puoi recuperare.",
     "Para cada factura de proveedor, Yve cruza 3 documentos: factura, pedido (PO) y albarán. Si cuadra todo → Match OK automático. Si hay diferencia → alerta y email al proveedor generado con IA.": "Per ogni fattura fornitore, Yve incrocia 3 documenti: fattura, ordine (PO) e bolla di consegna. Se tutto quadra → Match OK automatico. Se c'è differenza → avviso ed email al fornitore generata con IA.",
-    "Arrastra tu archivo .xlsm aquí. Yve extrae RevPAR, ADR, GOP%, ocupación y las 7.000+ líneas del Trial Balance en segundos. Detecta Out of Balance automáticamente y te avisa al instante.": "Trascina qui il tuo file .xlsm. Yve estrae RevPAR, ADR, GOP%, occupazione e le oltre 7.000 righe del Trial Balance in pochi secondi. Rileva l'Out of Balance automaticamente e ti avvisa subito.",
+    "Sube el DRR (.xlsm) con ⚡ Procesar Archivos. Yve extrae RevPAR, ADR, GOP%, ocupación y las 7.000+ líneas del Trial Balance en segundos. Detecta Out of Balance automáticamente y te avisa al instante.": "Carica il DRR (.xlsm) con ⚡ Elabora Fatture. Yve estrae RevPAR, ADR, GOP%, occupazione e le oltre 7.000 righe del Trial Balance in pochi secondi. Rileva l'Out of Balance automaticamente e ti avvisa subito.",
     "🏦 Banco — Conciliación": "🏦 Banca — Riconciliazione",
     "Cruza automáticamente el extracto bancario con las facturas de proveedores. Identifica movimientos no conciliados, diferencias de importe y pagos duplicados. Desde 8 horas a 2 minutos.": "Incrocia automaticamente l'estratto conto con le fatture dei fornitori. Identifica movimenti non riconciliati, differenze di importo e pagamenti duplicati. Da 8 ore a 2 minuti.",
     "🔔 Notificaciones": "🔔 Notifiche",
@@ -9499,7 +9486,6 @@ var _i18nStrMap = {
     'Aprobadas': 'Approvate',
     'Archivo': 'File',
     'Arrastra archivos aquí o haz clic': 'Trascina file qui o fai clic',
-    'Arrastra tu DRR aquí o': 'Trascina qui il DRR o',
     'Asunto': 'Oggetto',
     'Bajo': 'Basso',
     'Búsqueda global': 'Ricerca globale',
@@ -9660,7 +9646,7 @@ var _i18nStrMap = {
     "📥 Comisiones OTA (en AP)": "📥 Comissões OTA (em AP)",
     "Verifica automáticamente las comisiones de Booking.com y Expedia. Facturas procesadas, importe total, discrepancias reclamables y certificados DI pendientes. El número rojo son euros que puedes recuperar.": "Verifica automaticamente as comissões de Booking.com e Expedia. Faturas processadas, valor total, discrepâncias reclamáveis e certificados DI pendentes. O número vermelho são euros que você pode recuperar.",
     "Para cada factura de proveedor, Yve cruza 3 documentos: factura, pedido (PO) y albarán. Si cuadra todo → Match OK automático. Si hay diferencia → alerta y email al proveedor generado con IA.": "Para cada fatura de fornecedor, o Yve cruza 3 documentos: fatura, pedido (PO) e guia de remessa. Tudo confere → Match OK automático. Diferença → alerta e email ao fornecedor gerado com IA.",
-    "Arrastra tu archivo .xlsm aquí. Yve extrae RevPAR, ADR, GOP%, ocupación y las 7.000+ líneas del Trial Balance en segundos. Detecta Out of Balance automáticamente y te avisa al instante.": "Arraste seu arquivo .xlsm aqui. O Yve extrai RevPAR, ADR, GOP%, ocupação e as mais de 7.000 linhas do Trial Balance em segundos. Detecta Out of Balance automaticamente e avisa na hora.",
+    "Sube el DRR (.xlsm) con ⚡ Procesar Archivos. Yve extrae RevPAR, ADR, GOP%, ocupación y las 7.000+ líneas del Trial Balance en segundos. Detecta Out of Balance automáticamente y te avisa al instante.": "Envie o DRR (.xlsm) com ⚡ Processar Faturas. O Yve extrai RevPAR, ADR, GOP%, ocupação e as mais de 7.000 linhas do Trial Balance em segundos. Detecta Out of Balance automaticamente e avisa na hora.",
     "🏦 Banco — Conciliación": "🏦 Banco — Conciliação",
     "Cruza automáticamente el extracto bancario con las facturas de proveedores. Identifica movimientos no conciliados, diferencias de importe y pagos duplicados. Desde 8 horas a 2 minutos.": "Cruza automaticamente o extrato bancário com as faturas de fornecedores. Identifica movimentos não conciliados, diferenças de valor e pagamentos duplicados. De 8 horas para 2 minutos.",
     "🔔 Notificaciones": "🔔 Notificações",
@@ -9742,7 +9728,6 @@ var _i18nStrMap = {
     'Aprobadas': 'Aprovadas',
     'Archivo': 'Arquivo',
     'Arrastra archivos aquí o haz clic': 'Arraste arquivos aqui ou clique',
-    'Arrastra tu DRR aquí o': 'Arraste o DRR aqui ou',
     'Asunto': 'Assunto',
     'Bajo': 'Baixo',
     'Budget': 'Orçamento',
@@ -11757,7 +11742,7 @@ var _tourSteps = [
   {
     el: '#drr-metrics', tab: 'drr', pos: 'auto',
     title: '📊 DRR — Daily Revenue Report',
-    text: 'Arrastra tu archivo .xlsm aquí. Yve extrae RevPAR, ADR, GOP%, ocupación y las 7.000+ líneas del Trial Balance en segundos. Detecta Out of Balance automáticamente y te avisa al instante.'
+    text: 'Sube el DRR (.xlsm) con ⚡ Procesar Archivos. Yve extrae RevPAR, ADR, GOP%, ocupación y las 7.000+ líneas del Trial Balance en segundos. Detecta Out of Balance automáticamente y te avisa al instante.'
   },
   {
     el: '#banco-stats', tab: 'banco', pos: 'auto',
@@ -12810,13 +12795,8 @@ function _setMesSubida(idx, v) {
   if (f._mes) _mesesSubida[f.name] = f._mes; else delete _mesesSubida[f.name];
   _renderFileList();
 }
-// Ficheros que caen en una zona de otro apartado (p.ej. la del DRR): van a la
-// lista de Procesar archivos, que es la unica entrada.
-async function _recibirEnProcesar(files) {
-  var lista = Array.from(files || []);
-  await openUploadModal();
-  if (lista.length) handleUploadFiles(lista, null);
-}
+// b103: aqui estaba la funcion que recibia lo soltado en la zona del DRR. Ya no hay
+// zonas ni botones de subir en los apartados: la unica entrada es ⚡ Procesar archivos.
 
 function _pareceDocumento(f) {
   return /\.(pdf|xlsm|xlsx|xls|csv|jpe?g|png|webp|heic)$/i.test(f.name || '') ||
