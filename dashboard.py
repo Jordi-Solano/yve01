@@ -2725,6 +2725,7 @@ def api_procesar_batch_stream():
                             _mark(fname, 'SKIP')
                         continue
 
+                    _al_general = False     # b95: lo que el lector de OTA no reconoce pasa al general
                     if is_ar:
                         # AR: usar subprocess (lector_ota.py tiene su propia lógica)
                         cmd = ['python3', 'lector_ota.py', '--file', fpath]
@@ -2759,6 +2760,11 @@ def api_procesar_batch_stream():
                             yield f'data: ⚠ AR {fname}: guardado con campos incompletos{_det} — revisar manualmente\n\n'
                             _mark(fname, 'AR_PARCIAL')
                             has_ar = True
+                        elif _ota_vacio_al_lector_general(r.returncode):
+                            # b95: no es una liquidacion de OTA -> al lector general
+                            # (abajo), no a la papelera. Ver _ota_vacio_al_lector_general.
+                            _al_general = True
+                            yield f'data: ℹ {fname}: no es una liquidación de OTA — se lee como cualquier documento\n\n'
                         elif r.returncode == 3:
                             yield f'data: ⚠ {fname}: no se pudo extraer ningún dato de factura OTA — revisar manualmente\n\n'
                             _mark(fname, 'SKIP')
@@ -2779,7 +2785,7 @@ def api_procesar_batch_stream():
                         # un panel que va scrolleando — o sea, invisible.
                         if _aviso_hotel:
                             yield f'data: ⚠ {fname}: {_aviso_hotel}\n\n'
-                    else:
+                    if (not is_ar) or _al_general:
                         # AP: import directo (más rápido, sin cargar Python de nuevo)
                         try:
                             from lector_facturas_ap import procesar_factura_ap, cargar_proveedores, guardar_excel, SALIDA_DIR as _AP_DIR
@@ -2844,10 +2850,18 @@ def api_procesar_batch_stream():
                                 has_ap = True
                                 ap_extra += max(0, _n_ap - 1)
                                 
+                                # b95: la factura de comision de la AGENCIA de un contrato de
+                                # grupo no se compara con el total del contrato (salia un
+                                # "92% diff" falso): se coteja con la comision esperada en
+                                # AR > Contratos (b88). El cruce de abajo sigue para las demas.
+                                _ctr_ag = _contrato_de_agencia(dict(_filas[0]) if _filas else reg)
+                                if _ctr_ag:
+                                    _ctr_txt = '' if _ctr_ag == '*' else f' {_ctr_ag}'
+                                    yield f'data: ℹ {fname}: factura de la agencia del contrato de grupo{_ctr_txt} — se coteja con la comisión esperada en AR › Contratos\n\n'
                                 # 3-WAY MATCHING: buscar BEO/contrato del mismo evento/cliente
                                 try:
                                     ref_path = os.path.join(_ddir(), 'eventos_referencia.json')
-                                    if os.path.exists(ref_path):
+                                    if os.path.exists(ref_path) and not _ctr_ag:
                                         refs = json.load(open(ref_path))
                                         proveedor = (reg.get('nombre_proveedor') or '').lower()
                                         concepto = (reg.get('descripcion_concepto') or '').lower()
@@ -3839,6 +3853,42 @@ def _detect_file_type(filename):
     if name.endswith(('.xlsx', '.xls', '.csv', '.xlsm')):
         return 'AR_o_AP'  # Podría ser extracto, ventas, inventario...
     return 'AP'
+
+def _ota_vacio_al_lector_general(returncode):
+    """b95 · Codigo 3 de `lector_ota.py --file` = "lo he leido y NO es una
+    liquidacion de OTA" (no guarda nada). Ese documento ya no se tira: pasa al
+    lector general del lote, que lo clasifica por el CONTENIDO. Al lector de OTA
+    lo manda el NOMBRE del fichero ('comision', 'ota' —que tambien esta en
+    "nota" y en "cuota"—), y la factura de comision de la agencia de un contrato
+    de grupo se llama casi siempre "...comision...": moria aqui sin llegar a su
+    contrato (visto en produccion el 25 sep). Los demas codigos no cambian:
+    0 y 2 = guardado como OTA, 1 = error."""
+    return returncode == 3
+
+
+def _contrato_de_agencia(fila):
+    """b95 · Si esta factura AP la emite la AGENCIA de un contrato de grupo del
+    mismo hotel, el numero de ese contrato ('' si no es de ninguna agencia; el
+    primero que la factura cite, o el unico de esa agencia; si tiene varios y no
+    cita ninguno, '*'). Sirve para no compararla con el TOTAL del contrato en el
+    cruce de eventos del lote: una comision de 1.210 EUR contra un contrato de
+    14.410 salia como "92% diff". Su cotejo es contra la comision ESPERADA, en
+    AR > Contratos (b88)."""
+    try:
+        import contratos_grupo as _CG
+        f = dict(fila or {})
+        if not str(f.get('hotel_id') or '').strip():
+            f['hotel_id'] = censo_hoteles.para_guardar()
+        suyos = [c for c in _CG.leer(_ddir())
+                 if _CG._mismo_hotel(c, f) and _CG.es_de_la_agencia(c, f)]
+        if not suyos:
+            return ''
+        cita = [c for c in suyos if _CG.referencia_fuerte(c, f)]
+        if cita:
+            return str(cita[0].get('contrato') or '*')
+        return str(suyos[0].get('contrato') or '*') if len(suyos) == 1 else '*'
+    except Exception:
+        return ''
 
 @app.route('/api/historial_procesado')
 @login_required
@@ -10169,6 +10219,9 @@ var _sseFrags = [
   " línea(s)",
   "revisar manualmente",
   "ojo: el documento nombra otro hotel",
+  "no es una liquidación de OTA — se lee como cualquier documento",
+  "factura de la agencia del contrato de grupo",
+  "se coteja con la comisión esperada en AR › Contratos",
 ];
 var _sseTrans = {
   en: [
@@ -10266,6 +10319,9 @@ var _sseTrans = {
     " line(s)",
     "review manually",
     "careful: the document names a different hotel",
+    "not an OTA statement — read like any other document",
+    "invoice from the group contract's agency",
+    "checked against the expected commission in AR › Contracts",
   ],
   ca: [
   "full de càlcul sense classificar — revisar manualment",
@@ -10362,6 +10418,9 @@ var _sseTrans = {
     " línia/es",
     "revisar-ho manualment",
     "compte: el document anomena un altre hotel",
+    "no és una liquidació d'OTA — es llegeix com qualsevol document",
+    "factura de l'agència del contracte de grup",
+    "es contrasta amb la comissió esperada a AR › Contractes",
   ],
   fr: [
   "feuille de calcul non classée — vérifier manuellement",
@@ -10458,6 +10517,9 @@ var _sseTrans = {
     " ligne(s)",
     "à vérifier manuellement",
     "attention : le document nomme un autre hôtel",
+    "ce n'est pas un relevé d'OTA — lu comme n'importe quel document",
+    "facture de l'agence du contrat de groupe",
+    "rapprochée de la commission attendue dans AR › Contrats",
   ],
   de: [
   "Tabelle nicht klassifiziert — manuell prüfen",
@@ -10554,6 +10616,9 @@ var _sseTrans = {
     " Position(en)",
     "manuell prüfen",
     "Achtung: das Dokument nennt ein anderes Hotel",
+    "keine OTA-Abrechnung — wird wie jedes Dokument gelesen",
+    "Rechnung der Agentur des Gruppenvertrags",
+    "wird mit der erwarteten Provision in AR › Verträge abgeglichen",
   ],
   it: [
   "foglio di calcolo non classificato — verificare manualmente",
@@ -10650,6 +10715,9 @@ var _sseTrans = {
     " riga/righe",
     "da rivedere manualmente",
     "attenzione: il documento nomina un altro hotel",
+    "non è un estratto OTA — letto come qualsiasi documento",
+    "fattura dell'agenzia del contratto di gruppo",
+    "confrontata con la commissione attesa in AR › Contratti",
   ],
   pt: [
   "planilha sem classificar — revisar manualmente",
@@ -10746,6 +10814,9 @@ var _sseTrans = {
     " linha(s)",
     "rever manualmente",
     "atenção: o documento nomeia outro hotel",
+    "não é uma liquidação de OTA — lido como qualquer documento",
+    "fatura da agência do contrato de grupo",
+    "confrontada com a comissão esperada em AR › Contratos",
   ],
 };
 function _tSSE(txt) {
