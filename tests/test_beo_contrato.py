@@ -119,6 +119,16 @@ def main():
         fac2 = l2[0]['facturacion'] if l2 else []
         ok(any('Depósito del 30 % a la firma' in x for x in fac2) and not any(x.strip().lower() == 'a la firma' for x in fac2),
            f"facturación: el depósito una vez, sin repetir 'a la firma' suelto (b97: {fac2})")
+        # b98: si el lector no copio la frase del deposito en otro campo, la BEO la compone
+        import copy as _copy
+        c3 = _copy.deepcopy(c2)
+        c3['datos_contrato']['facturacion']['texto'] = 'Se factura a la agencia.'
+        fac3 = (B.beos(c3, DD, numerar=False) or [{}])[0].get('facturacion') or []
+        ok('Depósito del 30 % a la firma' in fac3 and not any(x.strip().lower() == 'a la firma' for x in fac3),
+           f"facturación: sin la frase en otro campo, 'Depósito del 30 % a la firma' y no 'a la firma' suelto (b98: {fac3})")
+        ok(B._linea_deposito({'pct': 12.5, 'cuando': 'a la firma'}) == 'Depósito del 12,5 % a la firma'
+           and B._linea_deposito({'cuando': 'a la firma'}) == 'Depósito a la firma' and B._linea_deposito({}) == '',
+           'la frase del depósito con decimales en español, sin % y vacía')
         # 3. el PDF con el formato del ejemplo
         txt = texto_pdf(B.pdf(l1))
         etiquetas = ('Orden del Servicio (BEO)', 'Postear como:', 'Fecha del evento:', 'Cuenta:', 'Contacto:', 'Dirección:', 'Master #:',

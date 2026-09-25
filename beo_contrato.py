@@ -211,6 +211,20 @@ def _importe(f):
     return _r((f.get("alquiler") or 0) + menu + sum(a["importe"] for a in f.get("av") or []))
 
 
+def _linea_deposito(dep):
+    """b98 · El deposito como UNA frase ("Depósito del 30 % a la firma"). Antes solo iba el
+    "cuando" suelto ("a la firma"): si el lector no copiaba la frase entera del contrato en
+    otro campo, la BEO decia "a la firma" sin mas (visto en produccion el 25 sep)."""
+    dep = dep if isinstance(dep, dict) else {}
+    cuando = _txt(dep.get("cuando"))
+    pct = _f(dep.get("pct"))
+    if pct:
+        return f"Depósito del {pct:g} %".replace(".", ",") + (f" {cuando}" if cuando else "")
+    if cuando and not cuando.lower().startswith(("dep", "pago", "anticipo")):
+        return f"Depósito {cuando}"
+    return cuando
+
+
 def beos(c, datos_dir=None, numerar=True):
     """Las BEO del contrato `c` (registro de contratos_grupo): una por dia de evento,
     o una "por confirmar" si el contrato no trae programa. Devuelve lista de dicts."""
@@ -237,7 +251,7 @@ def beos(c, datos_dir=None, numerar=True):
         fact.append(f"Factura del grupo {_txt(c.get('factura_numero')) or c.get('factura_grupo')} a nombre de {cuenta or '(por decidir quién paga)'}"
                     + (" (paga la agencia)" if q == "agencia" else " (paga el cliente final)" if q == "cliente" else ""))
     for x in (_txt(b.get("instrucciones_facturacion")), _txt((datos.get("facturacion") or {}).get("texto")),
-              _txt((datos.get("deposito") or {}).get("cuando"))):
+              _linea_deposito(datos.get("deposito"))):
         # b97: sin repetir lo que ya dice otra linea (el "cuando" del deposito,
         # "a la firma", salia suelto debajo de la frase que ya lo decia)
         if x and not any(x.lower() in y.lower() for y in fact):
