@@ -173,7 +173,8 @@ def compensar(contrato, fila_grupo, fila_com, importe, fecha=None, usuario="", n
     f = _iso(fecha) or date.today().isoformat()
     import uuid
     reg = {"id": f"CMP-{datetime.now().strftime('%Y%m%d%H%M%S')}-{uuid.uuid4().hex[:4]}", "fecha": f, "importe": imp,
-           "factura_grupo": num, "factura_comision": clave, "contrato_id": _txt(contrato.get("id")),
+           "factura_grupo": num, "factura_grupo_numero": _txt((fila_grupo or {}).get("numero_factura")) or num,
+           "factura_comision": clave, "contrato_id": _txt(contrato.get("id")),
            "agencia": _txt(contrato.get("agencia")), "hotel_id": hotel, "usuario": usuario,
            "nota": _txt(nota)[:200], "cuando": datetime.now().strftime("%Y-%m-%d %H:%M")}
     comps.append(reg)
@@ -263,7 +264,8 @@ def leer_facturas_grupo(datos_dir=None):
         hotel = _txt(f.get("hotel_id"))
         cg = de_grupo(num, hotel, comps)
         f = dict(f, numero=num, hotel_id=hotel, estado=_txt(f.get("estado")).upper(),
-                 total=_r(_f(f.get("total")) or _f(f.get("importe"))), compensado=total(cg))
+                 total=_r(_f(f.get("total")) or _f(f.get("importe"))), compensado=total(cg),
+                 numero_factura=_txt(f.get("numero_factura")) or num)      # b93: el numero legal
         f["saldo"] = saldo_grupo(f, cg)
         out[num + "|" + hotel] = f
     return out
@@ -289,7 +291,7 @@ def puede_pagar_comision(fila_ap, facturas=None, datos_dir=None):
     fg = fila_grupo(num, _txt(fila_ap.get("hotel_id")), facturas, datos_dir)
     if fg is None or fg.get("estado") in COBRADOS:
         return True, ""
-    return False, (f"Primero se cobra la factura del grupo {num} (la paga el cliente final) "
+    return False, (f"Primero se cobra la factura del grupo {fg.get('numero_factura') or num} (la paga el cliente final) "
                    "y después se paga la de comisión.")
 
 
@@ -312,7 +314,8 @@ def vista(contrato, fila_g, fila_com, comps=None, datos_dir=None):
     ok, info = puede_compensar(contrato, fila_g, fila_com, cg, cc)
     return {"regla": quien, "puede": bool(ok), "maximo": info if ok else None, "motivo": "" if ok else info,
             "lista": sorted(lista, key=lambda c: (c.get("fecha") or "", c.get("id") or "")), "total": total(lista),
-            "factura_grupo": num, "grupo_estado": _txt((fila_g or {}).get("estado")),
+            "factura_grupo": num, "factura_grupo_numero": _txt((fila_g or {}).get("numero_factura")) or num,
+            "grupo_estado": _txt((fila_g or {}).get("estado")),
             "saldo_grupo": saldo_grupo(fila_g, cg) if fila_g is not None else None,
             "saldo_comision": saldo_comision(fila_com, cc) if fila_com is not None else None,
             "grupo_cobrada": _txt((fila_g or {}).get("estado")) in COBRADOS}

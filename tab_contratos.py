@@ -56,7 +56,7 @@ def facturas_grupo(datos_dir=None, completas=None):
     completas = CMP.leer_facturas_grupo(datos_dir) if completas is None else completas
     out = {}
     for clave, f in completas.items():
-        out[clave] = {"numero": f["numero"], "estado": f["estado"], "total": f["total"],
+        out[clave] = {"numero": f["numero"], "numero_factura": f.get("numero_factura") or f["numero"], "estado": f["estado"], "total": f["total"],
                       "compensado": f["compensado"], "saldo": f["saldo"],
                       "fecha_emision": CG._txt(f.get("fecha_emision"))[:10], "fecha_cobro": CG._txt(f.get("fecha_cobro"))[:10],
                       "cliente": CG._txt(f.get("cliente")), "hotel_id": f["hotel_id"]}

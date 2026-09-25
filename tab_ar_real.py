@@ -104,6 +104,59 @@ def _save_reservas(df):
             pass
     df.to_excel(ruta, index=False)
 
+# ── b93: la serie de facturas a credito del grupo, correlativa ──────────────
+# FAC-<año>-CORP-<nnnn>, UNA serie para todo el grupo (todos los hoteles), como
+# estaba. Antes el numero era len(fichero)+1: las filas GRP- de los contratos
+# (pendientes de emitir) contaban y dejaban huecos, y con emisiones de contratos
+# de por medio podia REPETIR numero. Ahora: el mayor numero de ese año + 1,
+# mirando numero_reserva y numero_factura de todo el fichero, bajo un candado.
+import re as _re
+_RE_FAC = _re.compile(r'^FAC-(\d{4})-CORP-(\d+)$')
+
+
+def siguiente_numero_factura(anio=None, df=None):
+    anio = int(anio or datetime.now().year)
+    df = _get_reservas_todas() if df is None else df
+    mx = 0
+    for col in ('numero_reserva', 'numero_factura'):
+        if df is not None and len(df) and col in df.columns:
+            # OJO pandas 3: .astype(str) de una columna de texto deja el NaN como float
+            for v in df[col].tolist():
+                m = _RE_FAC.match('' if v is None or (isinstance(v, float) and v != v) else str(v).strip())
+                if m and int(m.group(1)) == anio:
+                    mx = max(mx, int(m.group(2)))
+    return f'FAC-{anio}-CORP-{mx + 1:04d}'
+
+
+class _Candado:
+    """Dos emisiones a la vez no se llevan el mismo numero (candado de fichero)."""
+    def __enter__(self):
+        self._fh = None
+        try:
+            import fcntl
+            self._fh = open(_os.path.join(str(DATOS), '.numeracion_facturas.lock'), 'w')
+            fcntl.flock(self._fh, fcntl.LOCK_EX)
+        except Exception:
+            self._fh = None
+        return self
+
+    def __exit__(self, *a):
+        try:
+            if self._fh:
+                import fcntl
+                fcntl.flock(self._fh, fcntl.LOCK_UN)
+                self._fh.close()
+        except Exception:
+            pass
+        return False
+
+
+def numero_visible(fila):
+    """El numero de factura que se ensena y se asienta: el legal (numero_factura) si
+    lo tiene; si no, el de siempre (numero_reserva)."""
+    return _txt_cliente(fila, 'numero_factura') or _txt_cliente(fila, 'numero_reserva', 'numero')
+
+
 def _cotejar_beo(beo, df_r):
     """Compara el total del BEO con el importe de la factura/reserva del mismo evento."""
     try:
@@ -391,6 +444,7 @@ def facturas_y_stats(df_r):
             
             facturas.append({
                 'numero':        str(row.get('numero_reserva','')),
+                'numero_factura': numero_visible(row),      # b93: el legal (o el de siempre)
                 'cliente':       str(row.get('cliente','')),
                 'fecha_entrada': str(row.get('fecha_entrada',''))[:10] if pd.notna(row.get('fecha_entrada')) else '',
                 'fecha_salida':  str(row.get('fecha_salida',''))[:10] if pd.notna(row.get('fecha_salida')) else '',
@@ -508,36 +562,47 @@ def aviso_credito(cliente, datos_dir=None):
 def api_emitir_pendiente():
     """b89: emite la factura de un contrato de grupo que estaba "pendiente de emitir"
     (estado FACTURADO, fecha de emision hoy). Sin saber quien paga no se emite: la
-    factura seria del que no es (regla de finanzas: no se supone)."""
+    factura seria del que no es (regla de finanzas: no se supone).
+    b93: al emitirla toma el siguiente numero de la serie (FAC-<año>-CORP-<nnnn>,
+    `numero_factura`); el GRP-<contrato> (`numero_reserva`) queda como referencia."""
     data = request.get_json(force=True, silent=True) or {}
     numero = str(data.get('numero', '') or '').strip()
     if not numero:
         return jsonify({'ok': False, 'error': 'Número de factura requerido'}), 400
     try:
-        df = _get_reservas()
-        if df.empty or 'numero_reserva' not in df.columns:
-            return jsonify({'ok': False, 'error': f'Factura {numero} no encontrada'}), 404
-        mask = df['numero_reserva'].astype(str) == numero
-        if not mask.any():
-            return jsonify({'ok': False, 'error': f'Factura {numero} no encontrada'}), 404
-        fila = df[mask].iloc[0]
-        if str(fila.get('estado', '')) != 'PENDIENTE_FACTURA':
-            return jsonify({'ok': False, 'error': f'La factura {numero} ya está emitida'}), 409
-        if _txt_cliente(fila, 'tipo') == 'CONTRATO_GRUPO' and _txt_cliente(fila, 'pagador') not in ('agencia', 'cliente'):
-            return jsonify({'ok': False, 'error': 'Falta decidir quién paga la factura del grupo (AR › Contratos): no se emite a nadie sin saberlo.'}), 409
-        hoy = date.today().isoformat()
-        df['estado'] = df['estado'].astype(object)
-        df['fecha_emision'] = df['fecha_emision'].astype(object) if 'fecha_emision' in df.columns else ''
-        df.loc[mask, 'estado'] = 'FACTURADO'
-        df.loc[mask, 'fecha_emision'] = hoy
-        _save_reservas(df)
+        with _Candado():      # leer, numerar y guardar sin que otra emision se cuele
+            df = _get_reservas()
+            if df.empty or 'numero_reserva' not in df.columns:
+                return jsonify({'ok': False, 'error': f'Factura {numero} no encontrada'}), 404
+            mask = df['numero_reserva'].astype(str) == numero
+            if not mask.any():
+                return jsonify({'ok': False, 'error': f'Factura {numero} no encontrada'}), 404
+            fila = df[mask].iloc[0]
+            if str(fila.get('estado', '')) != 'PENDIENTE_FACTURA':
+                return jsonify({'ok': False, 'error': f'La factura {numero} ya está emitida'}), 409
+            if _txt_cliente(fila, 'tipo') == 'CONTRATO_GRUPO' and _txt_cliente(fila, 'pagador') not in ('agencia', 'cliente'):
+                return jsonify({'ok': False, 'error': 'Falta decidir quién paga la factura del grupo (AR › Contratos): no se emite a nadie sin saberlo.'}), 409
+            hoy = date.today().isoformat()
+            num_fac = siguiente_numero_factura()
+            df['estado'] = df['estado'].astype(object)
+            df['fecha_emision'] = df['fecha_emision'].astype(object) if 'fecha_emision' in df.columns else ''
+            df['numero_factura'] = df['numero_factura'].astype(object) if 'numero_factura' in df.columns else ''
+            df.loc[mask, 'estado'] = 'FACTURADO'
+            df.loc[mask, 'fecha_emision'] = hoy
+            df.loc[mask, 'numero_factura'] = num_fac
+            _save_reservas(df)
         try:
-            from dashboard import _audit as _a
-            _a('AR_EMITIDA', f'{numero} → {_txt_cliente(fila, "cliente")}')
+            import contratos_grupo as _CG
+            _CG.anotar_numero_factura(numero, _txt_cliente(fila, 'hotel_id'), num_fac)
         except Exception:
             pass
-        return jsonify({'ok': True, 'numero': numero, 'fecha_emision': hoy, 'cliente': _txt_cliente(fila, 'cliente'),
-                        'message': f'Factura {numero} emitida', 'aviso_credito': aviso_credito(_txt_cliente(fila, 'cliente'))})
+        try:
+            from dashboard import _audit as _a
+            _a('AR_EMITIDA', f'{num_fac} ({numero}) → {_txt_cliente(fila, "cliente")}')
+        except Exception:
+            pass
+        return jsonify({'ok': True, 'numero': numero, 'numero_factura': num_fac, 'fecha_emision': hoy, 'cliente': _txt_cliente(fila, 'cliente'),
+                        'message': f'Factura {num_fac} emitida ({numero})', 'aviso_credito': aviso_credito(_txt_cliente(fila, 'cliente'))})
     except Exception as e:
         return jsonify({'ok': False, 'error': str(e)}), 500
 
@@ -557,6 +622,7 @@ def api_recordatorio():
         cliente_nombre = str(row['cliente'])
         total = float(row.get('total', 0))
         fecha_em = str(row.get('fecha_emision',''))[:10]
+        numero = numero_visible(row) or numero        # b93: el numero legal de la factura
         
         # Get client email
         c_match = df_c[df_c['nombre_cliente'] == cliente_nombre]
@@ -635,6 +701,7 @@ def api_emitir_factura():
     total         = float(data.get('total', 0))
     if not cliente or not fecha_entrada or not fecha_salida:
         return jsonify({'ok': False, 'error': 'Faltan datos obligatorios'}), 400
+    _cand = _Candado().__enter__()      # b93: leer, numerar y guardar sin que otra emision se cuele
     try:
         df = _get_reservas()
         year = datetime.now().year
@@ -649,12 +716,14 @@ def api_emitir_factura():
         # tocar nada: un numero de factura repetido es un problema contable, y
         # cambiar a una serie por hotel es una decision de producto, no algo
         # que deba caerse por un efecto colateral.
-        last_num = len(_get_reservas_todas()) + 1
-        numero = f'FAC-{year}-CORP-{last_num:04d}'
+        # b93: el mayor numero del año + 1 (antes len+1: dejaba huecos y podia repetir
+        # con las facturas de contratos de grupo emitidas); todo bajo el candado
+        numero = siguiente_numero_factura(year)
         noches = max(1, (pd.to_datetime(fecha_salida) - pd.to_datetime(fecha_entrada)).days)
         importe_h = round(habitaciones * noches * precio_noche, 2)
         new_row = {
             'numero_reserva': numero,
+            'numero_factura': numero,
             'cliente':        cliente,
             'fecha_entrada':  fecha_entrada,
             'fecha_salida':   fecha_salida,
@@ -669,8 +738,10 @@ def api_emitir_factura():
         }
         df = pd.concat([df, pd.DataFrame([new_row])], ignore_index=True)
         _save_reservas(df)
-        return jsonify({'ok': True, 'numero': numero, 'total': total, 'aviso_credito': aviso_credito(cliente)})
+        _cand.__exit__()
+        return jsonify({'ok': True, 'numero': numero, 'numero_factura': numero, 'total': total, 'aviso_credito': aviso_credito(cliente)})
     except Exception as e:
+        _cand.__exit__()
         return jsonify({'ok': False, 'error': str(e)}), 500
 
 def _get_bonos():

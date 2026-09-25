@@ -4362,6 +4362,7 @@ def df_ap_a_lista(df):
             "comision_pagador":  safe_str(r.get("comision_pagador")) if str(r.get("es_comision_agencia")) == "True" else "",
             "factura_grupo":     safe_str(r.get("factura_grupo")) if str(r.get("es_comision_agencia")) == "True" else "",
             "grupo_estado":      safe_str(r.get("grupo_estado")).upper() if str(r.get("es_comision_agencia")) == "True" else "",
+            "grupo_numero":      safe_str(r.get("grupo_numero")) if str(r.get("es_comision_agencia")) == "True" else "",
         })
     return rows
 
@@ -15452,7 +15453,7 @@ async function loadAP() {
           // b89: compensada contra la factura del grupo, o se paga cuando se cobre (paga el cliente final)
           (f.compensado > 0 ? ' ' + gBadge(f.compensada ? 'g-pur' : 'g-info', (f.compensada ? t('cmp.compensada', 'Compensada') : t('cmp.compensado', 'Compensado')) + ' ' + fmtEurAP(f.compensado)) : '') +
           (f.comision_pagador === 'cliente' && f.factura_grupo && f.grupo_estado !== 'COBRADO' && f.grupo_estado !== 'COBRADA' && !f.pagada
-            ? ' ' + gBadge('g-warn', t('cmp.trasCobro', 'Se paga tras cobrar {f}').replace('{f}', _provEsc(f.factura_grupo))) : '') + '</div>'
+            ? ' ' + gBadge('g-warn', t('cmp.trasCobro', 'Se paga tras cobrar {f}').replace('{f}', _provEsc(f.grupo_numero || f.factura_grupo))) : '') + '</div>'
         : '';
       tr.innerHTML = `
         <td class="g-chk"><input type="checkbox" class="ap-row-cb" data-clave="${_provEsc(f.clave)}"></td>
@@ -17166,7 +17167,7 @@ function _ctrBadges(c) {
   b.push(q === 'agencia' ? gBadge('g-mute', t('ctr.pagaAgencia', 'Paga la agencia')) : q === 'cliente' ? gBadge('g-mute', t('ctr.pagaCliente', 'Paga el cliente')) : gBadge('g-warn', t('ctr.faltaPagador', '¿Quién paga?')));
   var fg = c.factura || {};
   if (fg.estado === 'COBRADO' || fg.estado === 'COBRADA') b.push(gBadge('g-pur', t('ctr.facturaCobrada', 'Factura cobrada')));
-  else if (fg.estado === 'FACTURADO') b.push(gBadge('g-warn', t('ctr.facturaEmitida', 'Factura emitida')));
+  else if (fg.estado === 'FACTURADO') b.push(gBadge('g-warn', t('ctr.facturaEmitida', 'Factura emitida') + (fg.numero_factura && fg.numero_factura !== fg.numero ? ' ' + _ctrEsc(fg.numero_factura) : '')));
   else if (fg.numero) b.push(gBadge('g-mute', t('ctr.facturaPorEmitir', 'Factura por emitir')));
   return b.join(' ');
 }
@@ -17270,9 +17271,9 @@ function _ctrCompensacion(c, i) {
   if (cp.regla === 'cliente') {
     h += '<div class="g-small">⇄ ' + t('cmp.noCliente', 'No se compensa: la factura del grupo la paga el cliente final.') + ' ' +
       (cp.grupo_cobrada ? t('cmp.yaCobrada', 'La factura del grupo ya está cobrada: ya se puede pagar la comisión.')
-                        : t('cmp.pagarTras', 'La comisión se paga después de cobrar la factura del grupo {f}.').replace('{f}', _ctrEsc(cp.factura_grupo || ''))) + '</div>';
+                        : t('cmp.pagarTras', 'La comisión se paga después de cobrar la factura del grupo {f}.').replace('{f}', _ctrEsc(cp.factura_grupo_numero || cp.factura_grupo || ''))) + '</div>';
   } else if (cp.puede) {
-    h += '<div class="g-small">' + t('cmp.explica', 'Paga la agencia: su comisión se puede compensar contra la factura del grupo {f} (410/430).').replace('{f}', _ctrEsc(cp.factura_grupo || '')) + '</div>' +
+    h += '<div class="g-small">' + t('cmp.explica', 'Paga la agencia: su comisión se puede compensar contra la factura del grupo {f} (410/430).').replace('{f}', _ctrEsc(cp.factura_grupo_numero || cp.factura_grupo || '')) + '</div>' +
       '<div class="ctr-acciones ctr-cmp-form">' +
       '<label class="ctr-pctl"><span class="g-small">' + t('cmp.importe', 'Importe') + '</span><input type="number" min="0" step="0.01" class="g-input" id="cmp-imp-' + i + '" value="' + (Number(cp.maximo) || 0).toFixed(2) + '"></label>' +
       '<label class="ctr-pctl"><span class="g-small">' + t('cmp.fecha', 'Fecha') + '</span><input type="date" class="g-input" id="cmp-fec-' + i + '" value="' + _hoyLocal() + '"></label>' +
@@ -17714,7 +17715,9 @@ function _renderFacturasAR(facturas, stats) {
                       : gBadge('g-mute', t('est.pendienteEmitir', 'Pendiente de emitir'));
     const diasCls = f.days_pending > 60 ? 'g-err' : f.days_pending > 30 ? 'g-warn' : 'g-ok';
     return '<tr' + (isVenc ? ' class="is-vencida"' : '') + '>' +
-      '<td><b style="cursor:copy" onclick="copyToClip(\'' + f.numero + '\')">' + f.numero + '</b>' +
+      // b93: el numero LEGAL de la factura; el de la reserva/contrato (GRP-) debajo, como referencia
+      '<td><b style="cursor:copy" onclick="copyToClip(\'' + (f.numero_factura || f.numero) + '\')">' + (f.numero_factura || f.numero) + '</b>' +
+        (f.numero_factura && f.numero_factura !== f.numero ? '<div class="g-note" style="margin-top:1px">' + f.numero + '</div>' : '') +
         '<div class="g-small" style="white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:160px">' + f.cliente.split(' ').slice(0,2).join(' ') + '</div>' +
         (f.aging_bucket && f.aging_bucket !== 'N/A' ? '<div class="g-note" style="margin-top:2px' + (f.days_pending > 60 ? ';color:var(--red)' : '') + '">' + f.aging_bucket + '</div>' : '') +
       '</td>' +
@@ -17751,9 +17754,10 @@ async function cobrarFacturaAR(numero) {
   // Inline confirmation — no blocking dialog
   // b89: si parte se compenso con la comision de la agencia, se cobra lo que queda
   const _f = (_arAllFacturas || []).find(function(x){ return x.numero === numero; }) || {};
+  const _nl = _f.numero_factura || numero;     // b93: el numero legal
   showConfirmAction(
     '¿Marcar como cobrada?',
-    'Factura ' + numero + (_f.compensado > 0 ? ' · ' + t('cmp.seCobra', 'se cobran {x} (el resto se compensó)').replace('{x}', _fmtEurES(_f.saldo || 0, 2)) : ''),
+    'Factura ' + _nl + (_f.compensado > 0 ? ' · ' + t('cmp.seCobra', 'se cobran {x} (el resto se compensó)').replace('{x}', _fmtEurES(_f.saldo || 0, 2)) : ''),
     '💰 Confirmar cobro',
     async function() {
       try {
@@ -17774,7 +17778,8 @@ function emitirPendienteAR(numero) {
       try {
         const r = await _postJson('/api/ar_real/emitir_pendiente', {numero});
         const d = await r.json();
-        if (d.ok) { showNotification(d.aviso_credito ? '✓ ' + t('arreal.emitidaOk', 'Factura {n} emitida').replace('{n}', numero) + ' · ⚠ ' + d.aviso_credito : '✓ ' + t('arreal.emitidaOk', 'Factura {n} emitida').replace('{n}', numero), d.aviso_credito ? 'warning' : 'success'); cargarARRealData(); }
+        var _n = d.numero_factura || numero;     // b93: el numero de la serie que le toca
+        if (d.ok) { showNotification(d.aviso_credito ? '✓ ' + t('arreal.emitidaOk', 'Factura {n} emitida').replace('{n}', _n) + ' · ⚠ ' + d.aviso_credito : '✓ ' + t('arreal.emitidaOk', 'Factura {n} emitida').replace('{n}', _n), d.aviso_credito ? 'warning' : 'success'); cargarARRealData(); }
         else showNotification('✗ ' + (d.error || 'Error'), 'error');
       } catch(e) { showNotification('✗ Error de conexión', 'error'); }
     });

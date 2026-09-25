@@ -225,7 +225,7 @@ def calcular(mes, fuentes, cfg=None, cfg_fiscal=None):
             b_h = _r((hab + ext) / (1 + pct_h / 100)); i_h = _r(hab + ext - b_h)
             b_f = _r(fb / (1 + pct_f / 100)); i_f = _r(fb - b_f)
             dif = _r(total - (b_h + b_f + i_h + i_f)); i_h = _r(i_h + dif)
-            num = _txt(r.get("numero_reserva")) or _txt(r.get("numero")) or "s/n"
+            num = _txt(r.get("numero_factura")) or _txt(r.get("numero_reserva")) or _txt(r.get("numero")) or "s/n"   # b93
             cli = _txt(r.get("cliente")) or "cliente"
             nif = _limpia_nif(_col(r, "nif", "cif", "nif_cliente")) or _nif_cliente(cli, fuentes, cf)
             if not nif:

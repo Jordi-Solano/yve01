@@ -234,7 +234,7 @@ def beos(c, datos_dir=None, numerar=True):
     alergias = [_txt(a) for a in (b.get("alergias") or []) if _txt(a)]
     fact = []
     if _txt(c.get("factura_grupo")):
-        fact.append(f"Factura del grupo {c.get('factura_grupo')} a nombre de {cuenta or '(por decidir quién paga)'}"
+        fact.append(f"Factura del grupo {_txt(c.get('factura_numero')) or c.get('factura_grupo')} a nombre de {cuenta or '(por decidir quién paga)'}"
                     + (" (paga la agencia)" if q == "agencia" else " (paga el cliente final)" if q == "cliente" else ""))
     for x in (_txt(b.get("instrucciones_facturacion")), _txt((datos.get("facturacion") or {}).get("texto")),
               _txt((datos.get("deposito") or {}).get("cuando"))):

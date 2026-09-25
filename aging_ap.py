@@ -107,7 +107,7 @@ def calcular_aging(df_ap, df_ar=None, df_banco=None, hoy=None):
                 # b89: si paga el cliente final, se paga cuando se cobre la factura del grupo
                 if _txt(r.get("comision_pagador")) == "cliente" and _txt(r.get("grupo_estado")).upper() not in ("COBRADO", "COBRADA") \
                         and _txt(r.get("factura_grupo")):
-                    extra["tras_cobro"] = _txt(r.get("factura_grupo"))
+                    extra["tras_cobro"] = _txt(r.get("grupo_numero")) or _txt(r.get("factura_grupo"))     # b93: el numero legal
             _add("Comisión grupo" if com else "Proveedor", r.get("numero_factura"), r.get("nombre_proveedor"),
                  f_fac, imp, r.get("accion"), r.get("hotel_id"),
                  vencimiento=r.get("vencimiento"), pagada_mano=bool(r.get("pagada")) if "pagada" in df_ap.columns else False,

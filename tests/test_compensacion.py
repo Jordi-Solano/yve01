@@ -124,9 +124,11 @@ def main():
         tok = (cl.get('/api/csrf_token').get_json() or {}).get('token'); H = {'X-CSRF-Token': tok}
         r = cl.post('/api/ar_real/emitir_pendiente', json={'numero': 'GRP-CG-2026-0903'}, headers=H)
         ok(r.status_code == 409 and 'quién paga' in (r.get_json() or {}).get('error', ''), 'sin saber quien paga, la factura del grupo NO se emite (409)')
+        legal = {}       # b93: al emitirla, la factura del grupo toma el numero de la serie FAC-<año>-CORP-<nnnn>
         for n in ('GRP-CG-2026-0901', 'GRP-CG-2026-0902'):
             r = cl.post('/api/ar_real/emitir_pendiente', json={'numero': n}, headers=H)
-            ok(r.status_code == 200 and (r.get_json() or {}).get('ok'), f'emitir la factura del grupo {n}')
+            legal[n] = (r.get_json() or {}).get('numero_factura') or n
+            ok(r.status_code == 200 and (r.get_json() or {}).get('ok') and legal[n].startswith('FAC-'), f'emitir la factura del grupo {n} → {legal[n]}')
         r = cl.post('/api/ar_real/emitir_pendiente', json={'numero': 'GRP-CG-2026-0901'}, headers=H)
         ok(r.status_code == 409, 'emitir dos veces: 409')
         bj = cl.get('/api/ar_real/bonos').get_json()
@@ -160,7 +162,7 @@ def main():
         ok(not [x for x in ag['filas'] if x['numero_factura'] == 'VM-2026-501'] and ag['n_compensadas'] == 1,
            'aging AP: la comision compensada entera ya no se debe')
         eb = next((x for x in ag['filas'] if x['numero_factura'] == 'EC-2026-88'), {})
-        ok(eb.get('tras_cobro') == 'GRP-CG-2026-0902', f"aging AP: la del cliente final dice que se paga tras cobrar su grupo ({eb.get('tras_cobro')})")
+        ok(eb.get('tras_cobro') == legal['GRP-CG-2026-0902'], f"aging AP: la del cliente final dice que se paga tras cobrar su grupo ({eb.get('tras_cobro')})")
         fr = cl.get('/api/ar_real/facturas').get_json()
         ga = next(x for x in fr['facturas'] if x['numero'] == 'GRP-CG-2026-0901')
         ok(ga['saldo'] == 9790.0 and ga['compensado'] == 1210.0, f"AR: la factura del grupo queda en 9.790 ({ga['saldo']})")
@@ -193,10 +195,10 @@ def main():
         cmp_as = [x for x in res['asientos'] if x['origen'] == 'COMPENSACION']
         ok(sorted((x['cuenta'], x['debe'], x['haber']) for x in cmp_as) == [('410', 500.0, 0.0), ('410', 710.0, 0.0), ('430', 0.0, 500.0), ('430', 0.0, 710.0)],
            f"asientos de compensacion 410 (D) / 430 (H) ({[(x['cuenta'], x['debe'], x['haber']) for x in cmp_as]})")
-        cob = [x for x in res['asientos'] if x['origen'] == 'AR' and x['documento'] == 'GRP-CG-2026-0901' and x['concepto'].startswith('Cobro')]
+        cob = [x for x in res['asientos'] if x['origen'] == 'AR' and x['documento'] == legal['GRP-CG-2026-0901'] and x['concepto'].startswith('Cobro')]
         ok(sorted((x['cuenta'], x['debe'], x['haber']) for x in cob) == [('430', 0.0, 9790.0), ('572', 9790.0, 0.0)],
            f"el cobro de A es por lo que quedaba: 572/430 9.790 ({[(x['cuenta'], x['debe'], x['haber']) for x in cob]})")
-        s430 = round(sum(x['debe'] - x['haber'] for x in res['asientos'] if x['cuenta'] == '430' and x['documento'] == 'GRP-CG-2026-0901'), 2)
+        s430 = round(sum(x['debe'] - x['haber'] for x in res['asientos'] if x['cuenta'] == '430' and x['documento'] == legal['GRP-CG-2026-0901']), 2)
         ok(s430 == 0.0, f"la 430 de la factura del grupo A queda a cero ({s430})")
         ok(res['fuentes'].get('compensaciones') == 2 and res['cuadra'], 'el diario cuadra y cuenta las 2 compensaciones')
         rec = CM.reconciliar(MES, res, fu, None, CM.config_cierre(DD))

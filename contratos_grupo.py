@@ -266,7 +266,7 @@ def registrar(datos, transformado=None, hotel_id=None, archivo="", datos_dir=Non
                 nuevo[clave] = previo[clave]
                 if clave == "comision":
                     nuevo["pct"] = previo.get("pct") or nuevo["pct"]
-        for clave in ("factura_comision", "creado", "historial", "beos"):
+        for clave in ("factura_comision", "creado", "historial", "beos", "factura_numero"):
             if previo.get(clave) is not None:
                 nuevo[clave] = previo[clave]
         lista = [c for c in lista if c.get("id") != cid]
@@ -275,6 +275,20 @@ def registrar(datos, transformado=None, hotel_id=None, archivo="", datos_dir=Non
     lista.append(nuevo)
     _escribir(lista, datos_dir)
     return nuevo
+
+
+def anotar_numero_factura(numero_reserva, hotel, numero_factura, datos_dir=None):
+    """b93: al emitir la factura del grupo, el contrato apunta su numero legal
+    (FAC-<año>-CORP-<nnnn>): la agencia puede citarlo en su factura de comision."""
+    lista = leer(datos_dir)
+    tocado = False
+    for c in lista:
+        if _txt(c.get("factura_grupo")) == _txt(numero_reserva) and (not _txt(hotel) or _txt(c.get("hotel_id")) in ("", _txt(hotel))):
+            c["factura_numero"] = _txt(numero_factura)
+            tocado = True
+    if tocado:
+        _escribir(lista, datos_dir)
+    return tocado
 
 
 def buscar(cid, datos_dir=None):
@@ -447,7 +461,8 @@ def referencia_fuerte(c, fila):
     """La factura cita el contrato: su numero, la factura del grupo o el evento."""
     t = " " + _norm(" ".join(_txt(fila.get(k)) for k in ("numero_factura", "descripcion_concepto", "concepto",
                                                              "descripcion", "archivo", "referencia"))) + " "
-    claves = [_norm(c.get("contrato")), _norm(c.get("factura_grupo")), _norm(c.get("evento_id"))]
+    claves = [_norm(c.get("contrato")), _norm(c.get("factura_grupo")), _norm(c.get("evento_id")),
+              _norm(c.get("factura_numero"))]          # b93: el numero legal de la factura del grupo
     if any(k and len(k) >= 4 and (" " + k + " ") in t for k in claves):
         return True
     nombre = _norm(c.get("evento_nombre")) or _norm(c.get("evento"))
@@ -556,13 +571,13 @@ def marcar_comisiones(df, contratos=None, datos_dir=None):
     cmap = {c["id"]: c for c in contratos}
     cols = {k: [] for k in ("es_comision_agencia", "comision_contrato", "comision_evento", "comision_esperada",
                             "comision_facturada", "comision_estado", "comision_diferencia", "comision_pagador",
-                            "factura_grupo", "comision_vinculo", "grupo_estado")}
+                            "factura_grupo", "comision_vinculo", "grupo_estado", "grupo_numero")}
     grupos = [None]         # b89: las facturas de grupo se leen solo si hay alguna comision
 
     def _estado_grupo(c):
         num = _txt(c.get("factura_grupo"))
         if not num:
-            return ""
+            return "", ""
         if grupos[0] is None:
             try:
                 import compensaciones as _cmp
@@ -570,7 +585,7 @@ def marcar_comisiones(df, contratos=None, datos_dir=None):
             except Exception:
                 grupos[0] = {}
         fg = grupos[0].get(num + "|" + _txt(c.get("hotel_id"))) or grupos[0].get(num + "|") or {}
-        return _txt(fg.get("estado"))
+        return _txt(fg.get("estado")), (_txt(fg.get("numero_factura")) or num)
     f_con, ctas, ctas_g = [], [], []
     tiene_fc = "fecha_contable" in df.columns
     tiene_cdg = "cuenta_debe_gasto" in df.columns
@@ -591,13 +606,16 @@ def marcar_comisiones(df, contratos=None, datos_dir=None):
             cols["comision_pagador"].append((c.get("pagador") or {}).get("quien", ""))
             cols["factura_grupo"].append(_txt(c.get("factura_grupo")))
             cols["comision_vinculo"].append((enl.get(cid) or {}).get("origen", "") if cid else "legado")
-            cols["grupo_estado"].append(_estado_grupo(c) if c else "")
+            _eg = _estado_grupo(c) if c else ("", "")
+            _eg = _eg if isinstance(_eg, tuple) else ("", "")
+            cols["grupo_estado"].append(_eg[0])
+            cols["grupo_numero"].append(_eg[1])
             f_con.append(_iso(f.get("fecha_factura") if _txt(f.get("fecha_factura")) else f.get("fecha")) or (f.get("fecha_contable") if tiene_fc else ""))
             ctas.append(f.get("cuenta_contable") if ajustada else "628")
             ctas_g.append(f.get("cuenta_debe_gasto") if ajustada else "628")
         else:
             cols["es_comision_agencia"].append(False)
-            for k in ("comision_contrato", "comision_evento", "comision_estado", "comision_pagador", "factura_grupo", "comision_vinculo", "grupo_estado"):
+            for k in ("comision_contrato", "comision_evento", "comision_estado", "comision_pagador", "factura_grupo", "comision_vinculo", "grupo_estado", "grupo_numero"):
                 cols[k].append("")
             for k in ("comision_esperada", "comision_facturada", "comision_diferencia"):
                 cols[k].append(None)

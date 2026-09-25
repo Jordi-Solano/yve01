@@ -357,10 +357,16 @@ def export_invoice_pdf(numero_factura):
     if df_r is None or df_r.empty or 'numero_reserva' not in df_r.columns:
         return None, f"Factura {numero_factura} no encontrada"
     row = df_r[df_r['numero_reserva'].astype(str) == str(numero_factura)]
+    if row.empty and 'numero_factura' in df_r.columns:          # b93: tambien por el numero legal
+        row = df_r[df_r['numero_factura'].astype(str) == str(numero_factura)]
     if row.empty:
         return None, f"Factura {numero_factura} no encontrada"
 
     row = row.iloc[0]
+    # b93: la factura de un contrato de grupo lleva su numero legal (FAC-<año>-CORP-<nnnn>)
+    _nl = str(row.get('numero_factura') or '').strip()
+    if _nl and _nl.lower() not in ('nan', 'none'):
+        numero_factura = _nl
     cliente = str(row.get('cliente', ''))
     nif = '—'
     if len(df_c) and 'nombre_cliente' in df_c.columns:
@@ -414,9 +420,10 @@ def export_invoice_pdf(numero_factura):
         # Header
         header_data = [
             [Paragraph('<font size="22" color="#3b82f6"><b>Yve.01</b></font>', s['Normal']),
-             Paragraph(f'<font size="9" color="#64748b">FACTURA<br/><font size="18" color="#0f172a"><b>{numero_factura}</b></font></font>', s['Normal'])]
+             Paragraph(f'<font size="9" color="#64748b">FACTURA<br/><font size="14" color="#0f172a"><b>{numero_factura}</b></font></font>', s['Normal'])]
         ]
-        ht = Table(header_data, colWidths=[10*cm, 5.5*cm])
+        # b93: el numero de la serie (FAC-<año>-CORP-<nnnn>) a 18 pt no cabia y se partia en dos lineas
+        ht = Table(header_data, colWidths=[8.5*cm, 7*cm])
         ht.setStyle(TableStyle([('ALIGN',(1,0),(1,0),'RIGHT'),('VALIGN',(0,0),(-1,-1),'TOP')]))
         story.append(ht)
         story.append(HRFlowable(width="100%", thickness=1, color=colors.HexColor("#3b82f6")))

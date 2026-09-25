@@ -157,7 +157,7 @@ def _comision_de(fila):
     return {"contrato_id": _s(fila.get("comision_contrato")), "evento": _s(fila.get("comision_evento")),
             "esperada": _num(fila.get("comision_esperada")), "facturada": _num(fila.get("comision_facturada")),
             "diferencia": _num(fila.get("comision_diferencia")), "estado": _s(fila.get("comision_estado")),
-            "pagador": _s(fila.get("comision_pagador")), "factura_grupo": _s(fila.get("factura_grupo")),
+            "pagador": _s(fila.get("comision_pagador")), "factura_grupo": _s(fila.get("grupo_numero")) or _s(fila.get("factura_grupo")),
             "vinculo": _s(fila.get("comision_vinculo")),
             # b89: compensada contra la factura del grupo (paga la agencia) o se paga despues de cobrarla (paga el cliente)
             "grupo_estado": _s(fila.get("grupo_estado")).upper(), "compensado": round(comp, 2),

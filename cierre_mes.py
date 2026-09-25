@@ -308,7 +308,9 @@ def generar_asientos(mes, fuentes, plan=None, cfg=None):
             estado = _txt(r.get("estado")).upper()
             if estado in ("PENDIENTE_FACTURA", ""):
                 continue
-            num = _txt(r.get("numero_reserva")) or _txt(r.get("numero")) or "s/n"
+            # b93: el numero LEGAL de la factura (numero_factura) si lo tiene; el de siempre si no
+            clave_ar = _txt(r.get("numero_reserva")) or _txt(r.get("numero"))
+            num = _txt(r.get("numero_factura")) or clave_ar or "s/n"
             cli = _txt(r.get("cliente")) or "cliente"
             total = _num(r.get("total")) or _num(r.get("importe"))
             f_em = r.get("fecha_emision") if _txt(r.get("fecha_emision")) else r.get("fecha_entrada")
@@ -332,7 +334,7 @@ def generar_asientos(mes, fuentes, plan=None, cfg=None):
             # el cobro es por lo que quedaba (total - compensado)
             cobro = _r(total - _num(r.get("compensado")))
             if estado in ("COBRADO", "COBRADA") and cobro > 0 and _en_mes(r.get("fecha_cobro"), ini, fin) \
-                    and num.upper() not in cobrados_en_banco:
+                    and num.upper() not in cobrados_en_banco and clave_ar.upper() not in cobrados_en_banco:
                 if D.nuevo(_fecha(r.get("fecha_cobro")), f"Cobro fra. {num} — {cli}", num, "AR",
                            [("572", cobro, 0), ("430", 0, cobro)], r.get("hotel_id")):
                     cont["ar_cobros"] += 1
@@ -346,9 +348,10 @@ def generar_asientos(mes, fuentes, plan=None, cfg=None):
         imp = _r(_num(cp.get("importe")))
         if imp <= 0:
             continue
+        fra = _txt(cp.get("factura_grupo_numero")) or _txt(cp.get("factura_grupo"))      # b93: el numero legal
         if D.nuevo(_fecha(cp.get("fecha")),
-                   f"Compensación comisión {_txt(cp.get('factura_comision'))} con fra. {_txt(cp.get('factura_grupo'))} — {_txt(cp.get('agencia'))}",
-                   _txt(cp.get("factura_grupo")), "COMPENSACION", [("410", imp, 0), ("430", 0, imp)], cp.get("hotel_id")):
+                   f"Compensación comisión {_txt(cp.get('factura_comision'))} con fra. {fra} — {_txt(cp.get('agencia'))}",
+                   fra, "COMPENSACION", [("410", imp, 0), ("430", 0, imp)], cp.get("hotel_id")):
             cont["compensaciones"] += 1
 
     # ── banco: solo lo conciliado (lo demas no se sabe que es) ───────────
