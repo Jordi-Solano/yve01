@@ -87,7 +87,7 @@ def main():
         if os.path.isdir(d):
             shutil.copytree(d, os.path.join(copia, d))
     try:
-        for f in ('contratos_grupo.json', 'reservas_credito.xlsx', 'clientes_credito.xlsx', B.NUMERACION):
+        for f in ('contratos_grupo.json', 'reservas_credito.xlsx', 'clientes_credito.xlsx', B.NUMERACION, 'beos_generados.json'):
             if os.path.exists(os.path.join(DD, f)):
                 os.remove(os.path.join(DD, f))
         for dt in (contrato("CG-2026-0930"), contrato("CG-2026-0931", programa=False)):
@@ -149,6 +149,13 @@ def main():
         ok('"funciones"' in L._PROMPT and 'no te inventes' in L._PROMPT and '"alergias"' in L._PROMPT, 'el lector pide el programa dia a dia (y no inventarlo)')
         html = cl.get('/').get_data(as_text=True)
         ok('function _ctrBeo(' in html and '/beo.pdf' in html, 'AR › Contratos: boton de la BEO')
+        # b94: fuera la seccion vieja "BEOs desde contratos" (un resumen con el alojamiento, no una BEO)
+        ok('ar-beos-list' not in html and 'cargarBeosAR' not in html and 'BEOs desde contratos' not in html,
+           'la seccion vieja "BEOs desde contratos" ya no esta')
+        ok(cl.get('/api/ar_real/beos').status_code == 404, 'ni su ruta (/api/ar_real/beos: 404)')
+        L.guardar_beo(L.generar_beo(contrato("CG-2026-0932"), None), DD)
+        ok(not os.path.exists(os.path.join(DD, 'beos_generados.json')) and os.path.exists(os.path.join(DD, 'eventos_referencia.json')),
+           'ni su fichero (beos_generados.json); el cruce de documentos del evento sigue')
         faltan = [l for l in ('en', 'ca', 'fr', 'de', 'it', 'pt') if not all(k in json.load(open(f'static/i18n/{l}.json', encoding='utf-8'))
                                                                      for k in ('beo.ver', 'beo.dias', 'beo.porConfirmar', 'beo.cuadra', 'beo.noCuadra'))]
         ok(not faltan, f'i18n en los 6 idiomas (faltan {faltan})')

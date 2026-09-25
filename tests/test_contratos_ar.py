@@ -257,7 +257,7 @@ def main():
         html = cl.get('/').get_data(as_text=True)
         ip = html.index('<div id="panel-ar_real"'); fp = html.index('<!-- /panel-ar_real -->'); sec = html[ip:fp]
         ok(all('id="' + i + '"' in sec for i in ('ar-subtabs', 'ar-sub-contratos', 'ar-sub-credito', 'ar-sub-aging', 'ar-contratos-list',
-                                                  'ar-contratos-count', 'ar-contratos-resumen', 'ar-clientes-list', 'ar-facturas-tbody', 'ar-bonos-list', 'ar-beos-list')),
+                                                  'ar-contratos-count', 'ar-contratos-resumen', 'ar-clientes-list', 'ar-facturas-tbody', 'ar-bonos-list')),
            'panel: tres subpestañas con los ids de siempre dentro')
         ok(sec.index('id="ar-sub-contratos"') < sec.index('id="ar-contratos-list"') < sec.index('id="ar-sub-credito"') < sec.index('id="ar-clientes-list"')
            < sec.index('id="ar-sub-aging"') < sec.index('id="ar-facturas-tbody"') < sec.index('id="ar-bonos-list"'),

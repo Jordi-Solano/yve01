@@ -7239,16 +7239,6 @@ svg.yvi{width:1em;height:1em;vertical-align:-0.125em;flex-shrink:0;display:inlin
         </div>
         <div id="ar-contratos-list" class="g-inline-list"><div class="g-empty g-cargando" data-i18n="lbl.cargando">Cargando…</div></div>
       </div>
-      <!-- BEOs generados automáticamente desde contratos -->
-      <div id="ar-beos-section" class="g-card">
-        <div class="g-card-head">
-          <div><div class="g-card-title" title="Yve crea el BEO (partidas e importes) desde el contrato de grupo y coteja la factura contra él." data-i18n-title="beos.sub"><span data-i18n="beos.titulo">BEOs desde contratos</span> <span id="ar-beos-count" class="g-small"></span></div></div>
-        </div>
-        <div id="ar-beos-list" class="g-inline-list">
-          <div class="g-empty g-cargando" data-i18n="lbl.cargando">Cargando…</div>
-        </div>
-      </div>
-
     </div>
 
     <div id="ar-sub-credito" style="display:none">
@@ -17547,49 +17537,13 @@ async function subirInformaCredito(inp) {
   } catch(e) { if (msg) msg.innerHTML = _gError('Error'); }
 }
 
-async function cargarBeosAR() {
-  var wrap = document.getElementById('ar-beos-list');
-  var cnt = document.getElementById('ar-beos-count');
-  if (!wrap) return;
-  try {
-    var r = await fetch('/api/ar_real/beos');
-    var d = await r.json();
-    var beos = (d && d.beos) || [];
-    if (cnt) cnt.textContent = beos.length ? '(' + beos.length + ')' : '';
-    // Igual que en reclamaciones y en el grafico: sin datos, limpiar.
-    if (!beos.length) {
-      wrap.innerHTML = _gVacio(t('beos.vacio', 'Procesa un contrato de grupo en <b>Procesar Archivos</b> y aquí verás su BEO con el cotejo de la factura.'));
-      return;
-    }
-    var eur = function(v){ return _fmtEurES(Number(v)||0, 2); };
-    wrap.innerHTML = beos.map(function(b){
-      var c = b.cotejo || {};
-      var badge;
-      if (c.estado === 'cuadra') badge = gBadge('g-ok', t('beos.cuadra', 'Factura cuadra'));
-      else if (c.estado === 'discrepancia') badge = gBadge('g-err', (c.diff_pct||0) + '% (' + eur(c.total_factura) + ' vs ' + eur(c.total_beo) + ')');
-      else badge = gBadge('g-mute', t('bonos.sinFactura', 'Sin factura aún'));
-      var lineas = (b.lineas||[]).map(function(l){
-        return '<div class="g-linea"><span>' + (l.concepto||'') + ' <span class="g-small">' + (l.detalle||'') + '</span></span><b class="g-num">' + eur(l.importe) + '</b></div>';
-      }).join('');
-      return '<div class="g-row" style="display:block">' +
-        '<div style="display:flex;align-items:center;justify-content:space-between;gap:8px;margin-bottom:8px;flex-wrap:wrap">' +
-          '<div class="g-who"><b>' + (b.evento||'Evento') + '</b>' +
-          '<span>' + (b.cliente||'') + (b.contrato ? ' · contrato ' + b.contrato : '') + (b.pax ? ' · ' + b.pax + ' pax' : '') + '</span></div>' +
-          badge +
-        '</div>' + lineas +
-        '<div class="g-linea g-linea-total"><span>TOTAL BEO</span><b class="g-num">' + eur(b.total) + '</b></div>' +
-        '<div class="g-note">' + t('beos.generado', 'BEO generado automáticamente del contrato') + ' · ' + (b.fecha_generado||'') + '</div>' +
-      '</div>';
-    }).join('');
-  } catch(e) {}
-}
-
+// b94: aqui estaba el cargador de la seccion vieja de BEOs (un resumen con el alojamiento
+// dentro, no una BEO). La BEO buena sale del contrato (b91, AR › Contratos).
 async function cargarARRealData() {
   // Show skeleton on KPIs while loading
   _skelOn(['arp-pendiente','arp-vencido','arp-cobrado','arp-nclientes']);
   try { cargarContratosAR(); } catch(e){}
   try { cargarPeticionesCredito(); } catch(e){}     // b90
-  try { cargarBeosAR(); } catch(e){}
   try { cargarBonosAR(); } catch(e){}
   try {
     // Load clients and invoices in parallel

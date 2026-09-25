@@ -282,8 +282,10 @@ def generar_beo(datos, transformado=None):
 
 
 def guardar_beo(beo, datos_dir=None):
-    """Guarda el BEO generado: (1) como referencia del evento para el 3-way matching
-    (eventos_referencia.json) y (2) en beos_generados.json para verlo en AR Real."""
+    """Guarda el resumen del contrato como referencia del evento para el cruce de
+    documentos del evento (eventos_referencia.json). b94: ya no se guarda en
+    beos_generados.json: la seccion "BEOs desde contratos" se quito (era un resumen con
+    el alojamiento, no una BEO); la BEO de verdad sale del contrato (beo_contrato.py)."""
     dd = datos_dir or _datos_dir()
     os.makedirs(dd, exist_ok=True)
     evento = beo.get("evento", "") or ""
@@ -307,27 +309,7 @@ def guardar_beo(beo, datos_dir=None):
         refs.append({"evento": evento, "evento_key": evento_key,
                      "cliente": beo.get("cliente", ""), "documentos": {"BEO": doc}})
     json.dump(refs, open(ref_path, "w", encoding="utf-8"), indent=2, ensure_ascii=False)
-    # (2) store para la vista
-    beos_path = os.path.join(dd, "beos_generados.json")
-    try:
-        beos = json.load(open(beos_path, encoding="utf-8")) if os.path.exists(beos_path) else []
-    except Exception:
-        beos = []
-    # El hotel del evento (fase 5). Se estampa aqui, despues de leer el
-    # contrato: lo decide la sesion, no el papel.
-    try:
-        import censo_hoteles as _censo
-        beo["hotel_id"] = _censo.para_guardar()
-    except Exception:
-        beo["hotel_id"] = os.environ.get("YVE_HOTEL", "")
-    # La identidad del BEO incluye el hotel: dos hoteles del grupo pueden tener
-    # el mismo evento con el mismo numero de contrato y no son el mismo BEO.
-    beos = [b for b in beos if not (b.get("evento", "").lower().strip()[:50] == evento_key
-                                    and str(b.get("contrato")) == str(beo.get("contrato"))
-                                    and str(b.get("hotel_id") or "") == str(beo.get("hotel_id") or ""))]
-    beos.append(beo)
-    json.dump(beos, open(beos_path, "w", encoding="utf-8"), indent=2, ensure_ascii=False)
-    return {"referencia": ref_path, "beos": beos_path}
+    return {"referencia": ref_path}
 
 
 def _datos_dir():
