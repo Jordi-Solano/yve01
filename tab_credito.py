@@ -11,7 +11,8 @@ informe es multipart y comprueba el token ella misma):
   POST /api/credito/peticion/<pid>/guardar     {referencias?, fiscal?, informa?, comercial?}
   POST /api/credito/peticion/<pid>/informa     multipart: fichero (PDF o imagen)
   GET  /api/credito/peticion/<pid>/informa     descarga el informe adjunto
-  POST /api/credito/peticion/<pid>/firmar      firma 1: quien pide
+  POST /api/credito/peticion/<pid>/firmar      firma 1: quien pide (b92: con la firma de Direccion apagada
+                                               en config_aprobaciones.json, esta firma APRUEBA)
   POST /api/credito/peticion/<pid>/direccion   {decision: aprobar|rechazar, nota}  firma 2: solo rol Direccion, nunca quien pidio
   POST /api/credito/peticion/<pid>/reabrir     una rechazada vuelve a borrador
 """
@@ -96,7 +97,7 @@ def _fila(p):
             "potencial": co.get("potencial"), "creada": p.get("creada"), "creada_por": p.get("creada_por"),
             "solicitante": fs.get("nombre") or "", "firmada": fs.get("cuando") or "",
             "direccion": fd.get("nombre") or "", "decision": fd.get("decision") or "", "nota_direccion": fd.get("nota") or "",
-            "firmada_direccion": fd.get("cuando") or "",
+            "firmada_direccion": fd.get("cuando") or "", "firma_unica": bool(p.get("firma_unica")),
             "puede_firmar_direccion": PC.puede_firmar_direccion(p, _usuario(), _rol())[0]}
 
 
@@ -108,6 +109,7 @@ def api_peticiones():
     lista.sort(key=lambda p: {"PENDIENTE_DIRECCION": 0, "BORRADOR": 1}.get(p.get("estado"), 2))
     filas = [_fila(p) for p in lista]
     return jsonify({"ok": True, "peticiones": filas, "rol": _rol(), "es_direccion": _rol() == PC.ROL_DIRECCION,
+                    "firma_direccion": PC.firma_direccion_activa(),
                     "n_pendientes_direccion": sum(1 for f in filas if f["estado"] == "PENDIENTE_DIRECCION"),
                     "n_para_mi": sum(1 for f in filas if f["puede_firmar_direccion"])})
 
@@ -193,12 +195,15 @@ def api_firmar(pid):
     except KeyError as e:
         return jsonify({"ok": False, "error": str(e)}), 404
     _audit("CREDITO_FIRMA_SOLICITANTE", f"{pid} {p.get('cliente')} limite {(p.get('comercial') or {}).get('limite')}")
-    try:        # aviso a Direccion (push, si el servidor lo tiene configurado); no bloquea
-        from notificaciones import enviar_push
-        enviar_push("Petición de crédito para firmar", f"{p.get('cliente')}: límite {(p.get('comercial') or {}).get('limite')} € · pide {_nombre()}",
-                    url="/app?tab=ar_real", tipo="credito_pendiente_firma", roles=[PC.ROL_DIRECCION])
-    except Exception:
-        pass
+    if p.get("estado") == "PENDIENTE_DIRECCION":
+        try:    # aviso a Direccion (push, si el servidor lo tiene configurado); no bloquea
+            from notificaciones import enviar_push
+            enviar_push("Petición de crédito para firmar", f"{p.get('cliente')}: límite {(p.get('comercial') or {}).get('limite')} € · pide {_nombre()}",
+                        url="/app?tab=ar_real", tipo="credito_pendiente_firma", roles=[PC.ROL_DIRECCION])
+        except Exception:
+            pass
+    else:       # b92: firma de Direccion apagada → aprobada con una firma
+        _audit("CREDITO_APROBADO_UNA_FIRMA", f"{pid} {p.get('cliente')} limite {p.get('limite_aprobado')}")
     return jsonify({"ok": True, "peticion": _vista(p)})
 
 

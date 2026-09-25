@@ -10,6 +10,8 @@ Reglas (finanzas y Jordi, 24 sep 2026) que se comprueban:
   (e) SIEMPRE dos firmas: quien pide y Direccion. Solo el rol "direccion" firma como
       directora (ni admin), y nunca quien pidio el credito; rechazar exige nota; una
       rechazada se reabre y hay que firmarla otra vez.
+      b92: la firma de Direccion se enciende en config_aprobaciones.json
+      ("firma_direccion": true); APAGADA por defecto → la firma de quien pide aprueba.
   - el limite de la ficha solo sale de una peticion aprobada: /api/ar_real/cliente ya no
     lo escribe; los de contrato/bono nacen sin credito; los escritos a mano antes quedan
     como "limite sin peticion" (no se borran).
@@ -54,6 +56,8 @@ def main():
     if SABOTAJE:
         # la segunda firma deja de ser de Direccion: cualquiera firma, tambien quien pidio
         PC.puede_firmar_direccion = lambda p, usuario, rol: ((p or {}).get('estado') == 'PENDIENTE_DIRECCION', '')
+        # y el interruptor no se lee: la firma de Direccion siempre encendida
+        PC.firma_direccion_activa = lambda datos_dir=None: True
 
     # 1. NIF / CIF / NIE (puro)
     ok(PC.validar_nif('12345678Z')[0] and not PC.validar_nif('12345678A')[0], 'DNI: la letra se comprueba')
@@ -67,7 +71,7 @@ def main():
         if os.path.isdir(d):
             shutil.copytree(d, os.path.join(copia, d))
     try:
-        for f in ('peticiones_credito.json', 'reservas_credito.xlsx', 'clientes_credito.xlsx'):
+        for f in ('peticiones_credito.json', 'reservas_credito.xlsx', 'clientes_credito.xlsx', 'config_aprobaciones.json'):
             if os.path.exists(os.path.join(DD, f)):
                 os.remove(os.path.join(DD, f))
         shutil.rmtree(os.path.join(DD, PC.CARPETA_INFORMA), ignore_errors=True)
@@ -110,7 +114,33 @@ def main():
         dir2, HD2 = cliente('director2', 'clave-prueba-1')
         adm, HA = cliente('admin', 'admin123')
 
-        # 3. crear y rellenar
+        # 3a. b92: sin config_aprobaciones.json la firma de Direccion esta APAGADA → una firma aprueba
+        if os.path.exists(os.path.join(DD, PC.CONFIG_APROBACIONES)):
+            os.remove(os.path.join(DD, PC.CONFIG_APROBACIONES))
+        ok(not PC.firma_direccion_activa(DD), 'firma de Direccion apagada por defecto')
+        r = com.post('/api/credito/peticion', json={'cliente': 'Eventos Costa DMC S.L.'}, headers=HC).get_json()
+        pu = r['peticion']['id']
+        ok(r['peticion'].get('firma_direccion') is False, 'la pantalla sabe que la firma de Direccion esta apagada')
+        du = {"referencias": {"otro_hotel": False, "texto": ""},
+              "fiscal": {"razon_social": "Eventos Costa DMC S.L.", "nif": "B66123456", "direccion": "Rambla Catalunya 10", "cp": "08007",
+                         "poblacion": "Barcelona", "pais": "España"},
+              "informa": {"resultado": "Rating 7/10, riesgo medio"},
+              "comercial": {"potencial": "60000", "limite": "8000", "revision": (HOY + timedelta(days=90)).isoformat()}}
+        com.post(f'/api/credito/peticion/{pu}/guardar', json=du, headers=HC)
+        r = com.post(f'/api/credito/peticion/{pu}/firmar', json={}, headers=HC).get_json()
+        ok(r.get('ok') and r['peticion']['estado'] == 'APROBADA' and r['peticion'].get('firma_unica') and r['peticion'].get('limite_aprobado') == 8000.0,
+           f"apagada: la firma de quien pide APRUEBA el credito ({(r.get('peticion') or {}).get('estado')})")
+        fi0 = pd.read_excel(os.path.join(DD, 'clientes_credito.xlsx'))
+        m0 = fi0[fi0['nombre_cliente'] == 'Eventos Costa DMC S.L.']
+        ok(len(m0) and float(m0.iloc[0]['credito_limite']) == 8000.0 and m0.iloc[0]['credito_peticion'] == pu and m0.iloc[0]['credito_aprobado_por'] == 'Comercial1',
+           'y el limite pasa a la ficha (aprobado por quien firmo)')
+        r = dire.post(f'/api/credito/peticion/{pu}/direccion', json={'decision': 'aprobar'}, headers=HD)
+        ok(r.status_code == 409, 'ya aprobada: Direccion no tiene nada que firmar (409)')
+        # 3b. se enciende la firma de Direccion para el resto de la prueba
+        json.dump({"firma_direccion": True}, open(os.path.join(DD, PC.CONFIG_APROBACIONES), 'w', encoding='utf-8'))
+        ok(PC.firma_direccion_activa(DD), 'config_aprobaciones.json: "firma_direccion": true la enciende')
+
+        # 3. crear y rellenar (con la firma de Direccion encendida)
         ok(com.post('/api/credito/peticion', json={'cliente': 'Viajes Meridiano S.L.'}).status_code == 403, 'crear sin CSRF: 403')
         r = com.post('/api/credito/peticion', json={'cliente': 'Viajes Meridiano S.L.'}, headers=HC).get_json()
         p = r['peticion']; pid = p['id']

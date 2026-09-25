@@ -17368,6 +17368,7 @@ async function cargarPeticionesCredito() {
         return '<div class="g-row cred-row" onclick="abrirPeticionCredito(\'' + _credEsc(p.id) + '\')">' +
           '<div class="g-who"><b>' + _credEsc(p.cliente) + '</b><span>' + _credEsc(p.id) + (quien ? ' · ' + quien : '') + '</span></div>' +
           '<div class="cred-der">' + (p.limite ? '<b class="g-num">' + _credEur(p.limite) + '</b>' : '') + _credEstado(p.estado) +
+          (p.firma_unica ? ' ' + gBadge('g-mute', t('cred.unaFirma', '1 firma')) : '') +
           (p.puede_firmar_direccion ? ' ' + gBadge('g-info', t('cred.firmaTu', 'Te toca firmar')) : '') + '</div></div>';
       }).join('');
     if (typeof _pintarYa === 'function') _pintarYa(wrap);
@@ -17461,19 +17462,20 @@ function _pintarPeticionCredito() {
       _credCampo('cred-c-lim', t('cred.limite', 'Límite propuesto (€)'), co.limite, {tipo: 'number', step: '100', obl: true}) +
       _credCampo('cred-c-rev', t('cred.revision', 'Revisar el límite el'), co.revision, {tipo: 'date', obl: true}) +
       _credCampo('cred-c-com', t('cred.comentario', 'Comentario de comercial'), co.comentario, {area: true, rows: 2, ancho: true}) + '</div></div>';
-  // (e) firmas
-  var fs = fir.solicitante, fd = fir.direccion;
+  // (e) firmas. b92: la de Direccion se enciende en config_aprobaciones.json; apagada, una firma aprueba
+  var fs = fir.solicitante, fd = fir.direccion, conDir = p.firma_direccion !== false;
   var f1 = fs ? '<div class="cred-firma ok">✓ ' + t('cred.firmadoPor', 'Firmado por') + ' <b>' + _credEsc(fs.nombre || fs.usuario) + '</b> · ' + _credEsc(fs.cuando) + '</div>'
               : (borr ? ((p.faltan || []).length ? '<ul class="cred-faltan">' + p.faltan.map(function(x){ return '<li>' + _credEsc(x) + '</li>'; }).join('') + '</ul>' : '') +
-                        '<button class="g-btn g-primary g-sm" onclick="firmarPeticionCredito()"' + ((p.faltan || []).length ? ' disabled' : '') + '>✍ ' + t('cred.firmar', 'Firmar y enviar a Dirección') + '</button>'
+                        '<button class="g-btn g-primary g-sm" onclick="firmarPeticionCredito()"' + ((p.faltan || []).length ? ' disabled' : '') + '>✍ ' + (conDir ? t('cred.firmar', 'Firmar y enviar a Dirección') : t('cred.firmarAprobar', 'Firmar y aprobar')) + '</button>'
                       : '<div class="g-small">—</div>');
   var f2;
-  if (fd) f2 = '<div class="cred-firma ' + (fd.decision === 'aprobar' ? 'ok' : 'err') + '">' + (fd.decision === 'aprobar' ? '✓ ' + t('cred.aprobadaPor', 'Aprobada por') : '✗ ' + t('cred.rechazadaPor', 'Rechazada por')) + ' <b>' + _credEsc(fd.nombre || fd.usuario) + '</b> · ' + _credEsc(fd.cuando) + (fd.nota ? '<div class="g-small">«' + _credEsc(fd.nota) + '»</div>' : '') + '</div>';
+  if (!fd && (p.firma_unica || (!conDir && p.estado !== 'PENDIENTE_DIRECCION'))) f2 = gBadge('g-mute', t('cred.dirApagada', 'Firma de Dirección desactivada'));
+  else if (fd) f2 = '<div class="cred-firma ' + (fd.decision === 'aprobar' ? 'ok' : 'err') + '">' + (fd.decision === 'aprobar' ? '✓ ' + t('cred.aprobadaPor', 'Aprobada por') : '✗ ' + t('cred.rechazadaPor', 'Rechazada por')) + ' <b>' + _credEsc(fd.nombre || fd.usuario) + '</b> · ' + _credEsc(fd.cuando) + (fd.nota ? '<div class="g-small">«' + _credEsc(fd.nota) + '»</div>' : '') + '</div>';
   else if (p.puede_firmar_direccion) f2 = _credCampo('cred-d-nota', t('cred.notaDir', 'Nota de Dirección (obligatoria para rechazar)'), '', {area: true, rows: 2, ancho: true}).replace(' disabled', '') +
       '<div class="ctr-acciones"><button class="g-btn g-primary g-sm" onclick="direccionPeticionCredito(\'aprobar\')">✓ ' + t('cred.aprobar', 'Aprobar el límite') + '</button>' +
       '<button class="g-btn g-secondary g-sm" onclick="direccionPeticionCredito(\'rechazar\')">✗ ' + t('cred.rechazar', 'Rechazar') + '</button></div>';
   else f2 = '<div class="g-small">' + (p.estado === 'PENDIENTE_DIRECCION' ? '⏳ ' + _credEsc(p.motivo_direccion || t('cred.esperaDir', 'Pendiente de la firma de Dirección.')) : t('cred.dirDespues', 'Firma después de quien pide.')) + '</div>';
-  html += '<div class="cred-sec"><div class="g-label">5 · ' + t('cred.secFirmas', 'Firmas (siempre dos)') + '</div><div class="cred-firmas">' +
+  html += '<div class="cred-sec"><div class="g-label">5 · ' + (conDir ? t('cred.secFirmas', 'Firmas (siempre dos)') : t('cred.secFirma1', 'Firma')) + '</div><div class="cred-firmas">' +
       '<div><div class="g-small"><b>' + t('cred.firma1', 'Quien pide') + '</b></div>' + f1 + '</div>' +
       '<div><div class="g-small"><b>' + t('cred.firma2', 'Dirección') + '</b></div>' + f2 + '</div></div></div>' +
     '<div id="cred-msg" class="g-small"></div>' +
@@ -17509,8 +17511,12 @@ async function firmarPeticionCredito() {
   var g = await _credPost('/api/credito/peticion/' + encodeURIComponent(_credPet.id) + '/guardar', _credDatos());
   if (!g) return;
   if ((g.faltan || []).length) return;
-  showConfirmAction(t('cred.firmarQ', '¿Firmar y enviar a Dirección?'), _credEsc(g.cliente) + ' · ' + _credEur((g.comercial || {}).limite), '✍ ' + t('cred.firmarBtn', 'Firmar'),
-    function(){ return _credPost('/api/credito/peticion/' + encodeURIComponent(g.id) + '/firmar', {}, t('cred.firmadaOk', 'Firmada: pendiente de Dirección')); });
+  var conDir = g.firma_direccion !== false;
+  showConfirmAction(conDir ? t('cred.firmarQ', '¿Firmar y enviar a Dirección?') : t('cred.firmarAprobarQ', '¿Firmar y aprobar el límite?'), _credEsc(g.cliente) + ' · ' + _credEur((g.comercial || {}).limite), '✍ ' + t('cred.firmarBtn', 'Firmar'),
+    async function(){
+      var d = await _credPost('/api/credito/peticion/' + encodeURIComponent(g.id) + '/firmar', {}, conDir ? t('cred.firmadaOk', 'Firmada: pendiente de Dirección') : t('cred.aprobadaOk', 'Límite aprobado'));
+      if (d && d.estado === 'APROBADA' && typeof cargarARRealData === 'function') cargarARRealData();     // el limite ya esta en la ficha
+    });
 }
 function direccionPeticionCredito(decision) {
   if (!_credPet) return;

@@ -13,6 +13,9 @@ El proceso real (finanzas, 24 sep 2026), y el formulario lo sigue paso a paso:
       (potencial, limite y fecha de revision);
   (e) firman SIEMPRE dos personas, sin umbral: quien lo solicita y la directora.
       Solo el rol "direccion" firma como directora, y nunca quien pidio el credito.
+      b92 (Jordi, 25 sep): la firma de Direccion se enciende en config_aprobaciones.json
+      ("firma_direccion": true). APAGADA por defecto hasta probarla con un usuario
+      Direccion: entonces basta la firma de quien pide. Prerrequisito de lanzamiento.
 
 Decisiones de Jordi (24 sep 2026):
   - el limite de credito de un cliente SOLO sale de una peticion firmada por los
@@ -45,6 +48,25 @@ EXT_INFORMA = (".pdf", ".png", ".jpg", ".jpeg", ".webp")
 MAX_INFORMA = 10 * 1024 * 1024
 CAMPOS_FISCAL = ("razon_social", "nif", "direccion", "cp", "poblacion", "pais", "email", "telefono")
 OBLIGATORIOS_FISCAL = ("razon_social", "nif", "direccion", "cp", "poblacion", "pais")
+
+
+CONFIG_APROBACIONES = "config_aprobaciones.json"
+
+
+def firma_direccion_activa(datos_dir=None):
+    """b92 (Jordi, 25 sep): la segunda firma, la de Direccion, se activa por
+    configuracion: datos-referencia/config_aprobaciones.json → "firma_direccion".
+    APAGADA por defecto (todavia no se ha podido probar con un usuario Direccion):
+    con ella apagada, la firma de quien pide APRUEBA el credito. PRERREQUISITO DE
+    LANZAMIENTO: activarla y probarla con un usuario de rol "direccion"."""
+    try:
+        with open(os.path.join(_dd(datos_dir), CONFIG_APROBACIONES), encoding="utf-8") as fh:
+            v = (json.load(fh) or {}).get("firma_direccion")
+        if isinstance(v, bool):
+            return v
+        return str(v).strip().lower() in ("true", "1", "si", "sí", "yes", "on")
+    except Exception:
+        return False
 
 
 class ReglaError(ValueError):
@@ -214,7 +236,7 @@ def abierta_de(nombre, lista=None, datos_dir=None):
 def aprobada_de(nombre, lista=None, datos_dir=None):
     """La ultima peticion APROBADA del cliente (la que manda en su limite)."""
     ap = [p for p in del_cliente(nombre, lista, datos_dir) if p.get("estado") == "APROBADA"]
-    return sorted(ap, key=lambda p: ((p.get("firmas") or {}).get("direccion") or {}).get("cuando") or "")[-1] if ap else None
+    return sorted(ap, key=lambda p: (((p.get("firmas") or {}).get("direccion") or (p.get("firmas") or {}).get("solicitante") or {}).get("cuando") or ""))[-1] if ap else None
 
 
 # ── (a) historial de pago en AR, de todo el grupo ───────────────────────────
@@ -500,9 +522,20 @@ def firmar_solicitante(pid, usuario, nombre_usuario="", datos_dir=None, hoy=None
     p["fiscal"] = dict(fi, nif=nifn)
     p["historial_ar"] = h
     p["firmas"] = {"solicitante": {"usuario": usuario, "nombre": nombre_usuario or usuario, "cuando": _ahora()}, "direccion": None}
-    p["estado"] = "PENDIENTE_DIRECCION"
-    _log(p, usuario, "firmada por quien la pide; pendiente de Dirección")
-    return _guardar_una(p, datos_dir)
+    if firma_direccion_activa(datos_dir):
+        p["estado"] = "PENDIENTE_DIRECCION"
+        p["firma_unica"] = False
+        _log(p, usuario, "firmada por quien la pide; pendiente de Dirección")
+        return _guardar_una(p, datos_dir)
+    # b92: firma de Direccion apagada (config_aprobaciones.json) → esta firma aprueba
+    p["estado"] = "APROBADA"
+    p["firma_unica"] = True
+    p["limite_aprobado"] = _r((p.get("comercial") or {}).get("limite"))
+    p["revision"] = _iso((p.get("comercial") or {}).get("revision"))
+    _log(p, usuario, f"aprobada con UNA firma (firma de Dirección desactivada): límite {p['limite_aprobado']:.2f} EUR hasta revisión {p['revision']}")
+    _guardar_una(p, datos_dir)
+    aplicar_a_ficha(p, datos_dir)
+    return p
 
 
 def puede_firmar_direccion(p, usuario, rol):
@@ -575,7 +608,7 @@ def aplicar_a_ficha(p, datos_dir=None):
     ruta = os.path.join(_dd(datos_dir), "clientes_credito.xlsx")
     df = _clientes(datos_dir)
     fi = p.get("fiscal") or {}
-    dire = (p.get("firmas") or {}).get("direccion") or {}
+    dire = (p.get("firmas") or {}).get("direccion") or ((p.get("firmas") or {}).get("solicitante") if p.get("firma_unica") else {}) or {}
     valores = {"credito_limite": _r(p.get("limite_aprobado")), "credito_revision": _txt(p.get("revision")),
                "credito_peticion": _txt(p.get("id")), "credito_aprobado": _txt(dire.get("cuando"))[:10],
                "credito_aprobado_por": _txt(dire.get("nombre") or dire.get("usuario")),
@@ -617,7 +650,8 @@ def estado_limite(fila_cliente, lista=None, datos_dir=None, hoy=None):
         rev = _iso(fila_cliente.get("credito_revision")) or _iso(ap.get("revision"))
         return {"origen": "peticion", "peticion": ap.get("id"), "revision": rev,
                 "revision_vencida": bool(rev and rev < hoy.isoformat()),
-                "aprobado_por": ((ap.get("firmas") or {}).get("direccion") or {}).get("nombre") or "",
+                "aprobado_por": (((ap.get("firmas") or {}).get("direccion") or (ap.get("firmas") or {}).get("solicitante") or {}).get("nombre") or ""),
+                "firma_unica": bool(ap.get("firma_unica")),
                 "abierta": (abierta or {}).get("id", ""), "abierta_estado": (abierta or {}).get("estado", "")}
     return {"origen": "sin_peticion" if lim > 0 else "sin_credito", "peticion": "", "revision": "", "revision_vencida": False,
             "aprobado_por": "", "abierta": (abierta or {}).get("id", ""), "abierta_estado": (abierta or {}).get("estado", "")}
@@ -635,4 +669,4 @@ def vista(p, usuario="", rol="", datos_dir=None, hoy=None, historial=None):
     return dict(p, historial_ar=h, faltan=[t for _k, t in faltan(p, h, hoy)] if p.get("estado") == "BORRADOR" else [],
                 nif_ok=ok_nif, nif_tipo=tipo, hay_informa_fichero=bool(_txt((p.get("informa") or {}).get("fichero"))),
                 puede_firmar=p.get("estado") == "BORRADOR", puede_firmar_direccion=puede_d, motivo_direccion=motivo_d,
-                hotel=_nombre_hotel(p.get("hotel_id")))
+                hotel=_nombre_hotel(p.get("hotel_id")), firma_direccion=firma_direccion_activa(datos_dir))
