@@ -15,6 +15,7 @@
   --g-r-sm:8px; --g-r-md:12px; --g-r-lg:16px; --g-r-btn:8px;
   --g-f-head:'Inter',-apple-system,'Segoe UI',Roboto,sans-serif;
   --g-shadow:0 1px 0 rgba(255,255,255,.03) inset, 0 8px 24px rgba(0,0,0,.25);
+  --g-shadow-up:0 1px 0 rgba(255,255,255,.05) inset, 0 16px 36px rgba(0,0,0,.40);   /* b104: lo que se pulsa, al pasar el raton */
   --g-kpi-bar:3px; --g-kpi-top:0;
 }
 @media(max-width:768px){
@@ -23,10 +24,11 @@
     --g-f-head:'Space Grotesk','Inter',sans-serif;
     --g-line:rgba(255,255,255,.09);
     --g-shadow:0 1px 0 rgba(255,255,255,.05) inset, 0 12px 30px rgba(0,0,0,.35);
+    --g-shadow-up:0 1px 0 rgba(255,255,255,.06) inset, 0 18px 40px rgba(0,0,0,.45);
     --g-kpi-bar:0; --g-kpi-top:2px;
   }
 }
-body.light-mode{--g-line:rgba(15,23,42,.08);--g-shadow:0 1px 2px rgba(15,23,42,.06),0 8px 24px rgba(15,23,42,.06)}
+body.light-mode{--g-line:rgba(15,23,42,.08);--g-shadow:0 1px 2px rgba(15,23,42,.06),0 8px 24px rgba(15,23,42,.06);--g-shadow-up:0 2px 4px rgba(15,23,42,.08),0 14px 32px rgba(15,23,42,.14)}
 
 /* ── Tipografia ─────────────────────────────────────── */
 .g-h1{font-family:var(--g-f-head);font-size:20px;font-weight:700;letter-spacing:-.2px;color:var(--tx)}
@@ -312,7 +314,13 @@ body .g-subtabs .fb-sub.active{background:var(--s2);color:var(--tx)}
 .g-actions .g-subtabs{margin-bottom:0}
 .mh-chart{height:140px;position:relative}
 .mh-cards{display:grid;grid-template-columns:repeat(auto-fit,minmax(min(300px,100%),1fr));gap:16px}
-.mh-card{padding:18px}.mh-card.is-hotel{cursor:pointer}.mh-card.is-hotel:hover{border-color:var(--acc)}
+.mh-card{padding:18px}
+/* b104: la tarjeta de un hotel se pulsa (lleva a ese hotel), asi que al pasar el raton sube un
+   poco y gana sombra. SOLO ella: "sin asignar", "desconocido" y los tiles no se pulsan y siguen
+   quietos. Con (hover:hover) para que en el movil no se quede levantada tras tocarla. */
+.mh-card.is-hotel{cursor:pointer;transition:transform .16s ease,box-shadow .16s ease,border-color .16s ease}
+@media(hover:hover){.mh-card.is-hotel:hover{border-color:var(--acc);transform:translateY(-3px);box-shadow:var(--g-shadow-up)}}
+@media(prefers-reduced-motion:reduce){.mh-card.is-hotel{transition:none}.mh-card.is-hotel:hover{transform:none}}
 .mh-card.is-sin-asignar{border-style:dashed}.mh-card.is-desconocido{border-style:dashed;border-color:rgba(239,68,68,.45)}
 .mh-card-head{margin-bottom:12px}.mh-card-title{font-size:15px;font-weight:700}
 .mh-bloques{margin-bottom:10px}
