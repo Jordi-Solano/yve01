@@ -21,6 +21,7 @@ from flask import Blueprint, jsonify, request, send_file
 from flask_login import login_required, current_user
 
 import beo_contrato as BEO
+import candados as _cand
 import compensaciones as CMP
 import contratos_grupo as CG
 
@@ -140,6 +141,7 @@ def api_contratos():
 
 @contratos_bp.route("/api/ar/contratos/decidir", methods=["POST"])
 @login_required
+@_cand.en_la_peticion      # b99
 def api_decidir():
     d = request.get_json(silent=True) or {}
     cid = str(d.get("id") or "").strip()
@@ -170,6 +172,7 @@ def _visible(cid):
 
 @contratos_bp.route("/api/ar/contratos/vincular", methods=["POST"])
 @login_required
+@_cand.en_la_peticion      # b99
 def api_vincular():
     d = request.get_json(silent=True) or {}
     cid = str(d.get("id") or "").strip()
@@ -189,6 +192,7 @@ def api_vincular():
 
 @contratos_bp.route("/api/ar/contratos/desvincular", methods=["POST"])
 @login_required
+@_cand.en_la_peticion      # b99
 def api_desvincular():
     d = request.get_json(silent=True) or {}
     cid = str(d.get("id") or "").strip()
@@ -206,6 +210,7 @@ def api_desvincular():
 # ── b89: compensar la comision de la agencia contra la factura del grupo ─────
 @contratos_bp.route("/api/ar/compensar", methods=["POST"])
 @login_required
+@_cand.en_la_peticion      # b99
 def api_compensar():
     """{id (contrato), importe, fecha?, nota?}. 409 si la regla de finanzas no lo deja
     (paga el cliente final, factura sin emitir o ya cobrada, sin factura de comision)."""
@@ -231,6 +236,7 @@ def api_compensar():
 
 @contratos_bp.route("/api/ar/compensar/anular", methods=["POST"])
 @login_required
+@_cand.en_la_peticion      # b99
 def api_anular_compensacion():
     """{id (contrato), comp_id}. 409 si la factura del grupo ya esta cobrada o la de comision pagada."""
     d = request.get_json(silent=True) or {}

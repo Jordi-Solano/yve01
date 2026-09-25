@@ -14,6 +14,8 @@ degrada de forma elegante marcando el contrato como "pendiente de revisión"
 import os, json, base64, glob, mimetypes
 from datetime import datetime
 
+import candados as _cand
+
 MODEL = "claude-sonnet-4-6"
 
 # Esquema que pedimos a la visión (una sola pasada con todas las páginas)
@@ -286,6 +288,7 @@ def generar_beo(datos, transformado=None):
     }
 
 
+@_cand.protegido(lambda dd: dd or _datos_dir())
 def guardar_beo(beo, datos_dir=None):
     """Guarda el resumen del contrato como referencia del evento para el cruce de
     documentos del evento (eventos_referencia.json). b94: ya no se guarda en
@@ -313,7 +316,7 @@ def guardar_beo(beo, datos_dir=None):
     if not found:
         refs.append({"evento": evento, "evento_key": evento_key,
                      "cliente": beo.get("cliente", ""), "documentos": {"BEO": doc}})
-    json.dump(refs, open(ref_path, "w", encoding="utf-8"), indent=2, ensure_ascii=False)
+    _cand.escribir_json(refs, ref_path)              # b99: atomica
     return {"referencia": ref_path}
 
 
@@ -325,6 +328,7 @@ def _datos_dir():
         return os.path.join(os.path.dirname(__file__), "datos-referencia")
 
 
+@_cand.protegido(lambda dd: dd or _datos_dir())   # b99
 def guardar(transformado, datos_dir=None):
     """Añade/actualiza cliente y reserva en los xlsx de AR Real. Dedup por nombre/numero."""
     import pandas as pd
@@ -352,7 +356,7 @@ def guardar(transformado, datos_dir=None):
                     transformado["reserva"][k] = v
         dfr = dfr[dfr[col].astype(str) != num]  # reemplaza si ya existía
     dfr = pd.concat([dfr, pd.DataFrame([transformado["reserva"]])], ignore_index=True)
-    dfr.to_excel(pr, index=False)
+    _cand.escribir_excel(dfr, pr)
     return {"clientes": pc, "reservas": pr}
 
 
@@ -364,7 +368,7 @@ def _append_xlsx(path, row, dedup_col=None):
     if dedup_col and len(df) and dedup_col in df.columns and row.get(dedup_col) is not None:
         df = df[df[dedup_col].astype(str) != str(row.get(dedup_col))]
     df = pd.concat([df, pd.DataFrame([row])], ignore_index=True)
-    df.to_excel(path, index=False)
+    _cand.escribir_excel(df, path)
 
 
 def distribuir_contrato(datos, transformado, datos_dir=None):
@@ -477,23 +481,26 @@ def procesar_contrato_grupo(image_paths, datos_dir=None, guardar_datos=True):
     r_dist = {}
     reg = None
     if guardar_datos:
-        t["_paths"] = guardar(t, datos_dir)
-        try:
-            guardar_beo(beo, datos_dir)
-        except Exception:
-            pass
-        try:
-            r_dist = distribuir_contrato(datos, t, datos_dir)
-        except Exception:
-            r_dist = {}
-        try:
-            import contratos_grupo as CG
-            reg = CG.registrar(datos, t, hotel_id=t["reserva"].get("hotel_id"),
-                               archivo=", ".join(os.path.basename(str(p)) for p in image_paths)[:200],
-                               datos_dir=datos_dir)
-            CG.sincronizar_factura(reg, datos_dir)
-        except Exception:
-            reg = None
+        # b99: todo lo que se guarda del contrato, de una vez y con el candado de los
+        # registros (la lectura con la IA ya esta hecha: el AR no se para mientras tanto)
+        with _cand.registros(datos_dir or _datos_dir()):
+            t["_paths"] = guardar(t, datos_dir)
+            try:
+                guardar_beo(beo, datos_dir)
+            except Exception:
+                pass
+            try:
+                r_dist = distribuir_contrato(datos, t, datos_dir)
+            except Exception:
+                r_dist = {}
+            try:
+                import contratos_grupo as CG
+                reg = CG.registrar(datos, t, hotel_id=t["reserva"].get("hotel_id"),
+                                   archivo=", ".join(os.path.basename(str(p)) for p in image_paths)[:200],
+                                   datos_dir=datos_dir)
+                CG.sincronizar_factura(reg, datos_dir)
+            except Exception:
+                reg = None
     r = t["resumen"]; r["ok"] = True
     if reg:
         import contratos_grupo as CG

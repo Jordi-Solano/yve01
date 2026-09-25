@@ -38,6 +38,7 @@ import os
 import re
 import unicodedata
 from datetime import date, datetime
+import candados as _cand
 
 FICHERO = "peticiones_credito.json"
 CARPETA_INFORMA = "credito_informa"
@@ -198,18 +199,14 @@ def leer(datos_dir=None):
 
 
 def _escribir(lista, datos_dir=None):
-    ruta = os.path.join(_dd(datos_dir), FICHERO)
-    os.makedirs(os.path.dirname(ruta), exist_ok=True)
-    tmp = ruta + ".tmp"
-    with open(tmp, "w", encoding="utf-8") as fh:
-        json.dump(lista, fh, ensure_ascii=False, indent=2)
-    os.replace(tmp, ruta)
+    _cand.escribir_json(lista, os.path.join(_dd(datos_dir), FICHERO))     # b99: atomica
 
 
 def buscar(pid, datos_dir=None):
     return next((p for p in leer(datos_dir) if p.get("id") == pid), None)
 
 
+@_cand.protegido(_dd)
 def _guardar_una(p, datos_dir=None):
     lista = leer(datos_dir)
     lista = [x for x in lista if x.get("id") != p.get("id")] + [p]
@@ -350,6 +347,7 @@ def _ficha(nombre, datos_dir=None):
     return {}
 
 
+@_cand.protegido(_dd)   # b99: dos peticiones a la vez no se llevan el mismo id
 def nueva(cliente, hotel_id="", usuario="", nombre_usuario="", datos_dir=None):
     """Crea la peticion de `cliente` en BORRADOR (o devuelve la que ya este abierta),
     con los datos fiscales que ya tenga su ficha."""
@@ -381,6 +379,7 @@ def nueva(cliente, hotel_id="", usuario="", nombre_usuario="", datos_dir=None):
     return p, True
 
 
+@_cand.protegido(_dd)
 def guardar(pid, cambios, usuario="", datos_dir=None):
     """Cambia lo que se rellena a mano. Solo en BORRADOR (una rechazada se reabre antes)."""
     p = buscar(pid, datos_dir)
@@ -424,6 +423,7 @@ def guardar(pid, cambios, usuario="", datos_dir=None):
     return _guardar_una(p, datos_dir)
 
 
+@_cand.protegido(_dd)
 def adjuntar_informa(pid, nombre_fichero, contenido, usuario="", datos_dir=None):
     p = buscar(pid, datos_dir)
     if p is None:
@@ -504,6 +504,7 @@ def faltan(p, historial=None, hoy=None):
     return out
 
 
+@_cand.protegido(_dd)
 def firmar_solicitante(pid, usuario, nombre_usuario="", datos_dir=None, hoy=None):
     """Firma 1: quien pide. Congela el historial de AR tal como estaba al firmar."""
     p = buscar(pid, datos_dir)
@@ -550,6 +551,7 @@ def puede_firmar_direccion(p, usuario, rol):
     return True, ""
 
 
+@_cand.protegido(_dd)
 def firmar_direccion(pid, usuario, rol, decision, nota="", nombre_usuario="", datos_dir=None):
     """Firma 2: Direccion aprueba (el limite pasa a la ficha del cliente) o rechaza (con nota)."""
     p = buscar(pid, datos_dir)
@@ -582,6 +584,7 @@ def firmar_direccion(pid, usuario, rol, decision, nota="", nombre_usuario="", da
     return p
 
 
+@_cand.protegido(_dd)
 def reabrir(pid, usuario="", datos_dir=None):
     """Una rechazada vuelve a BORRADOR para corregirla; hay que firmarla otra vez."""
     p = buscar(pid, datos_dir)
@@ -601,6 +604,7 @@ def reabrir(pid, usuario="", datos_dir=None):
     return _guardar_una(p, datos_dir)
 
 
+@_cand.protegido(_dd)
 def aplicar_a_ficha(p, datos_dir=None):
     """El limite aprobado (y los datos fiscales firmados) a la ficha del cliente en
     clientes_credito.xlsx. Si no tenia ficha, se crea."""
@@ -629,9 +633,7 @@ def aplicar_a_ficha(p, datos_dir=None):
         fila = dict(valores, nombre_cliente=_txt(p.get("cliente")), credito_usado=0, dias_pago=30,
                     hotel_id=_txt(p.get("hotel_id")), origen=f"petición {p.get('id')}")
         df = pd.concat([df, pd.DataFrame([fila])], ignore_index=True) if not df.empty else pd.DataFrame([fila])
-    tmp = ruta + ".tmp.xlsx"
-    df.to_excel(tmp, index=False)
-    os.replace(tmp, ruta)
+    _cand.escribir_excel(df, ruta)
     return True
 
 

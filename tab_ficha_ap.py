@@ -31,6 +31,7 @@ from datetime import date, datetime
 import pandas as pd
 from flask import Blueprint, jsonify, request, send_file
 from flask_login import login_required, current_user
+import candados as _cand
 
 ficha_ap_bp = Blueprint("ficha_ap", __name__)
 CUENTAS_BANCARIAS_FILE = "cuentas_bancarias.json"
@@ -380,6 +381,7 @@ def _audit(accion, detalle):
 
 @ficha_ap_bp.route("/api/ap/ajustar", methods=["POST"])
 @login_required
+@_cand.en_la_peticion      # b99
 def api_ajustar():
     from almacen_datos import guardar_ajuste_ap
     d = request.get_json(silent=True) or {}
@@ -418,6 +420,7 @@ def api_ajustar():
 
 @ficha_ap_bp.route("/api/ap/pagar", methods=["POST"])
 @login_required
+@_cand.en_la_peticion      # b99
 def api_pagar():
     from almacen_datos import guardar_ajuste_ap
     d = request.get_json(silent=True) or {}
@@ -445,6 +448,7 @@ def api_pagar():
 
 @ficha_ap_bp.route("/api/ap/despagar", methods=["POST"])
 @login_required
+@_cand.en_la_peticion      # b99
 def api_despagar():
     from almacen_datos import guardar_ajuste_ap
     d = request.get_json(silent=True) or {}

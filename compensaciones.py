@@ -19,6 +19,7 @@ Funciones puras donde se puede; `datos_dir` para las pruebas.
 import json
 import os
 from datetime import date, datetime
+import candados as _cand
 
 FICHERO = "compensaciones_ar.json"
 TOL = 0.005
@@ -75,12 +76,7 @@ def leer(datos_dir=None):
 
 
 def _escribir(lista, datos_dir=None):
-    p = os.path.join(_dd(datos_dir), FICHERO)
-    os.makedirs(os.path.dirname(p), exist_ok=True)
-    tmp = p + ".tmp"
-    with open(tmp, "w", encoding="utf-8") as fh:
-        json.dump(lista, fh, ensure_ascii=False, indent=2)
-    os.replace(tmp, p)
+    _cand.escribir_json(lista, os.path.join(_dd(datos_dir), FICHERO))     # b99: atomica
 
 
 def _iso(v):
@@ -151,6 +147,7 @@ def puede_compensar(contrato, fila_grupo, fila_com, comps_g=None, comps_c=None):
     return True, maximo
 
 
+@_cand.protegido(_dd)   # b99: dos compensaciones a la vez no se llevan el mismo saldo
 def compensar(contrato, fila_grupo, fila_com, importe, fecha=None, usuario="", nota="", datos_dir=None):
     """Registra una compensacion total o parcial. Lanza ReglaError (regla de finanzas) o
     ValueError (dato mal). Devuelve el registro."""
@@ -183,6 +180,7 @@ def compensar(contrato, fila_grupo, fila_com, importe, fecha=None, usuario="", n
     return reg
 
 
+@_cand.protegido(_dd)
 def anular(cid, usuario="", datos_dir=None):
     """Quita una compensacion (una equivocacion). Devuelve la quitada. No se puede si la
     factura del grupo ya esta cobrada (su cobro se asento por el neto) o la de comision
@@ -207,6 +205,7 @@ def anular(cid, usuario="", datos_dir=None):
     return c
 
 
+@_cand.protegido(_dd)
 def sincronizar(num_grupo, hotel, clave_com, datos_dir=None, usuario=""):
     """Lleva lo compensado a la factura del grupo (columna `compensado`) y a la de comision
     (ajuste `compensado` de ajustes_ap.json). El registro json es la fuente."""
@@ -227,9 +226,7 @@ def sincronizar(num_grupo, hotel, clave_com, datos_dir=None, usuario=""):
                         df["compensado"] = 0.0
                     df["compensado"] = df["compensado"].astype(object)
                     df.loc[m, "compensado"] = total(de_grupo(num_grupo, hotel, comps))
-                    tmp = pr + ".tmp.xlsx"
-                    df.to_excel(tmp, index=False)
-                    os.replace(tmp, pr)
+                    _cand.escribir_excel(df, pr)
         except Exception:
             pass
     if _txt(clave_com):

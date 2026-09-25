@@ -37,6 +37,8 @@ import warnings
 
 import pandas as pd
 
+import candados as _cand
+
 # ── Etapas del pipeline, de MAS avanzada a MENOS ──────────────────────────
 # El orden importa: al deduplicar gana la etapa mas avanzada, que es la que
 # lleva los campos enriquecidos (estado, discrepancia, cuenta contable...).
@@ -469,6 +471,7 @@ def clave_ap(fila):
     return str(fila.get("archivo") or "").strip()
 
 
+@_cand.protegido(lambda dd: os.path.dirname(_ruta_ajustes(dd)))   # b99: un ajuste no pisa a otro
 def guardar_ajuste_ap(clave, cambios, usuario="", datos_dir=None):
     """Apunta un ajuste. `cambios` puede llevar cuenta_contable, vencimiento (YYYY-MM-DD),
     fecha_contable (YYYY-MM-DD), dias_pago (int), pagada ({fecha, cuenta, nota} o None para
@@ -518,12 +521,7 @@ def guardar_ajuste_ap(clave, cambios, usuario="", datos_dir=None):
             raise ValueError(f"campo no ajustable: {k}")
     reg["historial"] = hist[-50:]
     todos[clave] = reg
-    ruta = _ruta_ajustes(datos_dir)
-    os.makedirs(os.path.dirname(ruta), exist_ok=True)
-    tmp = ruta + ".tmp"
-    with open(tmp, "w", encoding="utf-8") as fh:
-        json.dump(todos, fh, ensure_ascii=False, indent=2)
-    os.replace(tmp, ruta)
+    _cand.escribir_json(todos, _ruta_ajustes(datos_dir))
     return reg
 
 

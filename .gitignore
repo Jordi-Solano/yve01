@@ -254,3 +254,9 @@ tenants/
 # aprendido en runtime, no es codigo
 datos-referencia/proveedores_aprendidos.json
 copias_estado.json
+
+# b99: candado de los registros del AR (candados.py) y temporales de su escritura atomica
+datos-referencia/.registros.lock
+datos-referencia/.numeracion_facturas.lock
+datos-referencia/*.tmp
+datos-referencia/*.tmp.xlsx

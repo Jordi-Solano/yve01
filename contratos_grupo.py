@@ -25,6 +25,7 @@ import os
 import re
 import unicodedata
 from datetime import datetime
+import candados as _cand
 
 FICHERO = "contratos_grupo.json"
 MODOS = ("neta", "porcentaje")
@@ -98,12 +99,7 @@ def leer(datos_dir=None):
 
 
 def _escribir(lista, datos_dir=None):
-    p = ruta(datos_dir)
-    os.makedirs(os.path.dirname(p), exist_ok=True)
-    tmp = p + ".tmp"
-    with open(tmp, "w", encoding="utf-8") as fh:
-        json.dump(lista, fh, ensure_ascii=False, indent=2)
-    os.replace(tmp, p)
+    _cand.escribir_json(lista, ruta(datos_dir))      # b99: atomica, con temporal propio
 
 
 def _ahora():
@@ -219,6 +215,7 @@ def clave_contrato(numero, evento, fecha_entrada, hotel_id):
 
 
 # ── el registro ──────────────────────────────────────────────────────────────
+@_cand.protegido(_dd)       # b99: leer-cambiar-escribir sin que otra peticion se cuele
 def registrar(datos, transformado=None, hotel_id=None, archivo="", datos_dir=None):
     """Da de alta (o actualiza) el contrato en el registro. Un reproceso del mismo
     contrato refresca lo leido pero conserva lo que decidio una persona."""
@@ -277,6 +274,7 @@ def registrar(datos, transformado=None, hotel_id=None, archivo="", datos_dir=Non
     return nuevo
 
 
+@_cand.protegido(_dd)
 def anotar_numero_factura(numero_reserva, hotel, numero_factura, datos_dir=None):
     """b93: al emitir la factura del grupo, el contrato apunta su numero legal
     (FAC-<año>-CORP-<nnnn>): la agencia puede citarlo en su factura de comision."""
@@ -303,6 +301,7 @@ def del_hotel(lista, hotel):
     return [c for c in lista if _txt(c.get("hotel_id")) == _txt(hotel)]
 
 
+@_cand.protegido(_dd)
 def decidir(cid, modo=None, pct=None, pagador=None, usuario="", datos_dir=None):
     """Lo que decide una persona cuando el contrato no lo dice (o para corregir
     una lectura). Lanza ValueError con el motivo si algo no vale."""
@@ -356,6 +355,7 @@ def vista(c):
     return out
 
 
+@_cand.protegido(_dd)
 def sincronizar_factura(c, datos_dir=None):
     """Lleva a la factura del grupo (reservas_credito.xlsx) lo que se sabe del
     contrato —a nombre de quien paga, el modo de comision y la comision
@@ -400,9 +400,7 @@ def sincronizar_factura(c, datos_dir=None):
             df[k] = ""
         df[k] = df[k].astype(object)
         df.loc[m, k] = v
-    tmp = pr + ".tmp.xlsx"
-    df.to_excel(tmp, index=False)
-    os.replace(tmp, pr)
+    _cand.escribir_excel(df, pr)
     return True
 
 
@@ -633,6 +631,7 @@ def marcar_comisiones(df, contratos=None, datos_dir=None):
     return df
 
 
+@_cand.protegido(_dd)
 def vincular(cid, clave, usuario="", datos_dir=None):
     """Una persona une (o elige) la factura de comision de un contrato."""
     lista = leer(datos_dir)
@@ -654,6 +653,7 @@ def vincular(cid, clave, usuario="", datos_dir=None):
     return c
 
 
+@_cand.protegido(_dd)
 def desvincular(cid, clave, usuario="", datos_dir=None):
     """"Esta factura no es de este contrato": se separa y no se vuelve a unir sola."""
     lista = leer(datos_dir)

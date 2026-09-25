@@ -26,6 +26,8 @@ import os
 from datetime import date, datetime
 from io import BytesIO
 
+import candados as _cand
+
 NUMERACION = "beo_numeracion.json"
 BEO_INICIAL = 1001
 _DIAS = ("lunes", "martes", "miércoles", "jueves", "viernes", "sábado", "domingo")
@@ -117,6 +119,7 @@ def _num_leer(datos_dir=None):
         return {}
 
 
+@_cand.protegido(_dd)   # b99: dos BEO a la vez no se llevan el mismo numero
 def numero_beo(clave, datos_dir=None):
     """El numero de la BEO `clave` (contrato|dia): el que ya tenia, o el siguiente."""
     d = _num_leer(datos_dir)
@@ -126,12 +129,7 @@ def numero_beo(clave, datos_dir=None):
     n = int(d.get("ultimo") or (BEO_INICIAL - 1)) + 1
     asig[clave] = n
     d.update({"ultimo": n, "asignados": asig})
-    ruta = os.path.join(_dd(datos_dir), NUMERACION)
-    os.makedirs(os.path.dirname(ruta), exist_ok=True)
-    tmp = ruta + ".tmp"
-    with open(tmp, "w", encoding="utf-8") as fh:
-        json.dump(d, fh, ensure_ascii=False, indent=2)
-    os.replace(tmp, ruta)
+    _cand.escribir_json(d, os.path.join(_dd(datos_dir), NUMERACION))
     return n
 
 

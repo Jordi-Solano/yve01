@@ -7,6 +7,8 @@ from datetime import datetime, date, timedelta
 from flask import Blueprint, jsonify, request, send_file, session
 import pandas as pd
 
+import candados as _cand
+
 ar_real_bp = Blueprint('ar_real', __name__)
 BASE_DIR = _os.path.dirname(_os.path.abspath(__file__))
 from tenant_dirs import datos_dir as _t_ddir, reportes_dir as _t_rdir
@@ -102,7 +104,7 @@ def _save_reservas(df):
                 df = pd.concat([otros, df], ignore_index=True)
         except Exception:
             pass
-    df.to_excel(ruta, index=False)
+    _cand.escribir_excel(df, ruta)      # b99: atomica (quien lea a la vez no ve un fichero a medias)
 
 # ── b93: la serie de facturas a credito del grupo, correlativa ──────────────
 # FAC-<año>-CORP-<nnnn>, UNA serie para todo el grupo (todos los hoteles), como
@@ -129,26 +131,17 @@ def siguiente_numero_factura(anio=None, df=None):
 
 
 class _Candado:
-    """Dos emisiones a la vez no se llevan el mismo numero (candado de fichero)."""
+    """Dos emisiones a la vez no se llevan el mismo numero. b99: es el candado de los
+    registros del AR (candados.registros, reentrante): el de b93 era un flock suelto
+    sobre .numeracion_facturas.lock que no se podia anidar con los demas."""
     def __enter__(self):
-        self._fh = None
-        try:
-            import fcntl
-            self._fh = open(_os.path.join(str(DATOS), '.numeracion_facturas.lock'), 'w')
-            fcntl.flock(self._fh, fcntl.LOCK_EX)
-        except Exception:
-            self._fh = None
+        self._ctx = _cand.registros(str(DATOS))
+        self._ctx.__enter__()
         return self
 
     def __exit__(self, *a):
-        try:
-            if self._fh:
-                import fcntl
-                fcntl.flock(self._fh, fcntl.LOCK_UN)
-                self._fh.close()
-        except Exception:
-            pass
-        return False
+        # api_emitir_factura lo cierra a mano, sin argumentos (b93)
+        return self._ctx.__exit__(*(a if len(a) == 3 else (None, None, None)))
 
 
 def numero_visible(fila):
@@ -213,6 +206,7 @@ def alta_cliente_desde_bono(agencia, nif="", numero_bono="", datos_dir=None, hot
     return alta_cliente_pendiente(agencia, nif, f'bono {numero_bono}'.strip(), datos_dir=datos_dir, hotel_id=hotel_id)
 
 
+@_cand.protegido(lambda dd: str(dd) if dd else str(DATOS))    # b99
 def alta_cliente_pendiente(nombre, nif="", origen="", datos_dir=None, hotel_id=None, email="", telefono=""):
     """Ficha AR "pendiente" SIN credito (limite 0) para quien nos va a deber algo:
     la agencia de un bono (b34) o quien paga la factura de un contrato de grupo
@@ -243,7 +237,7 @@ def alta_cliente_pendiente(nombre, nif="", origen="", datos_dir=None, hotel_id=N
                     df['nif'] = ''
                 df['nif'] = df['nif'].astype(object)
                 df.at[i, 'nif'] = nif
-                df.to_excel(ruta, index=False)
+                _cand.escribir_excel(df, ruta)
                 return "NIF_RELLENADO"
             return "YA_EXISTE"
     if hotel_id is None:
@@ -256,11 +250,12 @@ def alta_cliente_pendiente(nombre, nif="", origen="", datos_dir=None, hotel_id=N
             'email': str(email or '').strip(), 'telefono': str(telefono or '').strip(), 'hotel_id': hotel_id,
             'estado_ficha': 'PENDIENTE', 'origen': str(origen or '').strip()}
     df = pd.concat([df, pd.DataFrame([fila])], ignore_index=True) if len(df) else pd.DataFrame([fila])
-    df.to_excel(ruta, index=False)
+    _cand.escribir_excel(df, ruta)
     return "CREADO"
 
 
 @ar_real_bp.route('/api/ar_real/cliente', methods=['POST'])
+@_cand.en_la_peticion      # b99: leer, decidir y guardar sin que otra peticion se cuele
 def api_crear_cliente():
     """Da de alta un cliente de credito.
 
@@ -322,7 +317,7 @@ def api_crear_cliente():
             df = pd.concat([df, pd.DataFrame([fila])], ignore_index=True)
         else:
             df = pd.DataFrame([fila])
-        df.to_excel(ruta, index=False)
+        _cand.escribir_excel(df, ruta)
     except Exception as e:
         return jsonify({'ok': False, 'error': str(e)[:180]}), 500
     return jsonify({'ok': True, 'cliente': nombre, 'total': int(len(df)), 'limite_credito': float(fila.get('credito_limite') or 0),
@@ -464,6 +459,7 @@ def api_facturas():
 
 
 @ar_real_bp.route('/api/ar_real/cobrar', methods=['POST'])
+@_cand.en_la_peticion      # b99: leer, decidir y guardar sin que otra peticion se cuele
 def api_cobrar():
     """Marca una factura como cobrada."""
     data = request.get_json(force=True, silent=True) or {}
@@ -533,6 +529,7 @@ def aviso_credito(cliente, datos_dir=None):
 
 
 @ar_real_bp.route('/api/ar_real/emitir_pendiente', methods=['POST'])
+@_cand.en_la_peticion      # b99: leer, decidir y guardar sin que otra peticion se cuele
 def api_emitir_pendiente():
     """b89: emite la factura de un contrato de grupo que estaba "pendiente de emitir"
     (estado FACTURADO, fecha de emision hoy). Sin saber quien paga no se emite: la
@@ -592,6 +589,7 @@ def api_recordatorio():
         mask = df['numero_reserva'].astype(str) == numero
         if not mask.any():
             return jsonify({'ok': False, 'error': 'Factura no encontrada'}), 404
+        clave_fra = numero
         row = df[mask].iloc[0]
         cliente_nombre = str(row['cliente'])
         total = float(row.get('total', 0))
@@ -623,9 +621,16 @@ def api_recordatorio():
         )
         ok = enviar_email(email_dest, asunto, cuerpo, 'ar_recordatorio')
         if ok:
-            # Log the reminder
-            df.loc[mask, 'ultimo_recordatorio'] = date.today().isoformat()
-            _save_reservas(df)
+            # b99: el correo va FUERA del candado (puede tardar); despues se relee y se
+            # apunta solo el recordatorio, para no pisar lo que otra peticion haya guardado
+            with _cand.registros(str(DATOS)):
+                df = _get_reservas()
+                m2 = df['numero_reserva'].astype(str) == clave_fra
+                if 'ultimo_recordatorio' not in df.columns:
+                    df['ultimo_recordatorio'] = ''
+                df['ultimo_recordatorio'] = df['ultimo_recordatorio'].astype(object)
+                df.loc[m2, 'ultimo_recordatorio'] = date.today().isoformat()
+                _save_reservas(df)
         return jsonify({'ok': ok, 'email': email_dest, 
                         'message': f'Recordatorio enviado a {email_dest}' if ok else 'Error enviando email'})
     except Exception as e:
@@ -663,6 +668,7 @@ def api_procesar_contrato():
 
 
 @ar_real_bp.route('/api/ar_real/emitir_factura', methods=['POST'])
+@_cand.en_la_peticion      # b99: leer, decidir y guardar sin que otra peticion se cuele
 def api_emitir_factura():
     """Emite una nueva factura corporativa y la registra."""
     data = request.get_json(force=True, silent=True) or {}
@@ -675,7 +681,7 @@ def api_emitir_factura():
     total         = float(data.get('total', 0))
     if not cliente or not fecha_entrada or not fecha_salida:
         return jsonify({'ok': False, 'error': 'Faltan datos obligatorios'}), 400
-    _cand = _Candado().__enter__()      # b93: leer, numerar y guardar sin que otra emision se cuele
+    _cnd = _Candado().__enter__()      # b93: leer, numerar y guardar sin que otra emision se cuele
     try:
         df = _get_reservas()
         year = datetime.now().year
@@ -712,10 +718,10 @@ def api_emitir_factura():
         }
         df = pd.concat([df, pd.DataFrame([new_row])], ignore_index=True)
         _save_reservas(df)
-        _cand.__exit__()
+        _cnd.__exit__()
         return jsonify({'ok': True, 'numero': numero, 'numero_factura': numero, 'total': total, 'aviso_credito': aviso_credito(cliente)})
     except Exception as e:
-        _cand.__exit__()
+        _cnd.__exit__()
         return jsonify({'ok': False, 'error': str(e)}), 500
 
 def _get_bonos():
