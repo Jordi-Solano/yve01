@@ -158,6 +158,20 @@ def hotel_de(c, datos_dir=None):
     return h
 
 
+def _texto_de(m):
+    """b102 · Un elemento de una lista de la IA como TEXTO. A veces el lector devuelve objetos
+    ({"concepto": "Café"}) donde el esquema pide texto, y la BEO pintaba "{'concepto': 'Café'}"
+    (visto en produccion el 25 sep con el contrato CG-2026-0940)."""
+    if isinstance(m, dict):
+        for k in ("concepto", "plato", "nombre", "descripcion", "texto", "item", "detalle"):
+            if _txt(m.get(k)):
+                return _txt(m.get(k))
+        return " · ".join(_txt(v) for v in m.values() if isinstance(v, str) and _txt(v))
+    if isinstance(m, (list, tuple)):
+        return " · ".join(t for t in (_texto_de(x) for x in m) if t)
+    return _txt(m)
+
+
 def _funciones(datos):
     """Las funciones del programa (lo que el contrato detalla dia a dia), limpias."""
     out = []
@@ -172,11 +186,14 @@ def _funciones(datos):
         for a in (f.get("av") or []):
             if isinstance(a, dict) and _txt(a.get("concepto")):
                 av.append({"concepto": _txt(a.get("concepto")), "importe": _r(_f(a.get("importe")))})
+            elif _texto_de(a):          # b102: como texto suelto, que no se pierda (sin importe)
+                av.append({"concepto": _texto_de(a), "importe": 0.0})
         out.append({"fecha": fe, "hora_inicio": _hora(f.get("hora_inicio")), "hora_fin": _hora(f.get("hora_fin")),
                     "funcion": nombre, "sala": _txt(f.get("sala")), "montaje": _txt(f.get("montaje")),
                     "pax": int(_f(f.get("pax"))) or None, "garantizados": int(_f(f.get("garantizados"))) or None,
                     "alquiler": _r(_f(f.get("alquiler"))), "precio_pp": _r(_f(f.get("precio_pp"))),
-                    "menu": [_txt(m) for m in (f.get("menu") or []) if _txt(m)], "notas_montaje": _txt(f.get("notas_montaje")),
+                    "menu": [t for t in (_texto_de(m) for m in (f.get("menu") or [])) if t],
+                    "notas_montaje": _texto_de(f.get("notas_montaje")),
                     "av": av})
     return sorted(out, key=lambda x: (x["fecha"], x["hora_inicio"] or "99:99"))
 
@@ -215,6 +232,9 @@ def _linea_deposito(dep):
     otro campo, la BEO decia "a la firma" sin mas (visto en produccion el 25 sep)."""
     dep = dep if isinstance(dep, dict) else {}
     cuando = _txt(dep.get("cuando"))
+    _w = cuando.split()[0] if cuando.split() else ""
+    if _w[:1].isupper() and (len(_w) == 1 or _w[1:].islower()):
+        cuando = cuando[0].lower() + cuando[1:]        # b102: "A la firma" en mitad de la frase -> "a la firma" (no "IBAN")
     pct = _f(dep.get("pct"))
     if pct:
         return f"Depósito del {pct:g} %".replace(".", ",") + (f" {cuando}" if cuando else "")
@@ -243,7 +263,7 @@ def beos(c, datos_dir=None, numerar=True):
     quien_cuenta = ag if cuenta and cuenta == _txt(c.get("agencia")) else cli
     contacto = (b.get("contacto") or {}) if isinstance(b.get("contacto"), dict) else {}
     sitio = (b.get("contacto_sitio") or {}) if isinstance(b.get("contacto_sitio"), dict) else {}
-    alergias = [_txt(a) for a in (b.get("alergias") or []) if _txt(a)]
+    alergias = [t for t in (_texto_de(a) for a in (b.get("alergias") or [])) if t]
     fact = []
     if _txt(c.get("factura_grupo")):
         fact.append(f"Factura del grupo {_txt(c.get('factura_numero')) or c.get('factura_grupo')} a nombre de {cuenta or '(por decidir quién paga)'}"

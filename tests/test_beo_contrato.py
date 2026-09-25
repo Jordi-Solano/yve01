@@ -129,6 +129,26 @@ def main():
         ok(B._linea_deposito({'pct': 12.5, 'cuando': 'a la firma'}) == 'Depósito del 12,5 % a la firma'
            and B._linea_deposito({'cuando': 'a la firma'}) == 'Depósito a la firma' and B._linea_deposito({}) == '',
            'la frase del depósito con decimales en español, sin % y vacía')
+        # b102: la IA a veces devuelve objetos donde el esquema pide texto (visto en produccion)
+        c4 = _copy.deepcopy(c1)
+        fz = c4['datos_contrato']['beo']['funciones']
+        fz[0]['menu'] = [{"concepto": "Ensalada de la huerta"}, {"plato": "Brochetas de pollo"}, "Postres"]
+        fz[1]['av'] = ["Proyector y pantalla", {"concepto": "Micrófono", "importe": 0}]
+        c4['datos_contrato']['beo']['alergias'] = [{"descripcion": "1 x alergia al marisco"}, "4 x vegetariano"]
+        c4['datos_contrato']['deposito'] = {"pct": 30, "cuando": "A la firma"}
+        c4['datos_contrato']['facturacion']['texto'] = 'Se factura a la agencia.'
+        l4 = B.beos(c4, DD, numerar=False)
+        menu4 = [m for b in l4 for f in b['funciones'] for m in f['menu']]
+        av4 = [a['concepto'] for b in l4 for f in b['funciones'] for a in f['av']]
+        txt4 = texto_pdf(B.pdf(l4))
+        ok(menu4[:3] == ["Ensalada de la huerta", "Brochetas de pollo", "Postres"] and "Proyector y pantalla" in av4
+           and "{'" not in txt4 and "Ensalada de la huerta" in txt4 and "Proyector y pantalla" in txt4
+           and "1 x alergia al marisco" in txt4,
+           f"b102: menú, AV y alergias que la IA da como objetos salen como texto ({menu4[:3]}, {av4})")
+        ok('Depósito del 30 % a la firma' in (l4[0]['facturacion'] if l4 else [])
+           and B._linea_deposito({'pct': 30, 'cuando': 'Al confirmar'}) == 'Depósito del 30 % al confirmar'
+           and B._linea_deposito({'pct': 30, 'cuando': 'IBAN ES12 antes del evento'}) == 'Depósito del 30 % IBAN ES12 antes del evento',
+           f"b102: 'A la firma' en mitad de la frase va en minúscula ({l4[0]['facturacion'] if l4 else []})")
         # 3. el PDF con el formato del ejemplo
         txt = texto_pdf(B.pdf(l1))
         etiquetas = ('Orden del Servicio (BEO)', 'Postear como:', 'Fecha del evento:', 'Cuenta:', 'Contacto:', 'Dirección:', 'Master #:',
