@@ -25,27 +25,32 @@ de un contrato de grupo/eventos de hotel (contrato + BEO + anexos). Devuelve SOL
  "evento": {"id": "", "nombre": ""},
  "contrato_numero": "",
  "fecha_contrato": "YYYY-MM-DD",
- "hotel": {"nombre": "", "cif": ""},
- "cliente": {"nombre": "", "cif": "", "email": "", "contacto": "", "pais": ""},
- "agencia": {"nombre": "", "contacto": "", "email": "", "telefono": ""},
+ "hotel": {"nombre": "", "cif": "", "direccion": "", "telefono": ""},
+ "cliente": {"nombre": "", "cif": "", "email": "", "contacto": "", "telefono": "", "direccion": "", "pais": ""},
+ "agencia": {"nombre": "", "cif": "", "contacto": "", "email": "", "telefono": "", "direccion": ""},
  "alojamiento": {"fecha_entrada":"YYYY-MM-DD","fecha_salida":"YYYY-MM-DD","noches":0,
                  "habitaciones":0,"tarifa_dui":0,"tarifa_doble":0,
                  "total_habitaciones":0,"iva_pct":10,"total_pernoctaciones":0},
  "tasa_turistica": {"por_persona_noche":0,"max_noches":0},
  "fb": {"total":0,"por_persona_dia":0,"pax":0,"dias":0,"iva_pct":10,"detalle":""},
- "salas": {"total":0},
+ "salas": {"total":0,"nombre":"","montaje":"","dias":0,"detalle":""},
  "comisiones": {"modo":null,"texto":"","alojamiento_pct":0,"salas_pct":0,"fb_pct":0,"ddr_pct":0,"misc_pct":0},
  "facturacion": {"pagador":null,"texto":""},
  "deposito": {"pct":0,"cuando":"","iban":"","beneficiario":"","referencia":""},
  "doble_imposicion": false,
- "beos": []
+ "beo": {"contacto": {"nombre":"","telefono":"","email":""}, "contacto_sitio": {"nombre":"","telefono":""},
+         "coordinador": "", "anuncio": "", "instrucciones_facturacion": "", "alergias": [],
+         "funciones": [{"fecha":"YYYY-MM-DD","hora_inicio":"HH:MM","hora_fin":"HH:MM","funcion":"","sala":"","montaje":"",
+                        "pax":0,"garantizados":0,"alquiler":0,"precio_pp":0,"menu":[],"notas_montaje":"",
+                        "av":[{"concepto":"","importe":0}]}]}
 }
 Importante: los importes son numéricos (sin símbolo €, punto decimal). Las fechas en formato ISO.
 "doble_imposicion" = true si el cliente es extranjero o el contrato menciona doble imposición / withholding / certificado de residencia fiscal.
 "es_contrato_grupo" = true SOLO si es un contrato de grupo/eventos de hotel o un BEO (orden de servicio); false si son facturas sueltas, extractos u otro documento.
 "agencia" = la intermediaria (agencia de viajes, DMC, OPC) que contrata para el cliente; déjala vacía si el cliente contrata directamente con el hotel.
 "comisiones.modo": lee SOLO el campo/cláusula de comisiones del contrato. "neta" si dice tarifa neta / tarifas netas / net rate / no comisionable (el hotel factura el neto y no hay factura de comisión); "porcentaje" si da un % de comisión para la agencia (el hotel factura el bruto y la agencia factura su comisión aparte); null si el contrato no dice nada de comisiones. "comisiones.texto" = lo que pone ese campo, literal y breve. No lo deduzcas de otra parte del contrato.
-"facturacion.pagador": "agencia" si la factura del grupo se emite a la agencia o la paga la agencia; "cliente" si la paga directamente el cliente final; null si el contrato no lo dice. "facturacion.texto" = la frase del contrato que lo dice."""
+"facturacion.pagador": "agencia" si la factura del grupo se emite a la agencia o la paga la agencia; "cliente" si la paga directamente el cliente final; null si el contrato no lo dice. "facturacion.texto" = la frase del contrato que lo dice.
+"beo": lo necesario para la orden de servicio (BEO). "beo.funciones" = el programa del evento DIA A DIA tal como lo detalle el contrato o su anexo/BEO (reuniones, coffee breaks, almuerzos, cenas, montajes): una entrada por funcion con su fecha, horas, sala, montaje (escuela, teatro, cabaret, imperial, cóctel...), pax, precio por persona, alquiler de sala, menú (platos y bebidas, uno por elemento), notas de montaje y audiovisuales. Si el contrato NO trae programa día a día, "funciones" = [] (no te inventes horas, salas ni fechas). "beo.alergias" = alergias o dietas especiales que diga el contrato (una por elemento). "beo.anuncio" = el texto del cartel/anuncio del evento si lo hay. "salas.nombre/montaje/dias" = la sala, el montaje y los días de sala si el contrato los da."""
 
 
 def _api_key():
@@ -93,7 +98,7 @@ def extraer_contrato_grupo(image_paths):
         content = [{"type": "text", "text": _PROMPT}]
         for p in image_paths[:30]:
             content.append(_bloque(p))
-        resp = client.messages.create(model=MODEL, max_tokens=3000,
+        resp = client.messages.create(model=MODEL, max_tokens=8000,   # b91: el programa del BEO (menus) alarga el JSON
                                       messages=[{"role": "user", "content": content}])
         txt = resp.content[0].text.strip()
         # aislar el JSON

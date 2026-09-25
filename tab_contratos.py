@@ -14,10 +14,13 @@ Rutas (con sesion; el POST pasa por el CSRF de /api/*):
   POST /api/ar/contratos/desvincular  {id, clave}   b88: "esta factura no es de este contrato"
   POST /api/ar/compensar              {id, importe, fecha?, nota?}   b89: 410/430, solo si paga la agencia
   POST /api/ar/compensar/anular       {id, comp_id}                  b89
+  GET  /api/ar/contratos/<id>/beos                                   b91: las BEO del contrato (una por dia)
+  GET  /api/ar/contratos/<id>/beo.pdf                                b91: en PDF, con el formato de la BEO de ejemplo
 """
-from flask import Blueprint, jsonify, request
+from flask import Blueprint, jsonify, request, send_file
 from flask_login import login_required, current_user
 
+import beo_contrato as BEO
 import compensaciones as CMP
 import contratos_grupo as CG
 
@@ -114,6 +117,11 @@ def vista_contratos(hotel=None, datos_dir=None):
         # b89: compensar la comision contra la factura del grupo (solo si paga la agencia)
         fg, fr = _grupo_y_comision(c, ctx)
         v["compensacion"] = CMP.vista(c, fg, fr, ctx["comps"])
+        # b91: la BEO (orden de servicio) del contrato, con el formato de la de ejemplo
+        try:
+            v["beo"] = BEO.cotejo(c)
+        except Exception:
+            v["beo"] = {"n": 0}
         out.append(v)
     # primero lo que falta decidir; dentro de cada grupo, lo mas reciente arriba
     pend = [c for c in out if c["pendientes"]]
@@ -241,3 +249,31 @@ def api_anular_compensacion():
     _audit("COMPENSACION_ANULADA", f"{cid}: {comp_id} ({c.get('importe')} EUR)")
     v = next((x for x in vista_contratos(_hotel()) if x.get("id") == cid), None)
     return jsonify({"ok": True, "contrato": v})
+
+
+# ── b91: la BEO del contrato ────────────────────────────────────────────────
+def _contrato_visible(cid):
+    return next((c for c in CG.del_hotel(CG.leer(), _hotel()) if c.get("id") == cid), None)
+
+
+@contratos_bp.route("/api/ar/contratos/<cid>/beos")
+@login_required
+def api_beos_contrato(cid):
+    c = _contrato_visible(cid)
+    if c is None:
+        return jsonify({"ok": False, "error": "contrato no encontrado en este hotel"}), 404
+    lista = BEO.beos(c)
+    return jsonify({"ok": True, "beos": lista, "cotejo": BEO.cotejo(c, lista)})
+
+
+@contratos_bp.route("/api/ar/contratos/<cid>/beo.pdf")
+@login_required
+def api_beo_pdf(cid):
+    c = _contrato_visible(cid)
+    if c is None:
+        return jsonify({"ok": False, "error": "contrato no encontrado en este hotel"}), 404
+    lista = BEO.beos(c)
+    if not lista:
+        return jsonify({"ok": False, "error": "el contrato no trae servicios de evento (F&B, salas, programa) para una BEO"}), 404
+    nombre = "BEO_" + "".join(ch if ch.isalnum() or ch in "-_" else "_" for ch in (c.get("contrato") or cid))[:40] + ".pdf"
+    return send_file(BEO.pdf(lista), mimetype="application/pdf", as_attachment=False, download_name=nombre)

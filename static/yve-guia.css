@@ -439,3 +439,5 @@ body.acentuar-todo .g-kpi:hover{background:rgba(var(--acc-r,59),var(--acc-g,130)
   .cred-kpis{grid-template-columns:repeat(2,minmax(0,1fr))}
   .cred-grid,.cred-firmas{grid-template-columns:minmax(0,1fr)}
 }
+/* b91: la BEO del contrato */
+.ctr-beo{display:flex;align-items:center;gap:8px;flex-wrap:wrap;margin-top:8px}

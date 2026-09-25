@@ -17206,12 +17206,24 @@ function _pintarContratosAR() {
       '<div class="ctr-top"><div class="g-who"><b>' + _ctrEsc(c.evento) + '</b><span>' + quien + '</span></div>' +
       '<div class="ctr-total"><b class="g-num">' + eur((c.importes || {}).total) + '</b>' +
       (c.agencia ? '<button class="g-btn g-ghost g-sm g-icon" onclick="_arCtrAbierto[_arContratos[' + i + '].id]=!_arCtrAbierto[_arContratos[' + i + '].id];_pintarContratosAR()" title="' + t('ctr.corregir', 'Corregir') + '">✎</button>' : '') + '</div></div>' +
-      '<div class="ctr-badges">' + _ctrBadges(c) + '</div>' + esp + _ctrFacturaComision(c, i) +
+      '<div class="ctr-badges">' + _ctrBadges(c) + '</div>' + esp + _ctrFacturaComision(c, i) + _ctrBeo(c) +
       '<div class="g-small">' + [_ctrOrigen(c.comision), _ctrOrigen(c.pagador)].filter(Boolean).filter(function(x, k, a){ return a.indexOf(x) === k; }).join(' · ') + '</div>' +
       (abierto && c.agencia ? _ctrForm(i) : '') +
       '</div>';
   }).join('');
   if (typeof _pintarYa === 'function') _pintarYa(wrap);
+}
+// b91: la BEO (orden de servicio) del contrato, con el formato de la BEO de ejemplo:
+// una por dia de evento; sin programa en el contrato, una "por confirmar"
+function _ctrBeo(c) {
+  var b = c.beo || {};
+  if (!b.n) return '';
+  var eur = function(v){ return _fmtEurES(Number(v) || 0, 2); };
+  var que = b.por_confirmar ? t('beo.porConfirmar', 'programa por confirmar') : t('beo.dias', '{n} día(s)').replace('{n}', b.n);
+  var cot = b.cuadra ? gBadge('g-ok', t('beo.cuadra', 'Cuadra con F&B + salas del contrato'))
+                     : gBadge('g-warn', t('beo.noCuadra', 'F&B + salas del contrato: {x} (diferencia {d})').replace('{x}', eur(b.contrato_fb_salas)).replace('{d}', eur(b.diferencia)));
+  return '<div class="ctr-beo"><a class="g-btn g-secondary g-sm" href="/api/ar/contratos/' + encodeURIComponent(c.id) + '/beo.pdf" target="_blank" rel="noopener">📄 ' + t('beo.ver', 'BEO') + '</a>' +
+    '<span class="g-small">' + _ctrEsc(que) + ' · <b class="g-num">' + eur(b.total_beo) + '</b></span>' + cot + '</div>';
 }
 // b88: la factura de comision de la agencia, unida a su contrato
 function _ctrFacturaComision(c, i) {
