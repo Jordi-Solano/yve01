@@ -10,7 +10,8 @@ cada 1.210 de salas, y el SII repartia la base a partes iguales entre los tipos.
 
 Se comprueba, con UN solo calculo (cierre_mes.desglose_factura_ar) para todos:
   - el lector de contratos deja el tipo de cada concepto en la fila de la factura;
-  - el asiento: 430 D 14.410 / 705 H 11.000 / 700 H 2.000 / 477 H 1.410;
+  - el asiento: 430 D 14.410 / 705 H 10.000 / 7052 H 1.000 / 700 H 2.000 / 477 H 1.410
+    (b101: las salas a su cuenta, separada del alojamiento; config_cierre.json -> cuenta_salas);
   - el 303: 10 % base 12.000 cuota 1.200; 21 % base 1.000 cuota 210;
   - el SII: un DetalleIVA por tipo con SUS importes (no la base a partes iguales);
   - el PDF de la factura: base 13.000, "IVA (10%)" 1.200 y "IVA (21%)" 210;
@@ -103,8 +104,12 @@ def main():
           'provisiones': [], 'reservas': pd.DataFrame([fila])}
     res = CM.generar_asientos('2026-09', fu, CM.plan_cuentas('/nonexistent'), cfg)
     lin = {(a['cuenta'], a['debe'], a['haber']) for a in res['asientos'] if a['documento'] == 'FAC-2026-CORP-0001'}
-    ok(lin == {('430', 14410.0, 0.0), ('705', 0.0, 11000.0), ('700', 0.0, 2000.0), ('477', 0.0, 1410.0)},
-       f"asiento: 430 D 14.410 / 705 H 11.000 / 700 H 2.000 / 477 H 1.410 ({sorted(lin)})")
+    ok(lin == {('430', 14410.0, 0.0), ('705', 0.0, 10000.0), ('7052', 0.0, 1000.0), ('700', 0.0, 2000.0), ('477', 0.0, 1410.0)},
+       f"asiento: 430 D 14.410 / 705 H 10.000 / 7052 H 1.000 (salas) / 700 H 2.000 / 477 H 1.410 ({sorted(lin)})")
+    ok('7052' not in res.get('cuentas_fuera_plan', []), f"b101: la 7052 esta en el plan base ({res.get('cuentas_fuera_plan')})")
+    otra = CM.desglose_factura_ar(fila, dict(cfg, cuenta_salas="7059"))
+    ok(otra["por_cuenta"] == {"705": 10000.0, "7059": 1000.0, "700": 2000.0},
+       f"b101: la cuenta de las salas se cambia en config_cierre.json ({otra['por_cuenta']})")
 
     # 2 · el 303
     fi = FI.calcular('2026-09', fu, cfg, {'periodicidad': 'mensual', 'nif_propio': 'B87654321', 'razon_social': 'Hotel Prueba SL'})
@@ -127,7 +132,8 @@ def main():
     # 4 · una factura de grupo de ANTES (sin los tipos en la fila) tambien lleva las salas al 21 %
     vieja = {k: v for k, v in fila.items() if not k.startswith("iva_")}
     dv = CM.desglose_factura_ar(vieja, cfg)
-    ok(dv["cuota"] == 1410.0 and dv["b705"] == 11000.0, f"factura de grupo sin los tipos en la fila: salas al 21 % igual ({dv['cuota']}, {dv['b705']})")
+    ok(dv["cuota"] == 1410.0 and dv["por_cuenta"].get("7052") == 1000.0 and dv["b705"] == 10000.0,
+       f"factura de grupo sin los tipos en la fila: salas al 21 % y a su cuenta igual ({dv['cuota']}, {dv['por_cuenta']})")
 
     # 5 · lo que NO es de grupo sale EXACTAMENTE como antes
     rnd = random.Random(96)

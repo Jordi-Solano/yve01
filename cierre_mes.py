@@ -54,7 +54,12 @@ CUENTAS_BASE = {
     "629":  "Otros servicios",
     "700":  "Ventas F&B",
     "705":  "Prestaciones de servicios — Alojamiento",
+    "7052": "Prestaciones de servicios — Alquiler de salas",
 }
+# b101: las SALAS de un contrato de grupo van a su propia cuenta, separada del
+# alojamiento (decision de Jordi del 25 sep, PENDIENTE DE CONFIRMAR CON FINANZAS).
+# Configurable en config_cierre.json -> "cuenta_salas".
+CUENTA_SALAS = "7052"
 CONFIG_FILE = "config_cierre.json"
 REGIMEN_OTA_DEFECTO = {"booking": "ue", "expedia": "no_ue", "hotels.com": "no_ue", "agoda": "no_ue",
                        "airbnb": "ue", "trivago": "ue", "hotelbeds": "es", "hotusa": "es", "despegar": "no_ue"}
@@ -130,7 +135,8 @@ def fecha_ap(r, criterio=None):
 
 
 def config_cierre(datos_dir=None):
-    cfg = {"ota_iva": "", "iva_fb": IVA_REDUCIDO, "iva_alojamiento": IVA_REDUCIDO, "otas": {}}
+    cfg = {"ota_iva": "", "iva_fb": IVA_REDUCIDO, "iva_alojamiento": IVA_REDUCIDO, "otas": {},
+           "cuenta_salas": CUENTA_SALAS}
     ruta = os.path.join(datos_dir or os.path.join(BASE_DIR, "datos-referencia"), CONFIG_FILE)
     try:
         with open(ruta, encoding="utf-8") as fh:
@@ -199,10 +205,14 @@ def desglose_factura_ar(r, cfg=None):
     (10 %) y los extras al tipo del alojamiento, SALVO en la factura de un
     CONTRATO_GRUPO, donde los extras son las salas (21 %).
 
-    Devuelve {"total", "base", "cuota", "b705" (habitaciones + extras), "b700" (F&B),
-    "tramos": [{"pct", "base", "cuota", "cuenta", "concepto"}], "por_tipo": {pct: {"base", "cuota"}}}.
-    Cuando todo va al mismo tipo el reparto y el redondeo son los de siempre
-    (habitaciones y extras juntos; el centimo que falte, a la cuota del primer tramo)."""
+    b101: en un CONTRATO_GRUPO las salas son SIEMPRE un tramo aparte, a su cuenta
+    (config_cierre.json -> "cuenta_salas", 7052 por defecto), separada del alojamiento.
+
+    Devuelve {"total", "base", "cuota", "b705" (alojamiento; y los extras de lo que no es
+    de grupo), "b700" (F&B), "por_cuenta": {cuenta: base}, "tramos": [{"pct", "base",
+    "cuota", "cuenta", "concepto"}], "por_tipo": {pct: {"base", "cuota"}}}.
+    Lo que no es de grupo sale como siempre (habitaciones y extras juntos si van al
+    mismo tipo; el centimo que falte, a la cuota del primer tramo)."""
     cfg = cfg or {}
     total = _num(r.get("total")) or _num(r.get("importe"))
     hab = _num(r.get("importe_habitaciones")); fb = _num(r.get("importe_fb")); ext = _num(r.get("importe_extras"))
@@ -221,11 +231,17 @@ def desglose_factura_ar(r, cfg=None):
         if imp:
             b = _r(imp / (1 + pct / 100))
             tramos.append({"pct": pct, "base": b, "cuota": _r(imp - b), "cuenta": cuenta, "concepto": concepto})
-    if pct_e == pct_h:
+    if grupo:
+        cta_salas = _txt(cfg.get("cuenta_salas")) or CUENTA_SALAS
+        if cta_salas.endswith(".0"):
+            cta_salas = cta_salas[:-2]
+        tramo(hab, pct_h, "705", "alojamiento")
+        tramo(ext, pct_e, cta_salas, "salas")
+    elif pct_e == pct_h:
         tramo(hab + ext, pct_h, "705", "alojamiento")
     else:
         tramo(hab, pct_h, "705", "alojamiento")
-        tramo(ext, pct_e, "705", "salas" if grupo else "extras")
+        tramo(ext, pct_e, "705", "extras")
     tramo(fb, pct_f, "700", "fb")
     dif = _r(total - sum(t["base"] + t["cuota"] for t in tramos))
     if dif and tramos:
@@ -234,9 +250,11 @@ def desglose_factura_ar(r, cfg=None):
     for t in tramos:
         p = por_tipo.setdefault(t["pct"], {"base": 0.0, "cuota": 0.0})
         p["base"] = _r(p["base"] + t["base"]); p["cuota"] = _r(p["cuota"] + t["cuota"])
+    por_cuenta = {}
+    for t in tramos:
+        por_cuenta[t["cuenta"]] = _r(por_cuenta.get(t["cuenta"], 0.0) + t["base"])
     return {"total": total, "base": _r(sum(t["base"] for t in tramos)), "cuota": _r(sum(t["cuota"] for t in tramos)),
-            "b705": _r(sum(t["base"] for t in tramos if t["cuenta"] == "705")),
-            "b700": _r(sum(t["base"] for t in tramos if t["cuenta"] == "700")),
+            "b705": por_cuenta.get("705", 0.0), "b700": por_cuenta.get("700", 0.0), "por_cuenta": por_cuenta,
             "tramos": tramos, "por_tipo": por_tipo}
 
 
@@ -385,8 +403,10 @@ def generar_asientos(mes, fuentes, plan=None, cfg=None):
             if total > 0 and _en_mes(f_em, ini, fin):
                 # b96: cada concepto a SU tipo (las salas de un contrato de grupo, al 21 %)
                 dg = desglose_factura_ar(r, cfg)
+                # b101: una linea de ingresos por cuenta (705 alojamiento, 7052 salas, 700 F&B)
                 if D.nuevo(_fecha(f_em), f"Fra. {num} — {cli}", num, "AR",
-                           [("430", total, 0), ("705", 0, dg["b705"]), ("700", 0, dg["b700"]), ("477", 0, dg["cuota"])],
+                           [("430", total, 0)] + [(cta, 0, b) for cta, b in dg["por_cuenta"].items()]
+                           + [("477", 0, dg["cuota"])],
                            r.get("hotel_id")):
                     cont["ar_facturas"] += 1
             # b89: lo compensado con la comision de la agencia no entra por el banco:
