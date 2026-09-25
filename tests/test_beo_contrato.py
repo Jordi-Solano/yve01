@@ -42,7 +42,9 @@ def contrato(numero, programa=True):
          "alojamiento": {"fecha_entrada": "2026-10-05", "fecha_salida": "2026-10-08", "noches": 3, "habitaciones": 20,
                          "total_habitaciones": 11000, "iva_pct": 10},
          "fb": {"total": 2200, "pax": 40, "dias": 2, "por_persona_dia": 27.5}, "salas": {"total": 1210, "nombre": "Mediterrània", "montaje": "escuela", "dias": 2},
-         "comisiones": {"modo": "porcentaje", "alojamiento_pct": 10}, "facturacion": {"pagador": "agencia", "texto": "Se factura a la agencia."}}
+         "comisiones": {"modo": "porcentaje", "alojamiento_pct": 10},
+         "facturacion": {"pagador": "agencia", "texto": "Se factura a la agencia. Depósito del 30 % a la firma."},
+         "deposito": {"pct": 30, "cuando": "a la firma"}}
     if programa:
         d["beo"] = {"coordinador": "Gemma Ràfols", "anuncio": "CONGRESO CARDIO 2026", "alergias": ["1 x alergia al marisco", "4 x vegetariano"],
                     "funciones": [
@@ -114,6 +116,9 @@ def main():
            and l2[0]['numero'] == B.BEO_INICIAL + 2,
            'sin programa: UNA BEO "por confirmar", sin horas ni dias inventados')
         ok(B.cotejo(c2, l2)['cuadra'], 'y lleva lo contratado (F&B y salas)')
+        fac2 = l2[0]['facturacion'] if l2 else []
+        ok(any('Depósito del 30 % a la firma' in x for x in fac2) and not any(x.strip().lower() == 'a la firma' for x in fac2),
+           f"facturación: el depósito una vez, sin repetir 'a la firma' suelto (b97: {fac2})")
         # 3. el PDF con el formato del ejemplo
         txt = texto_pdf(B.pdf(l1))
         etiquetas = ('Orden del Servicio (BEO)', 'Postear como:', 'Fecha del evento:', 'Cuenta:', 'Contacto:', 'Dirección:', 'Master #:',

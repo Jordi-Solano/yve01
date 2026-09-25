@@ -238,7 +238,9 @@ def beos(c, datos_dir=None, numerar=True):
                     + (" (paga la agencia)" if q == "agencia" else " (paga el cliente final)" if q == "cliente" else ""))
     for x in (_txt(b.get("instrucciones_facturacion")), _txt((datos.get("facturacion") or {}).get("texto")),
               _txt((datos.get("deposito") or {}).get("cuando"))):
-        if x and x not in fact:
+        # b97: sin repetir lo que ya dice otra linea (el "cuando" del deposito,
+        # "a la firma", salia suelto debajo de la frase que ya lo decia)
+        if x and not any(x.lower() in y.lower() for y in fact):
             fact.append(x)
     out = []
     for dia in dias:
