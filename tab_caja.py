@@ -4,8 +4,10 @@ tab_caja.py — Yve.01 · pestaña Caja (b86, Jordi 23 sep 2026).
 El arqueo de caja se apunta a mano (no hay fichero que lo traiga); los ingresos
 de efectivo en el banco los pone Yve leyendo el extracto (pestaña CAJA del cuadre).
 
-  GET    /api/caja?mes=YYYY-MM        resumen del mes: arqueos, ingresos en banco, en caja
-  POST   /api/caja/arqueo             {fecha, contado, sistema?, nota?}  guarda o corrige un dia
+  GET    /api/caja?mes=YYYY-MM        resumen del mes: arqueos (cada uno con su asiento de
+                                      descuadre, b108), ingresos en banco, en caja
+  POST   /api/caja/arqueo             {fecha, contado, sistema?, nota?}  guarda o corrige un dia;
+                                      devuelve el asiento del descuadre (overs & shorts) si lo hay
   POST   /api/caja/arqueo/borrar      {fecha}
   GET    /api/exportar/caja?mes=      Excel (arqueos, ingresos banco, resumen)
 """
@@ -50,12 +52,23 @@ def _banco(hotel):
         return pd.DataFrame()
 
 
+def _cuenta_descuadre(dd):
+    import cierre_mes as CM
+    return CM._cuenta_str(CM.config_cierre(dd).get("cuenta_descuadre_caja")) or CM.CUENTA_DESCUADRE_CAJA
+
+
 def resumen(mes, hotel=None):
     import caja as CJ
     import cuadre_banco as CB
     dd = str(_t_ddir())
     hotel = hotel if hotel is not None else _hotel()
-    return CJ.resumen_mes(mes, CJ.leer(dd), _banco(hotel), hotel, CB.palabras(dd), CB.manuales(dd), CB.proveedores_conocidos(dd))
+    res = CJ.resumen_mes(mes, CJ.leer(dd), _banco(hotel), hotel, CB.palabras(dd), CB.manuales(dd), CB.proveedores_conocidos(dd))
+    # b108: cada arqueo con su asiento de descuadre (el mismo que asienta el cierre)
+    cta = _cuenta_descuadre(dd)
+    for d in res.get("dias") or []:
+        d["asiento"] = CJ.asiento_descuadre(d, cta)
+    res["cuenta_descuadre"] = cta
+    return res
 
 
 @caja_bp.route('/api/caja')
@@ -80,12 +93,15 @@ def api_caja_arqueo():
         return jsonify({'ok': False, 'error': str(e)}), 400
     except Exception as e:
         return jsonify({'ok': False, 'error': str(e)[:200]}), 500
+    cta = _cuenta_descuadre(str(_t_ddir()))
+    asiento = CJ.asiento_descuadre(fila, cta)          # b108: el descuadre se asienta al guardar
     try:
         from dashboard import _audit
-        _audit('CAJA_ARQUEO', f"{fila['fecha']} contado {fila['efectivo_contado']} sistema {fila['efectivo_sistema']}", _usuario() or 'sistema')
+        _audit('CAJA_ARQUEO', f"{fila['fecha']} contado {fila['efectivo_contado']} sistema {fila['efectivo_sistema']}"
+               + (f" · asiento {CJ.asiento_texto(asiento)}" if asiento else ""), _usuario() or 'sistema')
     except Exception:
         pass
-    return jsonify({'ok': True, 'arqueo': fila})
+    return jsonify({'ok': True, 'arqueo': fila, 'asiento': asiento, 'cuenta_descuadre': cta})
 
 
 @caja_bp.route('/api/caja/arqueo/borrar', methods=['POST'])

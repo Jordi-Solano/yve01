@@ -14555,7 +14555,8 @@ async function guardarArqueo(){
   try {
     var r = await _postJson('/api/caja/arqueo', body); var d = await r.json();
     if (!d || !d.ok) { msg.textContent = '✗ ' + ((d && d.error) || r.status); return; }
-    showToast(t('caja.guardado', '✓ Arqueo guardado'), 'var(--grn)');
+    // b108: el descuadre se asienta al guardar (overs & shorts): el aviso lo dice
+    showToast(d.asiento ? t('caja.guardadoAsiento', '✓ Arqueo guardado · asiento {a}').replace('{a}', _cajaAsientoTxt(d.asiento)) : t('caja.guardado', '✓ Arqueo guardado'), 'var(--grn)');
     _cajaCerrar(); loadCaja();
     try { _panelCargado['cierre'] = false; } catch(e){}   // el cuadre de banco del Cierre cambia con el arqueo
   } catch(e) { msg.textContent = '✗ ' + e.message; }
@@ -14577,6 +14578,11 @@ async function loadCaja(){
     _pintarCaja(d);
   } catch(e) { body.innerHTML = _gError(_cEsc(e.message)); if (ing) ing.innerHTML = ''; }
 }
+// b108: "6591 D 15,25 / 570 H 15,25" (el asiento del descuadre de un arqueo)
+function _cajaAsientoTxt(a){
+  if (!a || !a.lineas) return '';
+  return a.lineas.map(function(l){ return l[0] + ' ' + (l[1] ? 'D' : 'H') + ' ' + _cEur(l[1] || l[2]); }).join(' / ');
+}
 function _pintarCaja(d){
   var T = d.totales || {}, dias = d.dias || [], ings = d.ingresos || [];
   var set = function(id, v){ var e = document.getElementById(id); if (e) e.textContent = v; };
@@ -14584,15 +14590,15 @@ function _pintarCaja(d){
   set('caja-k-contado', dias.length ? _cEur(T.contado) : '—'); set('caja-k-contado-sub', dias.length ? t('caja.nDias', '{n} día(s) con arqueo').replace('{n}', T.n_dias) : '—');
   set('caja-k-sistema', T.sistema != null ? _cEur(T.sistema) : '—');
   set('caja-k-dif', T.diferencia != null ? _cEur(T.diferencia) : '—');
-  set('caja-k-dif-sub', T.diferencia != null ? t('caja.nDescuadres', '{n} día(s) con descuadre').replace('{n}', T.dias_con_descuadre) : (dias.length ? t('caja.sinSistema', 'sin dato del sistema') : '—'));
+  set('caja-k-dif-sub', T.diferencia != null ? t('caja.nDescuadres', '{n} día(s) con descuadre').replace('{n}', T.dias_con_descuadre) + (T.dias_con_descuadre && d.cuenta_descuadre ? ' · ' + t('caja.asentadoEn', 'asentado en {c}').replace('{c}', d.cuenta_descuadre) : '') : (dias.length ? t('caja.sinSistema', 'sin dato del sistema') : '—'));
   set('caja-k-ing', ings.length ? _cEur(T.ingresado) : '—'); set('caja-k-ing-sub', ings.length ? t('caja.nIngresos', '{n} ingreso(s) del extracto').replace('{n}', T.n_ingresos) : t('caja.sinIngresos', 'nada en el extracto'));
   set('caja-k-encaja', sinNada ? '—' : _cEur(d.en_caja));
   var e = document.getElementById('caja-k-dif'); if (e) e.style.color = (T.diferencia != null && Math.abs(T.diferencia) >= 0.01) ? 'var(--red)' : '';
   _tilesVacios(document.getElementById('caja-tiles'), sinNada);
   var body = document.getElementById('caja-body');
-  body.innerHTML = dias.length ? '<div class="g-tbl-wrap"><table class="g-tbl"><thead><tr><th>' + t('caja.fecha', 'Fecha') + '</th><th class="num">' + t('caja.contado', 'Contado') + '</th><th class="num">' + t('caja.sistema', 'Según sistema') + '</th><th class="num">' + t('caja.descuadre', 'Descuadre') + '</th><th>' + t('caja.nota', 'Nota') + '</th><th>' + t('caja.quien', 'Quién') + '</th><th></th></tr></thead><tbody>' +
+  body.innerHTML = dias.length ? '<div class="g-tbl-wrap"><table class="g-tbl"><thead><tr><th>' + t('caja.fecha', 'Fecha') + '</th><th class="num">' + t('caja.contado', 'Contado') + '</th><th class="num">' + t('caja.sistema', 'Según sistema') + '</th><th class="num">' + t('caja.descuadre', 'Descuadre') + '</th><th title="' + _cEsc(t('caja.asientoTit', 'Asiento del descuadre (overs & shorts): se hace solo al guardar el arqueo y va al cierre.')) + '">' + t('caja.asiento', 'Asiento') + '</th><th>' + t('caja.nota', 'Nota') + '</th><th>' + t('caja.quien', 'Quién') + '</th><th></th></tr></thead><tbody>' +
     dias.map(function(x){ var dif = x.diferencia; var cls = (dif != null && Math.abs(dif) >= 0.01) ? ' style="color:var(--red)"' : '';
-      return '<tr><td style="white-space:nowrap">' + _cEsc(_fechaCorta(x.fecha)) + '</td><td class="num">' + _cEur(x.efectivo_contado) + '</td><td class="num">' + (x.efectivo_sistema != null ? _cEur(x.efectivo_sistema) : '—') + '</td><td class="num"' + cls + '>' + (dif != null ? _cEur(dif) : '—') + '</td><td class="g-small">' + _cEsc(x.nota || '') + '</td><td class="g-small">' + _cEsc(x.usuario || '') + '</td>' +
+      return '<tr><td style="white-space:nowrap">' + _cEsc(_fechaCorta(x.fecha)) + '</td><td class="num">' + _cEur(x.efectivo_contado) + '</td><td class="num">' + (x.efectivo_sistema != null ? _cEur(x.efectivo_sistema) : '—') + '</td><td class="num"' + cls + '>' + (dif != null ? _cEur(dif) : '—') + '</td><td class="g-small" style="white-space:nowrap">' + (x.asiento ? _cEsc(_cajaAsientoTxt(x.asiento)) : '—') + '</td><td class="g-small">' + _cEsc(x.nota || '') + '</td><td class="g-small">' + _cEsc(x.usuario || '') + '</td>' +
         '<td style="white-space:nowrap"><button class="g-btn g-ghost g-sm" title="' + t('caja.corregir', 'Corregir') + '" onclick=\'_cajaNuevo(' + JSON.stringify(x).replace(/'/g, '&#39;') + ')\'>✎</button> <button class="g-btn g-ghost g-sm" title="' + t('caja.borrar', 'Borrar') + '" onclick="borrarArqueo(\'' + _cEsc(x.fecha) + '\')">🗑</button></td></tr>'; }).join('') +
     '</tbody></table></div>' : _vacio(t('caja.vacio', 'Ningún arqueo este mes. Apunta cada día lo que se cuenta en caja: Yve lo cuadra con los ingresos del extracto y lo lleva al cierre.'), {cta: false});
   var ing = document.getElementById('caja-ingresos'); if (!ing) return;
@@ -14835,7 +14841,8 @@ function _pintarAsientosCierre(d, rb, mb, db, av) {
     var f = d.fuentes || {};
     var fuentes = t('cierre.fuentes','{ap} facturas AP · {ota} comisiones OTA · {fb} días de TPV · {ar} facturas AR · {cob} cobros · {bk} mov. banco · {pv} provisiones')
       .replace('{ap}', f.ap||0).replace('{ota}', f.ar_ota||0).replace('{fb}', f.ventas_fb||0).replace('{ar}', f.ar_facturas||0).replace('{cob}', f.ar_cobros||0).replace('{bk}', f.banco||0).replace('{pv}', f.provisiones||0)
-      + (f.compensaciones ? ' · ' + t('cierre.fuentesCmp', '{n} compensaciones (410/430)').replace('{n}', f.compensaciones) : '');
+      + (f.compensaciones ? ' · ' + t('cierre.fuentesCmp', '{n} compensaciones (410/430)').replace('{n}', f.compensaciones) : '')
+      + (f.caja_descuadres ? ' · ' + t('cierre.fuentesDescCaja', '{n} descuadres de caja').replace('{n}', f.caja_descuadres) : '');
     av.innerHTML = '<div class="g-note" style="margin:0">' + _cEsc(fuentes) + '</div>' + (d.avisos||[]).map(function(a){ return '<div class="g-alert warn">⚠ <span>' + _cEsc(a) + '</span></div>'; }).join('');
     // reconciliacion
     var rec = d.reconciliacion || {}; var chk = rec.checks || [];

@@ -15,16 +15,24 @@ efectivo sigue en la caja fuerte: lo contado acumulado - lo ingresado acumulado.
 Datos: datos-referencia/caja.xlsx, una fila por (fecha, hotel). Puro: las funciones
 reciben DataFrames y devuelven dicts; el disco solo lo tocan leer()/guardar().
 
-Contabilidad (decision explicita, apuntada para finanzas):
+Contabilidad:
   - el ingreso de efectivo en el banco es 572 (banco) contra 570 (caja): entra en
     los asientos del cierre por cada movimiento CAJA del extracto (cierre_mes);
-  - el descuadre de caja NO se asienta solo: se enseña y se apunta; si finanzas
-    quiere 659/759 automatico se pone en config_cierre.json → cuenta_descuadre_caja.
+  - b108 (FINANZAS, 26 sep 2026): el descuadre (sobra/falta) SI se contabiliza, en una
+    cuenta propia de "overs & shorts" (config_cierre.json -> cuenta_descuadre_caja; 6591
+    por defecto, en el plan de cuentas). Al guardar un arqueo con efectivo segun sistema,
+    su asiento sale de `asiento_descuadre` (la pestaña Caja lo enseña y el cierre lo
+    asienta, origen CAJA_DESCUADRE):
+        falta (contado < sistema):  overs&shorts (D)  /  570 Caja (H)
+        sobra (contado > sistema):  570 Caja (D)      /  overs&shorts (H)
+    Sin efectivo segun sistema no hay descuadre que asentar.
 """
 import os
 from datetime import date, datetime
 
 import pandas as pd
+
+import candados as _cand
 
 FICHERO = "caja.xlsx"
 COLS = ["fecha", "hotel_id", "efectivo_sistema", "efectivo_contado", "diferencia", "nota", "usuario", "actualizado"]
@@ -82,6 +90,47 @@ def guardar(df, datos_dir=None):
     os.replace(tmp, ruta)
 
 
+def _dd_candado(dd):
+    if dd:
+        return str(dd)
+    from tenant_dirs import datos_dir as _d
+    return str(_d())
+
+
+def _eur(v):
+    return f"{v:,.2f}".replace(",", "X").replace(".", ",").replace("X", ".")
+
+
+def asiento_descuadre(fila, cuenta):
+    """El asiento del descuadre de un arqueo (b108), o None si no hay descuadre (o no hay
+    efectivo segun sistema). {fecha, concepto, documento, tipo 'sobra'|'falta', importe,
+    lineas: [(cuenta, debe, haber), ...]}. `cuenta` = la de overs & shorts."""
+    dif = _num((fila or {}).get("diferencia"))
+    if dif is None:
+        c = _num((fila or {}).get("efectivo_contado")); s = _num((fila or {}).get("efectivo_sistema"))
+        dif = round(c - s, 2) if (c is not None and s is not None) else None
+    f = _iso((fila or {}).get("fecha"))
+    if dif is None or abs(dif) < 0.01 or not f or not _txt(cuenta):
+        return None
+    imp = round(abs(dif), 2)
+    dd = f[8:10] + "/" + f[5:7]
+    if dif < 0:
+        tipo, lineas = "falta", [(_txt(cuenta), imp, 0.0), ("570", 0.0, imp)]
+    else:
+        tipo, lineas = "sobra", [("570", imp, 0.0), (_txt(cuenta), 0.0, imp)]
+    return {"fecha": f, "tipo": tipo, "importe": imp, "lineas": lineas,
+            "concepto": f"Descuadre de caja {dd}: {'faltan' if tipo == 'falta' else 'sobran'} {_eur(imp)} EUR (overs & shorts)",
+            "documento": f"ARQUEO-{f}"}
+
+
+def asiento_texto(a):
+    """'6591 D 15,25 / 570 H 15,25' para tablas y Excel."""
+    if not a:
+        return ""
+    return " / ".join(f"{c} {'D' if d else 'H'} {_eur(d or h)}" for c, d, h in a["lineas"])
+
+
+@_cand.protegido(_dd_candado)      # b108: con 8 hilos dos arqueos a la vez no se pisan
 def apuntar_arqueo(fecha, contado, sistema=None, nota="", usuario="", hotel_id="", datos_dir=None):
     """Guarda (o corrige) el arqueo de un dia. Devuelve la fila guardada."""
     f = _iso(fecha)
@@ -106,6 +155,7 @@ def apuntar_arqueo(fecha, contado, sistema=None, nota="", usuario="", hotel_id="
     return fila
 
 
+@_cand.protegido(_dd_candado)
 def borrar_arqueo(fecha, hotel_id="", datos_dir=None):
     df = leer(datos_dir)
     f = _iso(fecha); hid = _txt(hotel_id)
@@ -208,8 +258,10 @@ def resumen_mes(mes, df_caja, df_banco=None, hotel_id=None, palabras=None, manua
 def exportar_excel(res):
     from io import BytesIO
     buf = BytesIO()
+    dias = [{**{k: v for k, v in d.items() if k != "asiento"}, **({"asiento": asiento_texto(d.get("asiento"))} if "asiento" in d else {})}
+            for d in (res["dias"] or [])]
     with pd.ExcelWriter(buf, engine="openpyxl") as w:
-        pd.DataFrame(res["dias"] or [{"fecha": "sin arqueos"}]).to_excel(w, index=False, sheet_name="Arqueos")
+        pd.DataFrame(dias or [{"fecha": "sin arqueos"}]).to_excel(w, index=False, sheet_name="Arqueos")
         pd.DataFrame(res["ingresos"] or [{"fecha": "sin ingresos en banco"}]).to_excel(w, index=False, sheet_name="Ingresos banco")
         pd.DataFrame([{**res["totales"], "en_caja": res["en_caja"]}]).to_excel(w, index=False, sheet_name="Resumen")
     buf.seek(0)

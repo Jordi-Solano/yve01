@@ -52,6 +52,7 @@ CUENTAS_BASE = {
     "600":  "Compras de mercaderias F&B",
     "628":  "Comisiones de agencias y OTAs",
     "629":  "Otros servicios",
+    "6591": "Diferencias de caja (overs & shorts)",
     "700":  "Ventas F&B",
     "705":  "Prestaciones de servicios — Alojamiento",
     "7052": "Prestaciones de servicios — Alquiler de salas",
@@ -60,6 +61,11 @@ CUENTAS_BASE = {
 # alojamiento y de F&B, con IVA al 21 %. VALIDADO POR FINANZAS el 26 sep 2026 (b107).
 # Configurable en config_cierre.json -> "cuenta_salas".
 CUENTA_SALAS = "7052"
+# b108 (FINANZAS, 26 sep 2026): el descuadre de caja (sobra/falta) se contabiliza en una
+# cuenta propia de "overs & shorts". El numero es configurable en config_cierre.json ->
+# "cuenta_descuadre_caja"; 6591 por defecto (subcuenta de 659). Ver caja.asiento_descuadre.
+CUENTA_DESCUADRE_CAJA = "6591"
+DESC_DESCUADRE_CAJA = "Diferencias de caja (overs & shorts)"
 CONFIG_FILE = "config_cierre.json"
 REGIMEN_OTA_DEFECTO = {"booking": "ue", "expedia": "no_ue", "hotels.com": "no_ue", "agoda": "no_ue",
                        "airbnb": "ue", "trivago": "ue", "hotelbeds": "es", "hotusa": "es", "despegar": "no_ue"}
@@ -137,7 +143,7 @@ def fecha_ap(r, criterio=None):
 
 def config_cierre(datos_dir=None):
     cfg = {"ota_iva": "", "iva_fb": IVA_REDUCIDO, "iva_alojamiento": IVA_REDUCIDO, "otas": {},
-           "cuenta_salas": CUENTA_SALAS}
+           "cuenta_salas": CUENTA_SALAS, "cuenta_descuadre_caja": CUENTA_DESCUADRE_CAJA}
     ruta = os.path.join(datos_dir or os.path.join(BASE_DIR, "datos-referencia"), CONFIG_FILE)
     try:
         with open(ruta, encoding="utf-8") as fh:
@@ -159,6 +165,10 @@ def plan_cuentas(datos_dir=None):
                 plan[c] = _txt(r.get("descripcion")) or plan.get(c, "")
     except Exception:
         pass
+    # b108: la cuenta de overs & shorts que se configure esta SIEMPRE en el plan
+    cta_od = _cuenta_str(config_cierre(datos_dir).get("cuenta_descuadre_caja")) or CUENTA_DESCUADRE_CAJA
+    if not plan.get(cta_od):
+        plan[cta_od] = DESC_DESCUADRE_CAJA
     return plan
 
 
@@ -299,7 +309,7 @@ def generar_asientos(mes, fuentes, plan=None, cfg=None):
     crit_ap = criterio_fecha_ap(cfg)
     D = _Diario(plan)
     cont = {"ap": 0, "ar_ota": 0, "ventas_fb": 0, "ar_facturas": 0, "ar_cobros": 0,
-            "banco": 0, "caja": 0, "provisiones": 0, "compensaciones": 0}
+            "banco": 0, "caja": 0, "caja_descuadres": 0, "provisiones": 0, "compensaciones": 0}
     saltados = {"ap_sin_total": 0, "ap_sin_cuadrar": 0, "ar_ota_sin_importe": 0}
     avisos = []
 
@@ -459,7 +469,6 @@ def generar_asientos(mes, fuentes, plan=None, cfg=None):
     # Son los movimientos del extracto que el cuadre pone en la pestaña CAJA
     # (fuentes["caja_ingresos"], los saca caja.ingresos_banco). No tienen factura,
     # asi que nunca estan CONCILIADO; si alguno lo estuviera ya lo asento el banco.
-    # El descuadre del arqueo NO se asienta solo (decision apuntada en caja.py).
     for m in fuentes.get("caja_ingresos") or []:
         if m.get("estado") == "CONCILIADO" or not _en_mes(m.get("fecha"), ini, fin):
             continue
@@ -469,6 +478,24 @@ def generar_asientos(mes, fuentes, plan=None, cfg=None):
         if D.nuevo(_fecha(m.get("fecha")), f"Ingreso efectivo {_txt(m.get('concepto'))[:60]}", m.get("clave", ""), "CAJA",
                    [("572", imp, 0), ("570", 0, imp)], m.get("hotel_id")):
             cont["caja"] += 1
+
+    # ── caja (b108): el descuadre de cada arqueo, a la cuenta de overs & shorts ──
+    # Finanzas (26 sep 2026): la sobra y la falta SI se contabilizan, en una cuenta propia
+    # (config "cuenta_descuadre_caja", 6591 por defecto). Mismo asiento que enseña la
+    # pestaña Caja al guardar el arqueo (caja.asiento_descuadre).
+    dfc = fuentes.get("caja")
+    if dfc is not None and not dfc.empty:
+        import caja as CJ
+        cta_od = _cuenta_str(cfg.get("cuenta_descuadre_caja")) or CUENTA_DESCUADRE_CAJA
+        hid = _txt(fuentes.get("hotel"))
+        for _, r in dfc.iterrows():
+            if hid and _txt(r.get("hotel_id")) != hid:
+                continue
+            if not _en_mes(r.get("fecha"), ini, fin):
+                continue
+            a = CJ.asiento_descuadre(r.to_dict(), cta_od)
+            if a and D.nuevo(_fecha(a["fecha"]), a["concepto"], a["documento"], "CAJA_DESCUADRE", a["lineas"], r.get("hotel_id")):
+                cont["caja_descuadres"] += 1
 
     # ── provisiones (ya vienen como asientos de provisiones.py) ──────────
     for bloque in fuentes.get("provisiones") or []:
@@ -562,7 +589,10 @@ def reconciliar(mes, res, fuentes, drr=None, cfg=None):
     checks.append(_check("572", "Banco: pagos y cobros conciliados + ingresos de efectivo (movimiento neto)", s("572"),
                          _r(_saldo_banco_conciliado(fuentes.get("banco"), ini, fin) + ing_caja),
                          "Movimientos CONCILIADO del extracto y los ingresos de efectivo (pestaña CAJA del cuadre) entran en el Diario."))
-    # b86 · 570 Caja: lo ingresado en el banco (haber) contra el efectivo contado en los arqueos
+    # b86 · 570 Caja: lo ingresado en el banco (haber) contra el efectivo contado en los arqueos.
+    # b108: solo el haber de los ingresos (origen CAJA); la falta de un arqueo tambien va al
+    # haber de la 570, pero eso es el descuadre y tiene su propio check (overs & shorts).
+    ing_570 = _r(sum(a["haber"] for a in res["asientos"] if a["cuenta"] == "570" and a["origen"] == "CAJA"))
     try:
         import caja as CJ
         contado, n_arq = CJ.contado_mes(fuentes.get("caja"), ini.isoformat(), fin.isoformat(), fuentes.get("hotel"))
@@ -571,16 +601,36 @@ def reconciliar(mes, res, fuentes, drr=None, cfg=None):
     if caja_ing or contado is not None:     # sin efectivo por ningun lado no hay nada que cuadrar
         if contado is None:
             checks.append({"cuenta": "570", "concepto": "Caja: ingresos de efectivo en banco sin arqueo que los justifique",
-                           "libro": s("570", "H"), "justificado": None, "diferencia": None,
+                           "libro": ing_570, "justificado": None, "diferencia": None,
                            "estado": "SIN_DATO" if caja_ing else "CUADRA",
                            "nota": f"{len(caja_ing)} ingreso(s) de efectivo por {ing_caja:,.2f} EUR; apunta los arqueos en la pestaña Caja."})
         else:
             dif = _r(ing_caja - contado)
             checks.append({"cuenta": "570", "concepto": "Caja: efectivo ingresado en banco contra lo contado en los arqueos",
-                           "libro": s("570", "H"), "justificado": contado, "diferencia": dif,
+                           "libro": ing_570, "justificado": contado, "diferencia": dif,
                            "estado": "CUADRA" if dif <= 0.01 else "DIFERENCIA",
                            "nota": (f"{n_arq} arqueo(s) del mes en la pestaña Caja. " +
                                     ("Se ingreso mas efectivo del contado: revisar." if dif > 0.01 else f"{-dif:,.2f} EUR contados siguen en caja o se ingresan despues."))})
+    # b108 · overs & shorts: lo asentado (haber - debe: + sobra neta) contra la suma de los
+    # descuadres de los arqueos del mes (contado - sistema)
+    cta_od = _cuenta_str((cfg or {}).get("cuenta_descuadre_caja")) or CUENTA_DESCUADRE_CAJA
+    dfc = fuentes.get("caja"); hid = _txt(fuentes.get("hotel"))
+    difs = []
+    if dfc is not None and not dfc.empty:
+        for _, r in dfc.iterrows():
+            if (hid and _txt(r.get("hotel_id")) != hid) or not _en_mes(r.get("fecha"), ini, fin):
+                continue
+            c_, s_ = _num(r.get("efectivo_contado")), r.get("efectivo_sistema")
+            if s_ is None or _txt(s_) == "" or (isinstance(s_, float) and s_ != s_):
+                continue
+            d_ = _r(c_ - _num(s_))
+            if abs(d_) >= 0.01:
+                difs.append(d_)
+    lib_od = _r(sum(a["haber"] - a["debe"] for a in res["asientos"] if a["cuenta"] == cta_od and a["origen"] == "CAJA_DESCUADRE"))
+    if difs or lib_od:
+        c = _check(cta_od, "Caja: descuadres de los arqueos (overs & shorts, + sobra / − falta)", lib_od, _r(sum(difs)),
+                   f"{len(difs)} arqueo(s) con descuadre en el mes; cada uno se asienta al guardarlo (pestaña Caja).")
+        checks.append(c)
     # movimientos del extracto SIN conciliar en el mes: dinero que se movio y no tiene asiento
     n_pend, imp_pend = _banco_pendiente(fuentes.get("banco"), ini, fin, {m.get("clave") for m in caja_ing})
     checks.append({"cuenta": "572", "concepto": "Movimientos del extracto sin conciliar (sin asiento)",
