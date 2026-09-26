@@ -441,7 +441,7 @@ def _consolidar(df, campos_id, resueltos=None):
 # el Excel del clasificador: se aplica por encima al leer (facturas_ap).
 AJUSTES_AP_FILE = "ajustes_ap.json"
 CAMPOS_AJUSTE_AP = ("cuenta_contable", "vencimiento", "fecha_contable", "dias_pago")
-DIAS_PAGO_DEFECTO = 30
+DIAS_PAGO_DEFECTO = 30          # validado por finanzas el 26 sep 2026 (b107)
 
 
 def _ruta_ajustes(datos_dir=None):

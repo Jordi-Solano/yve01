@@ -57,7 +57,7 @@ CUENTAS_BASE = {
     "7052": "Prestaciones de servicios — Alquiler de salas",
 }
 # b101: las SALAS de un contrato de grupo van a su propia cuenta, separada del
-# alojamiento (decision de Jordi del 25 sep, PENDIENTE DE CONFIRMAR CON FINANZAS).
+# alojamiento y de F&B, con IVA al 21 %. VALIDADO POR FINANZAS el 26 sep 2026 (b107).
 # Configurable en config_cierre.json -> "cuenta_salas".
 CUENTA_SALAS = "7052"
 CONFIG_FILE = "config_cierre.json"
@@ -86,7 +86,8 @@ def regimen_ota(nombre, cfg=None):
 # ficha): lo que se hace en un hotel (la factura de julio que llega en septiembre se
 # contabiliza en septiembre). "factura": la fecha impresa, como hasta b83. Se elige
 # en config_cierre.json → ap_fecha. Aplica a asientos, reconciliacion, 303/SII e
-# inmovilizado; el aging y el 349 no dependen de ella.
+# inmovilizado; el aging y el 349 no dependen de ella. VALIDADO POR FINANZAS el 26 sep
+# 2026 (b107): fecha contable = fecha de registro, y el IVA tambien por esa fecha.
 AP_FECHA_DEFECTO = "contable"
 
 
@@ -183,6 +184,7 @@ def _r(x):
 # lo usaba en contratos_grupo.bases_contrato): la factura, el asiento, el 303 y
 # el SII salian con 100 EUR de IVA de menos por cada 1.210 de salas (visto en
 # produccion el 25 sep con el contrato CG-2026-0917: 477 de 1.310 en vez de 1.410).
+# VALIDADO POR FINANZAS el 26 sep 2026 (b107): salas al 21 %, en su cuenta (7052).
 IVA_SALAS = IVA_GENERAL
 
 

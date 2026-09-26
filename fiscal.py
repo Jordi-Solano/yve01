@@ -175,7 +175,7 @@ def calcular(mes, fuentes, cfg=None, cfg_fiscal=None):
     cfg = cfg or config_cierre()
     cf = cfg_fiscal or {"nif": {}, "nif_propio": "", "razon_social": "", "periodicidad": "mensual"}
     from cierre_mes import criterio_fecha_ap, fecha_ap
-    crit_ap = criterio_fecha_ap(cfg)        # b84: el IVA se deduce en el mes en que se registra
+    crit_ap = criterio_fecha_ap(cfg)        # b84: el IVA se deduce en el mes en que se registra (validado por finanzas, 26 sep)
     acc = {k: [0.0, 0.0] for k in CASILLAS}   # base, cuota
     avisos = []
     exp, rec = [], []          # libros SII
