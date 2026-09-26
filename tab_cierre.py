@@ -73,7 +73,14 @@ def _cuadre(mes, hotel):
         cj = CJ.contado_mes(CJ.leer(dd), ini.isoformat(), fin.isoformat(), hotel)
     except Exception:
         cj = None
-    return CB.cuadrar(mes, bk, vf, CB.palabras(dd), CB.manuales(dd), CB.proveedores_conocidos(dd), caja=cj)
+    pal, man, prov = CB.palabras(dd), CB.manuales(dd), CB.proveedores_conocidos(dd)
+    # b109: las liquidaciones de tarjetas justifican los abonos de la pestaña TARJETAS
+    try:
+        import tarjetas as TJ
+        tj = TJ.para_cuadre(TJ.leer_store(dd), bk, mes, hotel, pal, man, prov)
+    except Exception:
+        tj = None
+    return CB.cuadrar(mes, bk, vf, pal, man, prov, caja=cj, tarjetas=tj)
 
 
 @cierre_bp.route('/api/cuadre_banco')

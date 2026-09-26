@@ -33,6 +33,8 @@ PANELES = {
                     ['runConciliacion()', 'abrirModoBanco()', "elegirModoBanco('grupo')", "elegirModoBanco('por_hotel')", 'cerrarModoBanco()', 'href="/conciliacion/"'], 1),
     'panel-caja': (['caja-mes', 'caja-tiles', 'caja-k-contado', 'caja-k-sistema', 'caja-k-dif', 'caja-k-ing', 'caja-k-encaja', 'caja-form', 'caja-f-fecha', 'caja-f-contado', 'caja-f-sistema', 'caja-f-nota', 'caja-form-msg', 'caja-body', 'caja-ingresos'],
                    ['loadCaja()', '_cajaNuevo()', 'guardarArqueo()', '_cajaCerrar()'], 1),   # b86
+    'panel-tarjetas': (['tarj-mes', 'tarj-tiles', 'tarj-k-bruto', 'tarj-k-com', 'tarj-k-neto', 'tarj-k-abonado', 'tarj-k-ventas', 'tarj-banco-body', 'tarj-ventas-body', 'tarj-ops-body', 'tarj-ficheros'],
+                       ['loadTarjetas()', 'href="/api/tarjetas/plantilla"'], 0),   # b109: sin primario (la plantilla es secundaria)
     'panel-drr': (['drr-status', 'drr-oob-badge', 'drr-body', 'drr-metrics'], [], 0),   # b103: sin boton ni zona de subir (todo por ⚡ Procesar archivos)
     'panel-notif': (['notif-smtp-banner', 'btn-save-notif', 'notif-canales', 'notif-channel-fields', 'notif-alertas', 'notif-count', 'btn-send-notif', 'notif-tbody'], ['guardarNotifConfig()', 'probarNotif()', 'enviarNotificaciones()'], 1),
     'panel-fb': (['fb-mes', 'fb-subtabs', 'fb-resumen', 'fb-inventario', 'fb-mermas-panel', 'fb-recetas'], ['fbCambiarMes()', "fbSub('resumen',this)", "fbSub('recetas',this)"], 0),   # b103: fuera "Subir ventas, inventario, mermas o recetas"
@@ -44,7 +46,7 @@ PANELES = {
     'panel-multi_hotel': (['mh-mes-select', 'mh-view-cards', 'mh-view-ranking', 'mh-view-resumen', 'mh-kpis', 'mh-insights', 'mh-trend-row', 'mh-gop-chart', 'mh-rev-chart', 'mh-hotel-cards', 'mh-view-clasica', 'mh-status', 'mh-rankings', 'mh-alertas', 'mh-tbody-full'],
                           ['_mh_loaded=false;loadMultiHotel()', "setMHView('cards')", "setMHView('ranking')"], 0),
 }
-FIN = {'panel-ap': '<!-- /panel-ap -->', 'panel-ar': '<!-- /panel-ar -->', 'panel-banco': '<!-- /panel-banco -->', 'panel-caja': '<!-- /panel-caja -->', 'panel-drr': '<!-- /panel-drr -->', 'panel-notif': '<!-- /panel-notif -->', 'panel-fb': '<!-- /panel-fb -->', 'panel-ar_real': '<!-- /panel-ar_real -->', 'panel-cierre': '<!-- /panel-cierre -->', 'panel-multi_hotel': '<!-- /panel-multi_hotel -->'}
+FIN = {'panel-ap': '<!-- /panel-ap -->', 'panel-ar': '<!-- /panel-ar -->', 'panel-banco': '<!-- /panel-banco -->', 'panel-caja': '<!-- /panel-caja -->', 'panel-tarjetas': '<!-- /panel-tarjetas -->', 'panel-drr': '<!-- /panel-drr -->', 'panel-notif': '<!-- /panel-notif -->', 'panel-fb': '<!-- /panel-fb -->', 'panel-ar_real': '<!-- /panel-ar_real -->', 'panel-cierre': '<!-- /panel-cierre -->', 'panel-multi_hotel': '<!-- /panel-multi_hotel -->'}
 
 # funciones de badges que se ejecutan con node: (nombre, [(argumento, texto esperado, clase esperada)])
 BADGES = [

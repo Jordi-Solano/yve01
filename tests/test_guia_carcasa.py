@@ -19,7 +19,7 @@ sys.path.insert(0, BASE)
 os.chdir(BASE)
 
 SABOTAJE = '--sabotaje' in sys.argv
-TABS = ['ar', 'ap', 'drr', 'banco', 'notif', 'fb', 'ar_real', 'multi_hotel', 'cierre']
+TABS = ['ar', 'ap', 'drr', 'banco', 'notif', 'fb', 'ar_real', 'multi_hotel', 'cierre', 'tarjetas']
 
 
 def main():

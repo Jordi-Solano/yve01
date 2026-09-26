@@ -27,7 +27,7 @@ logging.getLogger('werkzeug').setLevel(logging.ERROR)
 SABOTAJE = '--sabotaje' in sys.argv
 PORT = 5099
 DIRS_DATOS = ['datos-referencia', 'facturas-procesadas', 'reportes', 'aprobaciones']
-TABS = ['multi_hotel', 'ar', 'ap', 'drr', 'banco', 'notif', 'fb', 'ar_real', 'cierre']
+TABS = ['multi_hotel', 'ar', 'ap', 'drr', 'banco', 'notif', 'fb', 'ar_real', 'cierre', 'tarjetas']
 TITULO = 'Sin datos todavía'
 
 JS_MEDIR = r"""

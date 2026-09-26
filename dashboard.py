@@ -225,6 +225,7 @@ from tab_cierre import cierre_bp
 from tab_albaranes import albaranes_bp
 from tab_ficha_ap import ficha_ap_bp          # b84: ficha de la factura, ajustes, pagada, descargas
 from tab_caja import caja_bp                  # b86: arqueo de caja y cuadre con los ingresos del banco
+from tab_tarjetas import tarjetas_bp          # b109: liquidacion de tarjetas y su cruce (banco, DRR/TPV)
 from tab_contratos import contratos_bp        # b87: AR > Contratos (comision segun contrato, quien paga)
 from tab_credito import credito_bp            # b90: AR > Peticion de credito (dos firmas: quien pide y Direccion)
 from oracle_export_dryrun import oracle_export_bp
@@ -248,7 +249,7 @@ from about import about_bp
 from exportador_pdf import pdf_bp
 # pricing_bp estaba importado pero NO registrado: /precios daba 404 mientras la
 # landing, el blog y "Quienes somos" enlazaban a el (Ola A).
-for _bp in (auth_bp, config_bp, admin_bp, aprob_ar_bp, aprob_ap_bp, concil_bp, fb_bp, ar_real_bp, recl_ota_bp, recl_ap_bp, oracle_export_bp, cierre_bp, albaranes_bp, ficha_ap_bp, caja_bp, contratos_bp, credito_bp, multi_hotel_bp, self_service_bp, exportador_bp, demo_bp, demo_sim_bp, reportes_pdf_bp, blog_bp, billing_bp, asientos_bp, signup_bp, about_bp, pdf_bp, legal_bp, pricing_bp):
+for _bp in (auth_bp, config_bp, admin_bp, aprob_ar_bp, aprob_ap_bp, concil_bp, fb_bp, ar_real_bp, recl_ota_bp, recl_ap_bp, oracle_export_bp, cierre_bp, albaranes_bp, ficha_ap_bp, caja_bp, tarjetas_bp, contratos_bp, credito_bp, multi_hotel_bp, self_service_bp, exportador_bp, demo_bp, demo_sim_bp, reportes_pdf_bp, blog_bp, billing_bp, asientos_bp, signup_bp, about_bp, pdf_bp, legal_bp, pricing_bp):
     app.register_blueprint(_bp)
 
 
@@ -1327,11 +1328,19 @@ def _destino_capa1(fname, fpath):
         # fotos y PDFs no pasan por aqui: van al lector universal / Vision.
         return 'IA'
 
+    cabeceras = _leer_cabeceras(fpath)
+    # b109: la liquidacion de tarjetas (formato generico: fecha, bruto, comision, neto,
+    # referencia) se reconoce por sus cabeceras, se llame como se llame el fichero.
+    try:
+        import tarjetas as _tj
+        if _tj.es_liquidacion(cabeceras):
+            return 'TARJETAS'
+    except Exception:
+        pass
+
     candidatos = [t for t, kws in _CAB_KEYWORDS if any(k in fl for k in kws)]
     if not candidatos:
         return 'IA'
-
-    cabeceras = _leer_cabeceras(fpath)
     for tipo in candidatos:                 # el orden solo desempata entre iguales
         if _cabeceras_encajan(tipo, cabeceras):
             return tipo
@@ -2532,6 +2541,7 @@ def api_procesar_batch_stream():
                     is_rooming  = _destino == 'ROOMING'
                     is_recuento = _destino == 'RECUENTO'
                     is_recetas  = _destino == 'RECETAS'
+                    is_tarjetas = _destino == 'TARJETAS'
                     _mes_pedido = str(meses_subida.get(fname) or '').strip()[:7]
 
                     if is_drr_file:
@@ -2670,6 +2680,27 @@ def api_procesar_batch_stream():
                             _mark(fname, 'FB_OK')
                         except Exception as _er:
                             yield f'data: ✗ Recetas {fname}: {str(_er)[:120]}\n\n'
+                            _mark(fname, f'ERR:{str(_er)[:30]}')
+                        continue
+                    if is_tarjetas:
+                        # b109: liquidacion de tarjetas (formato generico). Se reconoce por
+                        # las cabeceras; lo ya cargado no se duplica.
+                        try:
+                            import tarjetas as _tj
+                            _r = _tj.importar(fpath, censo_hoteles.activo() or '', _ddir(), fname)
+                            if not _r.get('ok'):
+                                yield (f'data: ✗ Tarjetas {fname}: {_r.get("error", "")[:140]} — '
+                                       f'descarga la plantilla en la pestaña Tarjetas\n\n')
+                                _mark(fname, 'ERR:TARJETAS')
+                                continue
+                            _av = ' · '.join(_r.get('avisos') or [])
+                            yield (f'data: {"⚠" if _av else "✓"} Tarjetas {fname}: {_r["nuevas"]} operación(es) nuevas'
+                                   + (f' ({_r["repetidas"]} ya estaban)' if _r["repetidas"] else '')
+                                   + (f' · bruto {_tj._eur(_r["bruto"])} · comisión {_tj._eur(_r["comision"])} · neto {_tj._eur(_r["neto"])}' if _r["nuevas"] else '')
+                                   + (f' · {_av}' if _av else '') + '\n\n')
+                            _mark(fname, 'TARJETAS_OK')
+                        except Exception as _er:
+                            yield f'data: ✗ Tarjetas {fname}: {str(_er)[:120]}\n\n'
                             _mark(fname, f'ERR:{str(_er)[:30]}')
                         continue
                     if is_rooming:
@@ -2960,6 +2991,7 @@ def api_procesar_batch_stream():
             rooming_n = sum(1 for v in lote.values() if v.get('resultado') == 'ROOMING')
             alb_n = sum(1 for v in lote.values() if v.get('resultado') == 'ALBARAN_OK')
             po_n = sum(1 for v in lote.values() if v.get('resultado') == 'PO_OK')
+            tj_n = sum(1 for v in lote.values() if v.get('resultado') == 'TARJETAS_OK')      # b109
             skip_n = sum(1 for v in lote.values() if 'SKIP' in str(v.get('resultado','')))
             err_n = sum(1 for v in lote.values() if 'ERR' in str(v.get('resultado','')) or 'CRASH' in str(v.get('resultado','')))
             parts = []
@@ -2975,6 +3007,7 @@ def api_procesar_batch_stream():
             if inv_n: parts.append(f'{inv_n} inventario/mermas')
             if alb_n: parts.append(f'{alb_n} albaranes')
             if po_n: parts.append(f'{po_n} órdenes de compra')
+            if tj_n: parts.append(f'{tj_n} liquidación(es) de tarjetas')
             rooming_nl_n = sum(1 for v in lote.values() if v.get('resultado') == 'ROOMING_NO_LEIDO')
             if rooming_n: parts.append(f'{rooming_n} rooming')
             if rooming_nl_n: parts.append(f'{rooming_nl_n} rooming sin leer')
@@ -3921,6 +3954,7 @@ def api_historial_procesado():
         elif resultado in ('FB_OK',): tab = 'F&B Cost'
         elif resultado in ('INV_OK',): tab = 'F&B Cost (Inventario/Mermas)'
         elif resultado in ('AR_REAL_OK',): tab = 'AR Real'
+        elif resultado in ('TARJETAS_OK',): tab = 'Tarjetas'
         # Estos se GUARDAN pero no hay pantalla donde verlos. Decir el nombre de
         # una pestaña que no existe es mandar al usuario a buscar algo que no
         # esta: se dice lo que hay.
@@ -6851,6 +6885,7 @@ svg.yvi{width:1em;height:1em;vertical-align:-0.125em;flex-shrink:0;display:inlin
     <button class="tab" id="tab-drr" onclick="switchTab('drr',this)" data-i18n="tab.drr">📊 DRR</button>
     <button class="tab" id="tab-banco" onclick="switchTab('banco',this)" data-i18n="tab.banco">🏦 Banco</button>
     <button class="tab" id="tab-caja" onclick="switchTab('caja',this)" data-i18n="tab.caja">💵 Caja</button>
+    <button class="tab" id="tab-tarjetas" onclick="switchTab('tarjetas',this)" data-i18n="tab.tarjetas">💳 Tarjetas</button>
     <button class="tab" id="tab-notif" onclick="switchTab('notif',this)" data-i18n="tab.notif">🔔 Notificaciones</button>
     <button class="tab" onclick="switchTab('fb',this)" id="tab-fb" data-i18n="tab.fb">🍽️ F&amp;B Cost</button>
     <button class="tab" onclick="switchTab('ar_real',this)" id="tab-ar-real" data-i18n="tab.arreal">🏢 AR Real</button>
@@ -7104,6 +7139,37 @@ svg.yvi{width:1em;height:1em;vertical-align:-0.125em;flex-shrink:0;display:inlin
       <div id="caja-ingresos"><div class="g-empty g-cargando" data-i18n="lbl.cargando">Cargando…</div></div>
     </div>
   </div><!-- /panel-caja -->
+
+  <!-- PANEL TARJETAS (b109): la liquidacion de tarjetas entra por ⚡ Procesar archivos -->
+  <div id="panel-tarjetas" class="panel g-panel">
+    <div class="g-head">
+      <div><div class="g-h1" data-i18n="tab.tarjetas" title="La liquidación de tarjetas (bruto, comisión, neto) contra los abonos del extracto y contra lo cobrado con tarjeta según el DRR y el TPV." data-i18n-title="tarj.subtitulo">💳 Tarjetas</div></div>
+      <div class="g-actions">
+        <label class="g-field g-inline"><span data-i18n="tarj.mes">Mes</span><input type="month" id="tarj-mes" class="g-input" onchange="loadTarjetas()"></label>
+        <a class="g-btn g-secondary g-sm" href="/api/tarjetas/plantilla" data-i18n="tarj.plantilla" title="Excel con las columnas del formato genérico (fecha, bruto, comisión, neto, referencia) e instrucciones." data-i18n-title="tarj.plantillaTit">⬇ Plantilla de liquidación</a>
+      </div>
+    </div>
+    <div class="g-tiles" id="tarj-tiles">
+      <div class="g-kpi k-acc"><div class="g-kpi-lbl" data-i18n="tarj.kBruto">Liquidado (bruto)</div><div class="g-kpi-val g-num" id="tarj-k-bruto">—</div><div class="g-kpi-sub" id="tarj-k-bruto-sub">—</div></div>
+      <div class="g-kpi k-ora"><div class="g-kpi-lbl" data-i18n="tarj.kCom">Comisiones</div><div class="g-kpi-val g-num" id="tarj-k-com">—</div><div class="g-kpi-sub" id="tarj-k-com-sub">—</div></div>
+      <div class="g-kpi"><div class="g-kpi-lbl" data-i18n="tarj.kNeto">Neto</div><div class="g-kpi-val g-num" id="tarj-k-neto">—</div><div class="g-kpi-sub" data-i18n="tarj.aCobrar">lo que debe llegar al banco</div></div>
+      <div class="g-kpi k-grn"><div class="g-kpi-lbl" data-i18n="tarj.kAbonado">Abonado en banco</div><div class="g-kpi-val g-num" id="tarj-k-abonado">—</div><div class="g-kpi-sub" id="tarj-k-abonado-sub">—</div></div>
+      <div class="g-kpi"><div class="g-kpi-lbl" data-i18n="tarj.kVentas">Cobrado con tarjeta (DRR/TPV)</div><div class="g-kpi-val g-num" id="tarj-k-ventas">—</div><div class="g-kpi-sub" id="tarj-k-ventas-sub">—</div></div>
+    </div>
+    <div class="g-card" id="card-tarj-banco">
+      <div class="g-card-head"><div><div class="g-card-title" data-i18n="tarj.banco" title="Lo liquidado, por día de abono, contra los abonos de tarjetas del extracto (pestaña TARJETAS del cuadre de banco)." data-i18n-title="tarj.bancoSub">Liquidación ↔ extracto</div></div><span id="tarj-banco-estado"></span></div>
+      <div id="tarj-banco-body" class="g-small"><div class="g-empty g-cargando" data-i18n="lbl.cargando">Cargando…</div></div>
+    </div>
+    <div class="g-card" id="card-tarj-ventas">
+      <div class="g-card-head"><div><div class="g-card-title" data-i18n="tarj.ventas" title="El bruto de cada día contra lo cobrado con tarjeta según el DRR (cuentas de tarjetas del Trial Balance) y el TPV (si su fichero trae la forma de pago)." data-i18n-title="tarj.ventasSub">Liquidación ↔ cobrado con tarjeta (DRR / TPV)</div></div><span id="tarj-ventas-estado"></span></div>
+      <div id="tarj-ventas-body" class="g-small"><div class="g-empty g-cargando" data-i18n="lbl.cargando">Cargando…</div></div>
+    </div>
+    <div class="g-card" id="card-tarj-ops">
+      <div class="g-card-head"><div><div class="g-card-title" data-i18n="tarj.ops">Operaciones liquidadas del mes</div></div><span id="tarj-ops-n" class="g-small"></span></div>
+      <div id="tarj-ops-body" class="g-small"><div class="g-empty g-cargando" data-i18n="lbl.cargando">Cargando…</div></div>
+      <div id="tarj-ficheros" class="g-small"></div>
+    </div>
+  </div><!-- /panel-tarjetas -->
 
   <!-- PANEL NOTIFICACIONES -->
   <div id="panel-notif" class="panel g-panel">
@@ -10207,6 +10273,20 @@ var _sseFrags = [
   "no es una liquidación de OTA — se lee como cualquier documento",
   "factura de la agencia del contrato de grupo",
   "se coteja con la comisión esperada en AR › Contratos",
+  "descarga la plantilla en la pestaña Tarjetas",
+  "fila(s) sin fecha o sin importes, saltadas",
+  "fila(s) con neto distinto de bruto − comisión",
+  "comisión(es) en negativo: se toman en positivo",
+  "ninguna fila con fecha e importes",
+  "no se puede leer el fichero",
+  "faltan columnas:",
+  "operación(es) nuevas",
+  "ya estaban",
+  "liquidación(es) de tarjetas",
+  "· bruto ",
+  "· comisión ",
+  "· neto ",
+  "Tarjetas ",
 ];
 var _sseTrans = {
   en: [
@@ -10307,6 +10387,20 @@ var _sseTrans = {
     "not an OTA statement — read like any other document",
     "invoice from the group contract's agency",
     "checked against the expected commission in AR › Contracts",
+  "download the template in the Cards tab",
+  "row(s) without date or amounts, skipped",
+  "row(s) with net different from gross − fee",
+  "negative fee(s): taken as positive",
+  "no row with date and amounts",
+  "the file cannot be read",
+  "missing columns:",
+  "new transaction(s)",
+  "already loaded",
+  "card settlement(s)",
+  "· gross ",
+  "· fee ",
+  "· net ",
+  "Cards ",
   ],
   ca: [
   "full de càlcul sense classificar — revisar manualment",
@@ -10406,6 +10500,20 @@ var _sseTrans = {
     "no és una liquidació d'OTA — es llegeix com qualsevol document",
     "factura de l'agència del contracte de grup",
     "es contrasta amb la comissió esperada a AR › Contractes",
+  "descarrega la plantilla a la pestanya Targetes",
+  "fila/es sense data o sense imports, saltades",
+  "fila/es amb net diferent de brut − comissió",
+  "comissió/ons en negatiu: es prenen en positiu",
+  "cap fila amb data i imports",
+  "no es pot llegir el fitxer",
+  "falten columnes:",
+  "operació/ons noves",
+  "ja hi eren",
+  "liquidació/ons de targetes",
+  "· brut ",
+  "· comissió ",
+  "· net ",
+  "Targetes ",
   ],
   fr: [
   "feuille de calcul non classée — vérifier manuellement",
@@ -10505,6 +10613,20 @@ var _sseTrans = {
     "ce n'est pas un relevé d'OTA — lu comme n'importe quel document",
     "facture de l'agence du contrat de groupe",
     "rapprochée de la commission attendue dans AR › Contrats",
+  "téléchargez le modèle dans l'onglet Cartes",
+  "ligne(s) sans date ou sans montants, ignorée(s)",
+  "ligne(s) avec net différent de brut − commission",
+  "commission(s) négative(s) : prise(s) en positif",
+  "aucune ligne avec date et montants",
+  "le fichier est illisible",
+  "colonnes manquantes :",
+  "nouvelle(s) opération(s)",
+  "déjà chargées",
+  "relevé(s) de cartes",
+  "· brut ",
+  "· commission ",
+  "· net ",
+  "Cartes ",
   ],
   de: [
   "Tabelle nicht klassifiziert — manuell prüfen",
@@ -10604,6 +10726,20 @@ var _sseTrans = {
     "keine OTA-Abrechnung — wird wie jedes Dokument gelesen",
     "Rechnung der Agentur des Gruppenvertrags",
     "wird mit der erwarteten Provision in AR › Verträge abgeglichen",
+  "lade die Vorlage im Tab Karten herunter",
+  "Zeile(n) ohne Datum oder Beträge, übersprungen",
+  "Zeile(n) mit Netto ungleich Brutto − Gebühr",
+  "negative Gebühr(en): als positiv übernommen",
+  "keine Zeile mit Datum und Beträgen",
+  "die Datei kann nicht gelesen werden",
+  "fehlende Spalten:",
+  "neue Transaktion(en)",
+  "schon geladen",
+  "Kartenabrechnung(en)",
+  "· brutto ",
+  "· Gebühr ",
+  "· netto ",
+  "Karten ",
   ],
   it: [
   "foglio di calcolo non classificato — verificare manualmente",
@@ -10703,6 +10839,20 @@ var _sseTrans = {
     "non è un estratto OTA — letto come qualsiasi documento",
     "fattura dell'agenzia del contratto di gruppo",
     "confrontata con la commissione attesa in AR › Contratti",
+  "scarica il modello nella scheda Carte",
+  "riga/e senza data o importi, saltate",
+  "riga/e con netto diverso da lordo − commissione",
+  "commissione/i negativa/e: prese in positivo",
+  "nessuna riga con data e importi",
+  "il file non si può leggere",
+  "colonne mancanti:",
+  "operazione/i nuove",
+  "già caricate",
+  "liquidazione/i carte",
+  "· lordo ",
+  "· commissione ",
+  "· netto ",
+  "Carte ",
   ],
   pt: [
   "planilha sem classificar — revisar manualmente",
@@ -10802,6 +10952,20 @@ var _sseTrans = {
     "não é uma liquidação de OTA — lido como qualquer documento",
     "fatura da agência do contrato de grupo",
     "confrontada com a comissão esperada em AR › Contratos",
+  "descarregue o modelo no separador Cartões",
+  "linha(s) sem data ou valores, ignoradas",
+  "linha(s) com líquido diferente de bruto − comissão",
+  "comissão(ões) negativa(s): tomadas como positivas",
+  "nenhuma linha com data e valores",
+  "não é possível ler o ficheiro",
+  "faltam colunas:",
+  "operação(ões) novas",
+  "já estavam",
+  "liquidação(ões) de cartões",
+  "· bruto ",
+  "· comissão ",
+  "· líquido ",
+  "Cartões ",
   ],
 };
 function _tSSE(txt) {
@@ -12956,6 +13120,8 @@ function _detectType(fname) {
   var n = fname.toLowerCase();
   // DRR
   if (n.includes('drr') || n.includes('daily revenue') || n.includes('revenue report')) return 'DRR';
+  // Liquidacion de tarjetas (b109; el lote la reconoce por las cabeceras, esto es solo la etiqueta)
+  if (n.includes('tarjeta') || n.includes('redsys') || n.includes('adyen') || n.includes('settlement') || n.includes('datafono')) return 'Tarjetas';
   // OTA
   if (n.includes('booking') || n.includes('expedia') || n.includes('hotelbeds') || n.includes('ota') || n.includes('comision') || n.includes('commission')) return 'AR — OTA';
   // Banco
@@ -12993,6 +13159,7 @@ function _typeColor(t) {
   if (t === 'Foto') return '#a855f7';
   if (t === 'F&B' || t === 'Inventario' || t === 'Mermas' || t === 'Recuento' || t === 'Recetas') return '#f97316';
   if (t === 'Rooming') return '#06b6d4';
+  if (t === 'Tarjetas') return '#14b8a6';
   if (t === 'BEO' || t === 'TM' || t === 'Contrato') return '#a78bfa';
   if (t === 'Omitir') return '#64748b';
   return 'var(--mut)';
@@ -13591,6 +13758,8 @@ function _showTabBadges(logText) {
     '✓ Mermas': 'fb',
     '✓ Rooming': 'fb',
     '✓ DRR': 'drr',
+    '✓ Tarjetas': 'tarjetas',
+    '⚠ Tarjetas': 'tarjetas',
     '✓ Contrato': 'ar_real',
     'AR Real': 'ar_real',
   };
@@ -13608,7 +13777,7 @@ function _showTabBadges(logText) {
 // Solo si el CONTORNO (acentuar-todo) está activo: pone en VERDE únicamente
 // las stats de los apartados que se acaban de actualizar. El resto se queda
 // con el color de contorno personalizado.
-var _PANEL_DE_TAB = { ap:'panel-ap', ar:'panel-ar' /* seccion dentro de AP (b85) */, banco:'panel-banco', caja:'panel-caja', fb:'panel-fb', drr:'panel-drr', ar_real:'panel-ar_real' };
+var _PANEL_DE_TAB = { ap:'panel-ap', ar:'panel-ar' /* seccion dentro de AP (b85) */, banco:'panel-banco', caja:'panel-caja', tarjetas:'panel-tarjetas', fb:'panel-fb', drr:'panel-drr', ar_real:'panel-ar_real' };
 function _statCardsDe(panelId) {
   // (b74) Con la guia, los tiles son todos iguales y no se marcan: el verde de
   // "recien actualizado" hacia que ALGUNOS tiles (los .fb-kpi-card) salieran mas
@@ -14347,6 +14516,9 @@ var _DESCARGAS = [
     {t: '📒 Libro Diario (A3, Sage, Holded…)', u: '/api/exportar/asientos'}]},
   {tab: 'caja', nombre: 'tab.caja', def: '💵 Caja', items: [
     {t: '⬇️ Excel de caja (arqueos e ingresos)', u: '/api/exportar/caja', mes: 'caja-mes', k: 'caja.descargar'}]},
+  {tab: 'tarjetas', nombre: 'tab.tarjetas', def: '💳 Tarjetas', items: [
+    {t: '⬇️ Cruce de tarjetas (Excel)', u: '/api/exportar/tarjetas', mes: 'tarj-mes', k: 'tarj.descargar'},
+    {t: '⬇️ Plantilla de liquidación de tarjetas', u: '/api/tarjetas/plantilla', k: 'tarj.dlPlantilla'}]},
   {tab: 'fb', nombre: 'tab.fb', def: '🍽️ F&B Cost', items: [
     {t: '⬇️ Excel F&B', u: '/api/exportar/fb'},
     {t: '📄 PDF F&B', u: '/api/exportar/fb/pdf'}]},
@@ -14525,6 +14697,7 @@ var _CARGADORES = {
   drr:         function(){ return loadDRR(); },
   banco:       function(){ return loadBanco(); },
   caja:        function(){ return loadCaja(); },
+  tarjetas:    function(){ return loadTarjetas(); },
   notif:       function(){ return loadNotifConfig(); },
   multi_hotel: function(){ return loadMultiHotel(); },
   cierre:      function(){ return loadCierre(); }
@@ -14605,6 +14778,80 @@ function _pintarCaja(d){
   ing.innerHTML = ings.length ? '<div class="g-tbl-wrap"><table class="g-tbl"><thead><tr><th>' + t('caja.fecha', 'Fecha') + '</th><th>' + t('cierre.hConceptoD', 'Concepto') + '</th><th class="num">' + t('cbanco.importe', 'Importe') + '</th></tr></thead><tbody>' +
     ings.map(function(m){ return '<tr><td style="white-space:nowrap">' + _cEsc(_fechaCorta(m.fecha)) + '</td><td>' + _cEsc(m.concepto) + '</td><td class="num" style="color:var(--grn)">' + _cEur(m.importe) + '</td></tr>'; }).join('') + '</tbody></table></div>'
     : _vacio(t('caja.ingresosVacio', 'Ningún ingreso de efectivo en el extracto este mes. Si hay alguno y no sale, ponlo en la pestaña CAJA desde el cuadre de banco (Cierre).'), {cta: false});
+}
+
+// ── Tarjetas (b109): la liquidacion de tarjetas y su cruce con el extracto y con DRR/TPV ──
+// La liquidacion entra por ⚡ Procesar archivos (formato generico: fecha, bruto, comision,
+// neto, referencia). Aqui se consulta, se descarga la plantilla y se quita un fichero.
+function _tarjMes(){ var i = document.getElementById('tarj-mes'); if (i && !i.value) { var d = new Date(); i.value = d.getFullYear() + '-' + String(d.getMonth() + 1).padStart(2, '0'); } return i ? i.value : ''; }
+function _tarjEstado(e){
+  if (e === 'SIN_ABONO') return gBadge('g-warn', t('tarj.stSinAbono', 'Sin abono'));
+  if (e === 'SIN_LIQUIDACION') return gBadge('g-warn', t('tarj.stSinLiq', 'Sin liquidación'));
+  return _cEstado(e);
+}
+function _tarjVia(v){
+  var M = {'referencia': t('tarj.viaRef', 'por referencia'), 'importe': t('tarj.viaImporte', 'por importe'), 'fecha del concepto': t('tarj.viaFecha', 'por la fecha del concepto')};
+  return v ? (M[v] || v) : '';
+}
+async function loadTarjetas(){
+  var b1 = document.getElementById('tarj-banco-body'); if (!b1) return;
+  var mes = _tarjMes();
+  try {
+    var r = await fetch('/api/tarjetas?mes=' + encodeURIComponent(mes), {cache: 'no-store'}); var d = await r.json();
+    if (!d || !d.ok) { b1.innerHTML = _gError(_cEsc((d && d.error) || r.status)); return; }
+    _pintarTarjetas(d);
+  } catch(e) { b1.innerHTML = _gError(_cEsc(e.message)); }
+}
+function _pintarTarjetas(d){
+  var T = d.totales || {}, B = d.banco || {}, V = d.ventas || {}, ops = d.operaciones || [];
+  var filasB = B.filas || [], sinLiq = B.sin_liquidacion || [], filasV = V.filas || [];
+  var set = function(id, v){ var e = document.getElementById(id); if (e) e.textContent = v; };
+  var hay = ops.length > 0;
+  set('tarj-k-bruto', hay ? _cEur(T.bruto) : '—'); set('tarj-k-bruto-sub', hay ? t('tarj.nOps', '{n} operación(es)').replace('{n}', T.n) : '—');
+  set('tarj-k-com', hay ? _cEur(T.comision) : '—'); set('tarj-k-com-sub', (hay && T.pct_comision != null) ? t('tarj.pctCom', '{p} % del bruto').replace('{p}', String(T.pct_comision).replace('.', ',')) : '—');
+  set('tarj-k-neto', hay ? _cEur(T.neto) : '—');
+  set('tarj-k-abonado', (filasB.length || sinLiq.length) ? _cEur(T.abonado) : '—');
+  set('tarj-k-abonado-sub', (filasB.length || sinLiq.length) ? t('tarj.nAbonos', '{n} abono(s) · {s} día(s) sin abono').replace('{n}', T.n_abonos || 0).replace('{s}', T.dias_sin_abono || 0) : '—');
+  set('tarj-k-ventas', T.ventas_tarjeta != null ? _cEur(T.ventas_tarjeta) : '—');
+  set('tarj-k-ventas-sub', T.ventas_tarjeta != null ? t('tarj.difVentas', '{n} día(s) con diferencia').replace('{n}', T.dias_ventas_dif || 0) : t('tarj.sinDatoVentas', 'sin dato en DRR/TPV'));
+  _tilesVacios(document.getElementById('tarj-tiles'), !hay && !sinLiq.length);
+  // 1 · liquidacion <-> extracto
+  var b1 = document.getElementById('tarj-banco-body'), e1 = document.getElementById('tarj-banco-estado');
+  if (e1) e1.innerHTML = filasB.length ? (T.dias_sin_abono || T.dias_con_diferencia || sinLiq.length ? gBadge('g-warn', t('tarj.revisar', 'Revisar')) : gBadge('g-ok', t('tarj.bancoOk', 'Todo cuadra'))) : '';
+  var h1 = filasB.length ? '<div class="g-tbl-wrap"><table class="g-tbl"><thead><tr><th>' + t('tarj.hDia', 'Día de abono') + '</th><th class="num">' + t('tarj.hOps', 'Operaciones') + '</th><th class="num">' + t('tarj.hNeto', 'Neto') + '</th><th>' + t('tarj.hAbono', 'Abono en el extracto') + '</th><th class="num">' + t('tarj.hDif', 'Diferencia') + '</th><th>' + t('th.estado', 'Estado') + '</th></tr></thead><tbody>' +
+    filasB.map(function(f){ var a = f.abono;
+      return '<tr><td style="white-space:nowrap">' + _cEsc(_fechaCorta(f.dia)) + '<div class="g-note">' + _cEsc((f.refs || []).slice(0, 3).join(', ')) + '</div></td><td class="num">' + f.n + '</td><td class="num">' + _cEur(f.neto) + '</td>' +
+        '<td>' + (a ? _cEsc(_fechaCorta(a.fecha)) + ' · ' + _cEsc(a.concepto) + ' · <b>' + _cEur(a.importe) + '</b><div class="g-note">' + _cEsc(_tarjVia(f.via)) + '</div>' : '—') + '</td>' +
+        '<td class="num">' + (f.diferencia != null ? _cEur(f.diferencia) : '—') + '</td><td>' + _tarjEstado(f.estado) + '</td></tr>'; }).join('') + '</tbody></table></div>' : '';
+  if (sinLiq.length) h1 += '<div class="g-label">' + t('tarj.sinLiq', 'Abonos de tarjetas del extracto sin liquidación') + '</div><div class="g-tbl-wrap"><table class="g-tbl"><tbody>' +
+    sinLiq.map(function(m){ return '<tr><td style="white-space:nowrap">' + _cEsc(_fechaCorta(m.fecha)) + '</td><td>' + _cEsc(m.concepto) + '</td><td class="num"><b>' + _cEur(m.importe) + '</b></td><td>' + _tarjEstado('SIN_LIQUIDACION') + '</td></tr>'; }).join('') + '</tbody></table></div>';
+  b1.innerHTML = h1 || _vacio(t('tarj.vacio', 'Sin liquidación de tarjetas este mes. Súbela con ⚡ Procesar archivos (fecha, bruto, comisión, neto, referencia); si no tienes el formato, descarga la plantilla.'), {lg: true});
+  // 2 · liquidacion <-> cobrado con tarjeta (DRR / TPV)
+  var b2 = document.getElementById('tarj-ventas-body'), e2 = document.getElementById('tarj-ventas-estado');
+  var conDato = filasV.filter(function(f){ return f.ventas_tarjeta != null; });
+  if (e2) e2.innerHTML = conDato.length ? (T.dias_ventas_dif ? gBadge('g-warn', t('tarj.revisar', 'Revisar')) : gBadge('g-ok', t('tarj.bancoOk', 'Todo cuadra'))) : '';
+  b2.innerHTML = conDato.length ? '<div class="g-tbl-wrap"><table class="g-tbl"><thead><tr><th>' + t('caja.fecha', 'Fecha') + '</th><th class="num">' + t('tarj.hBruto', 'Bruto liquidado') + '</th><th class="num">' + t('tarj.hDrr', 'DRR') + '</th><th class="num">' + t('tarj.hTpv', 'TPV') + '</th><th class="num">' + t('tarj.hDif', 'Diferencia') + '</th><th>' + t('th.estado', 'Estado') + '</th></tr></thead><tbody>' +
+    filasV.map(function(f){ return '<tr><td style="white-space:nowrap">' + _cEsc(_fechaCorta(f.fecha)) + '</td><td class="num">' + (f.bruto != null ? _cEur(f.bruto) : '—') + '</td><td class="num">' + (f.drr != null ? _cEur(f.drr) : '—') + '</td><td class="num">' + (f.tpv != null ? _cEur(f.tpv) : '—') + '</td><td class="num">' + (f.diferencia != null ? _cEur(f.diferencia) : '—') + '</td><td>' + _tarjEstado(f.estado) + '</td></tr>'; }).join('') + '</tbody></table></div>'
+    : _vacio(t('tarj.ventasVacio', 'Sin cobros con tarjeta este mes en el DRR (cuentas de tarjetas del Trial Balance) ni en el TPV (su fichero no trae la forma de pago).'), {cta: false});
+  // 3 · operaciones del mes y ficheros cargados
+  set('tarj-ops-n', hay ? t('tarj.nOps', '{n} operación(es)').replace('{n}', ops.length) : '');
+  var b3 = document.getElementById('tarj-ops-body');
+  b3.innerHTML = hay ? '<div class="g-tbl-wrap"><table class="g-tbl"><thead><tr><th>' + t('caja.fecha', 'Fecha') + '</th><th>' + t('tarj.hRef', 'Referencia') + '</th><th>' + t('tarj.hTarjeta', 'Tarjeta') + '</th><th class="num">' + t('tarj.hBrutoCorto', 'Bruto') + '</th><th class="num">' + t('tarj.hCom', 'Comisión') + '</th><th class="num">' + t('tarj.hNeto', 'Neto') + '</th><th>' + t('tarj.hFechaAbono', 'Abono') + '</th></tr></thead><tbody>' +
+    ops.slice(0, 300).map(function(o){ return '<tr><td style="white-space:nowrap">' + _cEsc(_fechaCorta(o.fecha)) + '</td><td>' + _cEsc(o.referencia) + '</td><td>' + _cEsc([o.tarjeta, o.terminal].filter(Boolean).join(' · ')) + '</td><td class="num">' + _cEur(o.bruto) + '</td><td class="num">' + _cEur(o.comision) + '</td><td class="num">' + _cEur(o.neto) + '</td><td style="white-space:nowrap">' + (o.fecha_abono ? _cEsc(_fechaCorta(o.fecha_abono)) : '—') + '</td></tr>'; }).join('') + '</tbody></table></div>'
+    : _vacio(t('tarj.opsVacio', 'Ninguna operación liquidada este mes.'), {cta: false});
+  var fi = document.getElementById('tarj-ficheros'), fs = d.ficheros || [];
+  if (fi) fi.innerHTML = fs.length ? '<div class="g-label">' + t('tarj.ficheros', 'Ficheros cargados') + '</div>' + fs.map(function(x){
+      return '<div class="g-row"><span>' + _cEsc(x.fichero) + ' · ' + t('tarj.nOps', '{n} operación(es)').replace('{n}', x.n) + (x.cargado ? ' · ' + _cEsc(x.cargado) : '') + '</span> <button class="g-btn g-ghost g-sm" title="' + _cEsc(t('tarj.quitar', 'Quitar')) + '" onclick="quitarLiquidacion(' + _cEsc(JSON.stringify(x.fichero)).replace(/"/g, '&quot;') + ', ' + x.n + ')">🗑</button></div>'; }).join('') : '';
+}
+async function quitarLiquidacion(fichero, n){
+  if (!confirm(t('tarj.quitarQ', '¿Quitar las {n} operaciones del fichero {f}?').replace('{n}', n).replace('{f}', fichero))) return;
+  try {
+    var r = await _postJson('/api/tarjetas/quitar', {fichero: fichero}); var d = await r.json();
+    if (!d || !d.ok) { showNotification('✗ ' + ((d && d.error) || r.status), 'error'); return; }
+    showToast(t('tarj.quitado', '✓ Operaciones quitadas'), 'var(--grn)');
+    loadTarjetas();
+    try { _panelCargado['cierre'] = false; } catch(e){}   // el cuadre de banco del Cierre cambia
+  } catch(e) { showNotification('✗ ' + e.message, 'error'); }
 }
 
 // ── Cuadre de banco por pestañas (Ola B·2) ───────────────────────────────
@@ -14906,7 +15153,7 @@ window._invalidarPaneles = _invalidarPaneles;
 // se hacen al entrar en cada uno; solo se adelantan. Escalonadas para no
 // competir con el arranque en un Render frio.
 function _precargarPaneles() {
-  var tabs = ['banco', 'drr', 'multi_hotel', 'notif', 'ar_real', 'fb', 'caja'];
+  var tabs = ['banco', 'drr', 'multi_hotel', 'notif', 'ar_real', 'fb', 'caja', 'tarjetas'];
   tabs.forEach(function(t, i) {
     setTimeout(function(){
       try { _cargarPanel(t, document.getElementById('panel-' + t), false); } catch(e){}

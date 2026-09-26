@@ -137,9 +137,11 @@ def clasificar(mov, palabras_cfg, manual, proveedores):
     return "SIN_CLASIFICAR", ""
 
 
-def cuadrar(mes, df_banco, ventas_fb=None, palabras_cfg=None, manual=None, proveedores=None, caja=None):
+def cuadrar(mes, df_banco, ventas_fb=None, palabras_cfg=None, manual=None, proveedores=None, caja=None, tarjetas=None):
     """Devuelve {mes, pestañas: {...}, movimientos: [...], saldo_final, resumen}.
-    caja: (efectivo_contado_del_mes, n_arqueos) de la pestaña Caja (b86), o None si no hay arqueos."""
+    caja: (efectivo_contado_del_mes, n_arqueos) de la pestaña Caja (b86), o None si no hay arqueos.
+    tarjetas: (neto_liquidado, n_dias, nota) de la pestaña Tarjetas (b109), o None si no hay
+    ninguna liquidacion cargada (entonces TARJETAS sigue contra el TPV, como antes)."""
     ini, fin, mes = _mes_a_rango(mes)
     palabras_cfg = palabras_cfg or {k: list(v) for k, v in PALABRAS_DEFECTO.items()}
     manual = manual or {}
@@ -186,10 +188,16 @@ def cuadrar(mes, df_banco, ventas_fb=None, palabras_cfg=None, manual=None, prove
                          "n_sin_factura": sum(1 for m in ms if not m["factura_ref"]),
                          "estado": "CUADRA" if all(m["factura_ref"] for m in ms) else ("PENDIENTE" if ms else "CUADRA"),
                          "nota": "Justificado = movimientos cruzados con una factura (conciliacion o asignacion manual)."})
+        elif p == "TARJETAS" and tarjetas is not None:
+            # b109: contra el neto de las liquidaciones de tarjetas (pestaña Tarjetas)
+            just, n_d, nota = tarjetas
+            dif = round(total - just, 2)
+            info.update({"justificado": just, "diferencia": dif, "n_dias_liquidados": n_d,
+                         "estado": "CUADRA" if abs(dif) <= 0.01 else "DIFERENCIA", "nota": nota})
         elif p == "TARJETAS":
             info.update({"justificado": tpv if tpv else None, "diferencia": round(total - tpv, 2) if tpv else None,
-                         "estado": "INFO", "nota": ("Contra las ventas F&B del TPV del mes. Las tarjetas de habitaciones "
-                                                   "las liquida el PMS: la diferencia es normal hasta tener conector.")})
+                         "estado": "INFO", "nota": ("Contra las ventas F&B del TPV del mes (sin liquidación de tarjetas cargada: "
+                                                   "súbela con ⚡ Procesar archivos y se cuadra contra ella).")})
         elif p == "CAJA":
             # b86: se cuadra contra los arqueos de la pestaña Caja. Lo ingresado en el
             # banco no puede superar lo contado; lo que falta sigue en la caja fuerte.

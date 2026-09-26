@@ -27,7 +27,7 @@ logging.getLogger('werkzeug').setLevel(logging.ERROR)
 SABOTAJE = '--sabotaje' in sys.argv
 PORT = 5105
 DIRS_DATOS = ['datos-referencia', 'facturas-procesadas', 'reportes', 'aprobaciones']
-TABS = ['multi_hotel', 'ar', 'ap', 'drr', 'banco', 'notif', 'fb', 'ar_real', 'cierre']
+TABS = ['multi_hotel', 'ar', 'ap', 'drr', 'banco', 'notif', 'fb', 'ar_real', 'cierre', 'tarjetas']
 
 # frases de ayuda: texto largo, en un bloque "de ayuda" (g-sub/g-note/g-small/p), que
 # no es un dato (sin cifras), fuera de vacios, alertas, tablas, tiles y avisos SMTP
